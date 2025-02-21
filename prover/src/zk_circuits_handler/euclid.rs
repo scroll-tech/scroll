@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
 use scroll_zkvm_prover::{
     task::{batch::BatchProvingTask, bundle::BundleProvingTask, chunk::ChunkProvingTask},
-    BatchProof, BatchProver, BundleProver, ChunkProver,
+    BatchProver, BundleProver, ChunkProver,
 };
 use tokio::sync::Mutex;
 pub struct EuclidHandler {
@@ -79,12 +79,12 @@ impl CircuitsHandler for Arc<Mutex<EuclidHandler>> {
                 Ok(serde_json::to_string(&proof)?)
             }
             ProofType::Bundle => {
-                let batch_proofs: Vec<BatchProof> = serde_json::from_str(&prove_request.input)?;
+                let batch_proofs: BundleProvingTask = serde_json::from_str(&prove_request.input)?;
                 let proof = self
                     .try_lock()
                     .unwrap()
                     .bundle_prover
-                    .gen_proof(&BundleProvingTask { batch_proofs })?;
+                    .gen_proof(&batch_proofs)?;
 
                 Ok(serde_json::to_string(&proof)?)
             }

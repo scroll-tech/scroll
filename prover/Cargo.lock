@@ -1126,9 +1126,9 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitcode"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae9f4d868fa036ee7517b997dc2b6efd383a8b2efdcb4b07058260de060d3ef"
+checksum = "18c1406a27371b2f76232a2259df6ab607b91b5a0a7476a7729ff590df5a969a"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1371,9 +1371,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.14"
+version = "1.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c3d1b2e905a3a7b00a6141adb0e4c0bb941d11caf55349d863942a1cc44e3c9"
+checksum = "c736e259eea577f443d5c86c304f9f4ae0295c43f3ba05c21f1d66b5f06001af"
 dependencies = [
  "jobserver",
  "libc",
@@ -3301,9 +3301,9 @@ dependencies = [
 
 [[package]]
 name = "inout"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
+checksum = "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"
 dependencies = [
  "generic-array",
 ]
@@ -3553,9 +3553,9 @@ checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
 
 [[package]]
 name = "log"
-version = "0.4.25"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04cbf5b083de1c7e0222a7a51dbfdba1cbe1c6ab0b15e29fff3f6c077fd9cd9f"
+checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
 
 [[package]]
 name = "lru"
@@ -6983,7 +6983,7 @@ dependencies = [
  "rend",
  "rkyv_derive",
  "tinyvec",
- "uuid 1.13.2",
+ "uuid 1.14.0",
 ]
 
 [[package]]
@@ -7490,7 +7490,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#a8179792520c7513b387c5fd2e5eded6040959dd"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#da9c824e9a0751bd5482d00910a187e86350beee"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -7505,10 +7505,11 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#a8179792520c7513b387c5fd2e5eded6040959dd"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#da9c824e9a0751bd5482d00910a187e86350beee"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
+ "bincode",
  "git-version",
  "hex",
  "metrics 0.23.0",
@@ -7535,11 +7536,17 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#a8179792520c7513b387c5fd2e5eded6040959dd"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.4#da9c824e9a0751bd5482d00910a187e86350beee"
 dependencies = [
+ "bincode",
+ "eyre",
+ "openvm-circuit",
+ "openvm-native-circuit",
  "openvm-native-recursion",
+ "openvm-sdk",
  "revm 19.4.0",
  "scroll-zkvm-circuit-input-types",
+ "serde",
  "snark-verifier-sdk",
 ]
 
@@ -8920,9 +8927,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.13.2"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c1f41ffb7cf259f1ecc2876861a17e7142e63ead296f671f81f6ae85903e0d6"
+checksum = "93d59ca99a559661b96bf898d8fce28ed87935fd2bea9f05983c1464dd6c71b1"
 
 [[package]]
 name = "valuable"
@@ -9609,9 +9616,9 @@ source = "git+https://github.com/scroll-tech//reth?branch=fix%2Fscroll-zkvm#b2c7
 
 [[package]]
 name = "zstd-sys"
-version = "2.0.13+zstd.1.5.6"
+version = "2.0.14+zstd.1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38ff0f21cfee8f97d94cef41359e0c89aa6113028ab0291aa8ca0038995a95aa"
+checksum = "8fb060d4926e4ac3a3ad15d864e99ceb5f343c6b34f5bd6d81ae6ed417311be5"
 dependencies = [
  "cc",
  "pkg-config",
