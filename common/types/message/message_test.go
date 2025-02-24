@@ -52,3 +52,80 @@ func TestDeserializeOpenVMProof(t *testing.T) {
 		t.Fatalf("get unexpected bundle info, post state root is %v", ovmbundleProof.MetaData.BundleInfo.PostStateRoot)
 	}
 }
+
+func TestByteArrayMarshal(t *testing.T) {
+	marshalTests := []struct {
+		name     string
+		data     ByteArray
+		expected string
+	}{
+		{
+			name:     "empty",
+			data:     ByteArray{},
+			expected: "[]",
+		},
+		{
+			name:     "some",
+			data:     ByteArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			expected: "[1,2,3,4,5,6,7,8,9,10]",
+		},
+		{
+			name:     "nil",
+			data:     nil,
+			expected: "[]",
+		},
+	}
+
+	for _, tt := range marshalTests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.data)
+			if err != nil {
+				t.Fatalf("failed to marshal ByteArray: %v", err)
+			}
+			if string(data) != tt.expected {
+				t.Fatalf("unexpected marshaled ByteArray: %s", data)
+			}
+		})
+	}
+
+	unmarshalTests := []struct {
+		name     string
+		data     string
+		expected ByteArray
+	}{
+		{
+			name:     "empty",
+			data:     "[]",
+			expected: ByteArray{},
+		},
+		{
+			name:     "some",
+			data:     "[1,2,3,4,5,6,7,8,9,10]",
+			expected: ByteArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		},
+		{
+			name: "base64",
+			data: "\"AQIDBAUGBwgJCg==\"",
+			expected: ByteArray{
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+			},
+		},
+	}
+
+	for _, tt := range unmarshalTests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data ByteArray
+			if err := json.Unmarshal([]byte(tt.data), &data); err != nil {
+				t.Fatalf("failed to unmarshal ByteArray: %v", err)
+			}
+			if len(data) != len(tt.expected) {
+				t.Fatalf("unexpected unmarshaled ByteArray: %v", data)
+			}
+			for i := range data {
+				if data[i] != tt.expected[i] {
+					t.Fatalf("unexpected unmarshaled ByteArray: %v", data)
+				}
+			}
+		})
+	}
+}

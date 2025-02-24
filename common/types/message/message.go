@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common"
 )
@@ -226,9 +227,25 @@ type OpenVMProof struct {
 	PublicValues []uint32    `json:"public_values"`
 }
 
+type ByteArray []byte
+
+// MarshalJSON marshals a ByteArray to JSON
+func (b ByteArray) MarshalJSON() ([]byte, error) {
+	builder := strings.Builder{}
+	builder.WriteString("[")
+	for i, v := range b {
+		builder.WriteString(fmt.Sprintf("%d", v))
+		if i != len(b)-1 {
+			builder.WriteString(",")
+		}
+	}
+	builder.WriteString("]")
+	return []byte(builder.String()), nil
+}
+
 // Proof for flatten EVM proof
 type OpenVMEvmProof struct {
-	Proof     []byte     `json:"proof"`
+	Proof     ByteArray  `json:"proof"`
 	Instances [][]string `json:"instances"`
 }
 
