@@ -486,9 +486,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
 	case encoding.CodecV7:
-		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit)
+		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, lastBatch)
 		if err != nil {
-			log.Error("failed to construct commitBatchWithBlobProof payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+			log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 			return
 		}
 	default:
@@ -828,6 +828,12 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return fmt.Errorf("failed to get first chunk of batch: %w", err)
 	}
 
+	endChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatch.EndChunkIndex)
+	if err != nil || endChunk == nil {
+		log.Error("failed to get end chunk of batch", "chunk index", dbBatch.EndChunkIndex, "error", err)
+		return fmt.Errorf("failed to get end chunk of batch: %w", err)
+	}
+
 	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 
 	var aggProof message.BundleProof
@@ -850,7 +856,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 			return fmt.Errorf("failed to construct finalizeBundle payload codecv4, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
 		}
 	case encoding.CodecV7:
-		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, aggProof)
+		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
 		}
@@ -1123,23 +1129,18 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
-	blobs := make([]*kzg4844.Blob, len(batchesToSubmit))
+	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
 
 	version := encoding.CodecVersion(batchesToSubmit[0].Batch.CodecVersion)
-	var firstParentBatch *orm.Batch
 	// construct blobs
 	for _, b := range batchesToSubmit {
 		// double check that all batches have the same version
 		batchVersion := encoding.CodecVersion(b.Batch.CodecVersion)
 		if batchVersion != version {
 			return nil, nil, 0, 0, fmt.Errorf("codec version mismatch, expected: %d, got: %d for batches %d and %d", version, batchVersion, batchesToSubmit[0].Batch.Index, b.Batch.Index)
-		}
-
-		if firstParentBatch == nil {
-			firstParentBatch = b.ParentBatch
 		}
 
 		var batchBlocks []*encoding.Block
@@ -1178,12 +1179,8 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		blobs = append(blobs, daBatch.Blob())
 	}
 
-	if firstParentBatch == nil {
-		return nil, nil, 0, 0, fmt.Errorf("firstParentBatch is nil")
-	}
-
 	// TODO: this needs to be updated once the contract interface is finalized
-	calldata, err := r.l1RollupABI.Pack("commitBatches", version, firstParentBatch.BatchHeader)
+	calldata, err := r.l1RollupABI.Pack("commitBatches", version, common.HexToHash(lastBatch.Hash))
 	if err != nil {
 		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
@@ -1218,30 +1215,31 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch
 	return calldata, nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof message.BundleProof) ([]byte, error) {
 	// TODO: update this once the contract interface is finalized
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
-			"finalizeBundleWithProof",
+			"finalizeBundlePostEuclidV2",
 			dbBatch.BatchHeader,
-			dbBatch.PostL1MessageQueueHash,
+			new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
 			common.HexToHash(dbBatch.StateRoot),
 			common.HexToHash(dbBatch.WithdrawRoot),
 			aggProof.Proof(),
 		)
 		if packErr != nil {
-			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)
+			return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2 with proof: %w", packErr)
 		}
 		return calldata, nil
 	}
 
 	// finalizeBundle without proof.
 	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBundle",
+		"finalizeBundlePostEuclidV2",
 		dbBatch.BatchHeader,
-		dbBatch.PostL1MessageQueueHash,
+		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
 		common.HexToHash(dbBatch.StateRoot),
 		common.HexToHash(dbBatch.WithdrawRoot),
+		[]byte{}, // TODO: remove after renaming function in contract
 	)
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack finalizeBundle: %w", packErr)
