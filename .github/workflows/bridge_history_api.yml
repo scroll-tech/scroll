@@ -76,5 +76,7 @@ jobs:
     - name: Verify no changes from goimports and go mod tidy
       run: |
         if [ -n "$(git status --porcelain)" ]; then
+          echo "Uncommitted changes detected:"
+          git diff
           exit 1
         fi
