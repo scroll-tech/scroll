@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/consensus/misc/eip4844"
+	"github.com/scroll-tech/go-ethereum/consensus/misc"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -80,7 +80,7 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 
 	var blobBaseFee uint64
 	if excess := block.ExcessBlobGas; excess != nil {
-		blobBaseFee = eip4844.CalcBlobFee(*excess).Uint64()
+		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
 	}
 
 	l1Block := orm.L1Block{
