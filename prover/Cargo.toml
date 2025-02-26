@@ -51,7 +51,7 @@ ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branc
 scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "eed375d", features = [
     "openvm",
 ] }
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.0-rc.4" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", branch = "fix/proof-as-base64" }
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/revm-v55-upgrade", features = [
     "scroll",
 ] }
