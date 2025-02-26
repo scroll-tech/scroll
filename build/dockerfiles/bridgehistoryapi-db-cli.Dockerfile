@@ -10,7 +10,7 @@ FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge-history-api/cmd/db_cli && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/db_cli
+    cd /src/bridge-history-api/cmd/db_cli && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" go build -v -p 4 -o /bin/db_cli
 
 # Pull db_cli into a second stage deploy ubuntu container
 FROM ubuntu:20.04
