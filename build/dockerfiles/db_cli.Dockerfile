@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.21 as base
+FROM scrolltech/go-rust-builder:go-1.21-rust-nightly-2023-12-03 as base
 
 WORKDIR /src
 COPY go.work* ./
