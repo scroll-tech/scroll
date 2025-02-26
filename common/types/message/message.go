@@ -349,7 +349,7 @@ type OpenVMBundleProof struct {
 func (p *OpenVMBundleProof) Proof() []byte {
 	proofBytes := make([]byte, 0, 384+len(p.EvmProof.Proof))
 	proofBytes = append(proofBytes, p.EvmProof.Instances[:384]...)
-	return append(instances, p.EvmProof.Proof...)
+	return append(proofBytes, p.EvmProof.Proof...)
 }
 
 // SanityCheck checks whether a BundleProof is in a legal format
