@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common"
 )
@@ -348,7 +347,9 @@ type OpenVMBundleProof struct {
 // | 352              | 32             | accs[11] | accumulator 12      |
 // | 384              | dynamic        | proof    | proof bytes         |
 func (p *OpenVMBundleProof) Proof() []byte {
-	append(p.EvmProof.Instances[0:384], p.EvmProof.Proof)
+	proofBytes := make([]byte, 0, 384+len(p.EvmProof.Proof))
+	proofBytes = append(proofBytes, p.EvmProof.Instances[:384]...)
+	return append(instances, p.EvmProof.Proof...)
 }
 
 // SanityCheck checks whether a BundleProof is in a legal format
