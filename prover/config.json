@@ -18,12 +18,12 @@
     "db_path": "unique-db-path-for-prover-1"
   },
   "low_version_circuit": {
-    "hard_fork_name": "Darvin",
+    "hard_fork_name": "darvin",
     "params_path": "params",
     "assets_path": "assets"
   },
   "high_version_circuit": {
-    "hard_fork_name": "DarvinV2",
+    "hard_fork_name": "darvinV2",
     "params_path": "params",
     "assets_path": "assets"
   }
