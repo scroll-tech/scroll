@@ -1076,9 +1076,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
-version = "1.7.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c103cbbedac994e292597ab79342dbd5b306a362045095db54917d92a9fdfd92"
+checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bincode"
@@ -3531,9 +3531,9 @@ checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "litemap"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
+checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
 
 [[package]]
 name = "lock_api"
@@ -4013,9 +4013,9 @@ dependencies = [
 
 [[package]]
 name = "op-alloy-consensus"
-version = "0.10.5"
+version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "621e69964165285ce750bf7ba961707e26c31df9f0b25652d6219dcee1f7f5b5"
+checksum = "06ebfbdba806885ca70c70ab8098c2ab3e8ccf272619eb5edd73ffac5a05576b"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -6983,7 +6983,7 @@ dependencies = [
  "rend",
  "rkyv_derive",
  "tinyvec",
- "uuid 1.15.0",
+ "uuid 1.15.1",
 ]
 
 [[package]]
@@ -7490,7 +7490,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#a32de47b0422413a884b83c908ba6d74c83745ea"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -7505,7 +7505,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#a32de47b0422413a884b83c908ba6d74c83745ea"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -7537,7 +7537,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#a32de47b0422413a884b83c908ba6d74c83745ea"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
 dependencies = [
  "bincode",
  "eyre",
@@ -8928,9 +8928,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.15.0"
+version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd8dcafa1ca14750d8d7a05aa05988c17aab20886e1f3ae33a40223c58d92ef7"
+checksum = "e0f540e3240398cce6128b64ba83fdbdd86129c16a3aa1a3a252efd66eb3d587"
 
 [[package]]
 name = "valuable"
@@ -9529,18 +9529,18 @@ dependencies = [
 
 [[package]]
 name = "zerofrom"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cff3ee08c995dee1859d998dea82f7374f2826091dd9cd47def953cae446cd2e"
+checksum = "50cc42e0333e05660c3587f3bf9d0478688e15d870fab3346451ce7f8c9fbea5"
 dependencies = [
  "zerofrom-derive",
 ]
 
 [[package]]
 name = "zerofrom-derive"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595eed982f7d355beb85837f651fa22e90b3c044842dc7f2c2842c086f295808"
+checksum = "d71e5d6e06ab090c67b5e44993ec16b72dcbaabc526db883a360057678b48502"
 dependencies = [
  "proc-macro2",
  "quote",
