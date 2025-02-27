@@ -29,9 +29,6 @@ type SenderConfig struct {
 	TxType string `json:"tx_type"`
 	// The maximum number of pending blob-carrying transactions
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
-
-	// Config for batch submission
-	BatchSubmission *BatchSubmission `json:"batch_submission"`
 }
 
 type BatchSubmission struct {
@@ -60,6 +57,8 @@ type RelayerConfig struct {
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
+	// Config for batch submission
+	BatchSubmission *BatchSubmission `json:"batch_submission"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service

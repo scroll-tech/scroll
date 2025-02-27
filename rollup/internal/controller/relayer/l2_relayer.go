@@ -378,7 +378,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.SenderConfig.BatchSubmission.MaxBatches)
+	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -447,11 +447,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 
 		// if one of the batches is too old, we force submit all batches that we have so far in the next step
-		if r.cfg.SenderConfig.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.SenderConfig.BatchSubmission.TimeoutSec)*time.Second {
+		if r.cfg.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
 			forceSubmit = true
 		}
 
-		if batchesToSubmitLen < r.cfg.SenderConfig.BatchSubmission.MaxBatches {
+		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
 			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunksAndParent{
 				Batch:       dbBatch,
 				Chunks:      dbChunks,
@@ -459,14 +459,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			})
 		}
 
-		if len(batchesToSubmit) >= r.cfg.SenderConfig.BatchSubmission.MaxBatches {
+		if len(batchesToSubmit) >= r.cfg.BatchSubmission.MaxBatches {
 			break
 		}
 	}
 
 	// we only submit batches if we have a timeout or if we have enough batches to submit
-	if !forceSubmit && len(batchesToSubmit) < r.cfg.SenderConfig.BatchSubmission.MinBatches {
-		log.Info("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.SenderConfig.BatchSubmission.MinBatches, "maxBatches", r.cfg.SenderConfig.BatchSubmission.MaxBatches)
+	if !forceSubmit && len(batchesToSubmit) < r.cfg.BatchSubmission.MinBatches {
+		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.BatchSubmission.MinBatches, "maxBatches", r.cfg.BatchSubmission.MaxBatches)
 		return
 	}
 
@@ -486,7 +486,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
 	case encoding.CodecV7:
-		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, lastBatch)
+		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
 		if err != nil {
 			log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 			return
@@ -837,6 +837,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 
 	var aggProof message.BundleProof
+	withProof = false
 	if withProof {
 		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash, hardForkName)
 		if err != nil {
@@ -1129,7 +1130,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
@@ -1179,8 +1180,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		blobs = append(blobs, daBatch.Blob())
 	}
 
-	// TODO: this needs to be updated once the contract interface is finalized
-	calldata, err := r.l1RollupABI.Pack("commitBatches", version, common.HexToHash(lastBatch.Hash))
+	calldata, err := r.l1RollupABI.Pack("commitBatches", version, common.HexToHash(firstBatch.ParentBatchHash), common.HexToHash(lastBatch.Hash))
 	if err != nil {
 		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
@@ -1216,7 +1216,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof message.BundleProof) ([]byte, error) {
-	// TODO: update this once the contract interface is finalized
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundlePostEuclidV2",
@@ -1234,15 +1233,14 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 
 	// finalizeBundle without proof.
 	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBundlePostEuclidV2",
+		"finalizeBundlePostEuclidV2NoProof",
 		dbBatch.BatchHeader,
 		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
 		common.HexToHash(dbBatch.StateRoot),
 		common.HexToHash(dbBatch.WithdrawRoot),
-		[]byte{}, // TODO: remove after renaming function in contract
 	)
 	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack finalizeBundle: %w", packErr)
+		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
 	}
 	return calldata, nil
 }
