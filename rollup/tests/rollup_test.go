@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
@@ -295,7 +296,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
-		MaxBatchNumPerBundle: 1000000,
+		MaxBatchNumPerBundle: 2,
 		BundleTimeoutSec:     300,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
@@ -303,33 +304,56 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	bundleOrm := orm.NewBundle(db)
 
-	fmt.Println("insert first 5 blocks ------------------------")
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
-	require.NoError(t, err)
-	batch1ExpectedLastL1MessageQueueHash, err := encoding.MessageQueueV2ApplyL1MessagesFromBlocks(common.Hash{}, blocks[:5])
-	require.NoError(t, err)
+	var batch1ExpectedLastL1MessageQueueHash common.Hash
+	{
+		fmt.Println("insert first 5 blocks ------------------------")
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
+		require.NoError(t, err)
+		batch1ExpectedLastL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(common.Hash{}, blocks[:5])
+		require.NoError(t, err)
 
-	cp.TryProposeChunk()
-	bap.TryProposeBatch()
+		cp.TryProposeChunk()
+		bap.TryProposeBatch()
+	}
 
-	fmt.Println("insert last 5 blocks ------------------------")
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[5:])
-	require.NoError(t, err)
-	batch2ExpectedLastL1MessageQueueHash, err := encoding.MessageQueueV2ApplyL1MessagesFromBlocks(batch1ExpectedLastL1MessageQueueHash, blocks[5:])
-	require.NoError(t, err)
+	var batch2ExpectedLastL1MessageQueueHash common.Hash
+	{
+		fmt.Println("insert next 3 blocks ------------------------")
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[5:8])
+		for _, block := range blocks[5:8] {
+			fmt.Println("insert[5:8] block number: ", block.Header.Number, block.Header.Hash())
+		}
+		require.NoError(t, err)
+		batch2ExpectedLastL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(batch1ExpectedLastL1MessageQueueHash, blocks[5:8])
+		require.NoError(t, err)
 
-	cp.TryProposeChunk()
-	bap.TryProposeBatch()
+		cp.TryProposeChunk()
+		bap.TryProposeBatch()
+	}
 
-	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
+	var batch3ExpectedLastL1MessageQueueHash common.Hash
+	{
+		fmt.Println("insert last 2 blocks ------------------------")
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[8:])
+		for _, block := range blocks[8:] {
+			fmt.Println("insert[:8] block number: ", block.Header.Number, block.Header.Hash())
+		}
+		require.NoError(t, err)
+		batch3ExpectedLastL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(batch2ExpectedLastL1MessageQueueHash, blocks[8:])
+		require.NoError(t, err)
 
+		cp.TryProposeChunk()
+		bap.TryProposeBatch()
+	}
+
+	var batches []*orm.Batch
 	// make sure that batches are created as expected
 	require.Eventually(t, func() bool {
-		batches, getErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-		if getErr != nil {
+		batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		if err != nil {
 			return false
 		}
-		if len(batches) != 3 {
+		if len(batches) != 4 {
 			return false
 		}
 
@@ -340,46 +364,91 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[1].PostL1MessageQueueHash))
 		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].PrevL1MessageQueueHash))
 		require.Equal(t, batch2ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].PostL1MessageQueueHash))
+		require.Equal(t, batch2ExpectedLastL1MessageQueueHash, common.HexToHash(batches[3].PrevL1MessageQueueHash))
+		require.Equal(t, batch3ExpectedLastL1MessageQueueHash, common.HexToHash(batches[3].PostL1MessageQueueHash))
 
 		return true
 	}, 30*time.Second, time.Second)
 
-	// simulate proof generation -> all batches and bundle are verified
+	// Nothing should happen since no batch is committed yet.
 	{
-		batchProof := &message.OpenVMBatchProof{}
-		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-		require.NoError(t, err)
-		batches = batches[1:]
-		for _, batch := range batches {
-			err = batchOrm.UpdateProofByHash(context.Background(), batch.Hash, batchProof, 100)
-			require.NoError(t, err)
-			err = batchOrm.UpdateProvingStatus(context.Background(), batch.Hash, types.ProvingTaskVerified)
-			require.NoError(t, err)
-		}
-
-		bundleProof := &message.OpenVMBundleProof{}
+		bup.TryProposeBundle()
 		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
 		require.NoError(t, err)
-		for _, bundle := range bundles {
-			err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, bundleProof, types.ProvingTaskVerified, 100)
-			require.NoError(t, err)
-		}
+		require.Len(t, bundles, 0)
 	}
 
-	//return
-	// TODO: assert that batches have been submitted together in a single transaction after contract ABI is updated
-	//for _, batch := range batches {
-	//	fmt.Println("batch hash: ", batch.Hash, batch.Index, batch.RollupStatus)
-	//	//if types.RollupCommitted != types.RollupStatus(batch.RollupStatus) {
-	//	//	return false
-	//	//}
-	//}
-	//l2Relayer.ProcessPendingBatches()
+	// simulate batches 2 and 3 being submitted together in a single transaction
+	err = db.Transaction(func(dbTX *gorm.DB) error {
+		if err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batches[1].Hash, "0xdefdef", types.RollupCommitted, dbTX); err != nil {
+			return fmt.Errorf("UpdateCommitTxHashAndRollupStatus failed for batch %d: %s, err %v", batches[1].Index, batches[1].Hash, err)
+		}
+
+		for _, batch := range batches[2:] {
+			if err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batch.Hash, "0xabcabc", types.RollupCommitted, dbTX); err != nil {
+				return fmt.Errorf("UpdateCommitTxHashAndRollupStatus failed for batch %d: %s, err %v", batch.Index, batch.Hash, err)
+			}
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+
+	// We only allow bundles up to 2 batches. We should have 2 bundles:
+	//  1. batch 1 -> because it was committed by itself and the next set of batches could not fit the bundle
+	//  2. batch 2 and 3 -> because they were committed together in a single transaction
+	{
+		// need to propose 2 times to get 2 bundles with all batches
+		bup.TryProposeBundle()
+		bup.TryProposeBundle()
+
+		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+		require.NoError(t, err)
+		require.Len(t, bundles, 2)
+
+		require.Equal(t, bundles[0].StartBatchIndex, batches[1].Index)
+		require.Equal(t, bundles[0].EndBatchIndex, batches[1].Index)
+		require.Equal(t, bundles[0].StartBatchHash, batches[1].Hash)
+		require.Equal(t, bundles[0].EndBatchHash, batches[1].Hash)
+
+		require.Equal(t, bundles[1].StartBatchIndex, batches[2].Index)
+		require.Equal(t, bundles[1].EndBatchIndex, batches[3].Index)
+		require.Equal(t, bundles[1].StartBatchHash, batches[2].Hash)
+		require.Equal(t, bundles[1].EndBatchHash, batches[3].Hash)
+	}
+
+	return
+	// simulate proof generation -> all batches and bundle are verified
+	//{
+	//	batchProof := &message.OpenVMBatchProof{}
+	//	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+	//	require.NoError(t, err)
+	//	batches = batches[1:]
+	//	for _, batch := range batches {
+	//		err = batchOrm.UpdateProofByHash(context.Background(), batch.Hash, batchProof, 100)
+	//		require.NoError(t, err)
+	//		err = batchOrm.UpdateProvingStatus(context.Background(), batch.Hash, types.ProvingTaskVerified)
+	//		require.NoError(t, err)
+	//	}
 	//
+	//	bundleProof := &message.OpenVMBundleProof{}
+	//	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+	//	require.NoError(t, err)
+	//	for _, bundle := range bundles {
+	//		err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, bundleProof, types.ProvingTaskVerified, 100)
+	//		require.NoError(t, err)
+	//	}
+	//}
+
+	// TODO: assert that batches have been submitted together in a single transaction after contract ABI is updated
+
+	//l2Relayer.ProcessPendingBatches()
+	//l2Relayer.ProcessPendingBundles()
+
 	//assert.Eventually(t, func() bool {
 	//	l2Relayer.ProcessPendingBundles()
 	//
-	//	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+	//	batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
 	//	assert.NoError(t, err)
 	//	assert.Len(t, batches, 3)
 	//	batches = batches[1:]
@@ -415,5 +484,5 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	//	}
 	//
 	//	return true
-	//}, 30*time.Second, time.Second)
+	//}, 10*time.Second, time.Second)
 }

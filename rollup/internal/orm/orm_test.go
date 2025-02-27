@@ -327,23 +327,23 @@ func TestBatchOrm(t *testing.T) {
 		assert.Equal(t, "finalizeTxHash", updatedBatch.FinalizeTxHash)
 		assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(updatedBatch.RollupStatus))
 
-		batches, err := batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
+		batches, err := batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)
 		assert.Equal(t, batchHash2, batches[1].Hash)
 
-		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 1)
+		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)
 
-		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 1, codecVersion, 0)
+		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 1, codecVersion, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(batches))
 		assert.Equal(t, batchHash2, batches[0].Hash)
 
-		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion+1, 0)
+		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion+1, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(batches))
 
@@ -356,7 +356,7 @@ func TestBatchOrm(t *testing.T) {
 		err = batchOrm.UpdateFinalizeTxHashAndRollupStatusByBundleHash(context.Background(), "test hash", "tx hash", types.RollupCommitFailed)
 		assert.NoError(t, err)
 
-		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
+		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)

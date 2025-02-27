@@ -133,7 +133,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 	// select at most maxBlocksThisChunk blocks
 	maxBatchesThisBundle := p.maxBatchNumPerBundle
-	batches, err := p.batchOrm.GetBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, p.minCodecVersion, int(maxBatchesThisBundle))
+	batches, err := p.batchOrm.GetCommittedBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, p.minCodecVersion, int(maxBatchesThisBundle))
 	if err != nil {
 		return err
 	}
@@ -167,6 +167,11 @@ func (p *BundleProposer) proposeBundle() error {
 	}
 
 	for i := 1; i < len(batches); i++ {
+		// Make sure that all batches have been committed.
+		if len(batches[i].CommitTxHash) == 0 {
+			return fmt.Errorf("commit tx hash is empty for batch %v %s", batches[0].Index, batches[0].Hash)
+		}
+
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {
 			return err
@@ -181,6 +186,12 @@ func (p *BundleProposer) proposeBundle() error {
 
 	if uint64(len(batches)) == maxBatchesThisBundle {
 		log.Info("reached maximum number of batches per bundle", "batch count", len(batches), "start batch index", batches[0].Index, "end batch index", batches[len(batches)-1].Index)
+
+		batches, err = p.allBatchesCommittedInSameTXIncluded(batches)
+		if err != nil {
+			return fmt.Errorf("failed to include all batches committed in the same tx: %w", err)
+		}
+
 		p.bundleFirstBlockTimeoutReached.Inc()
 		p.bundleBatchesNum.Set(float64(len(batches)))
 		return p.updateDBBundleInfo(batches, codecVersion)
@@ -189,6 +200,12 @@ func (p *BundleProposer) proposeBundle() error {
 	currentTimeSec := uint64(time.Now().Unix())
 	if firstChunk.StartBlockTime+p.bundleTimeoutSec < currentTimeSec {
 		log.Info("first block timeout", "batch count", len(batches), "start block number", firstChunk.StartBlockNumber, "start block timestamp", firstChunk.StartBlockTime, "current time", currentTimeSec)
+
+		batches, err = p.allBatchesCommittedInSameTXIncluded(batches)
+		if err != nil {
+			return fmt.Errorf("failed to include all batches committed in the same tx: %w", err)
+		}
+
 		p.bundleFirstBlockTimeoutReached.Inc()
 		p.bundleBatchesNum.Set(float64(len(batches)))
 		return p.updateDBBundleInfo(batches, codecVersion)
@@ -197,4 +214,44 @@ func (p *BundleProposer) proposeBundle() error {
 	log.Debug("pending batches are not enough and do not contain a timeout batch")
 	p.bundleBatchesProposeNotEnoughTotal.Inc()
 	return nil
+}
+
+// allBatchesCommittedInSameTXIncluded makes sure that all batches that were committed in the same tx are included in the bundle.
+// If the last batch of the input batches was committed in the same tx as other batches but has not the highest index amongst those,
+// we need to remove all batches with the same commit tx hash.
+// As a result, all batches with the same commit tx hash will always be included in a single bundle.
+func (p *BundleProposer) allBatchesCommittedInSameTXIncluded(batches []*orm.Batch) ([]*orm.Batch, error) {
+	lastBatch := batches[len(batches)-1]
+	fields := map[string]interface{}{
+		"commit_tx_hash = ?": lastBatch.CommitTxHash,
+	}
+
+	// get all batches with the same commit tx hash as lastBatch
+	batchesWithSameCommitTX, err := p.batchOrm.GetBatches(p.ctx, fields, nil, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batches with the same commit tx hash: %w", err)
+	}
+
+	// get the batch with the highest index amongst the batches with the same commit tx hash as lastBatch
+	lastBatchWithSameCommitTX := batchesWithSameCommitTX[len(batchesWithSameCommitTX)-1]
+
+	// check if lastBatchWithSameCommitTX is included in the input batches -> if not, we need to remove all batches with the same commit tx hash
+	batchIncluded := lastBatch.Index == lastBatchWithSameCommitTX.Index
+	if !batchIncluded {
+		// we need to remove all batches with the same commit tx hash
+		for i := 0; i < len(batches); i++ {
+			if batches[i].CommitTxHash != lastBatchWithSameCommitTX.CommitTxHash {
+				continue
+			}
+
+			batches = batches[:i]
+			break
+		}
+	}
+
+	if len(batches) == 0 {
+		return nil, fmt.Errorf("no batches anymore after cleaning up batches with the same commit tx hash %s", lastBatch.CommitTxHash)
+	}
+
+	return batches, nil
 }
