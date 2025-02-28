@@ -13,6 +13,7 @@ use scroll_proving_sdk::{
     prover::ProverBuilder,
     utils::{get_version, init_tracing},
 };
+use tokio::runtime;
 use utils::get_prover_type;
 
 #[derive(Parser, Debug)]
@@ -31,38 +32,45 @@ struct Args {
     log_file: Option<String>,
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    init_tracing();
-
-    let args = Args::parse();
-
-    if args.version {
-        println!("version is {}", get_version());
-        std::process::exit(0);
-    }
-
-    let cfg = LocalProverConfig::from_file(args.config_file)?;
-    let sdk_config = cfg.sdk_config.clone();
-    let mut prover_types = vec![];
-    sdk_config
-        .prover
-        .circuit_types
-        .iter()
-        .for_each(|circuit_type| {
-            if let Some(pt) = get_prover_type(*circuit_type) {
-                if !prover_types.contains(&pt) {
-                    prover_types.push(pt);
-                }
-            }
-        });
-    let local_prover = LocalProver::new(cfg, prover_types);
-    let prover = ProverBuilder::new(sdk_config)
-        .with_proving_service(Box::new(local_prover))
+fn main() -> anyhow::Result<()> {
+    let rt = runtime::Builder::new_multi_thread()
+        .thread_stack_size(16 * 1024 * 1024) // Set stack size to 16MB
+        .enable_all()
         .build()
-        .await?;
+        .expect("Failed to create Tokio runtime");
 
-    prover.run().await;
+    rt.block_on(async {
+        init_tracing();
 
-    Ok(())
+        let args = Args::parse();
+
+        if args.version {
+            println!("version is {}", get_version());
+            std::process::exit(0);
+        }
+
+        let cfg = LocalProverConfig::from_file(args.config_file)?;
+        let sdk_config = cfg.sdk_config.clone();
+        let mut prover_types = vec![];
+        sdk_config
+            .prover
+            .circuit_types
+            .iter()
+            .for_each(|circuit_type| {
+                if let Some(pt) = get_prover_type(*circuit_type) {
+                    if !prover_types.contains(&pt) {
+                        prover_types.push(pt);
+                    }
+                }
+            });
+        let local_prover = LocalProver::new(cfg, prover_types);
+        let prover = ProverBuilder::new(sdk_config)
+            .with_proving_service(Box::new(local_prover))
+            .build()
+            .await?;
+
+        prover.run().await;
+
+        Ok(())
+    })
 }
