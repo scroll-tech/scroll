@@ -35,15 +35,18 @@ impl ProofVerifier for EuclidVerifier {
         panic_catch(|| match task_type {
             TaskType::Chunk => {
                 let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
-                self.chunk_verifier.verify_proof(&proof.proof)
+                self.chunk_verifier
+                    .verify_proof(proof.proof.as_root_proof().unwrap())
             }
             TaskType::Batch => {
                 let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
-                self.batch_verifier.verify_proof(&proof.proof)
+                self.batch_verifier
+                    .verify_proof(proof.proof.as_root_proof().unwrap())
             }
             TaskType::Bundle => {
                 let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
-                self.bundle_verifier.verify_proof_evm(&proof.proof)
+                self.bundle_verifier
+                    .verify_proof_evm(&proof.proof.as_evm_proof().unwrap())
             }
         })
         .map_err(|err_str: String| anyhow::anyhow!(err_str))

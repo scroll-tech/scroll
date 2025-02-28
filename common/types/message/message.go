@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common"
 )
@@ -223,30 +222,14 @@ func (ap *Halo2BundleProof) SanityCheck() error {
 
 // Proof for flatten VM proof
 type OpenVMProof struct {
-	Proof        interface{} `json:"proofs"`
-	PublicValues []uint32    `json:"public_values"`
-}
-
-type ByteArray []byte
-
-// MarshalJSON marshals a ByteArray to JSON
-func (b ByteArray) MarshalJSON() ([]byte, error) {
-	builder := strings.Builder{}
-	builder.WriteString("[")
-	for i, v := range b {
-		builder.WriteString(fmt.Sprintf("%d", v))
-		if i != len(b)-1 {
-			builder.WriteString(",")
-		}
-	}
-	builder.WriteString("]")
-	return []byte(builder.String()), nil
+	Proof        []byte `json:"proofs"`
+	PublicValues []byte `json:"public_values"`
 }
 
 // Proof for flatten EVM proof
 type OpenVMEvmProof struct {
-	Proof     ByteArray  `json:"proof"`
-	Instances [][]string `json:"instances"`
+	Proof     []byte `json:"proof"`
+	Instances []byte `json:"instances"`
 }
 
 // OpenVMChunkProof includes the proof info that are required for chunk verification and rollup.
@@ -350,8 +333,23 @@ type OpenVMBundleProof struct {
 	GitVersion string          `json:"git_version,omitempty"`
 }
 
+// Proof returns the proof bytes that are eventually passed as calldata for on-chain bundle proof verification.
+//
+// There are 12 accumulators for a SNARK proof. The accumulators are the first 12 elements of the EvmProof's
+// Instances field. The remaining items in Instances are supplied on-chain by the ScrollChain contract.
+//
+// The structure of these bytes is:
+// | byte index start | byte length    | value    | description         |
+// |------------------|----------------|----------|---------------------|
+// | 0                | 32             | accs[0]  | accumulator 1       |
+// | 32               | 32             | accs[1]  | accumulator 2       |
+// | 32*i ...         | 32             | accs[i]  | accumulator i ...   |
+// | 352              | 32             | accs[11] | accumulator 12      |
+// | 384              | dynamic        | proof    | proof bytes         |
 func (p *OpenVMBundleProof) Proof() []byte {
-	return p.EvmProof.Proof
+	proofBytes := make([]byte, 0, 384+len(p.EvmProof.Proof))
+	proofBytes = append(proofBytes, p.EvmProof.Instances[:384]...)
+	return append(proofBytes, p.EvmProof.Proof...)
 }
 
 // SanityCheck checks whether a BundleProof is in a legal format
