@@ -223,16 +223,16 @@ dependencies = [
 
 [[package]]
 name = "alloy-eip7702"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cabf647eb4650c91a9d38cb6f972bb320009e7e9d61765fb688a86f1563b33e8"
+checksum = "9b15b13d38b366d01e818fe8e710d4d702ef7499eacd44926a06171dd9585d0c"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
- "derive_more 1.0.0",
  "k256",
  "serde",
  "serde_with",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -243,7 +243,7 @@ checksum = "5591581ca2ab0b3e7226a4047f9a1bfcf431da1d0cce3752fda609fea3c27e37"
 dependencies = [
  "alloy-eip2124",
  "alloy-eip2930",
- "alloy-eip7702 0.5.0",
+ "alloy-eip7702 0.5.1",
  "alloy-primitives",
  "alloy-rlp",
  "alloy-serde 0.11.1",
@@ -604,9 +604,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-type-parser"
-version = "0.8.21"
+version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1b3e9a48a6dd7bb052a111c8d93b5afc7956ed5e2cb4177793dc63bb1d2a36"
+checksum = "c649acc6c9d3893e392c737faeadce30b4a1751eed148ae43bc2f27f29c4480c"
 dependencies = [
  "serde",
  "winnow 0.7.3",
@@ -897,9 +897,9 @@ dependencies = [
 
 [[package]]
 name = "async-compression"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df895a515f70646414f4b45c0b79082783b80552b373a68283012928df56f522"
+checksum = "06575e6a9673580f52661c92107baabffbf41e2141373441cbcdc47cb733003c"
 dependencies = [
  "flate2",
  "futures-core",
@@ -1184,16 +1184,15 @@ dependencies = [
 
 [[package]]
 name = "blake3"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1230237285e3e10cde447185e8975408ae24deaa67205ce684805c25bc0c7937"
+checksum = "675f87afced0413c9bb02843499dbbd3882a237645883f71a2b59644a6d2f753"
 dependencies = [
  "arrayref",
  "arrayvec",
  "cc",
  "cfg-if",
  "constant_time_eq",
- "memmap2",
 ]
 
 [[package]]
@@ -2504,9 +2503,9 @@ dependencies = [
 
 [[package]]
 name = "getset"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eded738faa0e88d3abc9d1a13cb11adc2073c400969eeb8793cf7132589959fc"
+checksum = "f3586f256131df87204eb733da72e3d3eb4f343c639f4b7be279ac7c48baeafe"
 dependencies = [
  "proc-macro-error2",
  "proc-macro2",
@@ -4013,9 +4012,9 @@ dependencies = [
 
 [[package]]
 name = "op-alloy-consensus"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ebfbdba806885ca70c70ab8098c2ab3e8ccf272619eb5edd73ffac5a05576b"
+checksum = "6ed6cad421e41d400667a06df8bd306dd316c3e1fed803df065b1c65d7de6795"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -6906,7 +6905,7 @@ version = "15.1.0"
 source = "git+https://github.com/scroll-tech//revm?branch=scroll-evm-executor%2Fv55#6accb0ba959747d717443954a8bd988efa8f98fc"
 dependencies = [
  "alloy-eip2930",
- "alloy-eip7702 0.5.0",
+ "alloy-eip7702 0.5.1",
  "alloy-primitives",
  "auto_impl",
  "bitflags 2.8.0",
@@ -7489,8 +7488,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
-version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
+version = "0.1.0-rc.5"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -7504,8 +7503,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-prover"
-version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
+version = "0.1.0-rc.5"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -7536,8 +7535,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-verifier"
-version = "0.1.0-rc.4"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=fix%2Fproof-as-base64#e4a12402969160b5ef3009cc19ed83a6eb0adbfd"
+version = "0.1.0-rc.5"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
 dependencies = [
  "bincode",
  "eyre",
@@ -8165,9 +8164,9 @@ dependencies = [
 
 [[package]]
 name = "syn-solidity"
-version = "0.8.21"
+version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c2de690018098e367beeb793991c7d4dc7270f42c9d2ac4ccc876c1368ca430"
+checksum = "ac9f9798a84bca5cd4d1760db691075fda8f2c3a5d9647e8bfd29eb9b3fabb87"
 dependencies = [
  "paste",
  "proc-macro2",
