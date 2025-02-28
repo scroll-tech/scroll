@@ -328,6 +328,8 @@ func (p *BatchProposer) proposeBatch() error {
 				"L1CommitUncompressedBatchBytesSize", metrics.L1CommitUncompressedBatchBytesSize,
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
+			lastChunk := batch.Chunks[len(batch.Chunks)-1]
+			batch.Blocks = batch.Blocks[:len(batch.Blocks)-len(lastChunk.Blocks)]
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 			batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i-1].PostL1MessageQueueHash)
 
