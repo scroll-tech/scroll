@@ -3,7 +3,7 @@ mod verifier;
 
 use std::path::Path;
 
-use crate::utils::{c_char_to_str, c_char_to_vec};
+use crate::utils::{c_char_to_str, c_char_to_vec, panic_catch};
 use libc::c_char;
 use verifier::{TaskType, VerifierConfig};
 
@@ -21,7 +21,7 @@ pub unsafe extern "C" fn verify_chunk_proof(
     proof: *const c_char,
     fork_name: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Chunk)
+    verify_proof_catched(proof, fork_name, TaskType::Chunk)
 }
 
 fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
@@ -39,13 +39,30 @@ fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskT
         log::warn!("failed to get verifier, error: {:#}", e);
         return 0 as c_char;
     }
+
+    println!("calling verifier");
     match verifier.unwrap().verify(task_type, proof) {
         Err(e) => {
             log::error!("{:?} verify failed, error: {:#}", task_type, e);
             false as c_char
         }
-        Ok(result) => result as c_char,
+        Ok(result) => {
+            println!("done with verifier {}", result);
+
+            result as c_char
+        }
     }
+}
+
+fn verify_proof_catched(
+    proof: *const c_char,
+    fork_name: *const c_char,
+    task_type: TaskType,
+) -> c_char {
+    panic_catch(|| verify_proof(proof, fork_name, task_type)).unwrap_or_else(|err| {
+        log::error!("{:?} proof verification panicked with {}", task_type, err);
+        false as c_char
+    })
 }
 
 /// # Safety
@@ -54,7 +71,7 @@ pub unsafe extern "C" fn verify_batch_proof(
     proof: *const c_char,
     fork_name: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Batch)
+    verify_proof_catched(proof, fork_name, TaskType::Batch)
 }
 
 /// # Safety
@@ -63,7 +80,7 @@ pub unsafe extern "C" fn verify_bundle_proof(
     proof: *const c_char,
     fork_name: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Bundle)
+    verify_proof_catched(proof, fork_name, TaskType::Bundle)
 }
 
 /// # Safety

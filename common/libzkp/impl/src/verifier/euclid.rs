@@ -2,7 +2,6 @@ use super::{ProofVerifier, TaskType, VKDump};
 
 use anyhow::Result;
 
-use crate::utils::panic_catch;
 use euclid_prover::{BatchProof, BundleProof, ChunkProof};
 use euclid_verifier::verifier::{BatchVerifier, BundleVerifier, ChunkVerifier};
 use std::{fs::File, path::Path};
@@ -32,24 +31,26 @@ impl EuclidVerifier {
 
 impl ProofVerifier for EuclidVerifier {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
-        panic_catch(|| match task_type {
+        Ok(match task_type {
             TaskType::Chunk => {
+                println!("calling internal chunk verifier");
                 let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
                 self.chunk_verifier
                     .verify_proof(proof.proof.as_root_proof().unwrap())
             }
             TaskType::Batch => {
+                println!("calling internal batch verifier");
                 let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
                 self.batch_verifier
                     .verify_proof(proof.proof.as_root_proof().unwrap())
             }
             TaskType::Bundle => {
+                println!("calling internal bundle verifier");
                 let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
                 self.bundle_verifier
                     .verify_proof_evm(&proof.proof.as_evm_proof().unwrap())
             }
         })
-        .map_err(|err_str: String| anyhow::anyhow!(err_str))
     }
 
     fn dump_vk(&self, file: &Path) {
