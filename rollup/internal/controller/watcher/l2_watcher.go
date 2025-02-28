@@ -136,7 +136,13 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
-		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
+		var count int
+		for _, tx := range block.Transactions() {
+			if tx.IsL1MessageTx() {
+				count++
+			}
+		}
+		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String(), "L1 message count", count)
 
 		withdrawRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {

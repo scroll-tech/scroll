@@ -251,8 +251,8 @@ github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6g
 github.com/sagikazarmark/slog-shim v0.1.0/go.mod h1:SrcSrq8aKtyuqEI1uvTDTK1arOWRIczQRv+GVI1AkeQ=
 github.com/scroll-tech/da-codec v0.1.3-0.20250227072756-a1482833595f h1:YYbhuUwjowqI4oyXtECRofck7Fyj18e1tcRjuQlZpJE=
 github.com/scroll-tech/da-codec v0.1.3-0.20250227072756-a1482833595f/go.mod h1:xECEHZLVzbdUn+tNbRJhRIjLGTOTmnFQuTgUTeVLX58=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250225152658-bcfdb48dd939 h1:KODmYD4s4BY/SBheCHqGbATnGPLQKzTJVuAElA8Eh+0=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250225152658-bcfdb48dd939/go.mod h1:AgU8JJxC7+nfs7R7ma35AU7dMAGW7wCw3dRZRefIKyQ=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250226024115-973bd915b5a2 h1:WwqAM3Tx7AEqBL6IJ1h+NPjKhCih/wE0JoBqpCK0E7o=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250226024115-973bd915b5a2/go.mod h1:Oc2wkvXKf9pPdRO87ikCfanlOUkEQhraDte3d1WJaxA=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
