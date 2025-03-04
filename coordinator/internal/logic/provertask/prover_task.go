@@ -80,7 +80,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 	ProverProviderType, ProverProviderTypeExist := ctx.Get(coordinatorType.ProverProviderTypeKey)
 	if !ProverProviderTypeExist {
 		// for backward compatibility, set ProverProviderType as internal
-		ProverProviderType = coordinatorType.ProverProviderTypeInternal
+		ProverProviderType = float64(coordinatorType.ProverProviderTypeInternal)
 	}
 	ptc.ProverProviderType = uint8(ProverProviderType.(float64))
 
