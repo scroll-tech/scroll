@@ -8,7 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250225152658-bcfdb48dd939
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305075318-e24712364401
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.7.0
@@ -88,7 +88,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/da-codec v0.1.3-0.20250210041951-d028c537b995 // indirect
+	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54 // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
