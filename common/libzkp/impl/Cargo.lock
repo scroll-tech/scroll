@@ -541,6 +541,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b964d184e89d9b6b67dd2715bc8e74cf3107fb2b529990c90cf517326150bf4"
 
 [[package]]
+name = "approx"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "ark-ff"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -805,6 +814,12 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+
+[[package]]
+name = "bitflags"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
@@ -957,6 +972,20 @@ name = "bytemuck"
 version = "1.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef657dfab802224e671f5818e9a4935f9b1957ed18e58292690cc39e7a4092a3"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fa76293b4f7bb636ab88fd78228235b5248b4d05cc589aed610f954af5d7c7a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+]
 
 [[package]]
 name = "byteorder"
@@ -1026,6 +1055,8 @@ version = "1.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c736e259eea577f443d5c86c304f9f4ae0295c43f3ba05c21f1d66b5f06001af"
 dependencies = [
+ "jobserver",
+ "libc",
  "shlex",
 ]
 
@@ -1287,6 +1318,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "cust"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d6cc71911e179f12483b9734120b45bd00bf64fab085cc4818428523eedd469"
+dependencies = [
+ "bitflags 1.3.2",
+ "bytemuck",
+ "cust_core",
+ "cust_derive",
+ "cust_raw",
+ "find_cuda_helper",
+]
+
+[[package]]
+name = "cust_core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "039f79662cb8f890cbf335e818cd522d6e3a53fe63f61d1aaaf859cd3d975f06"
+dependencies = [
+ "cust_derive",
+ "glam",
+ "mint",
+ "vek",
+]
+
+[[package]]
+name = "cust_derive"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8a3bc95fe629aed92b2423de6ccff9e40174b21d19cb6ee6281a4d04ac72f66"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "cust_raw"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbf40d6ade12cb9828bbc844b9875c7b93d25e67a3c9bf61c7aa3ae09e402bf8"
+dependencies = [
+ "find_cuda_helper",
+]
+
+[[package]]
 name = "darling"
 version = "0.20.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1428,6 +1505,15 @@ dependencies = [
  "const-oid",
  "crypto-common",
  "subtle",
+]
+
+[[package]]
+name = "directories"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
+dependencies = [
+ "dirs-sys",
 ]
 
 [[package]]
@@ -1676,6 +1762,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "find_cuda_helper"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9f9e65c593dd01ac77daad909ea4ad17f0d6d1776193fc8ea766356177abdad"
+dependencies = [
+ "glob",
+]
+
+[[package]]
 name = "fixed-hash"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1833,6 +1928,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+]
+
+[[package]]
+name = "glam"
+version = "0.20.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -2118,6 +2222,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "home"
+version = "0.5.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "589533453244b0995c858700322199b2becb13b627df2851f64a2775d024abcf"
+dependencies = [
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2388,6 +2501,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
+name = "jobserver"
+version = "0.1.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48d1dbcbbeb6a7fec7e059840aa538bd62aaccf972c7346c4d9d2059312853d0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2471,7 +2593,7 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
- "bitflags",
+ "bitflags 2.8.0",
  "libc",
 ]
 
@@ -2486,6 +2608,16 @@ name = "litemap"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
+
+[[package]]
+name = "lock_api"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
+dependencies = [
+ "autocfg",
+ "scopeguard",
+]
 
 [[package]]
 name = "lockfree-object-pool"
@@ -2512,6 +2644,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
  "regex-automata 0.1.10",
+]
+
+[[package]]
+name = "matrixmultiply"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9380b911e3e96d10c1f415da0876389aaf1b56759054eeb0de7df940c456ba1a"
+dependencies = [
+ "autocfg",
+ "rawpointer",
 ]
 
 [[package]]
@@ -2623,6 +2765,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mint"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
+
+[[package]]
 name = "modular-bitfield"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2661,6 +2809,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+]
+
+[[package]]
+name = "ndarray"
+version = "0.15.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
+dependencies = [
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "rawpointer",
+ "rayon",
 ]
 
 [[package]]
@@ -2781,6 +2943,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -2877,7 +3040,7 @@ dependencies = [
 [[package]]
 name = "openvm"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bytemuck",
  "hex-literal",
@@ -2891,7 +3054,7 @@ dependencies = [
 [[package]]
 name = "openvm-algebra-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive-new 0.6.0",
  "derive_more 1.0.0",
@@ -2920,7 +3083,7 @@ dependencies = [
 [[package]]
 name = "openvm-algebra-complex-macros"
 version = "0.1.0"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-macros-common",
  "quote",
@@ -2930,7 +3093,7 @@ dependencies = [
 [[package]]
 name = "openvm-algebra-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "halo2curves-axiom 0.5.3",
  "num-bigint 0.4.6",
@@ -2946,7 +3109,7 @@ dependencies = [
 [[package]]
 name = "openvm-algebra-moduli-macros"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-macros-common",
  "quote",
@@ -2956,7 +3119,7 @@ dependencies = [
 [[package]]
 name = "openvm-algebra-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-algebra-guest",
  "openvm-instructions",
@@ -2971,7 +3134,7 @@ dependencies = [
 [[package]]
 name = "openvm-bigint-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive-new 0.6.0",
  "derive_more 1.0.0",
@@ -2993,7 +3156,7 @@ dependencies = [
 [[package]]
 name = "openvm-bigint-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "num-bigint 0.4.6",
  "num-traits",
@@ -3006,7 +3169,7 @@ dependencies = [
 [[package]]
 name = "openvm-bigint-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-bigint-guest",
  "openvm-instructions",
@@ -3021,7 +3184,7 @@ dependencies = [
 [[package]]
 name = "openvm-build"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "cargo_metadata",
  "dirs",
@@ -3036,7 +3199,7 @@ dependencies = [
 [[package]]
 name = "openvm-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "async-trait",
  "backtrace",
@@ -3058,6 +3221,7 @@ dependencies = [
  "openvm-instructions",
  "openvm-poseidon2-air",
  "openvm-stark-backend",
+ "openvm-stark-sdk",
  "p3-baby-bear",
  "p3-symmetric",
  "rand",
@@ -3074,7 +3238,7 @@ dependencies = [
 [[package]]
 name = "openvm-circuit-derive"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -3085,7 +3249,7 @@ dependencies = [
 [[package]]
 name = "openvm-circuit-primitives"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bitcode",
  "derive-new 0.6.0",
@@ -3103,7 +3267,7 @@ dependencies = [
 [[package]]
 name = "openvm-circuit-primitives-derive"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -3114,7 +3278,7 @@ dependencies = [
 [[package]]
 name = "openvm-custom-insn"
 version = "0.1.0"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3124,7 +3288,7 @@ dependencies = [
 [[package]]
 name = "openvm-ecc-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive-new 0.6.0",
  "derive_more 1.0.0",
@@ -3155,7 +3319,7 @@ dependencies = [
 [[package]]
 name = "openvm-ecc-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "ecdsa",
  "elliptic-curve",
@@ -3181,7 +3345,7 @@ dependencies = [
 [[package]]
 name = "openvm-ecc-sw-macros"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-macros-common",
  "quote",
@@ -3191,7 +3355,7 @@ dependencies = [
 [[package]]
 name = "openvm-ecc-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-ecc-guest",
  "openvm-instructions",
@@ -3205,7 +3369,7 @@ dependencies = [
 [[package]]
 name = "openvm-instructions"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "backtrace",
  "derive-new 0.6.0",
@@ -3222,7 +3386,7 @@ dependencies = [
 [[package]]
 name = "openvm-instructions-derive"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3232,7 +3396,7 @@ dependencies = [
 [[package]]
 name = "openvm-keccak256-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bitcode",
  "derive-new 0.6.0",
@@ -3261,7 +3425,7 @@ dependencies = [
 [[package]]
 name = "openvm-keccak256-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-platform",
  "serde",
@@ -3271,7 +3435,7 @@ dependencies = [
 [[package]]
 name = "openvm-keccak256-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-instructions",
  "openvm-instructions-derive",
@@ -3285,7 +3449,7 @@ dependencies = [
 [[package]]
 name = "openvm-macros-common"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "syn 2.0.98",
 ]
@@ -3293,7 +3457,7 @@ dependencies = [
 [[package]]
 name = "openvm-mod-circuit-builder"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "itertools 0.13.0",
  "num-bigint 0.4.6",
@@ -3312,7 +3476,7 @@ dependencies = [
 [[package]]
 name = "openvm-native-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bitcode",
  "derive-new 0.6.0",
@@ -3340,7 +3504,7 @@ dependencies = [
 [[package]]
 name = "openvm-native-compiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "backtrace",
  "itertools 0.13.0",
@@ -3364,7 +3528,7 @@ dependencies = [
 [[package]]
 name = "openvm-native-compiler-derive"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3374,7 +3538,7 @@ dependencies = [
 [[package]]
 name = "openvm-native-recursion"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "cfg-if",
  "itertools 0.13.0",
@@ -3389,6 +3553,7 @@ dependencies = [
  "openvm-stark-sdk",
  "p3-dft",
  "p3-fri",
+ "p3-gpu-backend",
  "p3-merkle-tree",
  "p3-symmetric",
  "rand",
@@ -3401,7 +3566,7 @@ dependencies = [
 [[package]]
 name = "openvm-pairing-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive-new 0.6.0",
  "derive_more 1.0.0",
@@ -3432,7 +3597,7 @@ dependencies = [
 [[package]]
 name = "openvm-pairing-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "group 0.13.0",
  "halo2curves-axiom 0.5.3",
@@ -3457,7 +3622,7 @@ dependencies = [
 [[package]]
 name = "openvm-pairing-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-instructions",
  "openvm-instructions-derive",
@@ -3471,7 +3636,7 @@ dependencies = [
 [[package]]
 name = "openvm-platform"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "getrandom 0.2.15",
  "libm",
@@ -3483,7 +3648,7 @@ dependencies = [
 [[package]]
 name = "openvm-poseidon2-air"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derivative",
  "itertools 0.13.0",
@@ -3503,7 +3668,7 @@ dependencies = [
 [[package]]
 name = "openvm-rv32-adapters"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive-new 0.6.0",
  "itertools 0.13.0",
@@ -3524,7 +3689,7 @@ dependencies = [
 [[package]]
 name = "openvm-rv32im-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bitcode",
  "derive-new 0.6.0",
@@ -3551,7 +3716,7 @@ dependencies = [
 [[package]]
 name = "openvm-rv32im-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-platform",
  "strum_macros 0.26.4",
@@ -3560,7 +3725,7 @@ dependencies = [
 [[package]]
 name = "openvm-rv32im-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-instructions",
  "openvm-instructions-derive",
@@ -3576,7 +3741,7 @@ dependencies = [
 [[package]]
 name = "openvm-sdk"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "async-trait",
  "bitcode",
@@ -3619,7 +3784,7 @@ dependencies = [
 [[package]]
 name = "openvm-sha256-air"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-circuit-primitives",
  "openvm-stark-backend",
@@ -3630,7 +3795,7 @@ dependencies = [
 [[package]]
 name = "openvm-sha256-circuit"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "bitcode",
  "derive-new 0.6.0",
@@ -3654,7 +3819,7 @@ dependencies = [
 [[package]]
 name = "openvm-sha256-guest"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm",
  "openvm-platform",
@@ -3664,7 +3829,7 @@ dependencies = [
 [[package]]
 name = "openvm-sha256-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "openvm-instructions",
  "openvm-instructions-derive",
@@ -3678,7 +3843,7 @@ dependencies = [
 [[package]]
 name = "openvm-stark-backend"
 version = "1.0.0-rc.0"
-source = "git+https://github.com/openvm-org/stark-backend.git?tag=v1.0.0-rc.0#18cf1c084ebeb3ca1163e55b87893f1d1fd7fc1f"
+source = "git+ssh://git@github.com/scroll-tech/openvm-stark-gpu.git?branch=main#46392c694a4bab0bc7ebfab646c15015f48a83da"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -3690,6 +3855,9 @@ dependencies = [
  "p3-challenger",
  "p3-commit",
  "p3-field",
+ "p3-gpu-backend",
+ "p3-gpu-base",
+ "p3-gpu-module",
  "p3-matrix",
  "p3-maybe-rayon",
  "p3-uni-stark",
@@ -3704,7 +3872,7 @@ dependencies = [
 [[package]]
 name = "openvm-stark-sdk"
 version = "1.0.0-rc.0"
-source = "git+https://github.com/openvm-org/stark-backend.git?tag=v1.0.0-rc.0#18cf1c084ebeb3ca1163e55b87893f1d1fd7fc1f"
+source = "git+ssh://git@github.com/scroll-tech/openvm-stark-gpu.git?branch=main#46392c694a4bab0bc7ebfab646c15015f48a83da"
 dependencies = [
  "derivative",
  "derive_more 0.99.19",
@@ -3720,6 +3888,7 @@ dependencies = [
  "p3-dft",
  "p3-fri",
  "p3-goldilocks",
+ "p3-gpu-backend",
  "p3-keccak",
  "p3-merkle-tree",
  "p3-poseidon",
@@ -3739,7 +3908,7 @@ dependencies = [
 [[package]]
 name = "openvm-transpiler"
 version = "1.0.0-rc.1"
-source = "git+https://github.com/openvm-org/openvm.git?tag=v1.0.0-rc.1#30576cc6ce838f213bf05b2e4ad035d95498c8b3"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
 dependencies = [
  "derive_more 1.0.0",
  "elf",
@@ -3789,7 +3958,7 @@ dependencies = [
 [[package]]
 name = "p3-air"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -3798,7 +3967,7 @@ dependencies = [
 [[package]]
 name = "p3-baby-bear"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-field",
  "p3-mds",
@@ -3812,7 +3981,7 @@ dependencies = [
 [[package]]
 name = "p3-blake3"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "blake3",
  "p3-symmetric",
@@ -3822,7 +3991,7 @@ dependencies = [
 [[package]]
 name = "p3-bn254-fr"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "ff 0.13.0",
  "halo2curves",
@@ -3837,7 +4006,7 @@ dependencies = [
 [[package]]
 name = "p3-challenger"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-field",
  "p3-maybe-rayon",
@@ -3849,12 +4018,14 @@ dependencies = [
 [[package]]
 name = "p3-commit"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
+ "anyhow",
  "itertools 0.13.0",
  "p3-challenger",
  "p3-dft",
  "p3-field",
+ "p3-gpu-base",
  "p3-matrix",
  "p3-util",
  "serde",
@@ -3863,7 +4034,7 @@ dependencies = [
 [[package]]
 name = "p3-dft"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-field",
@@ -3876,7 +4047,7 @@ dependencies = [
 [[package]]
 name = "p3-field"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "num-bigint 0.4.6",
@@ -3893,26 +4064,31 @@ dependencies = [
 [[package]]
 name = "p3-fri"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
+ "anyhow",
  "itertools 0.13.0",
  "p3-challenger",
  "p3-commit",
  "p3-dft",
  "p3-field",
+ "p3-gpu-backend",
+ "p3-gpu-base",
  "p3-interpolation",
  "p3-matrix",
  "p3-maybe-rayon",
+ "p3-merkle-tree",
  "p3-util",
  "rand",
  "serde",
  "tracing",
+ "zkhash",
 ]
 
 [[package]]
 name = "p3-goldilocks"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "num-bigint 0.4.6",
  "p3-dft",
@@ -3927,9 +4103,93 @@ dependencies = [
 ]
 
 [[package]]
+name = "p3-gpu-backend"
+version = "0.1.0"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cc",
+ "cust",
+ "cust_raw",
+ "ff 0.13.0",
+ "itertools 0.13.0",
+ "lazy_static",
+ "ndarray",
+ "once_cell",
+ "p3-baby-bear",
+ "p3-commit",
+ "p3-dft",
+ "p3-field",
+ "p3-gpu-base",
+ "p3-gpu-build",
+ "p3-interpolation",
+ "p3-matrix",
+ "p3-maybe-rayon",
+ "p3-poseidon2",
+ "p3-util",
+ "parking_lot",
+ "paste",
+ "rand",
+ "rand_core",
+ "rayon",
+ "serde",
+ "sppark",
+ "tracing",
+ "transpose",
+]
+
+[[package]]
+name = "p3-gpu-base"
+version = "0.1.0"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cust",
+ "cust_raw",
+ "hex",
+ "lazy_static",
+ "p3-field",
+ "p3-matrix",
+ "parking_lot",
+ "tracing",
+]
+
+[[package]]
+name = "p3-gpu-build"
+version = "0.1.0"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
+dependencies = [
+ "cc",
+ "directories",
+ "hex",
+ "p3-gpu-field",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
+name = "p3-gpu-field"
+version = "0.1.0"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
+
+[[package]]
+name = "p3-gpu-module"
+version = "0.1.0"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
+dependencies = [
+ "p3-field",
+ "p3-gpu-base",
+ "p3-matrix",
+ "p3-util",
+ "tracing",
+]
+
+[[package]]
 name = "p3-interpolation"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -3940,7 +4200,7 @@ dependencies = [
 [[package]]
 name = "p3-keccak"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-field",
@@ -3952,21 +4212,23 @@ dependencies = [
 [[package]]
 name = "p3-keccak-air"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-air",
  "p3-field",
+ "p3-gpu-backend",
  "p3-matrix",
  "p3-maybe-rayon",
  "p3-util",
  "rand",
  "tracing",
+ "zkhash",
 ]
 
 [[package]]
 name = "p3-matrix"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-field",
@@ -3981,7 +4243,7 @@ dependencies = [
 [[package]]
 name = "p3-maybe-rayon"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "rayon",
 ]
@@ -3989,7 +4251,7 @@ dependencies = [
 [[package]]
 name = "p3-mds"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-dft",
@@ -4003,11 +4265,13 @@ dependencies = [
 [[package]]
 name = "p3-merkle-tree"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
+ "anyhow",
  "itertools 0.13.0",
  "p3-commit",
  "p3-field",
+ "p3-gpu-base",
  "p3-matrix",
  "p3-maybe-rayon",
  "p3-symmetric",
@@ -4020,7 +4284,7 @@ dependencies = [
 [[package]]
 name = "p3-monty-31"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "num-bigint 0.4.6",
@@ -4041,7 +4305,7 @@ dependencies = [
 [[package]]
 name = "p3-poseidon"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-field",
  "p3-mds",
@@ -4052,7 +4316,7 @@ dependencies = [
 [[package]]
 name = "p3-poseidon2"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "gcd",
  "p3-field",
@@ -4064,7 +4328,7 @@ dependencies = [
 [[package]]
 name = "p3-poseidon2-air"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "p3-air",
  "p3-field",
@@ -4080,7 +4344,7 @@ dependencies = [
 [[package]]
 name = "p3-symmetric"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-field",
@@ -4090,7 +4354,7 @@ dependencies = [
 [[package]]
 name = "p3-uni-stark"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "itertools 0.13.0",
  "p3-air",
@@ -4108,7 +4372,7 @@ dependencies = [
 [[package]]
 name = "p3-util"
 version = "0.1.0"
-source = "git+https://github.com/Plonky3/Plonky3.git?rev=b0591e9#b0591e9b82d58d10f86359875b5d5fa96433b4cf"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#9929c6d169aac20effda8e0ef02ef231782f6734"
 dependencies = [
  "serde",
 ]
@@ -4158,6 +4422,29 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.98",
+]
+
+[[package]]
+name = "parking_lot"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
+dependencies = [
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.9.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "redox_syscall",
+ "smallvec",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -4349,7 +4636,7 @@ checksum = "14cae93065090804185d3b75f0bf93b8eeda30c7a9b4a33d3bdb3988d6229e50"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags",
+ "bitflags 2.8.0",
  "lazy_static",
  "num-traits",
  "rand",
@@ -4491,8 +4778,14 @@ version = "11.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "529468c1335c1c03919960dfefdb1b3648858c20d7ec2d0663e728e4a717efbc"
 dependencies = [
- "bitflags",
+ "bitflags 2.8.0",
 ]
+
+[[package]]
+name = "rawpointer"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rayon"
@@ -4512,6 +4805,15 @@ checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "redox_syscall"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b8c0c260b63a8219631167be35e6a988e9554dbd323f8bd08439c8ed1302bd1"
+dependencies = [
+ "bitflags 2.8.0",
 ]
 
 [[package]]
@@ -5316,7 +5618,7 @@ dependencies = [
  "alloy-eip7702 0.4.2",
  "alloy-primitives",
  "auto_impl",
- "bitflags",
+ "bitflags 2.8.0",
  "bitvec",
  "c-kzg",
  "cfg-if",
@@ -5335,7 +5637,7 @@ dependencies = [
  "alloy-eip7702 0.5.1",
  "alloy-primitives",
  "auto_impl",
- "bitflags",
+ "bitflags 2.8.0",
  "bitvec",
  "c-kzg",
  "cfg-if",
@@ -5510,7 +5812,7 @@ version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
 dependencies = [
- "bitflags",
+ "bitflags 2.8.0",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -5636,6 +5938,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scopeguard"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
 name = "scroll-alloy-consensus"
 version = "1.1.5"
 source = "git+https://github.com/scroll-tech//reth?branch=fix%2Fscroll-zkvm#b2c7c70779050226ac44fddc5b38bafc819be2af"
@@ -5687,7 +5995,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.5"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=feat%2Fgpu#439cfd79c7ea7ee34b41d98dddc7dda77197d582"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -5702,7 +6010,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.5"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=feat%2Fgpu#439cfd79c7ea7ee34b41d98dddc7dda77197d582"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -5734,7 +6042,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.5"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.5#618390488e7fbe6843bced19348c5113fedc1245"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=feat%2Fgpu#439cfd79c7ea7ee34b41d98dddc7dda77197d582"
 dependencies = [
  "bincode",
  "eyre",
@@ -6064,6 +6372,15 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "sppark"
+version = "0.1.8"
+source = "git+ssh://git@github.com/scroll-tech/sppark.git?branch=sp1-v3.0#07fe0de43a745a395dd718c735cdfe0cfc457b0a"
+dependencies = [
+ "cc",
+ "which",
 ]
 
 [[package]]
@@ -6707,6 +7024,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
+name = "vek"
+version = "0.15.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8085882662f9bc47fc8b0cdafa5e19df8f592f650c02b9083da8d45ac9eebd17"
+dependencies = [
+ "approx",
+ "num-integer",
+ "num-traits",
+ "rustc_version 0.4.1",
+]
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6802,6 +7131,18 @@ checksum = "33b6dd2ef9186f1f2072e409e99cd22a975331a6b3591b12c764e0e55c60d5d2"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix",
 ]
 
 [[package]]
@@ -7057,7 +7398,7 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3268f3d866458b787f390cf61f4bbb563b922d091359f9608842999eaee3943c"
 dependencies = [
- "bitflags",
+ "bitflags 2.8.0",
 ]
 
 [[package]]
@@ -7236,3 +7577,8 @@ dependencies = [
 name = "zstd"
 version = "1.1.4"
 source = "git+https://github.com/scroll-tech//reth?branch=fix%2Fscroll-zkvm#b2c7c70779050226ac44fddc5b38bafc819be2af"
+
+[[patch.unused]]
+name = "openvm-native-transpiler"
+version = "1.0.0-rc.1"
+source = "git+ssh://git@github.com/scroll-tech/openvm-gpu.git?branch=rebase%2F02-19#8ad71433240c048060fcb73b7c5af574ac1ff922"
