@@ -102,7 +102,8 @@
       "max_l1_commit_calldata_size_per_batch": 112345,
       "batch_timeout_sec": 300,
       "gas_cost_increase_multiplier": 1.2,
-      "max_uncompressed_batch_bytes_size": 634880
+      "max_uncompressed_batch_bytes_size": 634880,
+      "max_chunks_per_batch": 12
     },
     "bundle_proposer_config": {
       "max_batch_num_per_bundle": 20,

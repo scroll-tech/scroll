@@ -32,6 +32,7 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
+	maxChunksPerBatch               int
 
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
@@ -78,6 +79,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		maxChunksPerBatch:               cfg.MaxChunksPerBatch,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -253,7 +255,8 @@ func (p *BatchProposer) proposeBatch() error {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), p.minCodecVersion)
 	}
 
-	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
+	// always take the minimum of the configured max chunks per batch and the codec's max chunks per batch
+	maxChunksThisBatch := min(codec.MaxNumChunksPerBatch(), p.maxChunksPerBatch)
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, maxChunksThisBatch)
