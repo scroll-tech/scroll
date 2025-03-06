@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
 	"gorm.io/gorm"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -49,7 +50,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
+func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, blobClient blob_client.BlobClient) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
@@ -119,6 +120,10 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.WrappedTokenGatewayAddr))
 	}
 
+	if common.HexToAddress(cfg.MessageQueueV2Addr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.MessageQueueV2Addr))
+	}
+
 	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L1FetcherLogic{
@@ -129,7 +134,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		client:          client,
 		addressList:     addressList,
 		gatewayList:     gatewayList,
-		parser:          NewL1EventParser(cfg, client),
+		parser:          NewL1EventParser(cfg, client, blobClient),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -224,7 +229,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 		Topics:    make([][]common.Hash, 1),
 	}
 
-	query.Topics[0] = make([]common.Hash, 16)
+	query.Topics[0] = make([]common.Hash, 17)
 	query.Topics[0][0] = backendabi.L1DepositETHSig
 	query.Topics[0][1] = backendabi.L1DepositERC20Sig
 	query.Topics[0][2] = backendabi.L1DepositERC721Sig
@@ -233,14 +238,15 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 	query.Topics[0][5] = backendabi.L1RelayedMessageEventSig
 	query.Topics[0][6] = backendabi.L1FailedRelayedMessageEventSig
 	query.Topics[0][7] = backendabi.L1CommitBatchEventSig
-	query.Topics[0][8] = backendabi.L1RevertBatchEventSig
-	query.Topics[0][9] = backendabi.L1FinalizeBatchEventSig
-	query.Topics[0][10] = backendabi.L1QueueTransactionEventSig
-	query.Topics[0][11] = backendabi.L1DequeueTransactionEventSig
-	query.Topics[0][12] = backendabi.L1DropTransactionEventSig
-	query.Topics[0][13] = backendabi.L1ResetDequeuedTransactionEventSig
-	query.Topics[0][14] = backendabi.L1BridgeBatchDepositSig
-	query.Topics[0][15] = backendabi.L1DepositWrappedTokenSig
+	query.Topics[0][8] = backendabi.L1RevertBatchV0EventSig
+	query.Topics[0][9] = backendabi.L1RevertBatchV7EventSig
+	query.Topics[0][10] = backendabi.L1FinalizeBatchEventSig
+	query.Topics[0][11] = backendabi.L1QueueTransactionEventSig
+	query.Topics[0][12] = backendabi.L1DequeueTransactionEventSig
+	query.Topics[0][13] = backendabi.L1DropTransactionEventSig
+	query.Topics[0][14] = backendabi.L1ResetDequeuedTransactionEventSig
+	query.Topics[0][15] = backendabi.L1BridgeBatchDepositSig
+	query.Topics[0][16] = backendabi.L1DepositWrappedTokenSig
 
 	eventLogs, err := f.client.FilterLogs(ctx, query)
 	if err != nil {
