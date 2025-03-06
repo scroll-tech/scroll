@@ -311,8 +311,8 @@ github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54 h1:qVpsVu1J91opTn6HYeuzWcBRVhQmPR8g05i+PlOjlI4=
 github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54/go.mod h1:xECEHZLVzbdUn+tNbRJhRIjLGTOTmnFQuTgUTeVLX58=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950 h1:qfOaRflvH1vtnFWloB7BveKlP/VqYgMqLJ6e9TlBJ/8=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3 h1:y0L8+O3anBJIpboVWhNlUx3VC59he+0fd4b8PnDR16w=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/segmentio/asm v1.2.0 h1:9BQrFxC+YOHJlTlHGkTrFWf59nbL3XnCoFLTwDCI7ys=

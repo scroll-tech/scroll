@@ -2,7 +2,6 @@ package fetcher
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge-history-api/internal/config"
@@ -37,32 +35,13 @@ type L1MessageFetcher struct {
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) (*L1MessageFetcher, error) {
-	blobClientList := blob_client.NewBlobClients()
-	if cfg.BeaconNodeAPIEndpoint != "" {
-		beaconNodeClient, err := blob_client.NewBeaconNodeClient(cfg.BeaconNodeAPIEndpoint)
-		if err != nil {
-			log.Warn("failed to create BeaconNodeClient", "err", err)
-		} else {
-			blobClientList.AddBlobClient(beaconNodeClient)
-		}
-	}
-	if cfg.BlobScanAPIEndpoint != "" {
-		blobClientList.AddBlobClient(blob_client.NewBlobScanClient(cfg.BlobScanAPIEndpoint))
-	}
-	if cfg.BlockNativeAPIEndpoint != "" {
-		blobClientList.AddBlobClient(blob_client.NewBlockNativeClient(cfg.BlockNativeAPIEndpoint))
-	}
-	if blobClientList.Size() == 0 {
-		return nil, fmt.Errorf("no blob client is configured")
-	}
-
+func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1MessageFetcher {
 	c := &L1MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
 		client:           client,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, true),
-		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client, blobClientList),
+		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -79,7 +58,7 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gor
 		Help: "Latest blockchain height the L1 message fetcher has synced with.",
 	})
 
-	return c, nil
+	return c
 }
 
 // Start starts the L1 message fetching process.

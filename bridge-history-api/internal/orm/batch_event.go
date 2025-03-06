@@ -117,7 +117,7 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			}
 		case btypes.BatchStatusTypeReverted:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
-			db = db.Where("batch_status != ?", btypes.BatchStatusTypeFinalized)
+			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
 			updateFields["batch_status"] = btypes.BatchStatusTypeReverted
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update batch event, error: %w", err)

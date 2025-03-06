@@ -68,10 +68,7 @@ func action(ctx *cli.Context) error {
 
 	observability.Server(ctx, db)
 
-	l1MessageFetcher, err := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
-	if err != nil {
-		log.Crit("failed to create L1MessageFetcher", "err", err)
-	}
+	l1MessageFetcher := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
 	go l1MessageFetcher.Start()
 
 	l2MessageFetcher := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)

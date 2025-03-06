@@ -1190,8 +1190,6 @@ github.com/scroll-tech/go-ethereum v1.10.14-0.20240821074444-b3fa00861e5e/go.mod
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241010064814-3d88e870ae22/go.mod h1:r9FwtxCtybMkTbWYCyBuevT9TW3zHmOTHqD082Uh+Oo=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250206083728-ea43834c198f/go.mod h1:Ik3OBLl7cJxPC+CFyCBYNXBPek4wpdzkWehn/y5qLM8=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250225152658-bcfdb48dd939/go.mod h1:AgU8JJxC7+nfs7R7ma35AU7dMAGW7wCw3dRZRefIKyQ=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950 h1:qfOaRflvH1vtnFWloB7BveKlP/VqYgMqLJ6e9TlBJ/8=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
 github.com/segmentio/kafka-go v0.2.0 h1:HtCSf6B4gN/87yc5qTl7WsxPKQIIGXLPPM1bMCPOsoY=
