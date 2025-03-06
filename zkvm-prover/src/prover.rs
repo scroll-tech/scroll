@@ -1,8 +1,4 @@
-use crate::{
-    types::ProverType,
-    utils::get_prover_type,
-    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
-};
+use crate::zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::{
@@ -17,17 +13,17 @@ use scroll_proving_sdk::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs::File,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::{runtime::Handle, sync::RwLock, task::JoinHandle};
+use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LocalProverConfig {
     pub sdk_config: SdkConfig,
-    pub high_version_circuit: CircuitConfig,
-    pub low_version_circuit: CircuitConfig,
+    pub circuits: HashMap<String, CircuitConfig>,
 }
 
 impl LocalProverConfig {
@@ -47,16 +43,15 @@ impl LocalProverConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub hard_fork_name: String,
-    pub params_path: String,
-    pub assets_path: String,
+    pub workspace_path: String,
 }
 
 pub struct LocalProver {
     config: LocalProverConfig,
-    prover_types: Vec<ProverType>,
-    circuits_handler_provider: RwLock<CircuitsHandlerProvider>,
-    next_task_id: Arc<Mutex<u64>>,
-    current_task: Arc<Mutex<Option<JoinHandle<Result<String>>>>>,
+    next_task_id: u64,
+    current_task: Option<JoinHandle<Result<String>>>,
+
+    active_handler: Option<(String, Arc<dyn CircuitsHandler>)>,
 }
 
 #[async_trait]
@@ -65,32 +60,26 @@ impl ProvingService for LocalProver {
         true
     }
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
-        let mut prover_types = vec![];
-        req.circuit_types.iter().for_each(|circuit_type| {
-            if let Some(pt) = get_prover_type(*circuit_type) {
-                if !prover_types.contains(&pt) {
-                    prover_types.push(pt);
+        let mut vks = vec![];
+        for hard_fork_name in self.config.circuits.keys() {
+            let handler = self.new_handler(hard_fork_name);
+            for proof_type in &req.proof_types {
+                let vk = handler.get_vk(*proof_type).await;
+
+                if let Some(vk) = vk {
+                    vks.push(base64::encode(vk));
                 }
             }
-        });
+        }
 
-        let vks = self
-            .circuits_handler_provider
-            .read()
-            .await
-            .init_vks(&self.config, prover_types)
-            .await;
         GetVkResponse { vks, error: None }
     }
-    async fn prove(&self, req: ProveRequest) -> ProveResponse {
-        let handler = self
-            .circuits_handler_provider
-            .write()
+    async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
+        self.set_active_handler(&req.hard_fork_name);
+        match self
+            .do_prove(req, self.active_handler.as_ref().unwrap().1.clone())
             .await
-            .get_circuits_handler(&req.hard_fork_name, self.prover_types.clone())
-            .expect("failed to get circuit handler");
-
-        match self.do_prove(req, handler).await {
+        {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
                 status: TaskStatus::Failed,
@@ -100,9 +89,8 @@ impl ProvingService for LocalProver {
         }
     }
 
-    async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
-        let handle = self.current_task.lock().unwrap().take();
-        if let Some(handle) = handle {
+    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
+        if let Some(handle) = &mut self.current_task {
             if handle.is_finished() {
                 return match handle.await {
                     Ok(Ok(proof)) => QueryTaskResponse {
@@ -125,7 +113,6 @@ impl ProvingService for LocalProver {
                     },
                 };
             } else {
-                *self.current_task.lock().unwrap() = Some(handle);
                 return QueryTaskResponse {
                     task_id: req.task_id,
                     status: TaskStatus::Proving,
@@ -144,30 +131,21 @@ impl ProvingService for LocalProver {
 }
 
 impl LocalProver {
-    pub fn new(config: LocalProverConfig, prover_types: Vec<ProverType>) -> Self {
-        let circuits_handler_provider = CircuitsHandlerProvider::new(config.clone())
-            .expect("failed to create circuits handler provider");
-
+    pub fn new(config: LocalProverConfig) -> Self {
         Self {
             config,
-            prover_types,
-            circuits_handler_provider: RwLock::new(circuits_handler_provider),
-            next_task_id: Arc::new(Mutex::new(0)),
-            current_task: Arc::new(Mutex::new(None)),
+            next_task_id: 0,
+            current_task: None,
+            active_handler: None,
         }
     }
 
     async fn do_prove(
-        &self,
+        &mut self,
         req: ProveRequest,
-        handler: Arc<Box<dyn CircuitsHandler>>,
+        handler: Arc<dyn CircuitsHandler>,
     ) -> Result<ProveResponse> {
-        let task_id = {
-            let mut next_task_id = self.next_task_id.lock().unwrap();
-            *next_task_id += 1;
-            *next_task_id
-        };
-
+        self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
@@ -175,12 +153,11 @@ impl LocalProver {
         let handle = Handle::current();
         let task_handle =
             tokio::task::spawn_blocking(move || handle.block_on(handler.get_proof_data(req_clone)));
-
-        *self.current_task.lock().unwrap() = Some(task_handle);
+        self.current_task = Some(task_handle);
 
         Ok(ProveResponse {
-            task_id: task_id.to_string(),
-            circuit_type: req.circuit_type,
+            task_id: self.next_task_id.to_string(),
+            proof_type: req.proof_type,
             circuit_version: req.circuit_version,
             hard_fork_name: req.hard_fork_name,
             status: TaskStatus::Proving,
@@ -188,5 +165,25 @@ impl LocalProver {
             input: Some(req.input),
             ..Default::default()
         })
+    }
+
+    fn set_active_handler(&mut self, hard_fork_name: &str) {
+        if let Some(handler) = &self.active_handler {
+            if handler.0 == hard_fork_name {
+                return;
+            }
+        }
+        self.active_handler = Some((hard_fork_name.to_string(), self.new_handler(hard_fork_name)));
+    }
+
+    fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+        // if we got assigned a task for an unknown hard fork, there is something wrong in the
+        // coordinator
+        let config = self.config.circuits.get(hard_fork_name).unwrap();
+
+        Arc::new(match hard_fork_name {
+            "euclid" => Arc::new(Mutex::new(EuclidHandler::new(&config.workspace_path))),
+            _ => unreachable!(),
+        }) as Arc<dyn CircuitsHandler>
     }
 }

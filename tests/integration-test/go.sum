@@ -93,10 +93,10 @@ github.com/rjeczalik/notify v0.9.1 h1:CLCKso/QK1snAlnhNR/CNvNiFU2saUtjV0bx3EwNeC
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
-github.com/scroll-tech/da-codec v0.1.3-0.20241218102542-9852fa4e1be5 h1:vZ75srkZCStjDWq/kqZGLoucf7Y7qXC13nKjQVZ0zp8=
-github.com/scroll-tech/da-codec v0.1.3-0.20241218102542-9852fa4e1be5/go.mod h1:XfQhUl3msmE6dpZEbR/LIwiMxywPQcUQsch9URgXDzs=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250205135740-4bdf6d096c38 h1:IKkevP42IQx8DQvtVq9WOmZDQrto59CGdEheXPf20HA=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20250205135740-4bdf6d096c38/go.mod h1:Ik3OBLl7cJxPC+CFyCBYNXBPek4wpdzkWehn/y5qLM8=
+github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54 h1:qVpsVu1J91opTn6HYeuzWcBRVhQmPR8g05i+PlOjlI4=
+github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54/go.mod h1:xECEHZLVzbdUn+tNbRJhRIjLGTOTmnFQuTgUTeVLX58=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3 h1:y0L8+O3anBJIpboVWhNlUx3VC59he+0fd4b8PnDR16w=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
