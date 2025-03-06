@@ -91,6 +91,9 @@ func action(ctx *cli.Context) error {
 	if cfg.L2Config.RelayerConfig.BatchSubmission.MaxBatches < 1 {
 		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MaxBatches must be at least 1")
 	}
+	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
+		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
+	}
 
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {

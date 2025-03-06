@@ -47,6 +47,7 @@ type BatchProposerConfig struct {
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
+	MaxChunksPerBatch               int     `json:"max_chunks_per_batch"`
 }
 
 // BundleProposerConfig loads bundle_proposer configuration items.
