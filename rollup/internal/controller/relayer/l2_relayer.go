@@ -1231,6 +1231,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		return calldata, nil
 	}
 
+	fmt.Println("packing finalizeBundlePostEuclidV2NoProof", len(dbBatch.BatchHeader), dbBatch.CodecVersion, dbBatch.BatchHeader, new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk), common.HexToHash(dbBatch.StateRoot), common.HexToHash(dbBatch.WithdrawRoot))
 	// finalizeBundle without proof.
 	calldata, packErr := r.l1RollupABI.Pack(
 		"finalizeBundlePostEuclidV2NoProof",
