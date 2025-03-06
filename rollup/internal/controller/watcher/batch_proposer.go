@@ -331,9 +331,12 @@ func (p *BatchProposer) proposeBatch() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			lastChunk := batch.Chunks[len(batch.Chunks)-1]
-			batch.Blocks = batch.Blocks[:len(batch.Blocks)-len(lastChunk.Blocks)]
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 			batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i-1].PostL1MessageQueueHash)
+
+			if codec.Version() >= encoding.CodecV7 {
+				batch.Blocks = batch.Blocks[:len(batch.Blocks)-len(lastChunk.Blocks)]
+			}
 
 			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version())
 			if err != nil {
