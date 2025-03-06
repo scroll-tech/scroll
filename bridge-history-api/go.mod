@@ -10,7 +10,8 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3
+	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950 // It's a hotfix for the header hash compatibility issue, pls change this with caution
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.11.0
@@ -90,7 +91,6 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54 // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
