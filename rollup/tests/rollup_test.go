@@ -99,6 +99,7 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+		MaxChunksPerBatch:               math.MaxInt32,
 	}, encoding.CodecV4, chainConfig, db, nil)
 
 	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
