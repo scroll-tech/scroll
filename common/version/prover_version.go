@@ -39,19 +39,31 @@ func CheckScrollRepoVersion(proverVersion, minVersion string) bool {
 		return CheckProverSDKWithMinVersion(proverVersion, minVersion)
 	}
 
-	c, err := semver.NewConstraint(">= " + minVersion + "-0")
+	proverVersionPrefix := extractVersionPrefix(proverVersion)
+	minVersionPrefix := extractVersionPrefix(minVersion)
+
+	c, err := semver.NewConstraint(">= " + minVersionPrefix + "-0")
 	if err != nil {
-		log.Error("failed to initialize constraint", "minVersion", minVersion, "error", err)
+		log.Error("failed to initialize constraint", "minVersionPrefix", minVersionPrefix, "error", err)
 		return false
 	}
 
-	v, err := semver.NewVersion(proverVersion + "-z")
+	v, err := semver.NewVersion(proverVersionPrefix + "-z")
 	if err != nil {
-		log.Error("failed to parse version", "proverVersion", proverVersion, "error", err)
+		log.Error("failed to parse version", "proverVersion", proverVersionPrefix, "error", err)
 		return false
 	}
 
 	return c.Check(v)
+}
+
+func extractVersionPrefix(version string) string {
+	for i, r := range version {
+		if (r < '0' || r > '9') && r != '.' && r != 'v' {
+			return version[:i]
+		}
+	}
+	return version
 }
 
 // CheckProverSDKWithMinVersion check prover sdk version is at least the minimum required version, it simply returns true for now,
