@@ -1,22 +1,22 @@
 .PHONY: prover lint tests_binary
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
+    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ./Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-ZKEVM_VERSION=$(shell ./print_high_zkevm_version.sh)
-ifeq (${ZKEVM_VERSION},)
-    $(error ZKEVM_VERSION not set)
+ZKVM_VERSION=$(shell ./print_high_zkvm_version.sh)
+ifeq (${ZKVM_VERSION},)
+    $(error ZKVM_VERSION not set)
 else
-    $(info ZKEVM_VERSION is ${ZKEVM_VERSION})
+    $(info ZKVM_VERSION is ${ZKVM_VERSION})
 endif
 
-ZKEVM_COMMIT=$(shell echo ${ZKEVM_VERSION} | cut -d " " -f2)
-$(info ZKEVM_COMMIT is ${ZKEVM_COMMIT})
+ZKVM_COMMIT=$(shell echo ${ZKVM_VERSION} | cut -d " " -f2)
+$(info ZKVM_COMMIT is ${ZKVM_COMMIT})
 
-HALO2_GPU_VERSION=$(shell ./print_halo2gpu_version.sh | sed -n '2p')
+PLONKY3_GPU_VERSION=$(shell ./print_plonky3gpu_version.sh | sed -n '2p')
 
 GIT_REV=$(shell git rev-parse --short HEAD)
 GO_TAG=$(shell grep "var tag = " ../common/version/version.go | cut -d "\"" -f2)
@@ -27,12 +27,12 @@ else
     $(info GO_TAG is ${GO_TAG})
 endif
 
-ifeq (${HALO2_GPU_VERSION},)
-	# use halo2_proofs with CPU
-    ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_VERSION}
+ifeq (${PLONKY3_GPU_VERSION},)
+	# use plonky3 with CPU
+    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
 else
 	# use halo2_gpu
-    ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_GPU_VERSION}
+    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION}
 endif
 
 prover:
