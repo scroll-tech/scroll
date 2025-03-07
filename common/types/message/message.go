@@ -46,10 +46,13 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos  []*ChunkInfo `json:"chunk_infos"`
-	ChunkProofs []ChunkProof `json:"chunk_proofs"`
-	BatchHeader interface{}  `json:"batch_header"`
-	BlobBytes   []byte       `json:"blob_bytes"`
+	ChunkInfos    []*ChunkInfo `json:"chunk_infos"`
+	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
+	BatchHeader   interface{}  `json:"batch_header"`
+	BlobBytes     []byte       `json:"blob_bytes"`
+	KzgProof      []byte       `json:"kzg_proof"`
+	KzgCommitment []byte       `json:"kzg_commitment"`
+	Challenge     common.Hash  `json:"challenge"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
@@ -59,14 +62,15 @@ type BundleTaskDetail struct {
 
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID       uint64      `json:"chain_id"`
-	PrevStateRoot common.Hash `json:"prev_state_root"`
-	PostStateRoot common.Hash `json:"post_state_root"`
-	WithdrawRoot  common.Hash `json:"withdraw_root"`
-	DataHash      common.Hash `json:"data_hash"`
-	IsPadding     bool        `json:"is_padding"`
-	TxBytes       []byte      `json:"tx_bytes"`
-	TxBytesHash   common.Hash `json:"tx_data_digest"`
+	ChainID          uint64      `json:"chain_id"`
+	PrevStateRoot    common.Hash `json:"prev_state_root"`
+	PostStateRoot    common.Hash `json:"post_state_root"`
+	WithdrawRoot     common.Hash `json:"withdraw_root"`
+	DataHash         common.Hash `json:"data_hash"`
+	IsPadding        bool        `json:"is_padding"`
+	TxBytes          []byte      `json:"tx_bytes"`
+	TxBytesHash      common.Hash `json:"tx_data_digest"`
+	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8

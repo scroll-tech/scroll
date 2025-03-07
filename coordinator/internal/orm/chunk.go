@@ -28,6 +28,8 @@ type Chunk struct {
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	PrevL1MessageQueueHash       string `json:"prev_l1_message_queue_hash" gorm:"column:prev_l1_message_queue_hash"`
+	PostL1MessageQueueHash       string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
 	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
