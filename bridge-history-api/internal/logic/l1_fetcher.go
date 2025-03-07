@@ -173,14 +173,10 @@ func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) ([]*orm.CrossMessage, error) {
 	var l1RevertedTxs []*orm.CrossMessage
-	blockTimestampsMap := make(map[uint64]uint64)
-
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
-		blockTimestampsMap[block.NumberU64()] = block.Time()
-
 		for _, tx := range block.Transactions() {
 			// Gateways: L1 deposit.
 			// Messenger: L1 deposit retry (replayMessage), L1 deposit refund (dropMessage), L2 withdrawal's claim (relayMessageWithProof).
@@ -192,7 +188,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 			if receiptErr != nil {
 				log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-				return nil, nil, receiptErr
+				return nil, receiptErr
 			}
 
 			// Check if the transaction is failed
@@ -204,7 +200,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			sender, senderErr := signer.Sender(tx)
 			if senderErr != nil {
 				log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
-				return nil, nil, senderErr
+				return nil, senderErr
 			}
 
 			l1RevertedTxs = append(l1RevertedTxs, &orm.CrossMessage{
@@ -218,7 +214,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			})
 		}
 	}
-	return blockTimestampsMap, l1RevertedTxs, nil
+	return l1RevertedTxs, nil
 }
 
 func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -270,10 +266,16 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return isReorg, reorgHeight, blockHash, nil, nil
 	}
 
-	blockTimestampsMap, l1RevertedTxs, err := f.getRevertedTxs(ctx, from, to, blocks)
+	l1RevertedTxs, err := f.getRevertedTxs(ctx, from, to, blocks)
 	if err != nil {
 		log.Error("L1Fetcher getRevertedTxs failed", "from", from, "to", to, "error", err)
 		return false, 0, common.Hash{}, nil, err
+	}
+
+	// Map block number to block timestamp to avoid fetching block header multiple times to get block timestamp.
+	blockTimestampsMap := make(map[uint64]uint64)
+	for _, block := range blocks {
+		blockTimestampsMap[block.NumberU64()] = block.Time()
 	}
 
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
@@ -288,7 +290,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
+	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err

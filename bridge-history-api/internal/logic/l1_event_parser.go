@@ -237,7 +237,7 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 }
 
 // ParseL1BatchEventLogs parses L1 watched batch events.
-func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client) ([]*orm.BatchEvent, error) {
+func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client, blockTimestampsMap map[uint64]uint64) ([]*orm.BatchEvent, error) {
 	// Since codecv7 introduced multiple CommitBatch events per transaction,
 	// each CommitBatch event corresponds to an individual blob containing block range data.
 	// To correctly process these events, we need to:
@@ -277,12 +277,8 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 					return nil, fmt.Errorf("commit transaction %s has %d blobs, but trying to access index %d (batch index %d)",
 						vlog.TxHash.String(), len(commitTx.BlobHashes()), currentIndex, event.BatchIndex.Uint64())
 				}
-				header, err := client.HeaderByHash(ctx, vlog.BlockHash)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get L1 block header for blob context, blockHash: %s, err: %w", vlog.BlockHash.Hex(), err)
-				}
 				blobVersionedHash := commitTx.BlobHashes()[currentIndex]
-				blocks, err := e.getBatchBlockRangeFromBlob(ctx, version, blobVersionedHash, header.Time)
+				blocks, err := e.getBatchBlockRangeFromBlob(ctx, version, blobVersionedHash, blockTimestampsMap[vlog.BlockNumber])
 				if err != nil {
 					return nil, fmt.Errorf("failed to process versioned blob, blobVersionedHash: %s, block number: %d, blob index: %d, err: %w",
 						blobVersionedHash.String(), vlog.BlockNumber, currentIndex, err)
