@@ -118,8 +118,8 @@ func GetBatchVersionAndBlockRangeFromCalldata(txData []byte) (uint8, uint64, uin
 		chunks = args.Chunks
 		version = args.Version
 	} else if method.Name == "commitBatches" || method.Name == "commitAndFinalizeBatch" {
-		if len(values) < 1 {
-			return 0, 0, 0, fmt.Errorf("insufficient arguments for commitBatches")
+		if len(values) < 3 {
+			return 0, 0, 0, fmt.Errorf("insufficient arguments for %s, expected 3, got %d", method.Name, len(values))
 		}
 
 		var ok bool
@@ -149,6 +149,35 @@ func GetBatchVersionAndBlockRangeFromCalldata(txData []byte) (uint8, uint64, uin
 	finishBlock = binary.BigEndian.Uint64(block[0:8])
 
 	return version, startBlock, finishBlock, err
+}
+
+// GetParentBatchHeaderFromCalldata gets the parent batch header from calldata.
+// It only supports commitBatches and commitAndFinalizeBatch, which only accept batches >= v7.
+func GetParentBatchHeaderFromCalldata(txData []byte) (common.Hash, error) {
+	const methodIDLength = 4
+	if len(txData) < methodIDLength {
+		return common.Hash{}, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)
+	}
+	method, err := backendabi.IScrollChainABI.MethodById(txData[:methodIDLength])
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to get method by ID, ID: %v, err: %w", txData[:methodIDLength], err)
+	}
+	values, err := method.Inputs.Unpack(txData[methodIDLength:])
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to unpack transaction data using ABI, tx data: %v, err: %w", txData, err)
+	}
+
+	if method.Name == "commitBatches" || method.Name == "commitAndFinalizeBatch" {
+		if len(values) < 3 {
+			return common.Hash{}, fmt.Errorf("insufficient arguments for %s, expected 3, got %d", method.Name, len(values))
+		}
+		parentBatchHash, ok := values[1].([32]byte)
+		if !ok {
+			return common.Hash{}, fmt.Errorf("invalid parentBatchHash type: %T", values[1])
+		}
+		return common.BytesToHash(parentBatchHash[:]), nil
+	}
+	return common.Hash{}, fmt.Errorf("method %s does not support parent batch header", method.Name)
 }
 
 // GetBlocksInRange gets a batch of blocks for a block range [start, end] inclusive.

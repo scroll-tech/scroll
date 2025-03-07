@@ -60,6 +60,20 @@ func TestGetBatchRangeFromCalldata(t *testing.T) {
 	assert.Equal(t, uint64(0), finish)
 }
 
+func TestGetParentBatchHeaderFromCalldata(t *testing.T) {
+	// commitBatches calldata
+	txData := common.Hex2Bytes(
+		"9bbaa2ba" + // Method ID
+			"0000000000000000000000000000000000000000000000000000000000000007" + // Version = 7 (uint8, padded to 32 bytes)
+			"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20" + // ParentBatchHash (bytes32)
+			"abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdef", // LastBatchHash (bytes32)
+	)
+
+	parentBatchHash, err := GetParentBatchHeaderFromCalldata(txData)
+	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"), parentBatchHash)
+}
+
 // TestConvertBigIntArrayToString tests the ConvertBigIntArrayToString function
 func TestConvertBigIntArrayToString(t *testing.T) {
 	tests := []struct {
