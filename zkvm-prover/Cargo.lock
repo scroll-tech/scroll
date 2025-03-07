@@ -1098,7 +1098,7 @@ dependencies = [
  "bitflags 2.8.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools 0.11.0",
  "lazy_static",
  "lazycell",
  "proc-macro2",
@@ -1489,7 +1489,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2069,7 +2069,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3345,15 +3345,6 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
@@ -5844,7 +5835,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7222,7 +7213,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7345,7 +7336,7 @@ dependencies = [
 [[package]]
 name = "sbv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "sbv-core",
  "sbv-helpers",
@@ -7357,7 +7348,7 @@ dependencies = [
 [[package]]
 name = "sbv-core"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "reth-evm",
  "reth-evm-ethereum",
@@ -7374,7 +7365,7 @@ dependencies = [
 [[package]]
 name = "sbv-helpers"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "revm 19.4.0",
 ]
@@ -7382,7 +7373,7 @@ dependencies = [
 [[package]]
 name = "sbv-kv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "auto_impl",
  "hashbrown 0.15.2",
@@ -7392,7 +7383,7 @@ dependencies = [
 [[package]]
 name = "sbv-primitives"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -7423,7 +7414,7 @@ dependencies = [
 [[package]]
 name = "sbv-trie"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "alloy-rlp",
  "alloy-trie",
@@ -7438,7 +7429,7 @@ dependencies = [
 [[package]]
 name = "sbv-utils"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#d8d215eb23262030e3e628b4156867cee2b1c50f"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-v2#74d7fb0398b1bc94fe20ac29bdc445634c4bfeea"
 dependencies = [
  "alloy-provider",
  "alloy-transport",
@@ -7539,7 +7530,7 @@ dependencies = [
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=9524a42#9524a42db51477d1c7658c8f3d192330b449ef21"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=af95d2a#af95d2a85109a4e44482cf4deb3dadfbb8617ef0"
 dependencies = [
  "alloy",
  "anyhow",
@@ -7572,7 +7563,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.6"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#3c961e850691dd0990df4d64deea6d00e70dff00"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#58cdda4bddafa3167dbae50cfd0bbbcc5e90e732"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -7587,7 +7578,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.6"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#3c961e850691dd0990df4d64deea6d00e70dff00"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#58cdda4bddafa3167dbae50cfd0bbbcc5e90e732"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -7619,7 +7610,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.6"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#3c961e850691dd0990df4d64deea6d00e70dff00"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#58cdda4bddafa3167dbae50cfd0bbbcc5e90e732"
 dependencies = [
  "bincode",
  "eyre",
@@ -8117,7 +8108,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8355,7 +8346,7 @@ dependencies = [
  "getrandom 0.3.1",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
