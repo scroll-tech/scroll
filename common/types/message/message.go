@@ -84,6 +84,7 @@ type ChunkProof interface {
 func NewChunkProof(hardForkName string) ChunkProof {
 	switch hardForkName {
 	case euclidFork:
+		fmt.Println("it is euclid fork")
 		return &OpenVMChunkProof{}
 	default:
 		return &Halo2ChunkProof{}
