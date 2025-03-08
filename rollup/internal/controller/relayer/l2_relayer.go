@@ -837,7 +837,6 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 
 	var aggProof message.BundleProof
-	withProof = false
 	if withProof {
 		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash, hardForkName)
 		if err != nil {
