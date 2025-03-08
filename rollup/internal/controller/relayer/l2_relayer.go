@@ -209,6 +209,18 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		return fmt.Errorf("failed to get disk root, block number: %v, err: %w", endChunk.EndBlockNumber, err)
 	}
 
+	if err = r.batchOrm.UpdateStateRootByHash(r.ctx, startFinalizedBatch.Hash, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by hash: %v, err: %w", startFinalizedBatch.Hash, err)
+	}
+
+	if err = r.chunkOrm.UpdateStateRootByHash(r.ctx, endChunk.Hash, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by hash: %v, err: %w", endChunk.Hash, err)
+	}
+
+	if err = r.l2BlockOrm.UpdateStateRootByHash(r.ctx, endChunk.EndBlockHash, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by hash: %v, err: %w", endChunk.EndBlockHash, err)
+	}
+
 	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
 		return fmt.Errorf("commit genesis batch failed: %v", err)
 	}
