@@ -2,13 +2,16 @@ package logic
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"
@@ -19,15 +22,17 @@ import (
 
 // L1EventParser the l1 event parser
 type L1EventParser struct {
-	cfg    *config.FetcherConfig
-	client *ethclient.Client
+	cfg        *config.FetcherConfig
+	client     *ethclient.Client
+	blobClient blob_client.BlobClient
 }
 
 // NewL1EventParser creates l1 event parser
-func NewL1EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L1EventParser {
+func NewL1EventParser(cfg *config.FetcherConfig, client *ethclient.Client, blobClient blob_client.BlobClient) *L1EventParser {
 	return &L1EventParser{
-		cfg:    cfg,
-		client: client,
+		cfg:        cfg,
+		client:     client,
+		blobClient: blobClient,
 	}
 }
 
@@ -232,7 +237,20 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 }
 
 // ParseL1BatchEventLogs parses L1 watched batch events.
-func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client) ([]*orm.BatchEvent, error) {
+func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client, blockTimestampsMap map[uint64]uint64) ([]*orm.BatchEvent, error) {
+	// Since CodecV7 introduced multiple CommitBatch events per transaction,
+	// each CommitBatch event corresponds to an individual blob containing block range data.
+	// To correctly process these events, we need to:
+	// 1. Parsing the associated blob data to extract the block range for each event
+	// 2. Tracking the parent batch hash for each processed CommitBatch event, to:
+	//   - Validate the batch hash
+	//   - Derive the index of the current batch
+	// In commitBatches and commitAndFinalizeBatch, the parent batch hash is passed in calldata,
+	// so that we can use it to get the first batch's parent batch hash.
+	// The index map serves this purpose with:
+	// Key:   commit transaction hash
+	// Value: parent batch hashes (in order) for each processed CommitBatch event in the transaction
+	txBlobIndexMap := make(map[common.Hash][]common.Hash)
 	var l1BatchEvents []*orm.BatchEvent
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
@@ -247,10 +265,58 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				log.Error("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
 				return nil, err
 			}
-			startBlock, endBlock, err := utils.GetBatchRangeFromCalldata(commitTx.Data())
+			version, startBlock, endBlock, err := utils.GetBatchVersionAndBlockRangeFromCalldata(commitTx.Data())
 			if err != nil {
 				log.Error("Failed to get batch range from calldata", "hash", commitTx.Hash().String(), "height", vlog.BlockNumber)
 				return nil, err
+			}
+			if version >= 7 { // It's a batch with version >= 7.
+				codec, err := encoding.CodecFromVersion(encoding.CodecVersion(version))
+				if err != nil {
+					return nil, fmt.Errorf("unsupported codec version: %v, err: %w", version, err)
+				}
+
+				// we append the batch hash to the slice for the current commit transaction after processing the batch.
+				// that means the current index of the batch within the transaction is len(txBlobIndexMap[vlog.TxHash]).
+				currentIndex := len(txBlobIndexMap[vlog.TxHash])
+				if currentIndex >= len(commitTx.BlobHashes()) {
+					return nil, fmt.Errorf("commit transaction %s has %d blobs, but trying to access index %d (batch index %d)",
+						vlog.TxHash.String(), len(commitTx.BlobHashes()), currentIndex, event.BatchIndex.Uint64())
+				}
+				blobVersionedHash := commitTx.BlobHashes()[currentIndex]
+
+				// validate the batch hash
+				var parentBatchHash common.Hash
+				if currentIndex == 0 {
+					parentBatchHash, err = utils.GetParentBatchHashFromCalldata(commitTx.Data())
+					if err != nil {
+						return nil, fmt.Errorf("failed to get parent batch header from calldata, tx hash: %s, err: %w", vlog.TxHash.String(), err)
+					}
+				} else {
+					// here we need to subtract 1 from the current index to get the parent batch hash.
+					parentBatchHash = txBlobIndexMap[vlog.TxHash][currentIndex-1]
+				}
+				calculatedBatch, err := codec.NewDABatchFromParams(event.BatchIndex.Uint64(), blobVersionedHash, parentBatchHash)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create new DA batch from params, batch index: %d, err: %w", event.BatchIndex.Uint64(), err)
+				}
+				if calculatedBatch.Hash() != event.BatchHash {
+					return nil, fmt.Errorf("batch hash mismatch for batch %d, expected: %s, got: %s", event.BatchIndex, event.BatchHash.String(), calculatedBatch.Hash().String())
+				}
+
+				blocks, err := e.getBatchBlockRangeFromBlob(ctx, codec, blobVersionedHash, blockTimestampsMap[vlog.BlockNumber])
+				if err != nil {
+					return nil, fmt.Errorf("failed to process versioned blob, blobVersionedHash: %s, block number: %d, blob index: %d, err: %w",
+						blobVersionedHash.String(), vlog.BlockNumber, currentIndex, err)
+				}
+				if len(blocks) == 0 {
+					return nil, fmt.Errorf("no blocks found in the blob, blobVersionedHash: %s, block number: %d, blob index: %d",
+						blobVersionedHash.String(), vlog.BlockNumber, currentIndex)
+				}
+				startBlock = blocks[0].Number()
+				endBlock = blocks[len(blocks)-1].Number()
+
+				txBlobIndexMap[vlog.TxHash] = append(txBlobIndexMap[vlog.TxHash], event.BatchHash)
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
 				BatchStatus:      int(btypes.BatchStatusTypeCommitted),
@@ -260,8 +326,8 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				EndBlockNumber:   endBlock,
 				L1BlockNumber:    vlog.BlockNumber,
 			})
-		case backendabi.L1RevertBatchEventSig:
-			event := backendabi.L1RevertBatchEvent{}
+		case backendabi.L1RevertBatchV0EventSig:
+			event := backendabi.L1RevertBatchV0Event{}
 			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "RevertBatch", vlog); err != nil {
 				log.Error("Failed to unpack RevertBatch event", "err", err)
 				return nil, err
@@ -272,6 +338,19 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				BatchHash:     event.BatchHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
 			})
+		case backendabi.L1RevertBatchV7EventSig:
+			event := backendabi.L1RevertBatchV7Event{}
+			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "RevertBatch0", vlog); err != nil {
+				log.Error("Failed to unpack RevertBatch event", "err", err)
+				return nil, err
+			}
+			for i := event.StartBatchIndex.Uint64(); i <= event.FinishBatchIndex.Uint64(); i++ {
+				l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
+					BatchStatus:   int(btypes.BatchStatusTypeReverted),
+					BatchIndex:    i,
+					L1BlockNumber: vlog.BlockNumber,
+				})
+			}
 		case backendabi.L1FinalizeBatchEventSig:
 			event := backendabi.L1FinalizeBatchEvent{}
 			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "FinalizeBatch", vlog); err != nil {
@@ -388,4 +467,28 @@ func getRealFromAddress(ctx context.Context, eventSender common.Address, eventMe
 		return "", err
 	}
 	return sender.String(), nil
+}
+
+func (e *L1EventParser) getBatchBlockRangeFromBlob(ctx context.Context, codec encoding.Codec, versionedHash common.Hash, l1BlockTime uint64) ([]encoding.DABlock, error) {
+	blob, err := e.blobClient.GetBlobByVersionedHashAndBlockTime(ctx, versionedHash, l1BlockTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blob %s: %w", versionedHash.Hex(), err)
+	}
+	if blob == nil {
+		return nil, fmt.Errorf("blob %s not found", versionedHash.Hex())
+	}
+
+	blobPayload, err := codec.DecodeBlob(blob)
+	if err != nil {
+		return nil, fmt.Errorf("blob %s decode error: %w", versionedHash.Hex(), err)
+	}
+
+	blocks := blobPayload.Blocks()
+	if len(blocks) == 0 {
+		return nil, fmt.Errorf("empty blocks in blob %s", versionedHash.Hex())
+	}
+
+	log.Debug("Successfully processed blob", "versionedHash", versionedHash.Hex(), "blocksCount", len(blocks))
+
+	return blocks, nil
 }

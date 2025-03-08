@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
 	"gorm.io/gorm"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -49,7 +50,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
+func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, blobClient blob_client.BlobClient) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
@@ -119,6 +120,10 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.WrappedTokenGatewayAddr))
 	}
 
+	if common.HexToAddress(cfg.MessageQueueV2Addr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.MessageQueueV2Addr))
+	}
+
 	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L1FetcherLogic{
@@ -129,7 +134,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		client:          client,
 		addressList:     addressList,
 		gatewayList:     gatewayList,
-		parser:          NewL1EventParser(cfg, client),
+		parser:          NewL1EventParser(cfg, client, blobClient),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -168,14 +173,10 @@ func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) ([]*orm.CrossMessage, error) {
 	var l1RevertedTxs []*orm.CrossMessage
-	blockTimestampsMap := make(map[uint64]uint64)
-
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
-		blockTimestampsMap[block.NumberU64()] = block.Time()
-
 		for _, tx := range block.Transactions() {
 			// Gateways: L1 deposit.
 			// Messenger: L1 deposit retry (replayMessage), L1 deposit refund (dropMessage), L2 withdrawal's claim (relayMessageWithProof).
@@ -187,7 +188,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 			if receiptErr != nil {
 				log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-				return nil, nil, receiptErr
+				return nil, receiptErr
 			}
 
 			// Check if the transaction is failed
@@ -199,7 +200,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			sender, senderErr := signer.Sender(tx)
 			if senderErr != nil {
 				log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
-				return nil, nil, senderErr
+				return nil, senderErr
 			}
 
 			l1RevertedTxs = append(l1RevertedTxs, &orm.CrossMessage{
@@ -213,7 +214,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 			})
 		}
 	}
-	return blockTimestampsMap, l1RevertedTxs, nil
+	return l1RevertedTxs, nil
 }
 
 func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -224,7 +225,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 		Topics:    make([][]common.Hash, 1),
 	}
 
-	query.Topics[0] = make([]common.Hash, 16)
+	query.Topics[0] = make([]common.Hash, 17)
 	query.Topics[0][0] = backendabi.L1DepositETHSig
 	query.Topics[0][1] = backendabi.L1DepositERC20Sig
 	query.Topics[0][2] = backendabi.L1DepositERC721Sig
@@ -233,14 +234,15 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 	query.Topics[0][5] = backendabi.L1RelayedMessageEventSig
 	query.Topics[0][6] = backendabi.L1FailedRelayedMessageEventSig
 	query.Topics[0][7] = backendabi.L1CommitBatchEventSig
-	query.Topics[0][8] = backendabi.L1RevertBatchEventSig
-	query.Topics[0][9] = backendabi.L1FinalizeBatchEventSig
-	query.Topics[0][10] = backendabi.L1QueueTransactionEventSig
-	query.Topics[0][11] = backendabi.L1DequeueTransactionEventSig
-	query.Topics[0][12] = backendabi.L1DropTransactionEventSig
-	query.Topics[0][13] = backendabi.L1ResetDequeuedTransactionEventSig
-	query.Topics[0][14] = backendabi.L1BridgeBatchDepositSig
-	query.Topics[0][15] = backendabi.L1DepositWrappedTokenSig
+	query.Topics[0][8] = backendabi.L1RevertBatchV0EventSig
+	query.Topics[0][9] = backendabi.L1RevertBatchV7EventSig
+	query.Topics[0][10] = backendabi.L1FinalizeBatchEventSig
+	query.Topics[0][11] = backendabi.L1QueueTransactionEventSig
+	query.Topics[0][12] = backendabi.L1DequeueTransactionEventSig
+	query.Topics[0][13] = backendabi.L1DropTransactionEventSig
+	query.Topics[0][14] = backendabi.L1ResetDequeuedTransactionEventSig
+	query.Topics[0][15] = backendabi.L1BridgeBatchDepositSig
+	query.Topics[0][16] = backendabi.L1DepositWrappedTokenSig
 
 	eventLogs, err := f.client.FilterLogs(ctx, query)
 	if err != nil {
@@ -264,10 +266,16 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return isReorg, reorgHeight, blockHash, nil, nil
 	}
 
-	blockTimestampsMap, l1RevertedTxs, err := f.getRevertedTxs(ctx, from, to, blocks)
+	l1RevertedTxs, err := f.getRevertedTxs(ctx, from, to, blocks)
 	if err != nil {
 		log.Error("L1Fetcher getRevertedTxs failed", "from", from, "to", to, "error", err)
 		return false, 0, common.Hash{}, nil, err
+	}
+
+	// Map block number to block timestamp to avoid fetching block header multiple times to get block timestamp.
+	blockTimestampsMap := make(map[uint64]uint64)
+	for _, block := range blocks {
+		blockTimestampsMap[block.NumberU64()] = block.Time()
 	}
 
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
@@ -282,7 +290,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
+	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
