@@ -266,7 +266,7 @@ func (o *L2Block) UpdateStateRootByHash(ctx context.Context, hash string, stateR
 	db = db.Where("hash = ?", hash)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("L2Block.UpdateStateRootByHash error: %w, batch hash: %v", err, hash)
+		return fmt.Errorf("L2Block.UpdateStateRootByHash error: %w, block hash: %v", err, hash)
 	}
 
 	return nil

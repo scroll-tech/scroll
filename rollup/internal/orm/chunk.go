@@ -266,7 +266,7 @@ func (o *Chunk) UpdateStateRootByHash(ctx context.Context, hash string, stateRoo
 	db = db.Where("hash = ?", hash)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Chunk.UpdateStateRootByHash error: %w, batch hash: %v", err, hash)
+		return fmt.Errorf("Chunk.UpdateStateRootByHash error: %w, chunk hash: %v", err, hash)
 	}
 
 	return nil
