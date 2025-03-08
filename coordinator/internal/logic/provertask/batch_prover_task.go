@@ -275,7 +275,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 	switch dbBatchCodecVersion {
-	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6:
+	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7:
 	default:
 		return taskDetail, nil
 	}
@@ -291,6 +291,15 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
+
+	if len(dbBatch.BlobDataProof) < 160 {
+		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
+	}
+
+	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
+	// | z       | y       | kzg_commitment | kzg_proof |
+	// |---------|---------|----------------|-----------|
+	// | bytes32 | bytes32 | bytes48        | bytes48   |
 	taskDetail.KzgProof = dbBatch.BlobDataProof[112:160]
 	taskDetail.KzgCommitment = dbBatch.BlobDataProof[64:112]
 	taskDetail.Challenge = common.Hash(dbBatch.BlobDataProof[0:32])
