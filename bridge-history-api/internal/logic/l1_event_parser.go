@@ -276,6 +276,8 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 					return nil, fmt.Errorf("unsupported codec version: %v, err: %w", version, err)
 				}
 
+				// we append the batch hash to the slice for the current commit transaction after processing the batch.
+				// that means the current index of the batch within the transaction is len(txBlobIndexMap[vlog.TxHash]).
 				currentIndex := len(txBlobIndexMap[vlog.TxHash])
 				if currentIndex >= len(commitTx.BlobHashes()) {
 					return nil, fmt.Errorf("commit transaction %s has %d blobs, but trying to access index %d (batch index %d)",
@@ -291,7 +293,8 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 						return nil, fmt.Errorf("failed to get parent batch header from calldata, tx hash: %s, err: %w", vlog.TxHash.String(), err)
 					}
 				} else {
-					parentBatchHash = txBlobIndexMap[vlog.TxHash][currentIndex]
+					// here we need to subtract 1 from the current index to get the parent batch hash.
+					parentBatchHash = txBlobIndexMap[vlog.TxHash][currentIndex-1]
 				}
 				calculatedBatch, err := codec.NewDABatchFromParams(event.BatchIndex.Uint64(), blobVersionedHash, parentBatchHash)
 				if err != nil {
