@@ -148,7 +148,7 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		header := block.Header()
 		header.Root, err = utils.GetDiskRoot(w.ctx, w.l2RpcClient, block.Number().Uint64())
 		if err != nil {
-			return fmt.Errorf("failed to get disk root, block number: %v", block.Number().Uint64())
+			return fmt.Errorf("failed to get disk root, block number: %v, err: %v", block.Number().Uint64(), err)
 		}
 
 		blocks = append(blocks, &encoding.Block{

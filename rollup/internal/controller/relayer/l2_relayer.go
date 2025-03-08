@@ -206,7 +206,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	diskRoot, err := rutils.GetDiskRoot(r.ctx, r.l2RpcClient, endChunk.EndBlockNumber)
 	if err != nil {
-		return fmt.Errorf("failed to get disk root, block number: %v", endChunk.EndBlockNumber)
+		return fmt.Errorf("failed to get disk root, block number: %v, err: %w", endChunk.EndBlockNumber, err)
 	}
 
 	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
