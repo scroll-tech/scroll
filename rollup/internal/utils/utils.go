@@ -229,9 +229,7 @@ func measureTime(operation func() error) (time.Duration, error) {
 // GetDiskRoot retrieves the disk root for a given block number from the Ethereum node.
 func GetDiskRoot(ctx context.Context, cli *rpc.Client, blockNumber uint64) (common.Hash, error) {
 	type DiskRootResponse struct {
-		Result struct {
-			DiskRoot string `json:"diskRoot"`
-		} `json:"result"`
+		DiskRoot string `json:"diskRoot"`
 	}
 
 	var response DiskRootResponse
@@ -241,6 +239,6 @@ func GetDiskRoot(ctx context.Context, cli *rpc.Client, blockNumber uint64) (comm
 		return common.Hash{}, fmt.Errorf("failed to fetch disk root for block %d: %w", blockNumber, err)
 	}
 
-	diskRoot := common.HexToHash(response.Result.DiskRoot)
+	diskRoot := common.HexToHash(response.DiskRoot)
 	return diskRoot, nil
 }

@@ -212,7 +212,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
 		return fmt.Errorf("commit genesis batch failed: %v", err)
 	}
-	log.Info("import genesis transaction successfully", "batch index", startFinalizedBatchIndex, "batch hash", startFinalizedBatch.Hash, "end block number", endChunk.EndBlockNumber, "header root", diskRoot)
+	log.Info("import genesis transaction successfully", "batch index", startFinalizedBatchIndex, "batch hash", startFinalizedBatch.Hash, "end block number", endChunk.EndBlockNumber, "header root", diskRoot.Hex())
 
 	return nil
 }
