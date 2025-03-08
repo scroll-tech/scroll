@@ -73,7 +73,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	l2client, err := rpc.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}

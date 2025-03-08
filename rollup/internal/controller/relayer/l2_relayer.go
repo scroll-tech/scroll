@@ -20,6 +20,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -39,7 +40,8 @@ import (
 type Layer2Relayer struct {
 	ctx context.Context
 
-	l2Client *ethclient.Client
+	l2RpcClient *rpc.Client
+	l2Client    *ethclient.Client
 
 	db         *gorm.DB
 	bundleOrm  *orm.Bundle
@@ -69,7 +71,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client *rpc.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
 	var err error
 
@@ -136,7 +138,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l2BlockOrm: orm.NewL2Block(db),
 		chunkOrm:   orm.NewChunk(db),
 
-		l2Client: l2Client,
+		l2RpcClient: l2Client,
+		l2Client:    ethclient.NewClient(l2Client),
 
 		commitSender:   commitSender,
 		finalizeSender: finalizeSender,
@@ -196,20 +199,20 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		return fmt.Errorf("failed to get batch by index: %v, err: %w", startFinalizedBatchIndex, err)
 	}
 
-	endBlockNumber, err := r.chunkOrm.GetChunkByIndex(r.ctx, startFinalizedBatch.EndChunkIndex)
+	endChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, startFinalizedBatch.EndChunkIndex)
 	if err != nil {
 		return fmt.Errorf("failed to get chunk by index: %v, err: %w", startFinalizedBatch.EndChunkIndex, err)
 	}
 
-	header, err := r.l2Client.HeaderByNumber(r.ctx, new(big.Int).SetUint64(endBlockNumber.EndBlockNumber))
+	diskRoot, err := rutils.GetDiskRoot(r.ctx, r.l2RpcClient, endChunk.EndBlockNumber)
 	if err != nil {
-		return fmt.Errorf("failed to get block by number: %v, err: %w", endBlockNumber.EndBlockNumber, err)
+		return fmt.Errorf("failed to get disk root, block number: %v", endChunk.EndBlockNumber)
 	}
 
-	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, header.Root); err != nil {
+	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
 		return fmt.Errorf("commit genesis batch failed: %v", err)
 	}
-	log.Info("import genesis transaction successfully", "batch index", startFinalizedBatchIndex, "batch hash", startFinalizedBatch.Hash, "end block number", endBlockNumber.EndBlockNumber, "header root", header.Root.Hex())
+	log.Info("import genesis transaction successfully", "batch index", startFinalizedBatchIndex, "batch hash", startFinalizedBatch.Hash, "end block number", endChunk.EndBlockNumber, "header root", diskRoot)
 
 	return nil
 }

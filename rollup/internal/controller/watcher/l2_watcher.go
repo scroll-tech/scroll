@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/internal/utils"
 )
 
 // L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
@@ -26,6 +27,7 @@ type L2WatcherClient struct {
 	event.Feed
 
 	*ethclient.Client
+	l2RpcClient *rpc.Client
 
 	l2BlockOrm *orm.L2Block
 
@@ -40,10 +42,11 @@ type L2WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *rpc.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
 	return &L2WatcherClient{
-		ctx:    ctx,
-		Client: client,
+		ctx:         ctx,
+		Client:      ethclient.NewClient(client),
+		l2RpcClient: client,
 
 		l2BlockOrm: orm.NewL2Block(db),
 
@@ -141,6 +144,13 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		if err3 != nil {
 			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
+
+		header := block.Header()
+		header.Root, err = utils.GetDiskRoot(w.ctx, w.l2RpcClient, block.Number().Uint64())
+		if err != nil {
+			return fmt.Errorf("failed to get disk root, block number: %v", block.Number().Uint64())
+		}
+
 		blocks = append(blocks, &encoding.Block{
 			Header:         block.Header(),
 			Transactions:   txsToTxsData(block.Transactions()),
