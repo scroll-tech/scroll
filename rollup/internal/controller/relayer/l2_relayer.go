@@ -217,8 +217,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		return fmt.Errorf("failed to update state root by hash: %v, err: %w", endChunk.Hash, err)
 	}
 
-	if err = r.l2BlockOrm.UpdateStateRootByHash(r.ctx, endChunk.EndBlockHash, diskRoot.Hex()); err != nil {
-		return fmt.Errorf("failed to update state root by hash: %v, err: %w", endChunk.EndBlockHash, err)
+	if err = r.l2BlockOrm.UpdateStateRootByNumber(r.ctx, endChunk.EndBlockNumber, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by number: %v, err: %w", endChunk.EndBlockNumber, err)
 	}
 
 	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {

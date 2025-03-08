@@ -255,18 +255,18 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 	return nil
 }
 
-// UpdateStateRootByHash updates the StateRoot for a chunk identified by its hash.
-func (o *L2Block) UpdateStateRootByHash(ctx context.Context, hash string, stateRoot string) error {
+// UpdateStateRootByNumber updates the StateRoot for a chunk identified by its number.
+func (o *L2Block) UpdateStateRootByNumber(ctx context.Context, number uint64, stateRoot string) error {
 	updateFields := map[string]interface{}{
 		"state_root": stateRoot,
 	}
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Where("hash = ?", hash)
+	db = db.Where("number = ?", number)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("L2Block.UpdateStateRootByHash error: %w, block hash: %v", err, hash)
+		return fmt.Errorf("L2Block.UpdateStateRootByNumber error: %w, block number: %v", err, number)
 	}
 
 	return nil
