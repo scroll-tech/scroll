@@ -151,9 +151,9 @@ func GetBatchVersionAndBlockRangeFromCalldata(txData []byte) (uint8, uint64, uin
 	return version, startBlock, finishBlock, err
 }
 
-// GetParentBatchHeaderFromCalldata gets the parent batch header from calldata.
+// GetParentBatchHashFromCalldata gets the parent batch hash from calldata.
 // It only supports commitBatches and commitAndFinalizeBatch, which only accept batches >= v7.
-func GetParentBatchHeaderFromCalldata(txData []byte) (common.Hash, error) {
+func GetParentBatchHashFromCalldata(txData []byte) (common.Hash, error) {
 	const methodIDLength = 4
 	if len(txData) < methodIDLength {
 		return common.Hash{}, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)

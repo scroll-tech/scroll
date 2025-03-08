@@ -238,7 +238,7 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 
 // ParseL1BatchEventLogs parses L1 watched batch events.
 func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client, blockTimestampsMap map[uint64]uint64) ([]*orm.BatchEvent, error) {
-	// Since codecv7 introduced multiple CommitBatch events per transaction,
+	// Since CodecV7 introduced multiple CommitBatch events per transaction,
 	// each CommitBatch event corresponds to an individual blob containing block range data.
 	// To correctly process these events, we need to:
 	// 1. Parsing the associated blob data to extract the block range for each event
@@ -286,7 +286,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				// validate the batch hash
 				var parentBatchHash common.Hash
 				if currentIndex == 0 {
-					parentBatchHash, err = utils.GetParentBatchHeaderFromCalldata(commitTx.Data())
+					parentBatchHash, err = utils.GetParentBatchHashFromCalldata(commitTx.Data())
 					if err != nil {
 						return nil, fmt.Errorf("failed to get parent batch header from calldata, tx hash: %s, err: %w", vlog.TxHash.String(), err)
 					}
@@ -298,7 +298,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 					return nil, fmt.Errorf("failed to create new DA batch from params, batch index: %d, err: %w", event.BatchIndex.Uint64(), err)
 				}
 				if calculatedBatch.Hash() != event.BatchHash {
-					return nil, fmt.Errorf("batch hash mismatch, expected: %s, got: %s", event.BatchHash.String(), calculatedBatch.Hash().String())
+					return nil, fmt.Errorf("batch hash mismatch for batch %d, expected: %s, got: %s", event.BatchIndex, event.BatchHash.String(), calculatedBatch.Hash().String())
 				}
 
 				blocks, err := e.getBatchBlockRangeFromBlob(ctx, codec, blobVersionedHash, blockTimestampsMap[vlog.BlockNumber])
