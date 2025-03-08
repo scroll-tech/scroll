@@ -152,7 +152,7 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		}
 
 		blocks = append(blocks, &encoding.Block{
-			Header:         block.Header(),
+			Header:         header,
 			Transactions:   txsToTxsData(block.Transactions()),
 			WithdrawRoot:   common.BytesToHash(withdrawRoot),
 			RowConsumption: block.RowConsumption,
