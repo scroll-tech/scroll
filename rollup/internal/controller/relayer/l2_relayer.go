@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -208,10 +207,6 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	diskRoot, err := rutils.GetDiskRoot(r.ctx, r.l2RpcClient, endChunk.EndBlockNumber)
 	if err != nil {
 		return fmt.Errorf("failed to get disk root, block number: %v, err: %w", endChunk.EndBlockNumber, err)
-	}
-
-	if err = r.batchOrm.UpdateStateRootByHash(r.ctx, startFinalizedBatch.Hash, diskRoot.Hex()); err != nil {
-		return fmt.Errorf("failed to update state root by hash: %v, err: %w", startFinalizedBatch.Hash, err)
 	}
 
 	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
@@ -550,8 +545,8 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error {
 	// Check if current bundle codec version is not less than the preceding one
-	prevBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
 	if bundle.StartBatchIndex > 0 {
+		prevBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
 		if err != nil {
 			log.Error("failed to get previous batch",
 				"current bundle index", bundle.Index,
@@ -621,18 +616,6 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 		if err = aggProof.SanityCheck(); err != nil {
 			return fmt.Errorf("failed to check agg_proof sanity, index: %d, err: %w", bundle.Index, err)
-		}
-
-		if openvmBundleProof, ok := aggProof.(*message.OpenVMBundleProof); ok {
-			openvmBundleProof.MetaData.BundleInfo.PrevStateRoot = common.HexToHash(prevBatch.StateRoot)
-			openvmBundleProof.MetaData.BundleInfo.PostStateRoot = common.HexToHash(dbBatch.StateRoot)
-
-			proofJSON, jsonErr := json.MarshalIndent(openvmBundleProof, "", "  ")
-			if jsonErr != nil {
-				log.Error("failed to marshal OpenVMBundleProof to JSON", "error", jsonErr)
-			} else {
-				log.Info("OpenVMBundleProof", "JSON", string(proofJSON))
-			}
 		}
 	}
 
