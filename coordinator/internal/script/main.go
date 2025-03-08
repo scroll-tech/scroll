@@ -23,24 +23,13 @@ func main() {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	if len(os.Args) < 2 {
-		log.Crit("no batch index range provided")
+	if len(os.Args) < 3 {
+		log.Crit("Usage: go run main.go <batch|bundle> <args>")
 		return
 	}
 
-	indexRange := os.Args[1]
-	indices := strings.Split(indexRange, "-")
-	if len(indices) != 2 {
-		log.Crit("invalid batch index range format. Use start-end", "providedRange", indexRange)
-		return
-	}
-
-	startIndex, err := strconv.Atoi(indices[0])
-	endIndex, err2 := strconv.Atoi(indices[1])
-	if err != nil || err2 != nil || startIndex > endIndex {
-		log.Crit("invalid batch index range", "start", indices[0], "end", indices[1], "err", err, "err2", err2)
-		return
-	}
+	command := os.Args[1]
+	arg := os.Args[2]
 
 	db, err := database.InitDB(&database.Config{
 		DriverName: "postgres",
@@ -53,9 +42,33 @@ func main() {
 	}
 	defer func() {
 		if deferErr := database.CloseDB(db); deferErr != nil {
-			log.Error("failed to close db", "err", err)
+			log.Error("failed to close db", "err", deferErr)
 		}
 	}()
+
+	switch command {
+	case "batch":
+		handleBatchCommand(db, arg)
+	case "bundle":
+		handleBundleCommand(db, arg)
+	default:
+		log.Crit("unknown command", "command", command)
+	}
+}
+
+func handleBatchCommand(db *gorm.DB, indexRange string) {
+	indices := strings.Split(indexRange, "-")
+	if len(indices) != 2 {
+		log.Crit("invalid batch index range format. Use start-end", "providedRange", indexRange)
+		return
+	}
+
+	startIndex, err := strconv.Atoi(indices[0])
+	endIndex, err2 := strconv.Atoi(indices[1])
+	if err != nil || err2 != nil || startIndex > endIndex {
+		log.Crit("invalid batch index range", "start", indices[0], "end", indices[1], "err", err, "err2", err2)
+		return
+	}
 
 	for i := startIndex; i <= endIndex; i++ {
 		batchIndex := uint64(i)
@@ -70,6 +83,51 @@ func main() {
 			log.Crit("failed to write output file", "filename", outputFilename, "err", err)
 		}
 	}
+}
+
+func handleBundleCommand(db *gorm.DB, bundleHash string) {
+	resultBytes, err := getBundleTaskDetail(db, bundleHash)
+	if err != nil {
+		log.Crit("failed to get bundle task detail", "bundleHash", bundleHash, "err", err)
+		return
+	}
+
+	outputFilename := fmt.Sprintf("bundle_task_%s.json", bundleHash)
+	if err = os.WriteFile(outputFilename, resultBytes, 0644); err != nil {
+		log.Crit("failed to write output file", "filename", outputFilename, "err", err)
+	}
+}
+
+func getBundleTaskDetail(db *gorm.DB, bundleHash string) ([]byte, error) {
+	bundleProof, err := orm.NewBundle(db).GetBundleByHash()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bundle proof by hash %s: %w", bundleHash, err)
+	}
+
+	bundleProof.Proof
+	batches, err := orm.NewBatch(db).GetBatchesByBundleHash(context.Background(), bundleHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batches by bundle hash %s: %w", bundleHash, err)
+	}
+
+	if len(batches) == 0 {
+		return nil, fmt.Errorf("no batch found for bundle hash %s", bundleHash)
+	}
+
+	var batchProofs []message.BatchProof
+	for _, batch := range batches {
+		proof := message.NewBatchProof("euclid")
+		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
+			return nil, fmt.Errorf("failed to unmarshal batch proof: %w, bundle hash: %v, batch hash: %v", encodeErr, bundleHash, batch.Hash)
+		}
+		batchProofs = append(batchProofs, proof)
+	}
+
+	taskDetail := message.BundleTaskDetail{
+		BatchProofs: batchProofs,
+	}
+
+	return json.MarshalIndent(taskDetail, "", "    ")
 }
 
 func getBatchTask(db *gorm.DB, batchIndex uint64) ([]byte, error) {
@@ -88,8 +146,6 @@ func getBatchTask(db *gorm.DB, batchIndex uint64) ([]byte, error) {
 	var chunkProofs []message.ChunkProof
 	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
-		fmt.Println("chunk index: ", chunk.Index)
-		fmt.Print("chunk proof: ", chunk.Proof)
 		proof := message.NewChunkProof("euclid")
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, batch.Hash, chunk.Hash)
