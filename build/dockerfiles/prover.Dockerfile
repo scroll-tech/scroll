@@ -12,12 +12,12 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_HOME=/root/.cargo
 
-COPY ./zkvm-prover .
+COPY . /src
 
-RUN cargo build --release
+RUN cd /src/zkvm-prover && make prover
 
 FROM ubuntu:24.04 AS runtime
 
-COPY --from=builder /target/release/prover /usr/local/bin/
+COPY --from=builder /src/zkvm-prover/target/release/prover /usr/local/bin/
 
 ENTRYPOINT ["prover"]
