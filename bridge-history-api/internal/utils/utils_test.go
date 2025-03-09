@@ -60,7 +60,7 @@ func TestGetBatchRangeFromCalldata(t *testing.T) {
 	assert.Equal(t, uint64(0), finish)
 }
 
-func TestGetParentBatchHeaderFromCalldata(t *testing.T) {
+func TestGetParentBatchHashFromCalldata(t *testing.T) {
 	// commitBatches calldata
 	txData := common.Hex2Bytes(
 		"9bbaa2ba" + // Method ID

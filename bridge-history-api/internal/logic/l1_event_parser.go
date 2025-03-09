@@ -238,15 +238,16 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 
 // ParseL1BatchEventLogs parses L1 watched batch events.
 func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client, blockTimestampsMap map[uint64]uint64) ([]*orm.BatchEvent, error) {
-	// Since CodecV7 introduced multiple CommitBatch events per transaction,
-	// each CommitBatch event corresponds to an individual blob containing block range data.
+	// Since multiple CommitBatch events per transaction is introduced >= CodecV7,
+	// with one transaction carrying multiple blobs,
+	// each CommitBatch event corresponds to a blob containing block range data.
 	// To correctly process these events, we need to:
 	// 1. Parsing the associated blob data to extract the block range for each event
 	// 2. Tracking the parent batch hash for each processed CommitBatch event, to:
-	//   - Validate the batch hash
-	//   - Derive the index of the current batch
+	//   - Validate the batch hash, since parent batch hash is needed to calculate the batch hash
+	//   - Derive the index of the current batch by the number of parent batch hashes tracked
 	// In commitBatches and commitAndFinalizeBatch, the parent batch hash is passed in calldata,
-	// so that we can use it to get the first batch's parent batch hash.
+	// so that we can use it to get the first batch's parent batch hash, and derive the rest.
 	// The index map serves this purpose with:
 	// Key:   commit transaction hash
 	// Value: parent batch hashes (in order) for each processed CommitBatch event in the transaction
@@ -469,26 +470,26 @@ func getRealFromAddress(ctx context.Context, eventSender common.Address, eventMe
 	return sender.String(), nil
 }
 
-func (e *L1EventParser) getBatchBlockRangeFromBlob(ctx context.Context, codec encoding.Codec, versionedHash common.Hash, l1BlockTime uint64) ([]encoding.DABlock, error) {
-	blob, err := e.blobClient.GetBlobByVersionedHashAndBlockTime(ctx, versionedHash, l1BlockTime)
+func (e *L1EventParser) getBatchBlockRangeFromBlob(ctx context.Context, codec encoding.Codec, blobVersionedHash common.Hash, l1BlockTime uint64) ([]encoding.DABlock, error) {
+	blob, err := e.blobClient.GetBlobByVersionedHashAndBlockTime(ctx, blobVersionedHash, l1BlockTime)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob %s: %w", versionedHash.Hex(), err)
+		return nil, fmt.Errorf("failed to get blob %s: %w", blobVersionedHash.Hex(), err)
 	}
 	if blob == nil {
-		return nil, fmt.Errorf("blob %s not found", versionedHash.Hex())
+		return nil, fmt.Errorf("blob %s not found", blobVersionedHash.Hex())
 	}
 
 	blobPayload, err := codec.DecodeBlob(blob)
 	if err != nil {
-		return nil, fmt.Errorf("blob %s decode error: %w", versionedHash.Hex(), err)
+		return nil, fmt.Errorf("blob %s decode error: %w", blobVersionedHash.Hex(), err)
 	}
 
 	blocks := blobPayload.Blocks()
 	if len(blocks) == 0 {
-		return nil, fmt.Errorf("empty blocks in blob %s", versionedHash.Hex())
+		return nil, fmt.Errorf("empty blocks in blob %s", blobVersionedHash.Hex())
 	}
 
-	log.Debug("Successfully processed blob", "versionedHash", versionedHash.Hex(), "blocksCount", len(blocks))
+	log.Debug("Successfully processed blob", "blobVersionedHash", blobVersionedHash.Hex(), "blocksCount", len(blocks))
 
 	return blocks, nil
 }
