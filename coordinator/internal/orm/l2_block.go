@@ -54,23 +54,22 @@ func (*L2Block) TableName() string {
 func (o *L2Block) GetL2BlockHashesByChunkHash(ctx context.Context, chunkHash string) ([]common.Hash, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header")
+	db = db.Select("hash")
 	db = db.Where("chunk_hash = ?", chunkHash)
 	db = db.Order("number ASC")
 
-	var l2Blocks []L2Block
-	if err := db.Find(&l2Blocks).Error; err != nil {
+	var hashes []string
+	if err := db.Pluck("hash", &hashes).Error; err != nil {
 		return nil, fmt.Errorf("L2Block.GetL2BlockHashesByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 
 	var blockHashes []common.Hash
-	for _, v := range l2Blocks {
-		var header gethTypes.Header
-		if err := json.Unmarshal([]byte(v.Header), &header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlockHashesByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-		blockHashes = append(blockHashes, header.Hash())
+	for _, h := range hashes {
+		blockHashes = append(blockHashes, common.HexToHash(h))
 	}
+
+	log.Info("retrieved block hashes by chunk hash", "chunk hash", chunkHash, "block hashes", hashes)
+
 	return blockHashes, nil
 }
 
