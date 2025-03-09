@@ -217,7 +217,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		if block.Header.Number.Uint64() == 0 {
 			return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s, block number is 0", task.TaskID)
 		}
-		log.Info("get block hash of chunk task", "number", block.Header.Number.Uint64()-1, "hash", block.Header.ParentHash)
+		log.Info("get block hash of chunk task", "number", block.Header.Number.Uint64()-1, "hash", block.Header.ParentHash.Hex())
 		blockHashes = append(blockHashes, block.Header.ParentHash)
 	}
 
