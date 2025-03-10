@@ -13,8 +13,8 @@ require (
 	github.com/holiman/uint256 v1.3.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3
+	github.com/scroll-tech/da-codec v0.1.3-0.20250310095435-012aaee6b435
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305151038-478940e79601
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
