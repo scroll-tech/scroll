@@ -40,8 +40,11 @@ FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 # ENV CHAIN_ID=534353
-RUN apt update && apt install vim netcat-openbsd net-tools curl jq -y
+RUN apt update && apt install vim netcat-openbsd net-tools curl jq wget -y
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
+RUN mkdir -p /usr/local/bin
+RUN wget https://github.com/ethereum/solidity/releases/download/v0.8.19/solc-static-linux -O /usr/local/bin/solc
+RUN chmod +x /usr/local/bin/solc
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/coordinator_api /bin/
 RUN /bin/coordinator_api --version
