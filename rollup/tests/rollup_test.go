@@ -146,11 +146,7 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		}
 
 		// make sure that batches 1 and 2 have been committed in separate transactions
-		if batches[0].CommitTxHash == batches[1].CommitTxHash {
-			return false
-		}
-
-		return true
+		return batches[0].CommitTxHash == batches[1].CommitTxHash
 	}, 30*time.Second, time.Second)
 
 	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
@@ -432,7 +428,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 
 	// TODO: update mock bridge contract ABI to support new methods
 	//  - simulate proof generation -> all batches and bundle are verified
-	//  - make sure batches are actually commited and bundles are finalized
+	//  - make sure batches are actually committed and bundles are finalized
 
 	// simulate proof generation -> all batches and bundle are verified
 	//{
