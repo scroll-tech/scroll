@@ -111,6 +111,9 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 	}, encoding.CodecV4, chainConfig, db, nil)
 
 	l2BlockOrm := orm.NewL2Block(db)
+	batchOrm := orm.NewBatch(db)
+	bundleOrm := orm.NewBundle(db)
+
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
 	assert.NoError(t, err)
 
@@ -123,16 +126,17 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 	cp.TryProposeChunk()
 	bap.TryProposeBatch()
 
-	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
-
 	l2Relayer.ProcessPendingBatches()
 
-	batchOrm := orm.NewBatch(db)
-	bundleOrm := orm.NewBundle(db)
-
-	assert.Eventually(t, func() bool {
+	// make sure that batches are committed before proposing bundles (as bundle proposing depends on batches being committed).
+	require.Eventually(t, func() bool {
 		batches, getErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
 		assert.NoError(t, getErr)
+
+		for _, batch := range batches {
+			fmt.Println(batch.CodecVersion, batch.Index, batch.CommitTxHash, batch.RollupStatus)
+		}
+
 		assert.Len(t, batches, 3)
 		batches = batches[1:]
 		for _, batch := range batches {
@@ -140,8 +144,16 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 				return false
 			}
 		}
+
+		// make sure that batches 1 and 2 have been committed in separate transactions
+		if batches[0].CommitTxHash == batches[1].CommitTxHash {
+			return false
+		}
+
 		return true
 	}, 30*time.Second, time.Second)
+
+	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
 
 	batchProof := &message.Halo2BatchProof{
 		RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
@@ -418,7 +430,10 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		require.Equal(t, bundles[1].EndBatchHash, batches[3].Hash)
 	}
 
-	return
+	// TODO: update mock bridge contract ABI to support new methods
+	//  - simulate proof generation -> all batches and bundle are verified
+	//  - make sure batches are actually commited and bundles are finalized
+
 	// simulate proof generation -> all batches and bundle are verified
 	//{
 	//	batchProof := &message.OpenVMBatchProof{}
@@ -440,50 +455,4 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	//		require.NoError(t, err)
 	//	}
 	//}
-
-	// TODO: assert that batches have been submitted together in a single transaction after contract ABI is updated
-
-	//l2Relayer.ProcessPendingBatches()
-	//l2Relayer.ProcessPendingBundles()
-
-	//assert.Eventually(t, func() bool {
-	//	l2Relayer.ProcessPendingBundles()
-	//
-	//	batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-	//	assert.NoError(t, err)
-	//	assert.Len(t, batches, 3)
-	//	batches = batches[1:]
-	//	for _, batch := range batches {
-	//		if types.RollupStatus(batch.RollupStatus) != types.RollupFinalized {
-	//			return false
-	//		}
-	//
-	//		assert.NotEmpty(t, batch.FinalizeTxHash)
-	//		receipt, getErr := l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
-	//		assert.NoError(t, getErr)
-	//		assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
-	//	}
-	//
-	//	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
-	//	assert.NoError(t, err)
-	//	assert.Len(t, bundles, 1)
-	//
-	//	bundle := bundles[0]
-	//	if types.RollupStatus(bundle.RollupStatus) != types.RollupFinalized {
-	//		return false
-	//	}
-	//	assert.NotEmpty(t, bundle.FinalizeTxHash)
-	//	receipt, err := l1Client.TransactionReceipt(context.Background(), common.HexToHash(bundle.FinalizeTxHash))
-	//	assert.NoError(t, err)
-	//	assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
-	//	batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{"bundle_hash": bundle.Hash}, nil, 0)
-	//	assert.NoError(t, err)
-	//	assert.Len(t, batches, 2)
-	//	for _, batch := range batches {
-	//		assert.Equal(t, batch.RollupStatus, bundle.RollupStatus)
-	//		assert.Equal(t, bundle.FinalizeTxHash, batch.FinalizeTxHash)
-	//	}
-	//
-	//	return true
-	//}, 10*time.Second, time.Second)
 }
