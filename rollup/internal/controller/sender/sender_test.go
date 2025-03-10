@@ -44,7 +44,7 @@ var (
 	cfg                  *config.Config
 	testApps             *testcontainers.TestcontainerApps
 	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
-	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
+	txBlob               = []*kzg4844.Blob{nil, nil, randBlobs(2)[0]}
 	txUint8Types         = []uint8{0, 2, 3}
 	db                   *gorm.DB
 	testContractsAddress common.Address
@@ -185,7 +185,11 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, signerConfig, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
+		var blobs []*kzg4844.Blob
+		if txBlob[i] != nil {
+			blobs = []*kzg4844.Blob{txBlob[i]}
+		}
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, blobs, 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -224,8 +228,12 @@ func testFallbackGasLimit(t *testing.T) {
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
 		assert.NoError(t, err)
 
+		var blobs []*kzg4844.Blob
+		if txBlob[i] != nil {
+			blobs = []*kzg4844.Blob{txBlob[i]}
+		}
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, blobs, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -245,7 +253,7 @@ func testFallbackGasLimit(t *testing.T) {
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, txBlob[i], 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, blobs, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -282,24 +290,41 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
+
+		txHashes := []common.Hash{tx.Hash()}
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		// Bumping the fees enough times to let the transaction be included in a block.
 		for i := 0; i < 30; i++ {
-			tx, err = s.resubmitTransaction(tx, 0, 0)
+			tx, err = s.createReplacingTransaction(tx, 0, 0)
 			assert.NoError(t, err)
+			err = s.client.SendTransaction(s.ctx, tx)
+			assert.NoError(t, err)
+			txHashes = append(txHashes, tx.Hash())
 		}
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
-			return err == nil && !isPending
+			for _, txHash := range txHashes {
+				_, isPending, err := s.client.TransactionByHash(context.Background(), txHash)
+				if err == nil && !isPending {
+					return true
+				}
+			}
+			return false
 		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
-			return err == nil && receipt != nil
+			for _, txHash := range txHashes {
+				receipt, err := s.client.TransactionReceipt(context.Background(), txHash)
+				if err == nil && receipt != nil {
+					return true
+				}
+			}
+			return false
 		}, 30*time.Second, time.Second)
 
 		s.Stop()
@@ -325,7 +350,7 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 
 		var sidecar *gethTypes.BlobTxSidecar
 		if txBlob[i] != nil {
-			sidecar, err = makeSidecar(txBlob[i])
+			sidecar, err = makeSidecar([]*kzg4844.Blob{txBlob[i]})
 			assert.NoError(t, err)
 		}
 
@@ -366,13 +391,17 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		}
 		var sidecar *gethTypes.BlobTxSidecar
 		if txBlob[i] != nil {
-			sidecar, err = makeSidecar(txBlob[i])
+			sidecar, err = makeSidecar([]*kzg4844.Blob{txBlob[i]})
 			assert.NoError(t, err)
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, sidecar, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, sidecar, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		resubmittedTx, err := s.resubmitTransaction(tx, 0, 0)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
+		resubmittedTx, err := s.createReplacingTransaction(tx, 0, 0)
+		assert.NoError(t, err)
+		err = s.client.SendTransaction(s.ctx, resubmittedTx)
 		assert.NoError(t, err)
 
 		assert.Eventually(t, func() bool {
@@ -412,10 +441,14 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(1000000000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0, 0)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
+		resubmittedTx, err := s.createReplacingTransaction(tx, 0, 0)
+		assert.NoError(t, err)
+		err = s.client.SendTransaction(s.ctx, resubmittedTx)
 		assert.Error(t, err, "replacement transaction underpriced")
 
 		assert.Eventually(t, func() bool {
@@ -462,7 +495,9 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, 0)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, 0)
+	assert.NoError(t, err)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -471,7 +506,7 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
 	s.Stop()
 }
 
@@ -491,7 +526,7 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	})
 	defer patchGuard.Reset()
 
-	sidecar, err := makeSidecar(randBlob())
+	sidecar, err := makeSidecar(randBlobs(1))
 	assert.NoError(t, err)
 	tx := gethTypes.NewTx(&gethTypes.BlobTx{
 		ChainID:    uint256.MustFromBig(s.chainID),
@@ -511,7 +546,9 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	baseFeePerGas *= 10
 	blobBaseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	assert.NoError(t, err)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -526,8 +563,8 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 		expectedBlobGasFeeCap = maxBlobGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
-	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), newTx.BlobGasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), resubmittedTx.BlobGasFeeCap().Uint64())
 	s.Stop()
 }
 
@@ -563,10 +600,14 @@ func testResubmitNonceGappedTransaction(t *testing.T) {
 			return nil, errors.New("simulated transaction receipt error")
 		})
 
-		_, err = s.SendTransaction("test-1", &common.Address{}, nil, txBlob[i], 0)
+		var blobs []*kzg4844.Blob
+		if txBlob[i] != nil {
+			blobs = []*kzg4844.Blob{txBlob[i]}
+		}
+		_, err = s.SendTransaction("test-1", &common.Address{}, nil, blobs, 0)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test-2", &common.Address{}, nil, txBlob[i], 0)
+		_, err = s.SendTransaction("test-2", &common.Address{}, nil, blobs, 0)
 		assert.NoError(t, err)
 
 		s.checkPendingTransaction()
@@ -607,7 +648,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
+		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -649,7 +690,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		originTxHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
+		originTxHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -709,7 +750,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		txHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
+		txHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -779,7 +820,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 			return nil
 		})
 
-		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
+		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -816,8 +857,8 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	blob := randBlob()
-	sideCar, err := makeSidecar(blob)
+	blobs := randBlobs(1)
+	sideCar, err := makeSidecar(blobs)
 	assert.NoError(t, err)
 	versionedHash := sideCar.BlobHashes()[0]
 	blsModulo, ok := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
@@ -829,7 +870,7 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	var point kzg4844.Point
 	copy(point[start:], pointBytes)
 	commitment := sideCar.Commitments[0]
-	proof, claim, err := kzg4844.ComputeProof(blob, point)
+	proof, claim, err := kzg4844.ComputeProof(blobs[0], point)
 	assert.NoError(t, err)
 
 	var claimArray [32]byte
@@ -853,7 +894,7 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.NoError(t, err)
 	defer s.Stop()
 
-	_, err = s.SendTransaction("0", &testContractsAddress, data, blob, 0)
+	_, err = s.SendTransaction("0", &testContractsAddress, data, blobs, 0)
 	assert.NoError(t, err)
 
 	var txHash common.Hash
@@ -873,13 +914,19 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	}, 30*time.Second, time.Second)
 }
 
-func randBlob() *kzg4844.Blob {
-	var blob kzg4844.Blob
-	for i := 0; i < len(blob); i += gokzg4844.SerializedScalarSize {
-		fieldElementBytes := randFieldElement()
-		copy(blob[i:i+gokzg4844.SerializedScalarSize], fieldElementBytes[:])
+func randBlobs(count int) []*kzg4844.Blob {
+	blobs := make([]*kzg4844.Blob, 0, count)
+
+	for c := 0; c < count; c++ {
+		var blob kzg4844.Blob
+		for i := 0; i < len(blob); i += gokzg4844.SerializedScalarSize {
+			fieldElementBytes := randFieldElement()
+			copy(blob[i:i+gokzg4844.SerializedScalarSize], fieldElementBytes[:])
+		}
+		blobs = append(blobs, &blob)
 	}
-	return &blob
+
+	return blobs
 }
 
 func randFieldElement() [32]byte {
@@ -905,10 +952,10 @@ func testSendBlobCarryingTxOverLimit(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i := 0; i < int(cfgCopy.MaxPendingBlobTxs); i++ {
-		_, err = s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+		_, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1), 0)
 		assert.NoError(t, err)
 	}
-	_, err = s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+	_, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1), 0)
 	assert.ErrorIs(t, err, ErrTooManyPendingBlobTxs)
 	s.Stop()
 }

@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,8 +32,10 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
+	maxChunksPerBatch               int
 
-	chainCfg *params.ChainConfig
+	minCodecVersion encoding.CodecVersion
+	chainCfg        *params.ChainConfig
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -58,7 +59,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
 	log.Info("new batch proposer",
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
@@ -78,6 +79,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		maxChunksPerBatch:               cfg.MaxChunksPerBatch,
+		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -243,11 +246,17 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codec := encoding.CodecFromConfig(p.chainCfg, new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber), firstUnbatchedChunk.StartBlockTime)
-	if codec == nil {
-		return fmt.Errorf("failed to retrieve codec for block number %v and time %v", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(firstUnbatchedChunk.CodecVersion))
+	if codec == nil || err != nil {
+		return fmt.Errorf("failed to retrieve codec for block number %v and time %v: %w", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime, err)
 	}
-	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
+
+	if codec.Version() < p.minCodecVersion {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), p.minCodecVersion)
+	}
+
+	// always take the minimum of the configured max chunks per batch and the codec's max chunks per batch
+	maxChunksThisBatch := min(codec.MaxNumChunksPerBatch(), p.maxChunksPerBatch)
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, maxChunksThisBatch)
@@ -284,10 +293,16 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
-	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
+	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore // set for compatibility within relayer
+	batch.PrevL1MessageQueueHash = common.HexToHash(firstUnbatchedChunk.PrevL1MessageQueueHash)
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
+		if codec.Version() >= encoding.CodecV7 {
+			batch.Blocks = append(batch.Blocks, chunk.Blocks...)
+		}
+		batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i].PostL1MessageQueueHash)
+
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
@@ -315,9 +330,15 @@ func (p *BatchProposer) proposeBatch() error {
 				"L1CommitUncompressedBatchBytesSize", metrics.L1CommitUncompressedBatchBytesSize,
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
+			lastChunk := batch.Chunks[len(batch.Chunks)-1]
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+			batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i-1].PostL1MessageQueueHash)
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codec.Version())
+			if codec.Version() >= encoding.CodecV7 {
+				batch.Blocks = batch.Blocks[:len(batch.Blocks)-len(lastChunk.Blocks)]
+			}
+
+			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version())
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
@@ -359,7 +380,9 @@ func (p *BatchProposer) getDAChunks(dbChunks []*orm.Chunk) ([]*encoding.Chunk, e
 			return nil, err
 		}
 		chunks[i] = &encoding.Chunk{
-			Blocks: blocks,
+			Blocks:                 blocks,
+			PrevL1MessageQueueHash: common.HexToHash(c.PrevL1MessageQueueHash),
+			PostL1MessageQueueHash: common.HexToHash(c.PostL1MessageQueueHash),
 		}
 	}
 	return chunks, nil

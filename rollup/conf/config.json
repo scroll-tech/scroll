@@ -18,11 +18,10 @@
       "gas_oracle_config": {
         "min_gas_price": 0,
         "gas_price_diff": 50000,
-        "l1_base_fee_weight": 0.132,
-        "l1_blob_base_fee_weight":  0.145,
         "check_committed_batches_window_minutes": 5,
         "l1_base_fee_default": 15000000000,
-        "l1_blob_base_fee_default": 1
+        "l1_blob_base_fee_default": 1,
+        "l1_blob_base_fee_threshold": 0
       },
       "gas_oracle_sender_signer_config": {
         "signer_type": "PrivateKey",
@@ -52,6 +51,11 @@
         "min_gas_tip": 100000000,
         "max_pending_blob_txs": 3
       },
+      "batch_submission": {
+        "min_batches": 1,
+        "max_batches": 6,
+        "timeout": 300
+      },
       "gas_oracle_config": {
         "min_gas_price": 0,
         "gas_price_diff": 50000
@@ -63,6 +67,7 @@
         "base_url": "http://localhost:8750"
       },
       "enable_test_env_bypass_features": true,
+      "test_env_bypass_only_until_fork_boundary": false,
       "finalize_batch_without_proof_timeout_sec": 7200,
       "finalize_bundle_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_signer_config": {
@@ -102,7 +107,8 @@
       "max_l1_commit_calldata_size_per_batch": 112345,
       "batch_timeout_sec": 300,
       "gas_cost_increase_multiplier": 1.2,
-      "max_uncompressed_batch_bytes_size": 634880
+      "max_uncompressed_batch_bytes_size": 634880,
+      "max_chunks_per_batch": 12
     },
     "bundle_proposer_config": {
       "max_batch_num_per_bundle": 20,

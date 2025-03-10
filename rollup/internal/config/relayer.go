@@ -31,6 +31,15 @@ type SenderConfig struct {
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
 }
 
+type BatchSubmission struct {
+	// The minimum number of batches to submit in a single transaction.
+	MinBatches int `json:"min_batches"`
+	// The maximum number of batches to submit in a single transaction.
+	MaxBatches int `json:"max_batches"`
+	// The time in seconds after which a batch is considered stale and should be submitted ignoring the min batch count.
+	TimeoutSec int64 `json:"timeout"`
+}
+
 // ChainMonitor this config is used to get batch status from chain_monitor API.
 type ChainMonitor struct {
 	Enabled  bool   `json:"enabled"`
@@ -48,6 +57,8 @@ type RelayerConfig struct {
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
+	// Config for batch submission
+	BatchSubmission *BatchSubmission `json:"batch_submission"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service
@@ -62,6 +73,8 @@ type RelayerConfig struct {
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
+	// Sets rollup-relayer to stop fake finalizing at the fork boundary
+	TestEnvBypassOnlyUntilForkBoundary bool `json:"test_env_bypass_only_until_fork_boundary"`
 	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
 	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 	// The timeout in seconds for finalizing a bundle without proof, only used when EnableTestEnvBypassFeatures is true.
@@ -85,15 +98,13 @@ type GasOracleConfig struct {
 	// AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
 	AlternativeGasTokenConfig *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
 
-	// The following configs are only for updating L1 gas price, used for sender in L2.
-	// The weight for L1 base fee.
-	L1BaseFeeWeight float64 `json:"l1_base_fee_weight"`
-	// The weight for L1 blob base fee.
-	L1BlobBaseFeeWeight float64 `json:"l1_blob_base_fee_weight"`
 	// CheckCommittedBatchesWindowMinutes the time frame to check if we committed batches to decide to update gas oracle or not in minutes
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
+
+	// L1BlobBaseFeeThreshold the threshold of L1 blob base fee to enter the default gas price mode
+	L1BlobBaseFeeThreshold uint64 `json:"l1_blob_base_fee_threshold"`
 }
 
 // SignerConfig - config of signer, contains type and config corresponding to type

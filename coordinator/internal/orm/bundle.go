@@ -59,7 +59,7 @@ func (*Bundle) TableName() string {
 func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Bundle, error) {
 	var bundle Bundle
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
+	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND codec_version != 5 AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
 		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady))
 	err := db.Raw(sql).Scan(&bundle).Error
 	if err != nil {
@@ -69,6 +69,23 @@ func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, max
 		return nil, nil
 	}
 	return &bundle, nil
+}
+
+// GetUnassignedBundleCount retrieves unassigned bundle count.
+func (o *Bundle) GetUnassignedBundleCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Bundle{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("batch_proofs_status = ?", int(types.BatchProofsStatusReady))
+	db = db.Where("codec_version != 5")
+	db = db.Where("bundle.deleted_at IS NULL")
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Bundle.GetUnassignedBundleCount error: %w", err)
+	}
+	return count, nil
 }
 
 // GetAssignedBundle retrieves assigned bundle based on the specified limit.

@@ -79,11 +79,12 @@ func (r *mockProver) challenge(t *testing.T) string {
 func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []types.ProverType) (string, int, string) {
 	authMsg := types.LoginParameter{
 		Message: types.Message{
-			Challenge:     challengeString,
-			ProverName:    r.proverName,
-			ProverVersion: r.proverVersion,
-			ProverTypes:   proverTypes,
-			VKs:           []string{"mock_vk"},
+			Challenge:          challengeString,
+			ProverName:         r.proverName,
+			ProverVersion:      r.proverVersion,
+			ProverProviderType: types.ProverProviderTypeInternal,
+			ProverTypes:        proverTypes,
+			VKs:                []string{"mock_vk"},
 		},
 		PublicKey: r.publicKey(),
 	}
@@ -200,20 +201,20 @@ func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType)
 }
 
 func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
-	proofMsgStatus := message.StatusOk
+	proofMsgStatus := types.StatusOk
 	if proofStatus == generatedFailed {
-		proofMsgStatus = message.StatusProofError
+		proofMsgStatus = types.StatusProofError
 	}
 
 	var proof []byte
 	switch proverTaskSchema.TaskType {
 	case int(message.ProofTypeChunk):
-		encodeData, err := json.Marshal(message.ChunkProof{})
+		encodeData, err := json.Marshal(message.Halo2ChunkProof{})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, encodeData)
 		proof = encodeData
 	case int(message.ProofTypeBatch):
-		encodeData, err := json.Marshal(message.BatchProof{})
+		encodeData, err := json.Marshal(message.Halo2BatchProof{})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, encodeData)
 		proof = encodeData
@@ -222,15 +223,15 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	if proofStatus == verifiedFailed {
 		switch proverTaskSchema.TaskType {
 		case int(message.ProofTypeChunk):
-			chunkProof := message.ChunkProof{}
-			chunkProof.Proof = []byte(verifier.InvalidTestProof)
+			chunkProof := message.Halo2ChunkProof{}
+			chunkProof.RawProof = []byte(verifier.InvalidTestProof)
 			encodeData, err := json.Marshal(&chunkProof)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
 		case int(message.ProofTypeBatch):
-			batchProof := message.BatchProof{}
-			batchProof.Proof = []byte(verifier.InvalidTestProof)
+			batchProof := message.Halo2BatchProof{}
+			batchProof.RawProof = []byte(verifier.InvalidTestProof)
 			encodeData, err := json.Marshal(&batchProof)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)

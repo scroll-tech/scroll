@@ -25,6 +25,8 @@ type LoginLogic struct {
 	batchVKs     map[string]struct{}
 	bundleVks    map[string]struct{}
 
+	openVmVks map[string]struct{}
+
 	proverVersionHardForkMap map[string][]string
 }
 
@@ -50,6 +52,7 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 		chunkVks:                 vf.ChunkVKMap,
 		batchVKs:                 vf.BatchVKMap,
 		bundleVks:                vf.BundleVkMap,
+		openVmVks:                vf.OpenVMVkMap,
 		challengeOrm:             orm.NewChallenge(db),
 		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
@@ -88,6 +91,10 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 				for vk := range l.bundleVks {
 					vks[vk] = struct{}{}
 				}
+			case types.ProverTypeOpenVM:
+				for vk := range l.openVmVks {
+					vks[vk] = struct{}{}
+				}
 			default:
 				log.Error("invalid prover_type", "value", proverType, "prover name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
 			}
@@ -106,6 +113,17 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 			}
 		}
 	}
+
+	if login.Message.ProverProviderType != types.ProverProviderTypeInternal && login.Message.ProverProviderType != types.ProverProviderTypeExternal {
+		// for backward compatibility, set ProverProviderType as internal
+		if login.Message.ProverProviderType == types.ProverProviderTypeUndefined {
+			login.Message.ProverProviderType = types.ProverProviderTypeInternal
+		} else {
+			log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover version", login.Message.ProverVersion)
+			return errors.New("invalid prover provider type.")
+		}
+	}
+
 	return nil
 }
 

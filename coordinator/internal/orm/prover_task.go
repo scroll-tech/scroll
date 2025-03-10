@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -60,7 +61,7 @@ func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (bo
 	var task ProverTask
 	err := db.Where("prover_public_key = ? AND proving_status = ?", publicKey, types.ProverAssigned).First(&task).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
 		return false, err
@@ -112,6 +113,27 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType messag
 	var proverTasks []*ProverTask
 	if err := db.Find(&proverTasks).Error; err != nil {
 		return nil, fmt.Errorf("ProverTask.GetProverTasksByHashes error: %w, hashes: %v", err, hashes)
+	}
+	return proverTasks, nil
+}
+
+// GetFailedProverTasksByHash retrieves the failed ProverTask records associated with the specified hash.
+// The returned prover task objects are sorted in descending order by their ids.
+func (o *ProverTask) GetFailedProverTasksByHash(ctx context.Context, taskType message.ProofType, hash string, limit int) ([]*ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type", int(taskType))
+	db = db.Where("task_id", hash)
+	db = db.Where("proving_status = ?", int(types.ProverProofInvalid))
+	db = db.Order("id desc")
+
+	if limit != 0 {
+		db = db.Limit(limit)
+	}
+
+	var proverTasks []*ProverTask
+	if err := db.Find(&proverTasks).Error; err != nil {
+		return nil, fmt.Errorf("ProverTask.GetFailedProverTasksByHash error: %w, hash: %v", err, hash)
 	}
 	return proverTasks, nil
 }

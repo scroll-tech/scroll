@@ -83,7 +83,7 @@ func (*Batch) TableName() string {
 func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND codec_version != 5 AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
 		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
@@ -93,6 +93,23 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 		return nil, nil
 	}
 	return &batch, nil
+}
+
+// GetUnassignedBatchCount retrieves unassigned batch count.
+func (o *Batch) GetUnassignedBatchCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
+	db = db.Where("codec_version != 5")
+	db = db.Where("batch.deleted_at IS NULL")
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Batch.GetUnassignedBatchCount error: %w", err)
+	}
+	return count, nil
 }
 
 // GetAssignedBatch retrieves assigned batch based on the specified limit.

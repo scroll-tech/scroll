@@ -91,7 +91,7 @@ linters-settings:
     #local-prefixes: github.com/org/project
   gocyclo:
     # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 30
+    min-complexity: 40
   maligned:
     # print struct with more effective memory layout or not, false by default
     suggest-new: true
@@ -254,6 +254,9 @@ issues:
     - linters:
         - wsl
       text: "expressions should not be cuddled with declarations or returns"
+    - linters:
+        - govet
+      text: 'shadow: declaration of "(err|ctx)" shadows declaration at'
 
   # Independently from option `exclude` we use default exclude patterns,
   # it can be disabled by this option. To list all

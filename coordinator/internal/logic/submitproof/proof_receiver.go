@@ -171,23 +171,23 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 
 	switch message.ProofType(proofParameter.TaskType) {
 	case message.ProofTypeChunk:
-		var chunkProof message.ChunkProof
+		chunkProof := message.NewChunkProof(hardForkName)
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyChunkProof(&chunkProof, hardForkName)
+		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)
 	case message.ProofTypeBatch:
-		var batchProof message.BatchProof
+		batchProof := message.NewBatchProof(hardForkName)
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, hardForkName)
+		success, verifyErr = m.verifier.VerifyBatchProof(batchProof, hardForkName)
 	case message.ProofTypeBundle:
-		var bundleProof message.BundleProof
+		bundleProof := message.NewBundleProof(hardForkName)
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBundleProof(&bundleProof, hardForkName)
+		success, verifyErr = m.verifier.VerifyBundleProof(bundleProof, hardForkName)
 	}
 
 	if verifyErr != nil || !success {
@@ -265,7 +265,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
 
-	if proofParameter.Status != int(message.StatusOk) {
+	if proofParameter.Status != int(coordinatorType.StatusOk) {
 		// Temporarily replace "panic" with "pa-nic" to prevent triggering the alert based on logs.
 		failureMsg := strings.Replace(proofParameter.FailureMsg, "panic", "pa-nic", -1)
 

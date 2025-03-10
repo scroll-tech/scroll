@@ -22,6 +22,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // BatchProverTask is prover task implement for batch proof
@@ -63,6 +64,18 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
+	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
+		unassignedBatchCount, getCountError := bp.batchOrm.GetUnassignedBatchCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+		if getCountError != nil {
+			log.Error("failed to get unassigned batch proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		// Assign external prover if unassigned task number exceeds threshold
+		if unassignedBatchCount < bp.cfg.ProverManager.ExternalProverThreshold {
+			return nil, nil
+		}
+	}
+
 	var batchTask *orm.Batch
 	for i := 0; i < 5; i++ {
 		var getTaskError error
@@ -86,6 +99,20 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		if tmpBatchTask == nil {
 			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
 			return nil, nil
+		}
+
+		// Don't dispatch the same failing job to the same prover
+		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+		if getTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				return nil, nil
+			}
 		}
 
 		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
@@ -117,14 +144,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	//if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-	//	bp.recoverActiveAttempts(ctx, batchTask)
-	//	log.Error("incompatible prover version",
-	//		"requisite hard fork name", hardForkName,
-	//		"prover hard fork name", taskCtx.HardForkNames,
-	//		"task_id", batchTask.Hash)
-	//	return nil, ErrCoordinatorInternalFailure
-	//}
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+		bp.recoverActiveAttempts(ctx, batchTask)
+		log.Error("incompatible prover version",
+			"requisite hard fork name", hardForkName,
+			"prover hard fork name", taskCtx.HardForkNames,
+			"task_id", batchTask.Hash)
+		return nil, ErrCoordinatorInternalFailure
+	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
@@ -188,25 +215,28 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("no chunk found for batch task id:%s", task.TaskID)
 	}
 
-	var chunkProofs []*message.ChunkProof
+	var chunkProofs []message.ChunkProof
 	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
-		var proof message.ChunkProof
+		proof := message.NewChunkProof(hardForkName)
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
-		chunkProofs = append(chunkProofs, &proof)
+		chunkProofs = append(chunkProofs, proof)
 
 		chunkInfo := message.ChunkInfo{
-			ChainID:       bp.cfg.L2.ChainID,
-			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot: common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
-			DataHash:      common.HexToHash(chunk.Hash),
-			IsPadding:     false,
+			ChainID:          bp.cfg.L2.ChainID,
+			PrevStateRoot:    common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot:    common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
+			DataHash:         common.HexToHash(chunk.Hash),
+			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+			IsPadding:        false,
 		}
-		if proof.ChunkInfo != nil {
-			chunkInfo.TxBytes = proof.ChunkInfo.TxBytes
+		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
+			if haloProot.ChunkInfo != nil {
+				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+			}
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -232,18 +262,21 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 }
 
 func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
-	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
+	if err := bp.batchOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
 	}
 
-	if encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV3 && encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV4 {
+	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
+	switch dbBatchCodecVersion {
+	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7:
+	default:
 		return taskDetail, nil
 	}
 
@@ -259,5 +292,16 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
 
+	if len(dbBatch.BlobDataProof) < 160 {
+		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
+	}
+
+	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
+	// | z       | y       | kzg_commitment | kzg_proof |
+	// |---------|---------|----------------|-----------|
+	// | bytes32 | bytes32 | bytes48        | bytes48   |
+	taskDetail.KzgProof = dbBatch.BlobDataProof[112:160]
+	taskDetail.KzgCommitment = dbBatch.BlobDataProof[64:112]
+	taskDetail.Challenge = common.Hash(dbBatch.BlobDataProof[0:32])
 	return taskDetail, nil
 }

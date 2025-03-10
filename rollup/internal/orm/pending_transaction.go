@@ -8,6 +8,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -150,8 +151,33 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 	return nil
 }
 
-// UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
-func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
+// DeleteTransactionByTxHash permanently deletes a transaction record from the database by transaction hash.
+// Using permanent delete (Unscoped) instead of soft delete to prevent database bloat, as repeated SendTransaction failures
+// could write a large number of transactions to the database.
+func (o *PendingTransaction) DeleteTransactionByTxHash(ctx context.Context, hash common.Hash, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+
+	// Perform permanent delete by using Unscoped()
+	result := db.Where("hash = ?", hash.String()).Unscoped().Delete(&PendingTransaction{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete transaction, err: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no transaction found with hash: %s", hash.String())
+	}
+	if result.RowsAffected > 0 {
+		log.Warn("Successfully deleted transaction", "hash", hash.String())
+	}
+	return nil
+}
+
+// UpdateTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
+func (o *PendingTransaction) UpdateTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -160,7 +186,7 @@ func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.
 	db = db.Model(&PendingTransaction{})
 	db = db.Where("hash = ?", hash.String())
 	if err := db.Update("status", status).Error; err != nil {
-		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
+		return fmt.Errorf("failed to UpdateTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
 	}
 	return nil
 }

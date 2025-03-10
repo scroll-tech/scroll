@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -34,7 +35,8 @@ type ChunkProposer struct {
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
 
-	chainCfg *params.ChainConfig
+	minCodecVersion encoding.CodecVersion
+	chainCfg        *params.ChainConfig
 
 	chunkProposerCircleTotal           prometheus.Counter
 	proposeChunkFailureTotal           prometheus.Counter
@@ -60,7 +62,7 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Info("new chunk proposer",
 		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
@@ -85,6 +87,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -277,6 +280,10 @@ func (p *ChunkProposer) ProposeChunk() error {
 
 	codecVersion := encoding.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
+	if codecVersion < p.minCodecVersion {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, p.minCodecVersion)
+	}
+
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
 		chunk := encoding.Chunk{Blocks: blocks[:1]}
@@ -288,9 +295,43 @@ func (p *ChunkProposer) ProposeChunk() error {
 		return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
 	}
 
+	if proposed, err := p.tryProposeEuclidTransitionChunk(blocks); proposed || err != nil {
+		return err
+	}
+
 	var chunk encoding.Chunk
+	// From CodecV7 / EuclidV2 onwards we need to provide the PrevL1MessageQueueHash and PostL1MessageQueueHash.
+	// PrevL1MessageQueueHash of the first chunk in the fork needs to be the empty hash.
+	if codecVersion >= encoding.CodecV7 {
+		parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+		if err != nil || parentChunk == nil {
+			return fmt.Errorf("failed to get parent chunk: %w", err)
+		}
+
+		chunk.PrevL1MessageQueueHash = common.HexToHash(parentChunk.PostL1MessageQueueHash)
+
+		// previous chunk is not CodecV7, this means this is the first chunk of the fork.
+		if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
+			chunk.PrevL1MessageQueueHash = common.Hash{}
+		}
+
+		chunk.PostL1MessageQueueHash = chunk.PrevL1MessageQueueHash
+	}
+
+	var previousPostL1MessageQueueHash common.Hash
+	chunk.Blocks = make([]*encoding.Block, 0, len(blocks))
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
+
+		// Compute rolling PostL1MessageQueueHash for the chunk. Each block's L1 messages are applied to the previous
+		// hash starting from the PrevL1MessageQueueHash for the chunk.
+		if codecVersion >= encoding.CodecV7 {
+			previousPostL1MessageQueueHash = chunk.PostL1MessageQueueHash
+			chunk.PostL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(previousPostL1MessageQueueHash, []*encoding.Block{block})
+			if err != nil {
+				return fmt.Errorf("failed to calculate last L1 message queue hash for block %d: %w", block.Header.Number.Uint64(), err)
+			}
+		}
 
 		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
@@ -328,6 +369,7 @@ func (p *ChunkProposer) ProposeChunk() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+			chunk.PostL1MessageQueueHash = previousPostL1MessageQueueHash
 
 			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {
@@ -379,4 +421,33 @@ func (p *ChunkProposer) recordTimerChunkMetrics(metrics *utils.ChunkMetrics) {
 	p.chunkEstimateGasTime.Set(float64(metrics.EstimateGasTime))
 	p.chunkEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
 	p.chunkEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
+}
+
+func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block) (bool, error) {
+	if !p.chainCfg.IsEuclid(blocks[0].Header.Time) {
+		return false, nil
+	}
+
+	prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
+	if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
+		return false, fmt.Errorf("failed to get parent block: %w", err)
+	}
+
+	if p.chainCfg.IsEuclid(prevBlocks[0].Header.Time) {
+		// Parent is still Euclid, transition happened already
+		return false, nil
+	}
+
+	// blocks[0] is Euclid, but parent is not, propose a chunk with only blocks[0]
+	chunk := encoding.Chunk{Blocks: blocks[:1]}
+	codecVersion := encoding.CodecV5
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+	if calcErr != nil {
+		return false, fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
+	}
+	p.recordTimerChunkMetrics(metrics)
+	if err := p.updateDBChunkInfo(&chunk, codecVersion, metrics); err != nil {
+		return false, err
+	}
+	return true, nil
 }

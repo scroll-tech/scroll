@@ -2,26 +2,20 @@
 #![feature(core_intrinsics)]
 
 mod config;
-mod coordinator_client;
-mod geth_client;
-mod key_signer;
 mod prover;
-mod task_cache;
-mod task_processor;
 mod types;
 mod utils;
-mod version;
 mod zk_circuits_handler;
 
-use anyhow::Result;
 use clap::{ArgAction, Parser};
-use config::{AssetsDirEnvConfig, Config};
-use prover::Prover;
-use std::rc::Rc;
-use task_cache::{ClearCacheCoordinatorListener, TaskCache};
-use task_processor::TaskProcessor;
+use prover::{LocalProver, LocalProverConfig};
+use scroll_proving_sdk::{
+    prover::ProverBuilder,
+    utils::{get_version, init_tracing},
+};
+use tokio::runtime;
+use utils::get_prover_type;
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(disable_version_flag = true)]
 struct Args {
@@ -38,49 +32,45 @@ struct Args {
     log_file: Option<String>,
 }
 
-fn start() -> Result<()> {
-    let args = Args::parse();
+fn main() -> anyhow::Result<()> {
+    let rt = runtime::Builder::new_multi_thread()
+        .thread_stack_size(16 * 1024 * 1024) // Set stack size to 16MB
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime");
 
-    if args.version {
-        println!("version is {}", version::get_version());
-        std::process::exit(0);
-    }
+    rt.block_on(async {
+        init_tracing();
 
-    utils::log_init(args.log_file);
+        let args = Args::parse();
 
-    let config: Config = Config::from_file(args.config_file)?;
+        if args.version {
+            println!("version is {}", get_version());
+            std::process::exit(0);
+        }
 
-    if let Err(e) = AssetsDirEnvConfig::init() {
-        log::error!("AssetsDirEnvConfig init failed: {:#}", e);
-        std::process::exit(-2);
-    }
+        let cfg = LocalProverConfig::from_file(args.config_file)?;
+        let sdk_config = cfg.sdk_config.clone();
+        let mut prover_types = vec![];
+        sdk_config
+            .prover
+            .circuit_types
+            .iter()
+            .for_each(|circuit_type| {
+                if let Some(pt) = get_prover_type(*circuit_type) {
+                    if !prover_types.contains(&pt) {
+                        prover_types.push(pt);
+                    }
+                }
+            });
+        let local_prover = LocalProver::new(cfg, prover_types);
+        let prover = ProverBuilder::new(sdk_config)
+            .with_proving_service(Box::new(local_prover))
+            .build()
+            .await?;
 
-    let task_cache = Rc::new(TaskCache::new(&config.db_path)?);
+        prover.run().await;
 
-    let coordinator_listener = Box::new(ClearCacheCoordinatorListener {
-        task_cache: task_cache.clone(),
-    });
-
-    let prover = Prover::new(&config, coordinator_listener)?;
-
-    log::info!(
-        "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
-        config.prover_name,
-        config.prover_type,
-        prover.get_public_key(),
-        version::get_version(),
-    );
-
-    let task_processor = TaskProcessor::new(&prover, task_cache);
-
-    task_processor.start();
-
-    Ok(())
-}
-
-fn main() {
-    let result = start();
-    if let Err(e) = result {
-        log::error!("main exit with error {:#}", e)
-    }
+        Ok(())
+    })
 }

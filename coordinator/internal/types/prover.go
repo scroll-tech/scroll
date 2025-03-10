@@ -6,6 +6,16 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// RespStatus represents status code from prover to scroll
+type RespStatus uint32
+
+const (
+	// StatusOk means generate proof success
+	StatusOk RespStatus = iota
+	// StatusProofError means generate proof failed
+	StatusProofError
+)
+
 // ProverType represents the type of prover.
 type ProverType uint8
 
@@ -27,11 +37,13 @@ const (
 	ProverTypeChunk
 	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks
 	ProverTypeBatch
+	// ProverTypeOpenVM
+	ProverTypeOpenVM
 )
 
 // MakeProverType make ProverType from ProofType
-func MakeProverType(proof_type message.ProofType) ProverType {
-	switch proof_type {
+func MakeProverType(proofType message.ProofType) ProverType {
+	switch proofType {
 	case message.ProofTypeChunk:
 		return ProverTypeChunk
 	case message.ProofTypeBatch, message.ProofTypeBundle:
@@ -40,3 +52,26 @@ func MakeProverType(proof_type message.ProofType) ProverType {
 		return ProverTypeUndefined
 	}
 }
+
+// ProverProviderType represents the type of prover provider.
+type ProverProviderType uint8
+
+func (r ProverProviderType) String() string {
+	switch r {
+	case ProverProviderTypeInternal:
+		return "prover provider type internal"
+	case ProverProviderTypeExternal:
+		return "prover provider type external"
+	default:
+		return fmt.Sprintf("prover provider type: %d", r)
+	}
+}
+
+const (
+	// ProverProviderTypeUndefined is an unknown prover provider type
+	ProverProviderTypeUndefined ProverProviderType = iota
+	// ProverProviderTypeInternal is an internal prover provider type
+	ProverProviderTypeInternal
+	// ProverProviderTypeExternal is an external prover provider type
+	ProverProviderTypeExternal
+)

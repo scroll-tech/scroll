@@ -67,7 +67,7 @@ func (o *Bundle) GetLatestBundle(ctx context.Context) (*Bundle, error) {
 
 	var latestBundle Bundle
 	if err := db.First(&latestBundle).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("GetLatestBundle error: %w", err)
@@ -134,7 +134,7 @@ func (o *Bundle) GetFirstPendingBundle(ctx context.Context) (*Bundle, error) {
 }
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a bundle with the given hash.
-func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.BundleProof, error) {
+func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash, hardForkName string) (message.BundleProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Select("proof")
@@ -145,11 +145,11 @@ func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash string) (*mess
 		return nil, fmt.Errorf("Bundle.GetVerifiedProofByHash error: %w, bundle hash: %v", err, hash)
 	}
 
-	var proof message.BundleProof
+	proof := message.NewBundleProof(hardForkName)
 	if err := json.Unmarshal(bundle.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Bundle.GetVerifiedProofByHash error: %w, bundle hash: %v", err, hash)
 	}
-	return &proof, nil
+	return proof, nil
 }
 
 // InsertBundle inserts a new bundle into the database.
@@ -194,7 +194,7 @@ func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash s
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -218,7 +218,7 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 
 	switch status {
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -241,7 +241,7 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 	updateFields := make(map[string]interface{})
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -260,7 +260,7 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 
 // UpdateProofAndProvingStatusByHash updates the bundle proof and proving status by hash.
 // only used in unit tests.
-func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.BundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof message.BundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
