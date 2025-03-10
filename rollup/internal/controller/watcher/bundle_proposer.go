@@ -169,7 +169,7 @@ func (p *BundleProposer) proposeBundle() error {
 	for i := 1; i < len(batches); i++ {
 		// Make sure that all batches have been committed.
 		if len(batches[i].CommitTxHash) == 0 {
-			return fmt.Errorf("commit tx hash is empty for batch %v %s", batches[0].Index, batches[0].Hash)
+			return fmt.Errorf("commit tx hash is empty for batch %v %s", batches[i].Index, batches[i].Hash)
 		}
 
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
@@ -230,6 +230,11 @@ func (p *BundleProposer) allBatchesCommittedInSameTXIncluded(batches []*orm.Batc
 	batchesWithSameCommitTX, err := p.batchOrm.GetBatches(p.ctx, fields, nil, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batches with the same commit tx hash: %w", err)
+	}
+
+	// This should never happen as we take the commit tx hash from the last batch which should always exist in this returned list
+	if len(batchesWithSameCommitTX) == 0 {
+		return nil, fmt.Errorf("no matching batches found for commit tx hash %s", lastBatch.CommitTxHash)
 	}
 
 	// get the batch with the highest index amongst the batches with the same commit tx hash as lastBatch
