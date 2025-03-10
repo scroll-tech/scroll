@@ -253,6 +253,10 @@ github.com/scroll-tech/da-codec v0.1.3-0.20250227072756-a1482833595f h1:YYbhuUwj
 github.com/scroll-tech/da-codec v0.1.3-0.20250227072756-a1482833595f/go.mod h1:xECEHZLVzbdUn+tNbRJhRIjLGTOTmnFQuTgUTeVLX58=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3 h1:y0L8+O3anBJIpboVWhNlUx3VC59he+0fd4b8PnDR16w=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
+github.com/scroll-tech/da-codec v0.1.3-0.20250310095435-012aaee6b435 h1:X9fkvjrYBY79lGgKEPpUhuiJ4vWpWwzOVw4H8CU8L54=
+github.com/scroll-tech/da-codec v0.1.3-0.20250310095435-012aaee6b435/go.mod h1:yhTS9OVC0xQGhg7DN5iV5KZJvnSIlFWAxDdp+6jxQtY=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250305151038-478940e79601 h1:NEsjCG6uSvLRBlsP3+x6PL1kM+Ojs3g8UGotIPgJSz8=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250305151038-478940e79601/go.mod h1:OblWe1+QrZwdpwO0j/LY3BSGuKT3YPUFBDQQgvvfStQ=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
