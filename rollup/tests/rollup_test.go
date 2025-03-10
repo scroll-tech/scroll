@@ -133,10 +133,6 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		batches, getErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
 		assert.NoError(t, getErr)
 
-		for _, batch := range batches {
-			fmt.Println(batch.CodecVersion, batch.Index, batch.CommitTxHash, batch.RollupStatus)
-		}
-
 		assert.Len(t, batches, 3)
 		batches = batches[1:]
 		for _, batch := range batches {
@@ -146,7 +142,7 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		}
 
 		// make sure that batches 1 and 2 have been committed in separate transactions
-		return batches[0].CommitTxHash == batches[1].CommitTxHash
+		return batches[0].CommitTxHash != batches[1].CommitTxHash
 	}, 30*time.Second, time.Second)
 
 	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
