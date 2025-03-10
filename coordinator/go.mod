@@ -11,8 +11,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250304112538-3c454e7101a3
+	github.com/scroll-tech/da-codec v0.1.3-0.20250310095435-012aaee6b435
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305151038-478940e79601
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.25.7
