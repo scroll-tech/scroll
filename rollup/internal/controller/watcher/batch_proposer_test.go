@@ -140,6 +140,7 @@ func testBatchProposerLimitsCodecV4(t *testing.T) {
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
+				MaxChunksPerBatch:               math.MaxInt32,
 			}, encoding.CodecV4, &params.ChainConfig{
 				LondonBlock:    big.NewInt(0),
 				BernoulliBlock: big.NewInt(0),
@@ -228,6 +229,7 @@ func testBatchCommitGasAndCalldataSizeEstimationCodecV4(t *testing.T) {
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+		MaxChunksPerBatch:               math.MaxInt32,
 	}, encoding.CodecV4, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, db, nil)
 	bp.TryProposeBatch()
 
@@ -317,6 +319,7 @@ func testBatchProposerBlobSizeLimitCodecV4(t *testing.T) {
 			BatchTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
+			MaxChunksPerBatch:               math.MaxInt32,
 		}, encoding.CodecV4, chainConfig, db, nil)
 
 		for i := 0; i < 2; i++ {
@@ -406,6 +409,7 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV4(t *testing.T) {
 			BatchTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
+			MaxChunksPerBatch:               math.MaxInt32,
 		}, encoding.CodecV4, chainConfig, db, nil)
 		bp.TryProposeBatch()
 

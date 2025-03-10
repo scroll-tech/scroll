@@ -1,16 +1,15 @@
 mod utils;
 mod verifier;
 
+use std::path::Path;
+
 use crate::utils::{c_char_to_str, c_char_to_vec};
 use libc::c_char;
-use prover_v5::utils::init_env_and_log;
 use verifier::{TaskType, VerifierConfig};
 
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init(config: *const c_char) {
-    init_env_and_log("ffi_init");
-
     let config_str = c_char_to_str(config);
     let verifier_config = serde_json::from_str::<VerifierConfig>(config_str).unwrap();
     verifier::init(verifier_config);
@@ -26,9 +25,14 @@ pub unsafe extern "C" fn verify_chunk_proof(
 }
 
 fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
-    let proof = c_char_to_vec(proof);
-
     let fork_name_str = c_char_to_str(fork_name);
+    // Skip verification for darwinV2 as we can't host darwinV2 and euclid verifiers on the same
+    // binary.
+    if fork_name_str == "darwinV2" {
+        return true as c_char;
+    }
+
+    let proof = c_char_to_vec(proof);
     let verifier = verifier::get_verifier(fork_name_str);
 
     if let Err(e) = verifier {
@@ -60,4 +64,19 @@ pub unsafe extern "C" fn verify_bundle_proof(
     fork_name: *const c_char,
 ) -> c_char {
     verify_proof(proof, fork_name, TaskType::Bundle)
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn dump_vk(fork_name: *const c_char, file: *const c_char) {
+    _dump_vk(fork_name, file);
+}
+
+fn _dump_vk(fork_name: *const c_char, file: *const c_char) {
+    let fork_name_str = c_char_to_str(fork_name);
+    let verifier = verifier::get_verifier(fork_name_str);
+
+    if let Ok(verifier) = verifier {
+        verifier.as_ref().dump_vk(Path::new(c_char_to_str(file)));
+    }
 }

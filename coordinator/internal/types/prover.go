@@ -6,6 +6,16 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// RespStatus represents status code from prover to scroll
+type RespStatus uint32
+
+const (
+	// StatusOk means generate proof success
+	StatusOk RespStatus = iota
+	// StatusProofError means generate proof failed
+	StatusProofError
+)
+
 // ProverType represents the type of prover.
 type ProverType uint8
 
@@ -27,6 +37,8 @@ const (
 	ProverTypeChunk
 	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks
 	ProverTypeBatch
+	// ProverTypeOpenVM
+	ProverTypeOpenVM
 )
 
 // MakeProverType make ProverType from ProofType

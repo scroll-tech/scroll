@@ -205,6 +205,10 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
+		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
+			return fmt.Errorf("failed to insert genesis block: %v", err)
+		}
+
 		var dbChunk *orm.Chunk
 		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
 		if err != nil {
@@ -426,7 +430,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		var blob *kzg4844.Blob
 		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 		switch codecVersion {
-		case encoding.CodecV4:
+		case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
 			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatchWithBlobProof payload for V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
@@ -523,6 +527,33 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 				return
 			}
 
+			lastFinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, lastBatch.EndChunkIndex)
+			if err != nil {
+				log.Error("failed to get last finalized chunk", "chunk index", lastBatch.EndChunkIndex)
+				return
+			}
+
+			firstUnfinalizedBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex)
+			if err != nil {
+				log.Error("failed to get first unfinalized batch", "batch index", bundle.StartBatchIndex)
+				return
+			}
+
+			firstUnfinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstUnfinalizedBatch.StartChunkIndex)
+			if err != nil {
+				log.Error("failed to get firsr unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
+				return
+			}
+
+			if r.cfg.TestEnvBypassOnlyUntilForkBoundary {
+				lastFork := encoding.GetHardforkName(r.chainCfg, lastFinalizedChunk.StartBlockNumber, lastFinalizedChunk.StartBlockTime)
+				nextFork := encoding.GetHardforkName(r.chainCfg, firstUnfinalizedChunk.StartBlockNumber, firstUnfinalizedChunk.StartBlockTime)
+				if lastFork != nextFork {
+					log.Info("not fake finalizing past the fork boundary", "last fork", lastFork, "next fork", nextFork)
+					return
+				}
+			}
+
 			if err := r.finalizeBundle(bundle, false); err != nil {
 				log.Error("failed to finalize timeout bundle without proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 				return
@@ -609,9 +640,17 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return err
 	}
 
-	var aggProof *message.BundleProof
+	firstChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatch.StartChunkIndex)
+	if err != nil || firstChunk == nil {
+		log.Error("failed to get first chunk of batch", "chunk index", dbBatch.StartChunkIndex, "error", err)
+		return fmt.Errorf("failed to get first chunk of batch: %w", err)
+	}
+
+	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
+
+	var aggProof message.BundleProof
 	if withProof {
-		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash)
+		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash, hardForkName)
 		if err != nil {
 			return fmt.Errorf("failed to get verified proof by bundle index: %d, err: %w", bundle.Index, err)
 		}
@@ -883,14 +922,14 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof *message.BundleProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundleWithProof",
 			dbBatch.BatchHeader,
 			common.HexToHash(dbBatch.StateRoot),
 			common.HexToHash(dbBatch.WithdrawRoot),
-			aggProof.Proof,
+			aggProof.Proof(),
 		)
 		if packErr != nil {
 			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)

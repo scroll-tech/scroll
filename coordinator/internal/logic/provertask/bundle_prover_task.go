@@ -144,14 +144,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	//if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-	//	bp.recoverActiveAttempts(ctx, bundleTask)
-	//	log.Error("incompatible prover version",
-	//		"requisite hard fork name", hardForkName,
-	//		"prover hard fork name", taskCtx.HardForkNames,
-	//		"task_id", bundleTask.Hash)
-	//	return nil, ErrCoordinatorInternalFailure
-	//}
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+		bp.recoverActiveAttempts(ctx, bundleTask)
+		log.Error("incompatible prover version",
+			"requisite hard fork name", hardForkName,
+			"prover hard fork name", taskCtx.HardForkNames,
+			"task_id", bundleTask.Hash)
+		return nil, ErrCoordinatorInternalFailure
+	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          bundleTask.Hash,
@@ -221,13 +221,13 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
-	var batchProofs []*message.BatchProof
+	var batchProofs []message.BatchProof
 	for _, batch := range batches {
-		var proof message.BatchProof
+		proof := message.NewBatchProof(hardForkName)
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, task.TaskID, batch.Hash)
 		}
-		batchProofs = append(batchProofs, &proof)
+		batchProofs = append(batchProofs, proof)
 	}
 
 	taskDetail := message.BundleTaskDetail{
