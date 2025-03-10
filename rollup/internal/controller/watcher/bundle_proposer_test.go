@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
@@ -118,6 +121,24 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 				MaxBatchNumPerBundle: tt.maxBatchNumPerBundle,
 				BundleTimeoutSec:     tt.bundleTimeoutSec,
 			}, encoding.CodecV4, chainConfig, db, nil)
+
+			batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
+			require.NoError(t, err)
+			require.Len(t, batches, 3) // genesis batch + batch1 + batch2
+			batches = batches[1:]      // remove genesis batch
+
+			// simulate batches 1 and 2 being submitted in separate transactions -> need it to be able to propose bundles
+			err = db.Transaction(func(dbTX *gorm.DB) error {
+				if err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batches[0].Hash, "0xdefdef", types.RollupCommitted, dbTX); err != nil {
+					return fmt.Errorf("UpdateCommitTxHashAndRollupStatus failed for batch %d: %s, err %v", batches[0].Index, batches[0].Hash, err)
+				}
+
+				if err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batches[1].Hash, "0xabcabc", types.RollupCommitted, dbTX); err != nil {
+					return fmt.Errorf("UpdateCommitTxHashAndRollupStatus failed for batch %d: %s, err %v", batches[1].Index, batches[1].Hash, err)
+				}
+				return nil
+			})
+			require.NoError(t, err)
 
 			bup.TryProposeBundle()
 

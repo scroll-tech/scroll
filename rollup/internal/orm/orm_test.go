@@ -310,6 +310,8 @@ func TestBatchOrm(t *testing.T) {
 		assert.Equal(t, types.GasOracleImported, types.GasOracleStatus(updatedBatch.OracleStatus))
 		assert.Equal(t, "oracleTxHash", updatedBatch.OracleTxHash)
 
+		err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash1, "commitTxHash", types.RollupCommitted)
+		assert.NoError(t, err)
 		err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash2, "commitTxHash", types.RollupCommitted)
 		assert.NoError(t, err)
 		updatedBatch, err = batchOrm.GetLatestBatch(context.Background())
