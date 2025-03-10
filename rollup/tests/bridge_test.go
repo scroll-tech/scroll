@@ -26,6 +26,7 @@ import (
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 	"scroll-tech/database/migrate"
+
 	bcmd "scroll-tech/rollup/cmd"
 	"scroll-tech/rollup/mock_bridge"
 )
