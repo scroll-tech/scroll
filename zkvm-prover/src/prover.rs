@@ -186,9 +186,11 @@ impl LocalProver {
     }
 
     fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+        println!("in new_handler");
         // if we got assigned a task for an unknown hard fork, there is something wrong in the
         // coordinator
         let config = self.config.circuits.get(hard_fork_name).unwrap();
+        println!("config workspace path for hard-fork {:?} = {:?}", hard_fork_name, config.workspace_path);
 
         match hard_fork_name {
             "euclid" => Arc::new(Arc::new(Mutex::new(EuclidHandler::new(
