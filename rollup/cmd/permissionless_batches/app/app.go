@@ -6,9 +6,11 @@ import (
 	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/urfave/cli/v2"
+
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/observability"
@@ -47,7 +49,13 @@ func action(ctx *cli.Context) error {
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
 
-	// Make sure the required fields are set.
+	// Sanity check config. Make sure the required fields are set.
+	if cfg.RecoveryConfig == nil {
+		return fmt.Errorf("recovery config must be specified")
+	}
+	if cfg.RecoveryConfig.L1BeaconNodeEndpoint == "" {
+		return fmt.Errorf("L1 beacon node endpoint must be specified")
+	}
 	if cfg.RecoveryConfig.L1BlockHeight == 0 {
 		return fmt.Errorf("L1 block height must be specified")
 	}
@@ -75,9 +83,10 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
-	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, genesis.Config, db, registry)
+	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
@@ -89,15 +98,15 @@ func action(ctx *cli.Context) error {
 
 	recovery := permissionless_batches.NewRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2Watcher)
 
-	if recovery.RecoveryNeeded() {
-		if err = recovery.Run(); err != nil {
-			return fmt.Errorf("failed to run recovery: %w", err)
-		}
-		log.Info("Success! You're ready to generate proofs!")
-	} else {
-		// TODO: implement batch submission if proofs are available
-		log.Info("TODO: Batch submission")
+	//if recovery.RecoveryNeeded() {
+	if err = recovery.Run(); err != nil {
+		return fmt.Errorf("failed to run recovery: %w", err)
 	}
+	log.Info("Success! You're ready to generate proofs!")
+	//} else {
+	//	TODO: implement batch submission if proofs are available
+	//log.Info("TODO: Batch submission")
+	//}
 
 	return nil
 }

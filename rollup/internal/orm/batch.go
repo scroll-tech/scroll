@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"gorm.io/gorm"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -334,19 +335,21 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 func (o *Batch) InsertPermissionlessBatch(ctx context.Context, batchIndex *big.Int, batchHash common.Hash, codecVersion encoding.CodecVersion, chunk *Chunk) (*Batch, error) {
 	now := time.Now()
 	newBatch := &Batch{
-		Index:           batchIndex.Uint64(),
-		Hash:            batchHash.Hex(),
-		StartChunkIndex: chunk.Index,
-		StartChunkHash:  chunk.Hash,
-		EndChunkIndex:   chunk.Index,
-		EndChunkHash:    chunk.Hash,
-		BatchHeader:     []byte{1, 2, 3},
-		CodecVersion:    int16(codecVersion),
-		EnableCompress:  false,
-		ProvingStatus:   int16(types.ProvingTaskVerified),
-		ProvedAt:        &now,
-		RollupStatus:    int16(types.RollupFinalized),
-		FinalizedAt:     &now,
+		Index:                  batchIndex.Uint64(),
+		Hash:                   batchHash.Hex(),
+		StartChunkIndex:        chunk.Index,
+		StartChunkHash:         chunk.Hash,
+		EndChunkIndex:          chunk.Index,
+		EndChunkHash:           chunk.Hash,
+		PrevL1MessageQueueHash: chunk.PrevL1MessageQueueHash,
+		PostL1MessageQueueHash: chunk.PostL1MessageQueueHash,
+		BatchHeader:            []byte{1, 2, 3},
+		CodecVersion:           int16(codecVersion),
+		EnableCompress:         false,
+		ProvingStatus:          int16(types.ProvingTaskVerified),
+		ProvedAt:               &now,
+		RollupStatus:           int16(types.RollupFinalized),
+		FinalizedAt:            &now,
 	}
 
 	db := o.db.WithContext(ctx)

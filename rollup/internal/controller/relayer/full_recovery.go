@@ -80,7 +80,7 @@ func (f *FullRecovery) RestoreFullPreviousState() error {
 	log.Info("Latest finalized L1 block number", "latest finalized L1 block", latestFinalizedL1Block)
 
 	// 3. Get latest finalized batch from contract (at latest finalized L1 block)
-	latestFinalizedBatchContract, err := f.l1Reader.LatestFinalizedBatch(latestFinalizedL1Block)
+	latestFinalizedBatchContract, err := f.l1Reader.LatestFinalizedBatchIndex(latestFinalizedL1Block)
 	if err != nil {
 		return fmt.Errorf("failed to get latest finalized batch: %w", err)
 	}

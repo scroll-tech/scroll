@@ -9,9 +9,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
+	"gorm.io/gorm"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
-	"gorm.io/gorm"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -99,7 +100,7 @@ func (p *BundleProposer) TryProposeBundle() {
 	}
 }
 
-func (p *BundleProposer) updateDBBundleInfo(batches []*orm.Batch, codecVersion encoding.CodecVersion) error {
+func (p *BundleProposer) UpdateDBBundleInfo(batches []*orm.Batch, codecVersion encoding.CodecVersion) error {
 	if len(batches) == 0 {
 		return nil
 	}
@@ -194,7 +195,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 		p.bundleFirstBlockTimeoutReached.Inc()
 		p.bundleBatchesNum.Set(float64(len(batches)))
-		return p.updateDBBundleInfo(batches, codecVersion)
+		return p.UpdateDBBundleInfo(batches, codecVersion)
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
@@ -208,7 +209,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 		p.bundleFirstBlockTimeoutReached.Inc()
 		p.bundleBatchesNum.Set(float64(len(batches)))
-		return p.updateDBBundleInfo(batches, codecVersion)
+		return p.UpdateDBBundleInfo(batches, codecVersion)
 	}
 
 	log.Debug("pending batches are not enough and do not contain a timeout batch")
