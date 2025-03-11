@@ -135,8 +135,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, nil
 	}
 
-	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-
 	hardForkName, getHardForkErr := bp.hardForkName(ctx, batchTask)
 	if getHardForkErr != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
@@ -146,13 +144,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
 		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("incompatible prover version",
+		log.Debug("incompatible prover version",
 			"requisite hard fork name", hardForkName,
 			"prover hard fork name", taskCtx.HardForkNames,
 			"task_id", batchTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
+		return nil, nil
 	}
 
+	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
