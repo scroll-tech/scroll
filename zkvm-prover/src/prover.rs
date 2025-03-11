@@ -66,6 +66,7 @@ impl ProvingService for LocalProver {
         for hard_fork_name in self.config.circuits.keys() {
             println!("\n\n\nhard fork = {:?}", hard_fork_name);
             let handler = self.new_handler(hard_fork_name);
+            println!("request proof-types = {:?}", req.proof_types);
             for proof_type in &req.proof_types {
                 let vk = handler.get_vk(*proof_type).await;
                 println!("proof type = {:?}, vk = {:?}", proof_type, vk);
