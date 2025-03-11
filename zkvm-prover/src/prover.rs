@@ -1,4 +1,4 @@
-use crate::zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler};
+use crate::zk_circuits_handler::{euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::{
@@ -183,6 +183,7 @@ impl LocalProver {
 
         Arc::new(match hard_fork_name {
             "euclid" => Arc::new(Mutex::new(EuclidHandler::new(&config.workspace_path))),
+            "euclidV2" => Arc::new(Mutex::new(EuclidV2Handler::new(&config.workspace_path))),
             _ => unreachable!(),
         }) as Arc<dyn CircuitsHandler>
     }

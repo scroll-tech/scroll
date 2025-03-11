@@ -5732,7 +5732,8 @@ dependencies = [
  "rlp",
  "sbv-primitives",
  "scroll-proving-sdk",
- "scroll-zkvm-prover",
+ "scroll-zkvm-prover 0.1.0-rc.6",
+ "scroll-zkvm-prover 0.1.1-rc.2",
  "serde",
  "serde_bytes",
  "serde_json",
@@ -7568,6 +7569,21 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
+version = "0.1.0-rc.6"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#8adaaf856b00ca992e76c95e657761a5148d6084"
+dependencies = [
+ "alloy-primitives",
+ "alloy-serde 0.8.3",
+ "openvm",
+ "openvm-rv32im-guest",
+ "rkyv",
+ "sbv",
+ "serde",
+ "tiny-keccak",
+]
+
+[[package]]
+name = "scroll-zkvm-circuit-input-types"
 version = "0.1.1-rc.2"
 source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.2#c229b8d606126528ea44fde56495fddc6ad827ab"
 dependencies = [
@@ -7581,6 +7597,38 @@ dependencies = [
  "serde",
  "tiny-keccak",
  "vm-zstd",
+]
+
+[[package]]
+name = "scroll-zkvm-prover"
+version = "0.1.0-rc.6"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#8adaaf856b00ca992e76c95e657761a5148d6084"
+dependencies = [
+ "alloy-primitives",
+ "base64 0.22.1",
+ "bincode",
+ "git-version",
+ "hex",
+ "metrics 0.23.0",
+ "metrics-util",
+ "once_cell",
+ "openvm-circuit",
+ "openvm-native-circuit",
+ "openvm-native-recursion",
+ "openvm-sdk",
+ "openvm-stark-sdk",
+ "revm 19.5.0",
+ "rkyv",
+ "sbv",
+ "scroll-zkvm-circuit-input-types 0.1.0-rc.6",
+ "scroll-zkvm-verifier 0.1.0-rc.6",
+ "serde",
+ "serde_json",
+ "serde_stacker",
+ "snark-verifier-sdk",
+ "thiserror 2.0.11",
+ "toml",
+ "tracing",
 ]
 
 [[package]]
@@ -7606,8 +7654,8 @@ dependencies = [
  "revm 19.5.0",
  "rkyv",
  "sbv",
- "scroll-zkvm-circuit-input-types",
- "scroll-zkvm-verifier",
+ "scroll-zkvm-circuit-input-types 0.1.1-rc.2",
+ "scroll-zkvm-verifier 0.1.1-rc.2",
  "serde",
  "serde_json",
  "serde_stacker",
@@ -7615,6 +7663,25 @@ dependencies = [
  "thiserror 2.0.11",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "scroll-zkvm-verifier"
+version = "0.1.0-rc.6"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.6#8adaaf856b00ca992e76c95e657761a5148d6084"
+dependencies = [
+ "bincode",
+ "eyre",
+ "itertools 0.14.0",
+ "openvm-circuit",
+ "openvm-native-circuit",
+ "openvm-native-recursion",
+ "openvm-sdk",
+ "openvm-stark-sdk",
+ "revm 19.5.0",
+ "scroll-zkvm-circuit-input-types 0.1.0-rc.6",
+ "serde",
+ "snark-verifier-sdk",
 ]
 
 [[package]]
@@ -7631,7 +7698,7 @@ dependencies = [
  "openvm-sdk",
  "openvm-stark-sdk",
  "revm 19.5.0",
- "scroll-zkvm-circuit-input-types",
+ "scroll-zkvm-circuit-input-types 0.1.1-rc.2",
  "serde",
  "snark-verifier-sdk",
 ]

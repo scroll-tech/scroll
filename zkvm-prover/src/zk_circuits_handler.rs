@@ -1,4 +1,5 @@
 pub mod euclid;
+pub mod euclidV2;
 
 use anyhow::Result;
 use async_trait::async_trait;
