@@ -23,20 +23,22 @@ type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// batch
-	Index           uint64 `json:"index" gorm:"column:index"`
-	Hash            string `json:"hash" gorm:"column:hash"`
-	DataHash        string `json:"data_hash" gorm:"column:data_hash"`
-	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
-	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
-	EndChunkHash    string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	StateRoot       string `json:"state_root" gorm:"column:state_root"`
-	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
-	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
-	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
-	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
-	BlobBytes       []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
+	Index                  uint64 `json:"index" gorm:"column:index"`
+	Hash                   string `json:"hash" gorm:"column:hash"`
+	DataHash               string `json:"data_hash" gorm:"column:data_hash"`
+	StartChunkIndex        uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkHash         string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex          uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkHash           string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	StateRoot              string `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot           string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentBatchHash        string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
+	BatchHeader            []byte `json:"batch_header" gorm:"column:batch_header"`
+	CodecVersion           int16  `json:"codec_version" gorm:"column:codec_version"`
+	PrevL1MessageQueueHash string `json:"prev_l1_message_queue_hash" gorm:"column:prev_l1_message_queue_hash"`
+	PostL1MessageQueueHash string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
+	EnableCompress         bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
+	BlobBytes              []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -163,13 +165,14 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 	return latestBatch.EndChunkIndex + 1, nil
 }
 
-// GetBatchesGEIndexGECodecVersion retrieves batches that have a batch index greater than or equal to the given index and codec version.
+// GetCommittedBatchesGEIndexGECodecVersion retrieves batches that have been committed (commit_tx_hash is set) and have a batch index greater than or equal to the given index and codec version.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetBatchesGEIndexGECodecVersion(ctx context.Context, index uint64, codecv encoding.CodecVersion, limit int) ([]*Batch, error) {
+func (o *Batch) GetCommittedBatchesGEIndexGECodecVersion(ctx context.Context, index uint64, codecv encoding.CodecVersion, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("index >= ?", index)
 	db = db.Where("codec_version >= ?", codecv)
+	db = db.Where("commit_tx_hash IS NOT NULL") // only include committed batches
 	db = db.Order("index ASC")
 
 	if limit > 0 {
@@ -178,7 +181,7 @@ func (o *Batch) GetBatchesGEIndexGECodecVersion(ctx context.Context, index uint6
 
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		return nil, fmt.Errorf("Batch.GetBatchesGEIndexGECodecVersion error: %w", err)
+		return nil, fmt.Errorf("Batch.GetCommittedBatchesGEIndexGECodecVersion error: %w", err)
 	}
 	return batches, nil
 }
@@ -298,6 +301,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
 		CodecVersion:              int16(codecVersion),
+		PrevL1MessageQueueHash:    batch.PrevL1MessageQueueHash.Hex(),
+		PostL1MessageQueueHash:    batch.PostL1MessageQueueHash.Hex(),
 		EnableCompress:            enableCompress,
 		BlobBytes:                 batchMeta.BlobBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
@@ -395,7 +400,7 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 }
 
 // UpdateCommitTxHashAndRollupStatus updates the commit transaction hash and rollup status for a batch.
-func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["commit_tx_hash"] = commitTxHash
 	updateFields["rollup_status"] = int(status)
@@ -403,7 +408,11 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 		updateFields["committed_at"] = utils.NowUTC()
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
 

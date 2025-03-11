@@ -30,9 +30,14 @@ type FetcherConfig struct {
 	ScrollChainAddr          string `json:"ScrollChainAddr"`
 	GatewayRouterAddr        string `json:"GatewayRouterAddr"`
 	MessageQueueAddr         string `json:"MessageQueueAddr"`
+	MessageQueueV2Addr       string `json:"MessageQueueV2Addr"`
 	BatchBridgeGatewayAddr   string `json:"BatchBridgeGatewayAddr"`
 	GasTokenGatewayAddr      string `json:"GasTokenGatewayAddr"`
 	WrappedTokenGatewayAddr  string `json:"WrappedTokenGatewayAddr"`
+
+	BeaconNodeAPIEndpoint  string `json:"BeaconNodeAPIEndpoint"`
+	BlobScanAPIEndpoint    string `json:"BlobScanAPIEndpoint"`
+	BlockNativeAPIEndpoint string `json:"BlockNativeAPIEndpoint"`
 }
 
 // RedisConfig redis config

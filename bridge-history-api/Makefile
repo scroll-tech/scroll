@@ -37,6 +37,6 @@ reset-env:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli && $(PWD)/build/bin/bridgehistoryapi-db-cli reset
 
 bridgehistoryapi-docker:
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-fetcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-api.Dockerfile
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-db-cli:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-db-cli.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-fetcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile --platform=linux/amd64
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-api.Dockerfile --platform=linux/amd64
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-db-cli:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-db-cli.Dockerfile --platform=linux/amd64
