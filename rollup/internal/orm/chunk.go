@@ -30,6 +30,8 @@ type Chunk struct {
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	PrevL1MessageQueueHash       string `json:"prev_l1_message_queue_hash" gorm:"column:prev_l1_message_queue_hash"`
+	PostL1MessageQueueHash       string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
 	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
@@ -97,8 +99,8 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// getLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
+// GetLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
@@ -116,7 +118,7 @@ func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
-	latestChunk, err := o.getLatestChunk(ctx)
+	latestChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Chunk.GetUnchunkedBlockHeight error: %w", err)
 	}
@@ -187,7 +189,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.getLatestChunk(ctx)
+	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -230,6 +232,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
+		PrevL1MessageQueueHash:       chunk.PrevL1MessageQueueHash.Hex(),
+		PostL1MessageQueueHash:       chunk.PostL1MessageQueueHash.Hex(),
 		ParentChunkHash:              parentChunkHash,
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,

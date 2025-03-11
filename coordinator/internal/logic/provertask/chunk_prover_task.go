@@ -133,8 +133,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, nil
 	}
 
-	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-
 	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
 	if getHardForkErr != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
@@ -144,13 +142,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
 		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("incompatible prover version",
+		log.Debug("incompatible prover version",
 			"requisite hard fork name", hardForkName,
 			"prover hard fork name", taskCtx.HardForkNames,
 			"task_id", chunkTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
+		return nil, nil
 	}
 
+	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,

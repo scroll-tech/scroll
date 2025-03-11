@@ -171,7 +171,7 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
+func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
@@ -179,7 +179,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		err     error
 	)
 
-	if blob != nil {
+	if blobs != nil {
 		// check that number of pending blob-carrying txs is not too big
 		if s.senderType == types.SenderTypeCommitBatch {
 			var numPendingTransactions int64
@@ -197,7 +197,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 			}
 
 		}
-		sidecar, err = makeSidecar(blob)
+		sidecar, err = makeSidecar(blobs)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)
 			return common.Hash{}, fmt.Errorf("failed to make sidecar for blob transaction, err: %w", err)
@@ -681,12 +681,19 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 	return header.Number.Uint64() - 1, baseFee, blobBaseFee, nil
 }
 
-func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
-	if blob == nil {
-		return nil, errors.New("blob cannot be nil")
+func makeSidecar(blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
+	if len(blobsInput) == 0 {
+		return nil, errors.New("blobsInput is empty")
 	}
 
-	blobs := []kzg4844.Blob{*blob}
+	blobs := make([]kzg4844.Blob, len(blobsInput))
+	for i, blob := range blobsInput {
+		if blob == nil {
+			return nil, fmt.Errorf("blob at index %d is nil", i)
+		}
+		blobs[i] = *blob
+	}
+
 	var commitments []kzg4844.Commitment
 	var proofs []kzg4844.Proof
 

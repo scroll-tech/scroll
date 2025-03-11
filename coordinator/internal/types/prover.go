@@ -25,6 +25,8 @@ func (r ProverType) String() string {
 		return "prover type chunk"
 	case ProverTypeBatch:
 		return "prover type batch"
+	case ProverTypeOpenVM:
+		return "prover type openvm"
 	default:
 		return fmt.Sprintf("illegal prover type: %d", r)
 	}

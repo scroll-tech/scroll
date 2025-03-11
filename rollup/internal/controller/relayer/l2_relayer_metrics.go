@@ -8,14 +8,12 @@ import (
 )
 
 type l2RelayerMetrics struct {
+	rollupL2RelayerProcessBatchesPerTxCount                         prometheus.Gauge
 	rollupL2RelayerProcessPendingBatchTotal                         prometheus.Counter
 	rollupL2RelayerProcessPendingBatchSuccessTotal                  prometheus.Counter
 	rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal prometheus.Counter
 	rollupL2RelayerGasPriceOraclerRunTotal                          prometheus.Counter
 	rollupL2RelayerLastGasPrice                                     prometheus.Gauge
-	rollupL2RelayerProcessCommittedBatchesTotal                     prometheus.Counter
-	rollupL2RelayerProcessCommittedBatchesFinalizedTotal            prometheus.Counter
-	rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal     prometheus.Counter
 	rollupL2BatchesCommittedConfirmedTotal                          prometheus.Counter
 	rollupL2BatchesCommittedConfirmedFailedTotal                    prometheus.Counter
 	rollupL2BatchesFinalizedConfirmedTotal                          prometheus.Counter
@@ -42,6 +40,10 @@ var (
 func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 	initL2RelayerMetricOnce.Do(func() {
 		l2RelayerMetric = &l2RelayerMetrics{
+			rollupL2RelayerProcessBatchesPerTxCount: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_layer2_process_batches_per_tx_count",
+				Help: "The number of batches processed per transaction",
+			}),
 			rollupL2RelayerProcessPendingBatchTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_process_pending_batch_total",
 				Help: "The total number of layer2 process pending batch",
@@ -61,18 +63,6 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 			rollupL2RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer2_gas_price_latest_gas_price",
 				Help: "The latest gas price of rollup relayer l2",
-			}),
-			rollupL2RelayerProcessCommittedBatchesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_process_committed_batches_total",
-				Help: "The total number of layer2 process committed batches run total",
-			}),
-			rollupL2RelayerProcessCommittedBatchesFinalizedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_process_committed_batches_finalized_total",
-				Help: "The total number of layer2 process committed batches finalized total",
-			}),
-			rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_process_committed_batches_finalized_success_total",
-				Help: "The total number of layer2 process committed batches finalized success total",
 			}),
 			rollupL2BatchesCommittedConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_process_committed_batches_confirmed_total",

@@ -31,6 +31,15 @@ type SenderConfig struct {
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
 }
 
+type BatchSubmission struct {
+	// The minimum number of batches to submit in a single transaction.
+	MinBatches int `json:"min_batches"`
+	// The maximum number of batches to submit in a single transaction.
+	MaxBatches int `json:"max_batches"`
+	// The time in seconds after which a batch is considered stale and should be submitted ignoring the min batch count.
+	TimeoutSec int64 `json:"timeout"`
+}
+
 // ChainMonitor this config is used to get batch status from chain_monitor API.
 type ChainMonitor struct {
 	Enabled  bool   `json:"enabled"`
@@ -48,6 +57,8 @@ type RelayerConfig struct {
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
+	// Config for batch submission
+	BatchSubmission *BatchSubmission `json:"batch_submission"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service

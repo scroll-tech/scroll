@@ -66,25 +66,26 @@ func ComputeMessageHash(
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
-// GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
-func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
+// GetBatchVersionAndBlockRangeFromCalldata find the block range from calldata, both inclusive.
+func GetBatchVersionAndBlockRangeFromCalldata(txData []byte) (uint8, uint64, uint64, error) {
 	const methodIDLength = 4
 	if len(txData) < methodIDLength {
-		return 0, 0, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)
+		return 0, 0, 0, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)
 	}
 	method, err := backendabi.IScrollChainABI.MethodById(txData[:methodIDLength])
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get method by ID, ID: %v, err: %w", txData[:methodIDLength], err)
+		return 0, 0, 0, fmt.Errorf("failed to get method by ID, ID: %v, err: %w", txData[:methodIDLength], err)
 	}
 	values, err := method.Inputs.Unpack(txData[methodIDLength:])
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to unpack transaction data using ABI, tx data: %v, err: %w", txData, err)
+		return 0, 0, 0, fmt.Errorf("failed to unpack transaction data using ABI, tx data: %v, err: %w", txData, err)
 	}
 
 	var chunks [][]byte
+	var version uint8
 
 	if method.Name == "importGenesisBatch" {
-		return 0, 0, nil
+		return 0, 0, 0, nil
 	} else if method.Name == "commitBatch" {
 		type commitBatchArgs struct {
 			Version                uint8
@@ -95,11 +96,11 @@ func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
 
 		var args commitBatchArgs
 		if err = method.Inputs.Copy(&args, values); err != nil {
-			return 0, 0, fmt.Errorf("failed to decode calldata into commitBatch args, values: %+v, err: %w", values, err)
+			return 0, 0, 0, fmt.Errorf("failed to decode calldata into commitBatch args, values: %+v, err: %w", values, err)
 		}
 
 		chunks = args.Chunks
-
+		version = args.Version
 	} else if method.Name == "commitBatchWithBlobProof" {
 		type commitBatchWithBlobProofArgs struct {
 			Version                uint8
@@ -111,10 +112,22 @@ func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
 
 		var args commitBatchWithBlobProofArgs
 		if err = method.Inputs.Copy(&args, values); err != nil {
-			return 0, 0, fmt.Errorf("failed to decode calldata into commitBatchWithBlobProofArgs args, values: %+v, err: %w", values, err)
+			return 0, 0, 0, fmt.Errorf("failed to decode calldata into commitBatchWithBlobProofArgs args, values: %+v, err: %w", values, err)
 		}
 
 		chunks = args.Chunks
+		version = args.Version
+	} else if method.Name == "commitBatches" || method.Name == "commitAndFinalizeBatch" {
+		if len(values) < 3 {
+			return 0, 0, 0, fmt.Errorf("insufficient arguments for %s, expected 3, got %d", method.Name, len(values))
+		}
+
+		var ok bool
+		version, ok = values[0].(uint8)
+		if !ok {
+			return 0, 0, 0, fmt.Errorf("invalid version type: %T", values[0])
+		}
+		return version, 0, 0, nil
 	}
 
 	var startBlock uint64
@@ -124,7 +137,7 @@ func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
 	// |   1 byte   | 60 bytes | ... | 60 bytes |
 	// | num blocks |  block 1 | ... |  block n |
 	if len(chunks) == 0 {
-		return 0, 0, errors.New("invalid chunks")
+		return 0, 0, 0, errors.New("invalid chunks")
 	}
 	chunk := chunks[0]
 	block := chunk[1:61] // first block in chunk
@@ -135,7 +148,36 @@ func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
 	block = chunk[1+lastBlockIndex*60 : 1+lastBlockIndex*60+60] // last block in chunk
 	finishBlock = binary.BigEndian.Uint64(block[0:8])
 
-	return startBlock, finishBlock, err
+	return version, startBlock, finishBlock, err
+}
+
+// GetParentBatchHashFromCalldata gets the parent batch hash from calldata.
+// It only supports commitBatches and commitAndFinalizeBatch, which only accept batches >= v7.
+func GetParentBatchHashFromCalldata(txData []byte) (common.Hash, error) {
+	const methodIDLength = 4
+	if len(txData) < methodIDLength {
+		return common.Hash{}, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)
+	}
+	method, err := backendabi.IScrollChainABI.MethodById(txData[:methodIDLength])
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to get method by ID, ID: %v, err: %w", txData[:methodIDLength], err)
+	}
+	values, err := method.Inputs.Unpack(txData[methodIDLength:])
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to unpack transaction data using ABI, tx data: %v, err: %w", txData, err)
+	}
+
+	if method.Name == "commitBatches" || method.Name == "commitAndFinalizeBatch" {
+		if len(values) < 3 {
+			return common.Hash{}, fmt.Errorf("insufficient arguments for %s, expected 3, got %d", method.Name, len(values))
+		}
+		parentBatchHash, ok := values[1].([32]byte)
+		if !ok {
+			return common.Hash{}, fmt.Errorf("invalid parentBatchHash type: %T", values[1])
+		}
+		return common.BytesToHash(parentBatchHash[:]), nil
+	}
+	return common.Hash{}, fmt.Errorf("method %s does not support parent batch header", method.Name)
 }
 
 // GetBlocksInRange gets a batch of blocks for a block range [start, end] inclusive.

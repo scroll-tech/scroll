@@ -135,8 +135,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, nil
 	}
 
-	log.Info("start bundle proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-
 	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
 	if getHardForkErr != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
@@ -146,13 +144,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
 		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("incompatible prover version",
+		log.Debug("incompatible prover version",
 			"requisite hard fork name", hardForkName,
 			"prover hard fork name", taskCtx.HardForkNames,
 			"task_id", bundleTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
+		return nil, nil
 	}
 
+	log.Info("start bundle proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 	proverTask := orm.ProverTask{
 		TaskID:          bundleTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,

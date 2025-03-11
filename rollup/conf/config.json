@@ -51,6 +51,11 @@
         "min_gas_tip": 100000000,
         "max_pending_blob_txs": 3
       },
+      "batch_submission": {
+        "min_batches": 1,
+        "max_batches": 6,
+        "timeout": 300
+      },
       "gas_oracle_config": {
         "min_gas_price": 0,
         "gas_price_diff": 50000

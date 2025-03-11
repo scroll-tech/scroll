@@ -82,6 +82,15 @@ func action(ctx *cli.Context) error {
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
 
 	// sanity check config
+	if cfg.L2Config.RelayerConfig.BatchSubmission == nil {
+		log.Crit("cfg.L2Config.RelayerConfig.BatchSubmission must not be nil")
+	}
+	if cfg.L2Config.RelayerConfig.BatchSubmission.MinBatches < 1 {
+		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MinBatches must be at least 1")
+	}
+	if cfg.L2Config.RelayerConfig.BatchSubmission.MaxBatches < 1 {
+		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MaxBatches must be at least 1")
+	}
 	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
 		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
 	}

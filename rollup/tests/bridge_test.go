@@ -11,12 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/database"
-	tc "scroll-tech/common/testcontainers"
-	"scroll-tech/common/utils"
-
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -27,6 +21,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/database"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/utils"
+	"scroll-tech/database/migrate"
 
 	bcmd "scroll-tech/rollup/cmd"
 	"scroll-tech/rollup/mock_bridge"
@@ -209,6 +208,7 @@ func TestFunction(t *testing.T) {
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
 	t.Run("testCommitBatchAndFinalizeBundleCodecV4V5V6", testCommitBatchAndFinalizeBundleCodecV4V5V6)
+	t.Run("TestCommitBatchAndFinalizeBundleCodecV7", testCommitBatchAndFinalizeBundleCodecV7)
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
