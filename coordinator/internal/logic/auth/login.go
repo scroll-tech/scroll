@@ -42,7 +42,7 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 
 	var highHardForks []string
 	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.HighVersionCircuit.ForkName)
-	if cfg.ProverManager.Verifier.LowVersionCircuit.ForkName != "euclid" {
+	if cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != "euclid" {
 		highHardForks = append(highHardForks, cfg.ProverManager.Verifier.LowVersionCircuit.ForkName)
 	}
 	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = highHardForks
