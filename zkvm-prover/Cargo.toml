@@ -18,7 +18,7 @@ serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
 futures = "0.3.30"
 
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.0-rc.6" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.1-rc.2" }
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "60a2f36", features = [
