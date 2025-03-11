@@ -64,15 +64,21 @@ impl ProvingService for LocalProver {
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         let mut vks = vec![];
         for hard_fork_name in self.config.circuits.keys() {
+            println!("\n\n\nhard fork = {:?}", hard_fork_name);
             let handler = self.new_handler(hard_fork_name);
             for proof_type in &req.proof_types {
                 let vk = handler.get_vk(*proof_type).await;
+                println!("proof type = {:?}, vk = {:?}", proof_type, vk);
 
                 if let Some(vk) = vk {
-                    vks.push(base64::encode(vk));
+                    let vk_base64 = base64::encode(vk);
+                    println!("vk (base64) = {:?}", vk_base64);
+                    vks.push(vk_base64);
                 }
             }
         }
+
+        println!("\n\n\nall vks = {:#?}", vks);
 
         GetVkResponse { vks, error: None }
     }
