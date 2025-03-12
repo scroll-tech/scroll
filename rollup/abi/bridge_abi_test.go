@@ -5,9 +5,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPackCommitBatch(t *testing.T) {
@@ -173,6 +174,7 @@ func TestPackSetL2BaseFee(t *testing.T) {
 }
 
 func TestPrintABISignatures(t *testing.T) {
+	fmt.Println("methods")
 	// print all error signatures of ABI
 	abi, err := ScrollChainMetaData.GetAbi()
 	if err != nil {
@@ -184,6 +186,7 @@ func TestPrintABISignatures(t *testing.T) {
 	}
 
 	fmt.Println("------------------------------")
+	fmt.Println("errors")
 	for _, errors := range abi.Errors {
 		fmt.Println(hexutil.Encode(errors.ID[:4]), errors.Sig, errors.Name)
 	}

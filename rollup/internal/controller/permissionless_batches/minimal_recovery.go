@@ -148,7 +148,7 @@ func (r *MinimalRecovery) Run() error {
 		return fmt.Errorf("batch was not created correctly, expected %d but got %d", restoredFinalizedBatch.Index+1, latestBatch.Index)
 	}
 
-	firstChunkInBatch, err := r.chunkORM.GetChunkByIndex(r.ctx, latestBatch.EndChunkIndex)
+	firstChunkInBatch, err := r.chunkORM.GetChunkByIndex(r.ctx, latestBatch.StartChunkIndex)
 	if err != nil {
 		return fmt.Errorf("failed to get first chunk in batch: %w", err)
 	}

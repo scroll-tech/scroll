@@ -13,6 +13,8 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
+	"gorm.io/gorm"
+
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -21,7 +23,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
-	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"

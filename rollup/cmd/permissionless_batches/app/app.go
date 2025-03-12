@@ -98,15 +98,23 @@ func action(ctx *cli.Context) error {
 
 	recovery := permissionless_batches.NewRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2Watcher)
 
-	//if recovery.RecoveryNeeded() {
-	if err = recovery.Run(); err != nil {
-		return fmt.Errorf("failed to run recovery: %w", err)
+	if recovery.RecoveryNeeded() {
+		if err = recovery.Run(); err != nil {
+			return fmt.Errorf("failed to run recovery: %w", err)
+		}
+		log.Info("Success! You're ready to generate proofs!")
+	} else {
+		log.Info("No recovery needed, submitting batch and proof to L1...")
+		submitter, err := permissionless_batches.NewSubmitter(subCtx, db, cfg.L2Config.RelayerConfig, genesis.Config)
+		if err != nil {
+			return fmt.Errorf("failed to create submitter: %w", err)
+		}
+		if err = submitter.Submit(false); err != nil {
+			return fmt.Errorf("failed to submit batch: %w", err)
+		}
+
+		// TODO: wait until tx is confirmed here
 	}
-	log.Info("Success! You're ready to generate proofs!")
-	//} else {
-	//	TODO: implement batch submission if proofs are available
-	//log.Info("TODO: Batch submission")
-	//}
 
 	return nil
 }
