@@ -70,16 +70,28 @@ type BundleTaskDetail struct {
 
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID          uint64      `json:"chain_id"`
-	PrevStateRoot    common.Hash `json:"prev_state_root"`
-	PostStateRoot    common.Hash `json:"post_state_root"`
-	WithdrawRoot     common.Hash `json:"withdraw_root"`
-	DataHash         common.Hash `json:"data_hash"`
-	IsPadding        bool        `json:"is_padding"`
-	TxBytes          []byte      `json:"tx_bytes"`
-	TxBytesHash      common.Hash `json:"tx_data_digest"`
-	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
-	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
+	ChainID            uint64           `json:"chain_id"`
+	PrevStateRoot      common.Hash      `json:"prev_state_root"`
+	PostStateRoot      common.Hash      `json:"post_state_root"`
+	WithdrawRoot       common.Hash      `json:"withdraw_root"`
+	DataHash           common.Hash      `json:"data_hash"`
+	IsPadding          bool             `json:"is_padding"`
+	TxBytes            []byte           `json:"tx_bytes"`
+	TxBytesHash        common.Hash      `json:"tx_data_digest"`
+	PrevMsgQueueHash   common.Hash      `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash   common.Hash      `json:"post_msg_queue_hash"`
+	TxDataLength       uint64           `json:"tx_data_length"`
+	InitialBlockNumber uint64           `json:"initial_block_number"`
+	BlockCtxs          []BlockContextV2 `json:"block_ctxs"`
+}
+
+// BlockContextV2 is the block context for euclid v2
+type BlockContextV2 struct {
+	Timestamp uint64      `json:"timestamp"`
+	BaseFee   common.Hash `json:"base_fee"`
+	GasLimit  uint64      `json:"gas_limit"`
+	NumTxs    uint16      `json:"num_txs"`
+	NumL1Msgs uint16      `json:"num_l1_msgs"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8
@@ -270,12 +282,14 @@ func (p *OpenVMChunkProof) Proof() []byte {
 
 // OpenVMBatchInfo is for calculating pi_hash for batch header
 type OpenVMBatchInfo struct {
-	ParentBatchHash common.Hash `json:"parent_batch_hash"`
-	ParentStateRoot common.Hash `json:"parent_state_root"`
-	StateRoot       common.Hash `json:"state_root"`
-	WithdrawRoot    common.Hash `json:"withdraw_root"`
-	BatchHash       common.Hash `json:"batch_hash"`
-	ChainID         uint64      `json:"chain_id"`
+	ParentBatchHash  common.Hash `json:"parent_batch_hash"`
+	ParentStateRoot  common.Hash `json:"parent_state_root"`
+	StateRoot        common.Hash `json:"state_root"`
+	WithdrawRoot     common.Hash `json:"withdraw_root"`
+	BatchHash        common.Hash `json:"batch_hash"`
+	ChainID          uint64      `json:"chain_id"`
+	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
@@ -335,6 +349,7 @@ type OpenVMBundleInfo struct {
 	NumBatches    uint32      `json:"num_batches"`
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
+	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.

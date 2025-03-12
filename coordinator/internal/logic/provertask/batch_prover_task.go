@@ -214,10 +214,15 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 			IsPadding:        false,
 		}
-		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
-			if haloProot.ChunkInfo != nil {
-				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+		if halo2Proof, ok := proof.(*message.Halo2ChunkProof); ok {
+			if halo2Proof.ChunkInfo != nil {
+				chunkInfo.TxBytes = halo2Proof.ChunkInfo.TxBytes
 			}
+		}
+		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
+			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
+			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
+			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
