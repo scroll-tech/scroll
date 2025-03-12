@@ -202,13 +202,26 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
 	}
 
-	taskDetail := message.ChunkTaskDetail{
-		BlockHashes:      blockHashes,
-		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
-	}
-	taskDetailBytes, err := json.Marshal(taskDetail)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
+	var taskDetailBytes []byte
+	if hardForkName == "euclidV2" {
+		taskDetail := message.EuclidV2ChunkTaskDetail{
+			BlockHashes:      blockHashes,
+			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+		}
+		var err error
+		taskDetailBytes, err = json.Marshal(taskDetail)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
+		}
+	} else {
+		taskDetail := message.LegacyChunkTaskDetail{
+			BlockHashes: blockHashes,
+		}
+		var err error
+		taskDetailBytes, err = json.Marshal(taskDetail)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
+		}
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
