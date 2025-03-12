@@ -111,6 +111,7 @@ func testBatchProposerLimitsCodecV4(t *testing.T) {
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
 				MaxTxNumPerChunk:                10000,
+				MaxL2GasPerChunk:                20000000,
 				MaxL1CommitGasPerChunk:          50000000000,
 				MaxL1CommitCalldataSizePerChunk: 1000000,
 				MaxRowConsumptionPerChunk:       1000000,
@@ -206,6 +207,7 @@ func testBatchCommitGasAndCalldataSizeEstimationCodecV4(t *testing.T) {
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             1,
 		MaxTxNumPerChunk:                10000,
+		MaxL2GasPerChunk:                20_000_000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1000000,
@@ -292,6 +294,7 @@ func testBatchProposerBlobSizeLimitCodecV4(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             math.MaxUint64,
 			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL2GasPerChunk:                math.MaxUint64,
 			MaxL1CommitGasPerChunk:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
@@ -387,6 +390,7 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV4(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             math.MaxUint64,
 			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL2GasPerChunk:                math.MaxUint64,
 			MaxL1CommitGasPerChunk:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,

@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -76,6 +75,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	var chunkTask *orm.Chunk
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
@@ -100,10 +100,20 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeChunk
+		taskCtx.chunkTask = tmpChunkTask
+
+		var checkErr error
+		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
+			return nil, nil
+		}
+
 		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getTaskError)
+		proverTasks, getFailedTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
+		if getFailedTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getFailedTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
@@ -131,22 +141,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if chunkTask == nil {
 		log.Debug("get empty unassigned chunk after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
-	if getHardForkErr != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", chunkTask.Hash)
 		return nil, nil
 	}
 
@@ -186,15 +180,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) hardForkName(ctx *gin.Context, chunkTask *orm.Chunk) (string, error) {
-	l2Block, getBlockErr := cp.blockOrm.GetL2BlockByNumber(ctx.Copy(), chunkTask.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-	hardForkName := encoding.GetHardforkName(cp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
-}
-
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
@@ -203,7 +188,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	var taskDetailBytes []byte
-	if hardForkName == "euclidV2" {
+	if hardForkName == message.EuclidV2Fork {
 		taskDetail := message.EuclidV2ChunkTaskDetail{
 			BlockHashes:      blockHashes,
 			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
