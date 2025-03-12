@@ -3,6 +3,7 @@ package provertask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -55,6 +56,20 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 	return bp
 }
 
+// proverHardForkSanityCheck check the prover task's hard-fork name
+// and prover-task's hard-fork name is the same
+func (bp *BundleProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext, bundleTask *orm.Bundle) (string, error) {
+	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
+	if getHardForkErr != nil {
+		return "", getHardForkErr
+	}
+
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+		return "", errors.New("prover task's hard-fork name is not the same as the bundle's hard-fork name")
+	}
+	return hardForkName, nil
+}
+
 // Assign load and assign batch tasks
 func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	taskCtx, err := bp.checkParameter(ctx)
@@ -77,6 +92,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}
 
 	var bundleTask *orm.Bundle
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBundleTask *orm.Bundle
@@ -98,6 +114,13 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 		if tmpBundleTask == nil {
 			log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		var checkErr error
+		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx, tmpBundleTask)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
 			return nil, nil
 		}
 
@@ -132,22 +155,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	if bundleTask == nil {
 		log.Debug("get empty unassigned bundle after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
-	if getHardForkErr != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("retrieve hard fork name by bundle failed", "task_id", bundleTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", bundleTask.Hash)
 		return nil, nil
 	}
 

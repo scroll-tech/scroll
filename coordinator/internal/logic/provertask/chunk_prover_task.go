@@ -3,6 +3,7 @@ package provertask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -53,6 +54,20 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	return cp
 }
 
+// proverHardForkSanityCheck check the prover task's hard-fork name
+// and prover-task's hard-fork name is the same
+func (cp *ChunkProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext, chunkTask *orm.Chunk) (string, error) {
+	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
+	if getHardForkErr != nil {
+		return "", getHardForkErr
+	}
+
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+		return "", errors.New("prover task's hard-fork name is not the same as the chunk's hard-fork name")
+	}
+	return hardForkName, nil
+}
+
 // Assign the chunk proof which need to prove
 func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	taskCtx, err := cp.checkParameter(ctx)
@@ -75,6 +90,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	var chunkTask *orm.Chunk
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
@@ -99,10 +115,17 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		var checkErr error
+		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx, tmpChunkTask)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
+			return nil, nil
+		}
+
 		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getTaskError)
+		proverTasks, getFailedTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
+		if getFailedTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getFailedTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
@@ -130,22 +153,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if chunkTask == nil {
 		log.Debug("get empty unassigned chunk after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
-	if getHardForkErr != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", chunkTask.Hash)
 		return nil, nil
 	}
 
