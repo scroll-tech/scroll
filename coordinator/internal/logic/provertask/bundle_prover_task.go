@@ -9,19 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 	cutils "scroll-tech/coordinator/internal/utils"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // BundleProverTask is prover task implement for bundle proof
@@ -77,6 +76,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}
 
 	var bundleTask *orm.Bundle
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBundleTask *orm.Bundle
@@ -98,6 +98,16 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 		if tmpBundleTask == nil {
 			log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		taskCtx.taskType = message.ProofTypeBundle
+		taskCtx.bundleTask = tmpBundleTask
+
+		var checkErr error
+		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
 			return nil, nil
 		}
 
@@ -132,22 +142,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	if bundleTask == nil {
 		log.Debug("get empty unassigned bundle after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
-	if getHardForkErr != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("retrieve hard fork name by bundle failed", "task_id", bundleTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", bundleTask.Hash)
 		return nil, nil
 	}
 
@@ -186,26 +180,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (bp *BundleProverTask) hardForkName(ctx *gin.Context, bundleTask *orm.Bundle) (string, error) {
-	startBatch, getBatchErr := bp.batchOrm.GetBatchByHash(ctx, bundleTask.StartBatchHash)
-	if getBatchErr != nil {
-		return "", getBatchErr
-	}
-
-	startChunk, getChunkErr := bp.chunkOrm.GetChunkByHash(ctx, startBatch.StartChunkHash)
-	if getChunkErr != nil {
-		return "", getChunkErr
-	}
-
-	l2Block, getBlockErr := bp.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-
-	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

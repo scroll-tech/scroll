@@ -76,6 +76,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	var chunkTask *orm.Chunk
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
@@ -100,10 +101,20 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeChunk
+		taskCtx.chunkTask = tmpChunkTask
+
+		var checkErr error
+		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
+			return nil, nil
+		}
+
 		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getTaskError)
+		proverTasks, getFailedTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
+		if getFailedTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getFailedTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
@@ -131,22 +142,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if chunkTask == nil {
 		log.Debug("get empty unassigned chunk after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
-	if getHardForkErr != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", chunkTask.Hash)
 		return nil, nil
 	}
 
