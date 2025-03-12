@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -181,15 +180,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) hardForkName(ctx *gin.Context, chunkTask *orm.Chunk) (string, error) {
-	l2Block, getBlockErr := cp.blockOrm.GetL2BlockByNumber(ctx.Copy(), chunkTask.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-	hardForkName := encoding.GetHardforkName(cp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
-}
-
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
@@ -198,7 +188,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	var taskDetailBytes []byte
-	if hardForkName == "euclidV2" {
+	if hardForkName == message.EuclidV2Fork {
 		taskDetail := message.EuclidV2ChunkTaskDetail{
 			BlockHashes:      blockHashes,
 			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),

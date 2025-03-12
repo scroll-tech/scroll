@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	euclidFork   = "euclid"
-	euclidV2Fork = "euclidV2"
+	EuclidFork   = "euclid"
+	EuclidV2Fork = "euclidV2"
 )
 
 // ProofType represents the type of task.
@@ -95,9 +95,9 @@ type ChunkProof interface {
 
 // NewChunkProof creates a new ChunkProof instance.
 func NewChunkProof(hardForkName string) ChunkProof {
-	log.Info("NewChunkProof", "hardForkName", hardForkName, "euclidForkName", euclidFork, "euclidV2ForkName", euclidV2Fork)
+	log.Info("NewChunkProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
-	case euclidFork, euclidV2Fork:
+	case EuclidFork, EuclidV2Fork:
 		return &OpenVMChunkProof{}
 	default:
 		return &Halo2ChunkProof{}
@@ -130,9 +130,9 @@ type BatchProof interface {
 
 // NewBatchProof creates a new BatchProof instance.
 func NewBatchProof(hardForkName string) BatchProof {
-	log.Info("NewBatchProof", "hardForkName", hardForkName, "euclidForkName", euclidFork, "euclidV2ForkName", euclidV2Fork)
+	log.Info("NewBatchProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
-	case euclidFork, euclidV2Fork:
+	case EuclidFork, EuclidV2Fork:
 		return &OpenVMBatchProof{}
 	default:
 		return &Halo2BatchProof{}
@@ -188,9 +188,9 @@ type BundleProof interface {
 
 // NewBundleProof creates a new BundleProof instance.
 func NewBundleProof(hardForkName string) BundleProof {
-	log.Info("NewBundleProof", "hardForkName", hardForkName, "euclidForkName", euclidFork, "euclidV2ForkName", euclidV2Fork)
+	log.Info("NewBundleProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
-	case euclidFork, euclidV2Fork:
+	case EuclidFork, EuclidV2Fork:
 		return &OpenVMBundleProof{}
 	default:
 		return &Halo2BundleProof{}
