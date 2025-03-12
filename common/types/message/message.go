@@ -55,13 +55,13 @@ type EuclidV2ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos    []*ChunkInfo `json:"chunk_infos"`
-	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
-	BatchHeader   interface{}  `json:"batch_header"`
-	BlobBytes     []byte       `json:"blob_bytes"`
-	KzgProof      hexutil.Big  `json:"kzg_proof"`
-	KzgCommitment hexutil.Big  `json:"kzg_commitment"`
-	Challenge     hexutil.Big  `json:"challenge"`
+	ChunkInfos      []*ChunkInfo `json:"chunk_infos"`
+	ChunkProofs     []ChunkProof `json:"chunk_proofs"`
+	BatchHeader     interface{}  `json:"batch_header"`
+	BlobBytes       []byte       `json:"blob_bytes"`
+	KzgProof        hexutil.Big  `json:"kzg_proof"`
+	KzgCommitment   hexutil.Big  `json:"kzg_commitment"`
+	ChallengeDigest hexutil.Big  `json:"challenge_digest"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
