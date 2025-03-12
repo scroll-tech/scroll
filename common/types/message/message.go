@@ -59,8 +59,8 @@ type BatchTaskDetail struct {
 	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
 	BatchHeader   interface{}  `json:"batch_header"`
 	BlobBytes     []byte       `json:"blob_bytes"`
-	KzgProof      [48]byte     `json:"kzg_proof"`
-	KzgCommitment [48]byte     `json:"kzg_commitment"`
+	KzgProof      hexutil.Big  `json:"kzg_proof"`
+	KzgCommitment hexutil.Big  `json:"kzg_commitment"`
 	Challenge     hexutil.Big  `json:"challenge"`
 }
 
