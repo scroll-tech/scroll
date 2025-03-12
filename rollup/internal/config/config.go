@@ -3,8 +3,9 @@ package config
 import (
 	"fmt"
 	"reflect"
-	"scroll-tech/common/database"
 	"strings"
+
+	"scroll-tech/common/database"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/scroll-tech/go-ethereum/common"
