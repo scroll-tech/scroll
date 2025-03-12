@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -87,11 +88,11 @@ type ChunkInfo struct {
 
 // BlockContextV2 is the block context for euclid v2
 type BlockContextV2 struct {
-	Timestamp uint64      `json:"timestamp"`
-	BaseFee   common.Hash `json:"base_fee"`
-	GasLimit  uint64      `json:"gas_limit"`
-	NumTxs    uint16      `json:"num_txs"`
-	NumL1Msgs uint16      `json:"num_l1_msgs"`
+	Timestamp uint64   `json:"timestamp"`
+	BaseFee   *big.Int `json:"base_fee"`
+	GasLimit  uint64   `json:"gas_limit"`
+	NumTxs    uint16   `json:"num_txs"`
+	NumL1Msgs uint16   `json:"num_l1_msgs"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8
