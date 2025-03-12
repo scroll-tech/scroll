@@ -20,6 +20,7 @@ unsafe impl Send for EuclidV2Handler {}
 impl EuclidV2Handler {
     pub fn new(workspace_path: &str) -> Self {
         let workspace_path = Path::new(workspace_path);
+        println!("ok 1");
 
         let cache_dir = workspace_path.join("cache");
         let chunk_exe = workspace_path.join("chunk/app.vmexe");
@@ -31,6 +32,7 @@ impl EuclidV2Handler {
             Default::default(),
         )
         .expect("Failed to setup chunk prover");
+        println!("ok 2");
 
         let batch_exe = workspace_path.join("batch/app.vmexe");
         let batch_app_config = workspace_path.join("batch/openvm.toml");
@@ -41,6 +43,7 @@ impl EuclidV2Handler {
             Default::default(),
         )
         .expect("Failed to setup batch prover");
+        println!("ok 3");
 
         let bundle_exe = workspace_path.join("bundle/app.vmexe");
         let bundle_app_config = workspace_path.join("bundle/openvm.toml");
@@ -51,6 +54,7 @@ impl EuclidV2Handler {
             Default::default(),
         )
         .expect("Failed to setup bundle prover");
+        println!("ok 4");
 
         Self {
             chunk_prover,

@@ -39,8 +39,13 @@ const (
 	ProofTypeBundle
 )
 
-// ChunkTaskDetail is a type containing ChunkTask detail.
-type ChunkTaskDetail struct {
+// LegacyChunkTaskDetail is a type containing ChunkTask detail.
+type LegacyChunkTaskDetail struct {
+	BlockHashes []common.Hash `json:"block_hashes"`
+}
+
+// EuclidV2ChunkTaskDetail is a type containing ChunkTask detail for euclid v2 chunk task.
+type EuclidV2ChunkTaskDetail struct {
 	BlockHashes      []common.Hash `json:"block_hashes"`
 	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
 }
