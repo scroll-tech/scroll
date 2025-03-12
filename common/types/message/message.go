@@ -41,7 +41,8 @@ const (
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
-	BlockHashes []common.Hash `json:"block_hashes"`
+	BlockHashes      []common.Hash `json:"block_hashes"`
+	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
 }
 
 // BatchTaskDetail is a type containing BatchTask detail.
