@@ -96,6 +96,7 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
 				MaxTxNumPerChunk:                math.MaxUint64,
+				MaxL2GasPerChunk:                math.MaxUint64,
 				MaxL1CommitGasPerChunk:          math.MaxUint64,
 				MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 				MaxRowConsumptionPerChunk:       math.MaxUint64,
