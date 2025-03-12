@@ -74,7 +74,7 @@ func (b *BaseProverTask) hardForkName(ctx *gin.Context, taskCtx *proverTaskConte
 		}
 		hardForkName := encoding.GetHardforkName(b.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
 		return hardForkName, nil
-		
+
 	case taskCtx.taskType == message.ProofTypeBatch:
 		if taskCtx.batchTask == nil {
 			return "", errors.New("batch task is nil")
@@ -113,7 +113,7 @@ func (b *BaseProverTask) hardForkName(ctx *gin.Context, taskCtx *proverTaskConte
 	}
 }
 
-// and prover-task's hard-fork name is the same
+// hardForkSanityCheck check the task's hard fork name is the same as prover
 func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext) (string, error) {
 	hardForkName, getHardForkErr := b.hardForkName(ctx, taskCtx)
 	if getHardForkErr != nil {
