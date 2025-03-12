@@ -101,6 +101,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		taskCtx.taskType = message.ProofTypeChunk
 		taskCtx.chunkTask = tmpChunkTask
+
 		var checkErr error
 		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx)
 		if checkErr != nil {
