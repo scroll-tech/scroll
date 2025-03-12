@@ -79,6 +79,7 @@ type ChunkInfo struct {
 	TxBytes          []byte      `json:"tx_bytes"`
 	TxBytesHash      common.Hash `json:"tx_data_digest"`
 	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8

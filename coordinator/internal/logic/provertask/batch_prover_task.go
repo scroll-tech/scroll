@@ -230,6 +230,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
 			DataHash:         common.HexToHash(chunk.Hash),
 			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 			IsPadding:        false,
 		}
 		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
