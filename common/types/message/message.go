@@ -59,9 +59,9 @@ type BatchTaskDetail struct {
 	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
 	BatchHeader   interface{}  `json:"batch_header"`
 	BlobBytes     []byte       `json:"blob_bytes"`
-	KzgProof      []byte       `json:"kzg_proof"`
-	KzgCommitment []byte       `json:"kzg_commitment"`
-	Challenge     common.Hash  `json:"challenge"`
+	KzgProof      [48]byte     `json:"kzg_proof"`
+	KzgCommitment [48]byte     `json:"kzg_commitment"`
+	Challenge     hexutil.Big  `json:"challenge"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
