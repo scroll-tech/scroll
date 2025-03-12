@@ -31,6 +31,7 @@ type ChunkProposerConfig struct {
 	ProposeIntervalMilliseconds     uint64  `json:"propose_interval_milliseconds"`
 	MaxBlockNumPerChunk             uint64  `json:"max_block_num_per_chunk"`
 	MaxTxNumPerChunk                uint64  `json:"max_tx_num_per_chunk"`
+	MaxL2GasPerChunk                uint64  `json:"max_l2_gas_per_chunk"`
 	MaxL1CommitGasPerChunk          uint64  `json:"max_l1_commit_gas_per_chunk"`
 	MaxL1CommitCalldataSizePerChunk uint64  `json:"max_l1_commit_calldata_size_per_chunk"`
 	ChunkTimeoutSec                 uint64  `json:"chunk_timeout_sec"`

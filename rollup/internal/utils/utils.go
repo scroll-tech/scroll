@@ -12,6 +12,7 @@ import (
 type ChunkMetrics struct {
 	NumBlocks           uint64
 	TxNum               uint64
+	L2Gas               uint64
 	CrcMax              uint64
 	FirstBlockTimestamp uint64
 
@@ -33,6 +34,11 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		TxNum:               chunk.NumTransactions(),
 		NumBlocks:           uint64(len(chunk.Blocks)),
 		FirstBlockTimestamp: chunk.Blocks[0].Header.Time,
+	}
+
+	// Get total L2 gas for chunk
+	for _, block := range chunk.Blocks {
+		metrics.L2Gas += block.Header.GasUsed
 	}
 
 	var err error
