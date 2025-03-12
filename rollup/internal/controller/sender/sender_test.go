@@ -27,9 +27,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
-	"scroll-tech/database/migrate"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
