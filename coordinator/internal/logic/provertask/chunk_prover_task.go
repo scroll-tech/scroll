@@ -206,7 +206,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
 	}
-	blockHashesBytes, err := json.Marshal(taskDetail)
+	taskDetailBytes, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
@@ -215,9 +215,12 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeChunk),
-		TaskData:     string(blockHashesBytes),
+		TaskData:     string(taskDetailBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Info("format prover task", "task_id", task.TaskID, "task_type", message.ProofTypeChunk.String(), "hard_fork_name", hardForkName)
+	log.Info("TaskData", "task_id", task.TaskID, "task_data", proverTaskSchema.TaskData, "taskDetail", taskDetail)
 
 	return proverTaskSchema, nil
 }
