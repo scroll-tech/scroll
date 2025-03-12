@@ -291,8 +291,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	copy(taskDetail.KzgProof[:], dbBatch.BlobDataProof[112:160])
-	copy(taskDetail.KzgCommitment[:], dbBatch.BlobDataProof[64:112])
+	taskDetail.KzgProof = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))
+	taskDetail.KzgCommitment = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))
 	taskDetail.Challenge = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[0:32]))
 	return taskDetail, nil
 }
