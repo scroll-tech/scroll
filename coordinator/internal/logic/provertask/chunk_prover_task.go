@@ -3,14 +3,12 @@ package provertask
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -52,20 +50,6 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 		chunkTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "chunk"),
 	}
 	return cp
-}
-
-// proverHardForkSanityCheck check the prover task's hard-fork name
-// and prover-task's hard-fork name is the same
-func (cp *ChunkProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext, chunkTask *orm.Chunk) (string, error) {
-	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
-	if getHardForkErr != nil {
-		return "", getHardForkErr
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		return "", errors.New("prover task's hard-fork name is not the same as the chunk's hard-fork name")
-	}
-	return hardForkName, nil
 }
 
 // Assign the chunk proof which need to prove
@@ -115,8 +99,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeChunk
+		taskCtx.chunkTask = tmpChunkTask
 		var checkErr error
-		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx, tmpChunkTask)
+		hardForkName, checkErr = cp.hardForkSanityCheck(ctx, taskCtx)
 		if checkErr != nil {
 			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
 			return nil, nil
@@ -190,15 +176,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (cp *ChunkProverTask) hardForkName(ctx *gin.Context, chunkTask *orm.Chunk) (string, error) {
-	l2Block, getBlockErr := cp.blockOrm.GetL2BlockByNumber(ctx.Copy(), chunkTask.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-	hardForkName := encoding.GetHardforkName(cp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

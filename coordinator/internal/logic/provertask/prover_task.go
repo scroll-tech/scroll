@@ -9,9 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
@@ -52,6 +54,76 @@ type proverTaskContext struct {
 	ProverVersion      string
 	ProverProviderType uint8
 	HardForkNames      map[string]struct{}
+
+	taskType   message.ProofType
+	chunkTask  *orm.Chunk
+	batchTask  *orm.Batch
+	bundleTask *orm.Bundle
+}
+
+// hardForkName get the chunk/batch/bundle hard fork name
+func (b *BaseProverTask) hardForkName(ctx *gin.Context, taskCtx *proverTaskContext) (string, error) {
+	switch {
+	case taskCtx.taskType == message.ProofTypeChunk:
+		if taskCtx.chunkTask == nil {
+			return "", errors.New("chunk task is nil")
+		}
+		l2Block, getBlockErr := b.blockOrm.GetL2BlockByNumber(ctx.Copy(), taskCtx.chunkTask.StartBlockNumber)
+		if getBlockErr != nil {
+			return "", getBlockErr
+		}
+		hardForkName := encoding.GetHardforkName(b.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+		return hardForkName, nil
+		
+	case taskCtx.taskType == message.ProofTypeBatch:
+		if taskCtx.batchTask == nil {
+			return "", errors.New("batch task is nil")
+		}
+		startChunk, getChunkErr := b.chunkOrm.GetChunkByHash(ctx, taskCtx.batchTask.StartChunkHash)
+		if getChunkErr != nil {
+			return "", getChunkErr
+		}
+		l2Block, getBlockErr := b.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
+		if getBlockErr != nil {
+			return "", getBlockErr
+		}
+		hardForkName := encoding.GetHardforkName(b.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+		return hardForkName, nil
+
+	case taskCtx.taskType == message.ProofTypeBundle:
+		if taskCtx.bundleTask == nil {
+			return "", errors.New("bundle task is nil")
+		}
+		startBatch, getBatchErr := b.batchOrm.GetBatchByHash(ctx, taskCtx.bundleTask.StartBatchHash)
+		if getBatchErr != nil {
+			return "", getBatchErr
+		}
+		startChunk, getChunkErr := b.chunkOrm.GetChunkByHash(ctx, startBatch.StartChunkHash)
+		if getChunkErr != nil {
+			return "", getChunkErr
+		}
+		l2Block, getBlockErr := b.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
+		if getBlockErr != nil {
+			return "", getBlockErr
+		}
+		hardForkName := encoding.GetHardforkName(b.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+		return hardForkName, nil
+	default:
+		return "", errors.New("illegal task type")
+	}
+}
+
+// and prover-task's hard-fork name is the same
+func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext) (string, error) {
+	hardForkName, getHardForkErr := b.hardForkName(ctx, taskCtx)
+	if getHardForkErr != nil {
+		return "", getHardForkErr
+	}
+
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+		return "", errors.New("to be assigned prover task's hard-fork name is not the same as prover")
+	}
+	return hardForkName, nil
 }
 
 // checkParameter check the prover task parameter illegal

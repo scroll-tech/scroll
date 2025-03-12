@@ -3,7 +3,6 @@ package provertask
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -56,20 +55,6 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	return bp
 }
 
-// proverHardForkSanityCheck check the prover task's hard-fork name
-// and prover-task's hard-fork name is the same
-func (bp *BatchProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext, batchTask *orm.Batch) (string, error) {
-	hardForkName, getHardForkErr := bp.hardForkName(ctx, batchTask)
-	if getHardForkErr != nil {
-		return "", getHardForkErr
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		return "", errors.New("hard-fork name is not the same as the batch's hard-fork name")
-	}
-	return hardForkName, nil
-}
-
 // Assign load and assign batch tasks
 func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	taskCtx, err := bp.checkParameter(ctx)
@@ -117,8 +102,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeBatch
+		taskCtx.batchTask = tmpBatchTask
+
 		var checkErr error
-		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx, tmpBatchTask)
+		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx)
 		if checkErr != nil {
 			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
 			return nil, nil
@@ -193,20 +181,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) (string, error) {
-	startChunk, getChunkErr := bp.chunkOrm.GetChunkByHash(ctx, batchTask.StartChunkHash)
-	if getChunkErr != nil {
-		return "", getChunkErr
-	}
-
-	l2Block, getBlockErr := bp.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

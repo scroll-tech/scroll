@@ -3,14 +3,12 @@ package provertask
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -54,20 +52,6 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 		bundleTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "bundle"),
 	}
 	return bp
-}
-
-// proverHardForkSanityCheck check the prover task's hard-fork name
-// and prover-task's hard-fork name is the same
-func (bp *BundleProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTaskContext, bundleTask *orm.Bundle) (string, error) {
-	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
-	if getHardForkErr != nil {
-		return "", getHardForkErr
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		return "", errors.New("prover task's hard-fork name is not the same as the bundle's hard-fork name")
-	}
-	return hardForkName, nil
 }
 
 // Assign load and assign batch tasks
@@ -117,8 +101,11 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeBundle
+		taskCtx.bundleTask = tmpBundleTask
+
 		var checkErr error
-		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx, tmpBundleTask)
+		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx)
 		if checkErr != nil {
 			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
 			return nil, nil
@@ -193,26 +180,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (bp *BundleProverTask) hardForkName(ctx *gin.Context, bundleTask *orm.Bundle) (string, error) {
-	startBatch, getBatchErr := bp.batchOrm.GetBatchByHash(ctx, bundleTask.StartBatchHash)
-	if getBatchErr != nil {
-		return "", getBatchErr
-	}
-
-	startChunk, getChunkErr := bp.chunkOrm.GetChunkByHash(ctx, startBatch.StartChunkHash)
-	if getChunkErr != nil {
-		return "", getChunkErr
-	}
-
-	l2Block, getBlockErr := bp.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-
-	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
