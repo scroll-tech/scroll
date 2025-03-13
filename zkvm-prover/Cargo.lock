@@ -1495,7 +1495,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2075,7 +2075,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5842,7 +5842,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6830,7 +6830,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "19.4.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#562b7c67b8f0c0e4aee4f74fe6c0c983df58790c"
+source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#6fe1fae6d92f0f6a3ed234a955aca4bdcf864f97"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -6869,7 +6869,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "15.1.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#562b7c67b8f0c0e4aee4f74fe6c0c983df58790c"
+source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#6fe1fae6d92f0f6a3ed234a955aca4bdcf864f97"
 dependencies = [
  "revm-primitives 15.1.0",
  "serde",
@@ -6907,7 +6907,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "16.0.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#562b7c67b8f0c0e4aee4f74fe6c0c983df58790c"
+source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#6fe1fae6d92f0f6a3ed234a955aca4bdcf864f97"
 dependencies = [
  "aurora-engine-modexp",
  "c-kzg",
@@ -6964,7 +6964,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "15.1.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#562b7c67b8f0c0e4aee4f74fe6c0c983df58790c"
+source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor%2Ffeat%2Fv55%2Feuclid-v2#6fe1fae6d92f0f6a3ed234a955aca4bdcf864f97"
 dependencies = [
  "alloy-eip2930",
  "alloy-eip7702 0.5.1",
@@ -7220,7 +7220,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7585,7 +7585,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.1-rc.2"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#01fb5e3b8b04f6e8a59056e1741f5d973589e727"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#0f251ba4541e2d136b953f10dae163686c0e815d"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -7634,7 +7634,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.1-rc.2"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#01fb5e3b8b04f6e8a59056e1741f5d973589e727"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#0f251ba4541e2d136b953f10dae163686c0e815d"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -7687,7 +7687,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.1-rc.2"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#01fb5e3b8b04f6e8a59056e1741f5d973589e727"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.1-rc.3#0f251ba4541e2d136b953f10dae163686c0e815d"
 dependencies = [
  "bincode",
  "eyre",
@@ -8187,7 +8187,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8444,7 +8444,7 @@ dependencies = [
  "getrandom 0.3.1",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
