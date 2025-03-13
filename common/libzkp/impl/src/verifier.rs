@@ -61,7 +61,7 @@ pub fn init(config: VerifierConfig) {
 
     let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
     unsafe {
-        VERIFIER_LOW
+        VERIFIER_HIGH
             .set(VerifierPair(
                 config.high_version_circuit.fork_name,
                 Rc::new(Box::new(verifier)),
