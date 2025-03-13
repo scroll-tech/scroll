@@ -7779,7 +7779,7 @@ dependencies = [
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=ea16370#ea163700741aebde4422ac6c9798a47c8704ccab"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=78d118b#78d118b88cadc626efa9202c0e30192d9224acdd"
 dependencies = [
  "alloy",
  "anyhow",
