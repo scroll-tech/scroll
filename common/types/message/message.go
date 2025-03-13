@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -54,13 +55,13 @@ type EuclidV2ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos    []*ChunkInfo `json:"chunk_infos"`
-	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
-	BatchHeader   interface{}  `json:"batch_header"`
-	BlobBytes     []byte       `json:"blob_bytes"`
-	KzgProof      []byte       `json:"kzg_proof"`
-	KzgCommitment []byte       `json:"kzg_commitment"`
-	Challenge     common.Hash  `json:"challenge"`
+	ChunkInfos      []*ChunkInfo `json:"chunk_infos"`
+	ChunkProofs     []ChunkProof `json:"chunk_proofs"`
+	BatchHeader     interface{}  `json:"batch_header"`
+	BlobBytes       []byte       `json:"blob_bytes"`
+	KzgProof        hexutil.Big  `json:"kzg_proof"`
+	KzgCommitment   hexutil.Big  `json:"kzg_commitment"`
+	ChallengeDigest hexutil.Big  `json:"challenge_digest"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
@@ -88,7 +89,7 @@ type ChunkInfo struct {
 // BlockContextV2 is the block context for euclid v2
 type BlockContextV2 struct {
 	Timestamp uint64      `json:"timestamp"`
-	BaseFee   common.Hash `json:"base_fee"`
+	BaseFee   hexutil.Big `json:"base_fee"`
 	GasLimit  uint64      `json:"gas_limit"`
 	NumTxs    uint16      `json:"num_txs"`
 	NumL1Msgs uint16      `json:"num_l1_msgs"`
