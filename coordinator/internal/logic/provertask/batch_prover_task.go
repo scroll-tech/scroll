@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -214,10 +216,15 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 			IsPadding:        false,
 		}
-		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
-			if haloProot.ChunkInfo != nil {
-				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+		if halo2Proof, ok := proof.(*message.Halo2ChunkProof); ok {
+			if halo2Proof.ChunkInfo != nil {
+				chunkInfo.TxBytes = halo2Proof.ChunkInfo.TxBytes
 			}
+		}
+		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
+			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
+			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
+			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -231,6 +238,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
+
+	log.Info("get batch task", "task_id", task.TaskID, "public_key", task.ProverPublicKey, "prover_name", task.ProverName, "prover_version", task.ProverVersion)
+	log.Info("chunkProofsBytes", "chunkProofsBytes", string(chunkProofsBytes))
 
 	taskMsg := &coordinatorType.GetTaskSchema{
 		UUID:         task.UUID.String(),
@@ -281,8 +291,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = dbBatch.BlobDataProof[112:160]
-	taskDetail.KzgCommitment = dbBatch.BlobDataProof[64:112]
-	taskDetail.Challenge = common.Hash(dbBatch.BlobDataProof[0:32])
+	taskDetail.KzgProof = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))
+	taskDetail.KzgCommitment = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))
+	taskDetail.ChallengeDigest = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[0:32])) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
 	return taskDetail, nil
 }
