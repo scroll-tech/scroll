@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -52,15 +53,58 @@ type EuclidV2ChunkTaskDetail struct {
 	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
 }
 
+// it is a hex encoded big with fixed length on 48 bytes
+type Byte48 struct {
+	hexutil.Big
+}
+
+func (e Byte48) MarshalText() ([]byte, error) {
+	i := e.ToInt()
+	// overrite encode big
+	if sign := i.Sign(); sign < 0 {
+		// sanity check
+		return nil, fmt.Errorf("Byte48 must be positive integer")
+	} else {
+		s := i.Text(16)
+		if len(s) > 96 {
+			return nil, fmt.Errorf("Integer Exceed 384bit")
+		}
+		return []byte(fmt.Sprintf("0x%0*s", 96, s)), nil
+	}
+}
+
+func isString(input []byte) bool {
+	return len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"'
+}
+
+// hexutil.Big has limition of 256bit so we have to override it ...
+func (e *Byte48) UnmarshalJSON(input []byte) error {
+	if !isString(input) {
+		return fmt.Errorf("not hex string")
+	}
+
+	b, err := hexutil.Decode(string(input[1 : len(input)-1]))
+	if err != nil {
+		return err
+	}
+	if len(b) != 48 {
+		return fmt.Errorf("not a 48 bytes hex string: %d", len(b))
+	}
+	var dec big.Int
+	dec.SetBytes(b)
+	*e = Byte48{(hexutil.Big)(dec)}
+	return nil
+}
+
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
 	ChunkInfos      []*ChunkInfo `json:"chunk_infos"`
 	ChunkProofs     []ChunkProof `json:"chunk_proofs"`
 	BatchHeader     interface{}  `json:"batch_header"`
 	BlobBytes       []byte       `json:"blob_bytes"`
-	KzgProof        hexutil.Big  `json:"kzg_proof"`
-	KzgCommitment   hexutil.Big  `json:"kzg_commitment"`
-	ChallengeDigest hexutil.Big  `json:"challenge_digest"`
+	KzgProof        Byte48       `json:"kzg_proof"`
+	KzgCommitment   Byte48       `json:"kzg_commitment"`
+	ChallengeDigest common.Hash  `json:"challenge_digest"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.

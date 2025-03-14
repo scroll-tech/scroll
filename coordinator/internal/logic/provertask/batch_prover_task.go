@@ -291,8 +291,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))
-	taskDetail.KzgCommitment = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))
-	taskDetail.ChallengeDigest = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[0:32])) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32]) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
 	return taskDetail, nil
 }
