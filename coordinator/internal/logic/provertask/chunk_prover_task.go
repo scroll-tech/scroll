@@ -217,8 +217,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		HardForkName: hardForkName,
 	}
 
-	log.Info("format prover task", "task_id", task.TaskID, "task_type", message.ProofTypeChunk.String(), "hard_fork_name", hardForkName)
-	log.Info("TaskData", "task_id", task.TaskID, "task_data", proverTaskSchema.TaskData, "taskDetail", string(taskDetailBytes))
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeChunk.String(), "hard_fork_name", hardForkName, "task_data", proverTaskSchema.TaskData)
 
 	return proverTaskSchema, nil
 }
