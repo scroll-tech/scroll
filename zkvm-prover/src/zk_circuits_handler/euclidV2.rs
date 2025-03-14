@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
 use scroll_zkvm_prover_euclidv2::{
     task::{batch::BatchProvingTask, bundle::BundleProvingTask, chunk::ChunkProvingTask},
-    BatchProver, BundleProver, ChunkProver,
+    BatchProver, BundleProver, ChunkProver, ProverConfig,
 };
 use tokio::sync::Mutex;
 pub struct EuclidV2Handler {
@@ -20,7 +20,6 @@ unsafe impl Send for EuclidV2Handler {}
 impl EuclidV2Handler {
     pub fn new(workspace_path: &str) -> Self {
         let workspace_path = Path::new(workspace_path);
-        println!("ok 1");
 
         let cache_dir = workspace_path.join("cache");
         let chunk_exe = workspace_path.join("chunk/app.vmexe");
@@ -29,10 +28,11 @@ impl EuclidV2Handler {
             chunk_exe,
             chunk_app_config,
             Some(cache_dir.clone()),
-            Default::default(),
+            ProverConfig {
+                segment_len: Some((1 << 22) - 100),
+            },
         )
         .expect("Failed to setup chunk prover");
-        println!("ok 2");
 
         let batch_exe = workspace_path.join("batch/app.vmexe");
         let batch_app_config = workspace_path.join("batch/openvm.toml");
@@ -40,10 +40,11 @@ impl EuclidV2Handler {
             batch_exe,
             batch_app_config,
             Some(cache_dir.clone()),
-            Default::default(),
+            ProverConfig {
+                segment_len: Some((1 << 22) - 100),
+            },
         )
         .expect("Failed to setup batch prover");
-        println!("ok 3");
 
         let bundle_exe = workspace_path.join("bundle/app.vmexe");
         let bundle_app_config = workspace_path.join("bundle/openvm.toml");
@@ -51,10 +52,11 @@ impl EuclidV2Handler {
             bundle_exe,
             bundle_app_config,
             Some(cache_dir),
-            Default::default(),
+            ProverConfig {
+                segment_len: Some((1 << 22) - 100),
+            },
         )
         .expect("Failed to setup bundle prover");
-        println!("ok 4");
 
         Self {
             chunk_prover,

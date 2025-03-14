@@ -239,9 +239,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
-	log.Info("get batch task", "task_id", task.TaskID, "public_key", task.ProverPublicKey, "prover_name", task.ProverName, "prover_version", task.ProverVersion)
-	log.Info("chunkProofsBytes", "chunkProofsBytes", string(chunkProofsBytes))
-
 	taskMsg := &coordinatorType.GetTaskSchema{
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
@@ -249,6 +246,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		TaskData:     string(chunkProofsBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeBatch.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
+
 	return taskMsg, nil
 }
 

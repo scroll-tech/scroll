@@ -219,6 +219,9 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		TaskData:     string(batchProofsBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeBundle.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
+
 	return taskMsg, nil
 }
 

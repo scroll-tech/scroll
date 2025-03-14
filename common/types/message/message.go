@@ -8,7 +8,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/log"
 )
 
 const (
@@ -152,7 +151,6 @@ type ChunkProof interface {
 
 // NewChunkProof creates a new ChunkProof instance.
 func NewChunkProof(hardForkName string) ChunkProof {
-	log.Info("NewChunkProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
 	case EuclidFork, EuclidV2Fork:
 		return &OpenVMChunkProof{}
@@ -187,7 +185,6 @@ type BatchProof interface {
 
 // NewBatchProof creates a new BatchProof instance.
 func NewBatchProof(hardForkName string) BatchProof {
-	log.Info("NewBatchProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
 	case EuclidFork, EuclidV2Fork:
 		return &OpenVMBatchProof{}
@@ -245,7 +242,6 @@ type BundleProof interface {
 
 // NewBundleProof creates a new BundleProof instance.
 func NewBundleProof(hardForkName string) BundleProof {
-	log.Info("NewBundleProof", "hardForkName", hardForkName, "euclidForkName", EuclidFork, "euclidV2ForkName", EuclidV2Fork)
 	switch hardForkName {
 	case EuclidFork, EuclidV2Fork:
 		return &OpenVMBundleProof{}
