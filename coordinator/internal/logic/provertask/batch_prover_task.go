@@ -247,7 +247,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		HardForkName: hardForkName,
 	}
 
-	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeChunk.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeBatch.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
 
 	return taskMsg, nil
 }
