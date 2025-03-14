@@ -77,6 +77,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	var batchTask *orm.Batch
+	var hardForkName string
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
@@ -101,10 +102,20 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
+		taskCtx.taskType = message.ProofTypeBatch
+		taskCtx.batchTask = tmpBatchTask
+
+		var checkErr error
+		hardForkName, checkErr = bp.hardForkSanityCheck(ctx, taskCtx)
+		if checkErr != nil {
+			log.Debug("hard fork sanity check failed", "height", getTaskParameter.ProverHeight, "err", checkErr)
+			return nil, nil
+		}
+
 		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getTaskError)
+		proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+		if getFailedTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
@@ -132,22 +143,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if batchTask == nil {
 		log.Debug("get empty unassigned batch after retry 5 times", "height", getTaskParameter.ProverHeight)
-		return nil, nil
-	}
-
-	hardForkName, getHardForkErr := bp.hardForkName(ctx, batchTask)
-	if getHardForkErr != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("retrieve hard fork name by batch failed", "task_id", batchTask.Hash, "err", getHardForkErr)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Debug("incompatible prover version",
-			"requisite hard fork name", hardForkName,
-			"prover hard fork name", taskCtx.HardForkNames,
-			"task_id", batchTask.Hash)
 		return nil, nil
 	}
 
@@ -186,20 +181,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) (string, error) {
-	startChunk, getChunkErr := bp.chunkOrm.GetChunkByHash(ctx, batchTask.StartChunkHash)
-	if getChunkErr != nil {
-		return "", getChunkErr
-	}
-
-	l2Block, getBlockErr := bp.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
-	if getBlockErr != nil {
-		return "", getBlockErr
-	}
-	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
-	return hardForkName, nil
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

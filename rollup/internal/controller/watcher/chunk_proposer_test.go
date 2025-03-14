@@ -21,6 +21,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 		name                       string
 		maxBlockNum                uint64
 		maxTxNum                   uint64
+		maxL2Gas                   uint64
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
@@ -32,6 +33,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                    "NoLimitReached",
 			maxBlockNum:             100,
 			maxTxNum:                10000,
+			maxL2Gas:                20_000_000,
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       1000000,
@@ -42,6 +44,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                       "Timeout",
 			maxBlockNum:                100,
 			maxTxNum:                   10000,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
@@ -53,6 +56,18 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                    "MaxTxNumPerChunkIs0",
 			maxBlockNum:             10,
 			maxTxNum:                0,
+			maxL2Gas:                20_000_000,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
+		},
+		{
+			name:                    "MaxL2GasPerChunkIs0",
+			maxBlockNum:             10,
+			maxTxNum:                10,
+			maxL2Gas:                0,
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       1000000,
@@ -63,6 +78,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                    "MaxL1CommitGasPerChunkIs0",
 			maxBlockNum:             10,
 			maxTxNum:                10000,
+			maxL2Gas:                20_000_000,
 			maxL1CommitGas:          0,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       1000000,
@@ -73,6 +89,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                    "MaxL1CommitCalldataSizePerChunkIs0",
 			maxBlockNum:             10,
 			maxTxNum:                10000,
+			maxL2Gas:                20_000_000,
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 0,
 			maxRowConsumption:       1000000,
@@ -83,6 +100,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                    "MaxRowConsumptionPerChunkIs0",
 			maxBlockNum:             100,
 			maxTxNum:                10000,
+			maxL2Gas:                20_000_000,
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       0,
@@ -93,6 +111,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                       "MaxBlockNumPerChunkIs1",
 			maxBlockNum:                1,
 			maxTxNum:                   10000,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
@@ -104,6 +123,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                       "MaxTxNumPerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   2,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
@@ -112,9 +132,24 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			expectedBlocksInFirstChunk: 1,
 		},
 		{
+			// In this test the second block is not included in the chunk because together
+			// with the first block it exceeds the maxL2GasPerChunk limit.
+			name:                       "MaxL2GasPerChunkIsSecondBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL2Gas:                   1_153_000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
 			name:                       "MaxL1CommitGasPerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             62500,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
@@ -126,6 +161,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                       "MaxL1CommitCalldataSizePerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    60,
 			maxRowConsumption:          1000000,
@@ -137,6 +173,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			name:                       "MaxRowConsumptionPerChunkIs1",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
+			maxL2Gas:                   20_000_000,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1,
@@ -158,6 +195,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
+				MaxL2GasPerChunk:                tt.maxL2Gas,
 				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
 				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
@@ -208,6 +246,7 @@ func testChunkProposerBlobSizeLimitCodecV4(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             255,
 			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL2GasPerChunk:                math.MaxUint64,
 			MaxL1CommitGasPerChunk:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,

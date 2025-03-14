@@ -12,11 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/integration-test/orm"
+
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-	"scroll-tech/database/migrate"
-	"scroll-tech/integration-test/orm"
 
 	capp "scroll-tech/coordinator/cmd/api/app"
 
