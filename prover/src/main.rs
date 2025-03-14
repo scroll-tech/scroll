@@ -17,7 +17,7 @@ use tokio::runtime;
 use utils::get_prover_type;
 
 #[derive(Parser, Debug)]
-#[clap(disable_version_flag = true)]
+#[command(disable_version_flag = true)]
 struct Args {
     /// Path of config file
     #[arg(long = "config", default_value = "conf/config.json")]
