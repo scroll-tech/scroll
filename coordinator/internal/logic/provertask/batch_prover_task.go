@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -211,12 +213,18 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
 			DataHash:         common.HexToHash(chunk.Hash),
 			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 			IsPadding:        false,
 		}
-		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
-			if haloProot.ChunkInfo != nil {
-				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+		if halo2Proof, ok := proof.(*message.Halo2ChunkProof); ok {
+			if halo2Proof.ChunkInfo != nil {
+				chunkInfo.TxBytes = halo2Proof.ChunkInfo.TxBytes
 			}
+		}
+		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
+			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
+			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
+			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -280,8 +288,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = dbBatch.BlobDataProof[112:160]
-	taskDetail.KzgCommitment = dbBatch.BlobDataProof[64:112]
-	taskDetail.Challenge = common.Hash(dbBatch.BlobDataProof[0:32])
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32]) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
 	return taskDetail, nil
 }

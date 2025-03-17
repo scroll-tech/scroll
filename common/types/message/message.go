@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
 const (
-	euclidFork = "euclid"
+	EuclidFork = "euclid"
 )
 
 // ProofType represents the type of task.
@@ -41,18 +43,62 @@ const (
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
-	BlockHashes []common.Hash `json:"block_hashes"`
+	BlockHashes      []common.Hash `json:"block_hashes"`
+	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
+}
+
+// it is a hex encoded big with fixed length on 48 bytes
+type Byte48 struct {
+	hexutil.Big
+}
+
+func (e Byte48) MarshalText() ([]byte, error) {
+	i := e.ToInt()
+	// overrite encode big
+	if sign := i.Sign(); sign < 0 {
+		// sanity check
+		return nil, fmt.Errorf("Byte48 must be positive integer")
+	} else {
+		s := i.Text(16)
+		if len(s) > 96 {
+			return nil, fmt.Errorf("integer Exceed 384bit")
+		}
+		return []byte(fmt.Sprintf("0x%0*s", 96, s)), nil
+	}
+}
+
+func isString(input []byte) bool {
+	return len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"'
+}
+
+// hexutil.Big has limition of 256bit so we have to override it ...
+func (e *Byte48) UnmarshalJSON(input []byte) error {
+	if !isString(input) {
+		return fmt.Errorf("not hex string")
+	}
+
+	b, err := hexutil.Decode(string(input[1 : len(input)-1]))
+	if err != nil {
+		return err
+	}
+	if len(b) != 48 {
+		return fmt.Errorf("not a 48 bytes hex string: %d", len(b))
+	}
+	var dec big.Int
+	dec.SetBytes(b)
+	*e = Byte48{(hexutil.Big)(dec)}
+	return nil
 }
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos    []*ChunkInfo `json:"chunk_infos"`
-	ChunkProofs   []ChunkProof `json:"chunk_proofs"`
-	BatchHeader   interface{}  `json:"batch_header"`
-	BlobBytes     []byte       `json:"blob_bytes"`
-	KzgProof      []byte       `json:"kzg_proof"`
-	KzgCommitment []byte       `json:"kzg_commitment"`
-	Challenge     common.Hash  `json:"challenge"`
+	ChunkInfos      []*ChunkInfo `json:"chunk_infos"`
+	ChunkProofs     []ChunkProof `json:"chunk_proofs"`
+	BatchHeader     interface{}  `json:"batch_header"`
+	BlobBytes       []byte       `json:"blob_bytes"`
+	KzgProof        Byte48       `json:"kzg_proof"`
+	KzgCommitment   Byte48       `json:"kzg_commitment"`
+	ChallengeDigest common.Hash  `json:"challenge_digest"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
@@ -62,15 +108,28 @@ type BundleTaskDetail struct {
 
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID          uint64      `json:"chain_id"`
-	PrevStateRoot    common.Hash `json:"prev_state_root"`
-	PostStateRoot    common.Hash `json:"post_state_root"`
-	WithdrawRoot     common.Hash `json:"withdraw_root"`
-	DataHash         common.Hash `json:"data_hash"`
-	IsPadding        bool        `json:"is_padding"`
-	TxBytes          []byte      `json:"tx_bytes"`
-	TxBytesHash      common.Hash `json:"tx_data_digest"`
-	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
+	ChainID            uint64           `json:"chain_id"`
+	PrevStateRoot      common.Hash      `json:"prev_state_root"`
+	PostStateRoot      common.Hash      `json:"post_state_root"`
+	WithdrawRoot       common.Hash      `json:"withdraw_root"`
+	DataHash           common.Hash      `json:"data_hash"`
+	IsPadding          bool             `json:"is_padding"`
+	TxBytes            []byte           `json:"tx_bytes"`
+	TxBytesHash        common.Hash      `json:"tx_data_digest"`
+	PrevMsgQueueHash   common.Hash      `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash   common.Hash      `json:"post_msg_queue_hash"`
+	TxDataLength       uint64           `json:"tx_data_length"`
+	InitialBlockNumber uint64           `json:"initial_block_number"`
+	BlockCtxs          []BlockContextV2 `json:"block_ctxs"`
+}
+
+// BlockContextV2 is the block context for euclid v2
+type BlockContextV2 struct {
+	Timestamp uint64      `json:"timestamp"`
+	BaseFee   hexutil.Big `json:"base_fee"`
+	GasLimit  uint64      `json:"gas_limit"`
+	NumTxs    uint16      `json:"num_txs"`
+	NumL1Msgs uint16      `json:"num_l1_msgs"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8
@@ -87,7 +146,7 @@ type ChunkProof interface {
 // NewChunkProof creates a new ChunkProof instance.
 func NewChunkProof(hardForkName string) ChunkProof {
 	switch hardForkName {
-	case euclidFork:
+	case EuclidFork:
 		return &OpenVMChunkProof{}
 	default:
 		return &Halo2ChunkProof{}
@@ -121,7 +180,7 @@ type BatchProof interface {
 // NewBatchProof creates a new BatchProof instance.
 func NewBatchProof(hardForkName string) BatchProof {
 	switch hardForkName {
-	case euclidFork:
+	case EuclidFork:
 		return &OpenVMBatchProof{}
 	default:
 		return &Halo2BatchProof{}
@@ -178,7 +237,7 @@ type BundleProof interface {
 // NewBundleProof creates a new BundleProof instance.
 func NewBundleProof(hardForkName string) BundleProof {
 	switch hardForkName {
-	case euclidFork:
+	case EuclidFork:
 		return &OpenVMBundleProof{}
 	default:
 		return &Halo2BundleProof{}
@@ -258,12 +317,14 @@ func (p *OpenVMChunkProof) Proof() []byte {
 
 // OpenVMBatchInfo is for calculating pi_hash for batch header
 type OpenVMBatchInfo struct {
-	ParentBatchHash common.Hash `json:"parent_batch_hash"`
-	ParentStateRoot common.Hash `json:"parent_state_root"`
-	StateRoot       common.Hash `json:"state_root"`
-	WithdrawRoot    common.Hash `json:"withdraw_root"`
-	BatchHash       common.Hash `json:"batch_hash"`
-	ChainID         uint64      `json:"chain_id"`
+	ParentBatchHash  common.Hash `json:"parent_batch_hash"`
+	ParentStateRoot  common.Hash `json:"parent_state_root"`
+	StateRoot        common.Hash `json:"state_root"`
+	WithdrawRoot     common.Hash `json:"withdraw_root"`
+	BatchHash        common.Hash `json:"batch_hash"`
+	ChainID          uint64      `json:"chain_id"`
+	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
@@ -323,6 +384,7 @@ type OpenVMBundleInfo struct {
 	NumBatches    uint32      `json:"num_batches"`
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
+	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.
