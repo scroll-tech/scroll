@@ -239,9 +239,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
-	log.Info("get batch task", "task_id", task.TaskID, "public_key", task.ProverPublicKey, "prover_name", task.ProverName, "prover_version", task.ProverVersion)
-	log.Info("chunkProofsBytes", "chunkProofsBytes", string(chunkProofsBytes))
-
 	taskMsg := &coordinatorType.GetTaskSchema{
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
@@ -249,6 +246,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		TaskData:     string(chunkProofsBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeBatch.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
+
 	return taskMsg, nil
 }
 
@@ -291,8 +291,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))
-	taskDetail.KzgCommitment = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))
-	taskDetail.ChallengeDigest = hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[0:32])) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32]) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
 	return taskDetail, nil
 }
