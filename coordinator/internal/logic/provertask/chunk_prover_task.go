@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -180,10 +181,28 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
-	// Get block hashes.
-	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
-	if dbErr != nil || len(blockHashes) == 0 {
+	dbChunk, err := cp.chunkOrm.GetChunkByHash(ctx, task.TaskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch chunk by hash:%s err:%w", task.TaskID, err)
+	}
+
+	blocks, dbErr := cp.blockOrm.GetL2BlocksInRange(ctx, dbChunk.StartBlockNumber+1, dbChunk.EndBlockNumber+1)
+	if dbErr != nil || len(blocks) == 0 {
 		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
+	}
+
+	if len(blocks) != int(dbChunk.EndBlockNumber-dbChunk.StartBlockNumber+1) {
+		return nil, fmt.Errorf("failed to fetch all block hashes of a chunk, chunk hash:%s, expected block number:%d, actual block number:%d",
+			task.TaskID, dbChunk.EndBlockNumber-dbChunk.StartBlockNumber+1, len(blocks))
+	}
+
+	var blockHashes []common.Hash
+	for _, block := range blocks {
+		if block.Header.Number.Uint64() == 0 {
+			return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s, block number is 0", task.TaskID)
+		}
+		log.Info("get block hash of chunk task", "number", block.Header.Number.Uint64()-1, "hash", block.Header.ParentHash.Hex())
+		blockHashes = append(blockHashes, block.Header.ParentHash)
 	}
 
 	taskDetail := message.ChunkTaskDetail{

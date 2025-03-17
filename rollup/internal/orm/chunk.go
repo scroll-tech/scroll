@@ -259,6 +259,23 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	return &newChunk, nil
 }
 
+// UpdateStateRootByHash updates the StateRoot for a chunk identified by its hash.
+func (o *Chunk) UpdateStateRootByHash(ctx context.Context, hash string, stateRoot string) error {
+	updateFields := map[string]interface{}{
+		"state_root": stateRoot,
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateStateRootByHash error: %w, chunk hash: %v", err, hash)
+	}
+
+	return nil
+}
+
 // UpdateProvingStatus updates the proving status of a chunk.
 func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})

@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
@@ -226,4 +230,21 @@ func measureTime(operation func() error) (time.Duration, error) {
 	start := time.Now()
 	err := operation()
 	return time.Since(start), err
+}
+
+// GetDiskRoot retrieves the disk root for a given block number from the Ethereum node.
+func GetDiskRoot(ctx context.Context, cli *rpc.Client, blockNumber uint64) (common.Hash, error) {
+	type DiskRootResponse struct {
+		DiskRoot string `json:"diskRoot"`
+	}
+
+	var response DiskRootResponse
+
+	err := cli.CallContext(ctx, &response, "scroll_diskRoot", hexutil.EncodeBig(big.NewInt(0).SetUint64(blockNumber)))
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to fetch disk root for block %d: %w", blockNumber, err)
+	}
+
+	diskRoot := common.HexToHash(response.DiskRoot)
+	return diskRoot, nil
 }

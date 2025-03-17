@@ -229,6 +229,23 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) 
 	return nil
 }
 
+// UpdateStateRootByNumber updates the StateRoot for a chunk identified by its number.
+func (o *L2Block) UpdateStateRootByNumber(ctx context.Context, number uint64, stateRoot string) error {
+	updateFields := map[string]interface{}{
+		"state_root": stateRoot,
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Where("number = ?", number)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("L2Block.UpdateStateRootByNumber error: %w, block number: %v", err, number)
+	}
+
+	return nil
+}
+
 // UpdateChunkHashInRange updates the chunk_hash of block tx within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end indices.
 // This function ensures the number of rows updated must equal to (endIndex - startIndex + 1).
