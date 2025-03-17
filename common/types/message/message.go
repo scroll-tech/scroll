@@ -63,11 +63,11 @@ func (e Byte48) MarshalText() ([]byte, error) {
 	// overrite encode big
 	if sign := i.Sign(); sign < 0 {
 		// sanity check
-		return nil, fmt.Errorf("Byte48 must be positive integer")
+		return nil, errors.New("Byte48 must be positive integer")
 	} else {
 		s := i.Text(16)
 		if len(s) > 96 {
-			return nil, fmt.Errorf("Integer Exceed 384bit")
+			return nil, errors.New("integer Exceed 384bit")
 		}
 		return []byte(fmt.Sprintf("0x%0*s", 96, s)), nil
 	}
@@ -80,7 +80,7 @@ func isString(input []byte) bool {
 // hexutil.Big has limition of 256bit so we have to override it ...
 func (e *Byte48) UnmarshalJSON(input []byte) error {
 	if !isString(input) {
-		return fmt.Errorf("not hex string")
+		return errors.New("not hex string")
 	}
 
 	b, err := hexutil.Decode(string(input[1 : len(input)-1]))
