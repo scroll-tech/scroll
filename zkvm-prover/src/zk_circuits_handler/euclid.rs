@@ -89,6 +89,7 @@ impl CircuitsHandler for Arc<Mutex<EuclidHandler>> {
                     .chunk_prover
                     .gen_proof(&ChunkProvingTask {
                         block_witnesses: witnesses,
+                        prev_msg_queue_hash: Default::default(),
                     })?;
 
                 Ok(serde_json::to_string(&proof)?)
