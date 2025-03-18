@@ -5791,7 +5791,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -5814,7 +5814,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -5850,7 +5850,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
 dependencies = [
  "bincode",
  "eyre",
