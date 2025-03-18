@@ -2,6 +2,7 @@ package provertask
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -13,6 +14,8 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -293,6 +296,50 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
 	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
 	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
-	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32]) // FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
+
+	// convert raw data to BLSFieldElements
+	blob, err := makeBlobCanonical(dbBatch.BlobBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert blobBytes to canonical form: %w", err)
+	}
+
+	// compute blob versioned hash
+	c, err := kzg4844.BlobToCommitment(blob)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blob commitment: %w", err)
+	}
+	blobVersionedHash := kzg4844.CalcBlobHashV1(sha256.New(), &c)
+	taskDetail.ChallengeDigest = crypto.Keccak256Hash(crypto.Keccak256(dbBatch.BlobBytes), blobVersionedHash)
 	return taskDetail, nil
+}
+
+// maxBlobBytes is the maximum number of bytes that can be stored in a blob.
+const maxBlobBytes = 131072
+
+// maxEffectiveBlobBytes is the maximum number of bytes that can be stored in a blob.
+// We can only utilize 31/32 of a blob.
+const maxEffectiveBlobBytes = maxBlobBytes / 32 * 31
+
+// makeBlobCanonical converts the raw blob data into the canonical blob representation of 4096 BLSFieldElements.
+func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
+	if len(blobBytes) > maxEffectiveBlobBytes {
+		return nil, fmt.Errorf("oversized batch payload, blob bytes length: %v, max length: %v", len(blobBytes), maxEffectiveBlobBytes)
+	}
+
+	// the canonical (padded) blob payload
+	var blob kzg4844.Blob
+
+	// encode blob payload by prepending every 31 bytes with 1 zero byte
+	index := 0
+
+	for from := 0; from < len(blobBytes); from += 31 {
+		to := from + 31
+		if to > len(blobBytes) {
+			to = len(blobBytes)
+		}
+		copy(blob[index+1:], blobBytes[from:to])
+		index += 32
+	}
+
+	return &blob, nil
 }
