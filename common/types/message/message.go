@@ -411,10 +411,10 @@ type OpenVMBundleProof struct {
 // | 32               | 32             | accs[1]  | accumulator 2       |
 // | 32*i ...         | 32             | accs[i]  | accumulator i ...   |
 // | 352              | 32             | accs[11] | accumulator 12      |
-// | 1472             | dynamic        | proof    | proof bytes         |
+// | 384              | dynamic        | proof    | proof bytes         |
 func (p *OpenVMBundleProof) Proof() []byte {
-	proofBytes := make([]byte, 0, 1472+len(p.EvmProof.Proof))
-	proofBytes = append(proofBytes, p.EvmProof.Instances[:1472]...)
+	proofBytes := make([]byte, 0, 384+len(p.EvmProof.Proof))
+	proofBytes = append(proofBytes, p.EvmProof.Instances[:384]...)
 	return append(proofBytes, p.EvmProof.Proof...)
 }
 
