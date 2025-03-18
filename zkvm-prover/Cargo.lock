@@ -1532,7 +1532,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2167,7 +2167,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5337,7 +5337,7 @@ dependencies = [
 [[package]]
 name = "p3-gpu-backend"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -5374,7 +5374,7 @@ dependencies = [
 [[package]]
 name = "p3-gpu-base"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -5391,7 +5391,7 @@ dependencies = [
 [[package]]
 name = "p3-gpu-build"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "cc",
  "directories",
@@ -5404,12 +5404,12 @@ dependencies = [
 [[package]]
 name = "p3-gpu-field"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 
 [[package]]
 name = "p3-gpu-module"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "itertools 0.14.0",
  "p3-field",
@@ -5422,7 +5422,7 @@ dependencies = [
 [[package]]
 name = "p3-interpolation"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -5484,7 +5484,7 @@ dependencies = [
 [[package]]
 name = "p3-mds"
 version = "0.1.0"
-source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#254a7bd2480a155d38eaa38ce5c56bc5d9727e28"
+source = "git+ssh://git@github.com/scroll-tech/plonky3-gpu.git?branch=openvm-v2#31d1af8c9b2054b0ca1167df43d0cd38e882daa2"
 dependencies = [
  "itertools 0.14.0",
  "p3-dft",
@@ -6098,7 +6098,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7753,7 +7753,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -8189,7 +8189,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -8212,7 +8212,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -8248,7 +8248,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.8.1#15252011ec482aca8e0f39855b02c0a36f9f5e99"
 dependencies = [
  "bincode",
  "eyre",
@@ -8758,7 +8758,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -9015,7 +9015,7 @@ dependencies = [
  "getrandom 0.3.1",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
