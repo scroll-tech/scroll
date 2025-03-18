@@ -188,25 +188,14 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	var taskDetailBytes []byte
-	if hardForkName == message.EuclidV2Fork {
-		taskDetail := message.EuclidV2ChunkTaskDetail{
-			BlockHashes:      blockHashes,
-			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
-		}
-		var err error
-		taskDetailBytes, err = json.Marshal(taskDetail)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
-		}
-	} else {
-		taskDetail := message.LegacyChunkTaskDetail{
-			BlockHashes: blockHashes,
-		}
-		var err error
-		taskDetailBytes, err = json.Marshal(taskDetail)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
-		}
+	taskDetail := message.ChunkTaskDetail{
+		BlockHashes:      blockHashes,
+		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+	}
+	var err error
+	taskDetailBytes, err = json.Marshal(taskDetail)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
