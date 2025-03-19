@@ -103,7 +103,8 @@ type BatchTaskDetail struct {
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
-	BatchProofs []BatchProof `json:"batch_proofs"`
+	BatchProofs []BatchProof      `json:"batch_proofs"`
+	BundleInfo  *OpenVMBundleInfo `json:"bundle_info,omitempty"`
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
@@ -384,7 +385,7 @@ type OpenVMBundleInfo struct {
 	NumBatches    uint32      `json:"num_batches"`
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
-	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
+	MsgQueueHash  common.Hash `json:"msg_queue_hash,omitempty"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.
