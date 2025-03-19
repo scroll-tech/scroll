@@ -5661,7 +5661,7 @@ checksum = "6ea1a2d0a644769cc99faa24c3ad26b379b786fe7c36fd3c546254801650e6dd"
 [[package]]
 name = "sbv-core"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#c63ff8b7904692df3243f7a6ed1c7ee56b8c4f5d"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#33dc8b37e40973deceb43408bad37d9c4ed0dec8"
 dependencies = [
  "reth-evm",
  "reth-evm-ethereum",
@@ -5678,7 +5678,7 @@ dependencies = [
 [[package]]
 name = "sbv-helpers"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#c63ff8b7904692df3243f7a6ed1c7ee56b8c4f5d"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#33dc8b37e40973deceb43408bad37d9c4ed0dec8"
 dependencies = [
  "revm 19.4.0",
 ]
@@ -5686,7 +5686,7 @@ dependencies = [
 [[package]]
 name = "sbv-kv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#c63ff8b7904692df3243f7a6ed1c7ee56b8c4f5d"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#33dc8b37e40973deceb43408bad37d9c4ed0dec8"
 dependencies = [
  "auto_impl",
  "hashbrown 0.15.2",
@@ -5696,7 +5696,7 @@ dependencies = [
 [[package]]
 name = "sbv-primitives"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#c63ff8b7904692df3243f7a6ed1c7ee56b8c4f5d"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#33dc8b37e40973deceb43408bad37d9c4ed0dec8"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -5727,7 +5727,7 @@ dependencies = [
 [[package]]
 name = "sbv-trie"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#c63ff8b7904692df3243f7a6ed1c7ee56b8c4f5d"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#33dc8b37e40973deceb43408bad37d9c4ed0dec8"
 dependencies = [
  "alloy-rlp",
  "alloy-trie",
@@ -5790,8 +5790,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
-version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+version = "0.1.0-rc.9"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -5813,8 +5813,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-prover"
-version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+version = "0.1.0-rc.9"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -5849,8 +5849,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-verifier"
-version = "0.1.0-rc.8"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.8#8278b8d6071e0d62d8fa7c128e138d3ee782c15c"
+version = "0.1.0-rc.9"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
 dependencies = [
  "bincode",
  "eyre",
