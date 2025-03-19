@@ -385,7 +385,7 @@ type OpenVMBundleInfo struct {
 	NumBatches    uint32      `json:"num_batches"`
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
-	MsgQueueHash  common.Hash `json:"msg_queue_hash,omitempty"`
+	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.
