@@ -98,7 +98,7 @@ type BatchTaskDetail struct {
 	BlobBytes       []byte       `json:"blob_bytes"`
 	KzgProof        Byte48       `json:"kzg_proof,omitempty"`
 	KzgCommitment   Byte48       `json:"kzg_commitment,omitempty"`
-	ChallengeDigest common.Hash  `json:"challenge_digest,omitempty"`
+	ChallengeDigest *common.Hash `json:"challenge_digest,omitempty"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
