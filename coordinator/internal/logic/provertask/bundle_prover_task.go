@@ -214,7 +214,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	}
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
-		ChainID:       bp.chainCfg.ChainID.Uint64(),
+		ChainID:       bp.cfg.L2.ChainID,
 		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
 		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
 		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
