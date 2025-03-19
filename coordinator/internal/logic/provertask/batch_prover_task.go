@@ -291,7 +291,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
 	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
 	// FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
-	// Currently this is bypassed by disabling the sanity checks in the prover.
-	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
+	// Simply omit the field now to skip sanity check in prover side
+	// Resume it later (or FIXME has worked or the prover side has relax its checking)
+	// taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
 	return taskDetail, nil
 }
