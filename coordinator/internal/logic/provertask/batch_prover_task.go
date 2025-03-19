@@ -296,7 +296,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	// FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
 	// Simply omit the field now to skip sanity check in prover side
 	// Resume it later (or FIXME has worked or the prover side has relax its checking)
-	// taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
-	taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
+	// taskDetail.ChallengeDigest = new(common.Hash)
+	// *taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
 	return taskDetail, nil
 }
