@@ -1531,7 +1531,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2166,7 +2166,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6142,7 +6142,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7833,7 +7833,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7846,7 +7846,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.9.3",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8281,8 +8281,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
-version = "0.1.0-rc.9"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
+version = "0.1.0-rc.10"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.10#7b89f5a847500ce30a2d5e2d10eff20a19bfbf90"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -8304,8 +8304,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-prover"
-version = "0.1.0-rc.9"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
+version = "0.1.0-rc.10"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.10#7b89f5a847500ce30a2d5e2d10eff20a19bfbf90"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -8340,8 +8340,8 @@ dependencies = [
 
 [[package]]
 name = "scroll-zkvm-verifier"
-version = "0.1.0-rc.9"
-source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.9#8655853fab5bb04e546fdf7e47a09f52c62dcc3b"
+version = "0.1.0-rc.10"
+source = "git+https://github.com/scroll-tech/zkvm-prover?tag=v0.1.0-rc.10#7b89f5a847500ce30a2d5e2d10eff20a19bfbf90"
 dependencies = [
  "bincode",
  "eyre",
@@ -8851,7 +8851,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -9107,7 +9107,7 @@ dependencies = [
  "getrandom 0.3.2",
  "once_cell",
  "rustix 1.0.3",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
