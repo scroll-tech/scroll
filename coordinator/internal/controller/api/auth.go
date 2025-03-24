@@ -46,7 +46,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 
 	hardForkNames, err := a.loginLogic.ProverHardForkName(&login)
 	if err != nil {
-		return "", fmt.Errorf("prover hard name failure:%w", err)
+		return "", fmt.Errorf("prover hard fork name failure:%w", err)
 	}
 
 	// check the challenge is used, if used, return failure

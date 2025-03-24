@@ -8,8 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -88,43 +86,6 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) error
 	return nil
 }
 
-func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
-	txsData := make([]*gethTypes.TransactionData, len(txs))
-	for i, tx := range txs {
-		v, r, s := tx.RawSignatureValues()
-
-		nonce := tx.Nonce()
-
-		// We need QueueIndex in `NewBatchHeader`. However, `TransactionData`
-		// does not have this field. Since `L1MessageTx` do not have a nonce,
-		// we reuse this field for storing the queue index.
-		if msg := tx.AsL1MessageTx(); msg != nil {
-			nonce = msg.QueueIndex
-		}
-
-		txsData[i] = &gethTypes.TransactionData{
-			Type:              tx.Type(),
-			TxHash:            tx.Hash().String(),
-			Nonce:             nonce,
-			ChainId:           (*hexutil.Big)(tx.ChainId()),
-			Gas:               tx.Gas(),
-			GasPrice:          (*hexutil.Big)(tx.GasPrice()),
-			GasTipCap:         (*hexutil.Big)(tx.GasTipCap()),
-			GasFeeCap:         (*hexutil.Big)(tx.GasFeeCap()),
-			To:                tx.To(),
-			Value:             (*hexutil.Big)(tx.Value()),
-			Data:              hexutil.Encode(tx.Data()),
-			IsCreate:          tx.To() == nil,
-			AccessList:        tx.AccessList(),
-			AuthorizationList: tx.SetCodeAuthorizations(),
-			V:                 (*hexutil.Big)(v),
-			R:                 (*hexutil.Big)(r),
-			S:                 (*hexutil.Big)(s),
-		}
-	}
-	return txsData
-}
-
 func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64) error {
 	var blocks []*encoding.Block
 	for number := from; number <= to; number++ {
@@ -152,7 +113,7 @@ func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64
 		}
 		blocks = append(blocks, &encoding.Block{
 			Header:         block.Header(),
-			Transactions:   txsToTxsData(block.Transactions()),
+			Transactions:   encoding.TxsToTxsData(block.Transactions()),
 			WithdrawRoot:   common.BytesToHash(withdrawRoot),
 			RowConsumption: block.RowConsumption,
 		})
