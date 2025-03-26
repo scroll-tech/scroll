@@ -109,9 +109,9 @@ type BatchTaskDetail struct {
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
 	// use one of the string of EuclidFork / EuclidV2Fork
-	ForkName    string       `json:"fork_name"`
-	BatchProofs []BatchProof `json:"batch_proofs"`
-	// TODO: add `bundle_info` field for sanity check
+	ForkName    string            `json:"fork_name"`
+	BatchProofs []BatchProof      `json:"batch_proofs"`
+	BundleInfo  *OpenVMBundleInfo `json:"bundle_info,omitempty"`
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
