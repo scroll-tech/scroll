@@ -331,6 +331,23 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	return &newBatch, nil
 }
 
+// UpdateStateRootByHash updates the StateRoot for a batch identified by its hash.
+func (o *Batch) UpdateStateRootByHash(ctx context.Context, hash string, stateRoot string) error {
+	updateFields := map[string]interface{}{
+		"state_root": stateRoot,
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateStateRootByHash error: %w, batch hash: %v", err, hash)
+	}
+
+	return nil
+}
+
 // UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
 func (o *Batch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 	updateFields := make(map[string]interface{})

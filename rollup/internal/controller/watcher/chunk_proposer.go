@@ -441,7 +441,7 @@ func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block
 	}
 
 	prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
-	if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
+	if err != nil || len(prevBlocks) == 0 {
 		return false, fmt.Errorf("failed to get parent block: %w", err)
 	}
 

@@ -15,12 +15,12 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -40,7 +40,8 @@ import (
 type Layer2Relayer struct {
 	ctx context.Context
 
-	l2Client *ethclient.Client
+	l2RpcClient *rpc.Client
+	l2Client    *ethclient.Client
 
 	db         *gorm.DB
 	bundleOrm  *orm.Bundle
@@ -70,7 +71,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client *rpc.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
 	var err error
 
@@ -137,7 +138,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l2BlockOrm: orm.NewL2Block(db),
 		chunkOrm:   orm.NewChunk(db),
 
-		l2Client: l2Client,
+		l2RpcClient: l2Client,
+		l2Client:    ethclient.NewClient(l2Client),
 
 		commitSender:   commitSender,
 		finalizeSender: finalizeSender,
@@ -181,79 +183,48 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 }
 
 func (r *Layer2Relayer) initializeGenesis() error {
-	if count, err := r.batchOrm.GetBatchCount(r.ctx); err != nil {
-		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported", "batch count", count)
+	latestBatch, err := r.batchOrm.GetLatestBatch(r.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get latest batch: %v", err)
+	}
+
+	startFinalizedBatchIndex := uint64(337429)
+	if latestBatch.Index > startFinalizedBatchIndex {
+		log.Info("genesis already imported")
 		return nil
 	}
 
-	genesis, err := r.l2Client.HeaderByNumber(r.ctx, big.NewInt(0))
+	startFinalizedBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, startFinalizedBatchIndex)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+		return fmt.Errorf("failed to get batch by index: %v, err: %w", startFinalizedBatchIndex, err)
 	}
 
-	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
-
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
-		}},
-	}
-
-	err = r.db.Transaction(func(dbTX *gorm.DB) error {
-		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
-			return fmt.Errorf("failed to insert genesis block: %v", err)
-		}
-
-		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert chunk: %v", err)
-		}
-
-		if err = r.chunkOrm.UpdateProvingStatus(r.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
-		}
-
-		batch := &encoding.Batch{
-			Index:                      0,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk},
-		}
-
-		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{}, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert batch: %v", err)
-		}
-
-		if err = r.chunkOrm.UpdateBatchHashInRange(r.ctx, 0, 0, dbBatch.Hash, dbTX); err != nil {
-			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
-		}
-
-		if err = r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
-		}
-
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, dbBatch.Hash, types.RollupFinalized, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
-		}
-
-		// commit genesis batch on L1
-		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
-		return r.commitGenesisBatch(dbBatch.Hash, dbBatch.BatchHeader, common.HexToHash(dbBatch.StateRoot))
-	})
-
+	endChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, startFinalizedBatch.EndChunkIndex)
 	if err != nil {
-		return fmt.Errorf("update genesis transaction failed: %v", err)
+		return fmt.Errorf("failed to get chunk by index: %v, err: %w", startFinalizedBatch.EndChunkIndex, err)
 	}
 
-	log.Info("successfully imported genesis chunk and batch")
+	diskRoot, err := rutils.GetDiskRoot(r.ctx, r.l2RpcClient, endChunk.EndBlockNumber)
+	if err != nil {
+		return fmt.Errorf("failed to get disk root, block number: %v, err: %w", endChunk.EndBlockNumber, err)
+	}
+
+	if err = r.batchOrm.UpdateStateRootByHash(r.ctx, startFinalizedBatch.Hash, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by hash: %v, err: %w", startFinalizedBatch.Hash, err)
+	}
+
+	if err = r.chunkOrm.UpdateStateRootByHash(r.ctx, endChunk.Hash, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by hash: %v, err: %w", endChunk.Hash, err)
+	}
+
+	if err = r.l2BlockOrm.UpdateStateRootByNumber(r.ctx, endChunk.EndBlockNumber, diskRoot.Hex()); err != nil {
+		return fmt.Errorf("failed to update state root by number: %v, err: %w", endChunk.EndBlockNumber, err)
+	}
+
+	if err = r.commitGenesisBatch(startFinalizedBatch.Hash, startFinalizedBatch.BatchHeader, diskRoot); err != nil {
+		return fmt.Errorf("commit genesis batch failed: %v", err)
+	}
+	log.Info("import genesis transaction successfully", "batch index", startFinalizedBatchIndex, "batch hash", startFinalizedBatch.Hash, "end block number", endChunk.EndBlockNumber, "header root", diskRoot.Hex())
 
 	return nil
 }
