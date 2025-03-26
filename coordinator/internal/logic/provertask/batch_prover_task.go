@@ -265,9 +265,9 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 
 	if hardForkName == message.EuclidV2Fork {
-		taskDetail.ForkName = "euclidv2"
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
 	} else if hardForkName == message.EuclidFork {
-		taskDetail.ForkName = "euclidv1"
+		taskDetail.ForkName = message.EuclidForkNameForProver
 	}
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)

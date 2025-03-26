@@ -194,9 +194,9 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	if hardForkName == message.EuclidV2Fork {
-		taskDetail.ForkName = "euclidv2"
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
 	} else if hardForkName == message.EuclidFork {
-		taskDetail.ForkName = "euclidv1"
+		taskDetail.ForkName = message.EuclidForkNameForProver
 	}
 
 	var err error

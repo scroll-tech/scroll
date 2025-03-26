@@ -13,6 +13,9 @@ import (
 const (
 	EuclidFork   = "euclid"
 	EuclidV2Fork = "euclidV2"
+
+	EuclidForkNameForProver   = "euclidv1"
+	EuclidV2ForkNameForProver = "euclidv2"
 )
 
 // ProofType represents the type of task.
