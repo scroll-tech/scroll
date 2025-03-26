@@ -33,10 +33,7 @@ impl Phase {
         let dir_cache = Some(workspace_path.join("cache"));
         let path_app_exe = workspace_path.join("chunk/app.vmexe");
         let path_app_config = workspace_path.join("chunk/openvm.toml");
-        let segment_len = match self {
-            Phase::EuclidV1 => None,
-            Phase::EuclidV2 => Some((1 << 22) - 100),
-        };
+        let segment_len = Some((1 << 22) - 100);
         ProverConfig {
             dir_cache,
             path_app_config,
@@ -50,10 +47,7 @@ impl Phase {
         let dir_cache = Some(workspace_path.join("cache"));
         let path_app_exe = workspace_path.join("batch/app.vmexe");
         let path_app_config = workspace_path.join("batch/openvm.toml");
-        let segment_len = match self {
-            Phase::EuclidV1 => None,
-            Phase::EuclidV2 => Some((1 << 22) - 100),
-        };
+        let segment_len = Some((1 << 22) - 100);
         ProverConfig {
             dir_cache,
             path_app_config,
@@ -66,18 +60,20 @@ impl Phase {
     pub fn phase_spec_bundle(&self, workspace_path: &Path) -> ProverConfig {
         let dir_cache = Some(workspace_path.join("cache"));
         let path_app_config = workspace_path.join("bundle/openvm.toml");
+        let segment_len = Some((1 << 22) - 100);
         match self {
             Phase::EuclidV1 => ProverConfig {
                 dir_cache,
                 path_app_config,
+                segment_len,
                 path_app_exe: workspace_path.join("bundle/app_euclidv1.vmexe"),
                 ..Default::default()
             },
             Phase::EuclidV2 => ProverConfig {
                 dir_cache,
                 path_app_config,
+                segment_len,
                 path_app_exe: workspace_path.join("bundle/app.vmexe"),
-                segment_len: Some((1 << 22) - 100),
                 ..Default::default()
             },
         }
