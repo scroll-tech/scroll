@@ -2,6 +2,7 @@ package permissionless_batches
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/scroll-tech/go-ethereum/rpc"
+
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	bridgeAbi "scroll-tech/rollup/abi"
@@ -60,6 +62,10 @@ func NewSubmitter(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, c
 		chainCfg:       chainCfg,
 	}, nil
 
+}
+
+func (s *Submitter) Sender() *sender.Sender {
+	return s.finalizeSender
 }
 
 func (s *Submitter) Submit(withProof bool) error {
@@ -140,9 +146,12 @@ func (s *Submitter) Submit(withProof bool) error {
 		log.Error("commitAndFinalize in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"batch index", bundle.StartBatchIndex,
 			"RollupContractAddress", s.cfg.RollupContractAddress, "err", err, "calldata", common.Bytes2Hex(calldata))
-		if typedErr, ok := err.(rpc.Error); ok {
-			fmt.Println("errorData", typedErr.ErrorCode())
+
+		var rpcError rpc.DataError
+		if errors.As(err, &rpcError) {
+			log.Error("rpc.DataError ", "error", rpcError.Error(), "message", rpcError.ErrorData())
 		}
+
 		return fmt.Errorf("commitAndFinalize failed, bundle index: %d, err: %w", bundle.Index, err)
 	}
 

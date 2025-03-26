@@ -113,7 +113,21 @@ func action(ctx *cli.Context) error {
 			return fmt.Errorf("failed to submit batch: %w", err)
 		}
 
-		// TODO: wait until tx is confirmed here
+		log.Info("Transaction submitted to L1, waiting for confirmation...")
+
+		// Catch CTRL-C to ensure a graceful shutdown.
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+
+		select {
+		case <-subCtx.Done():
+		case confirmation := <-submitter.Sender().ConfirmChan():
+			if confirmation.IsSuccessful {
+				log.Info("Transaction confirmed on L1, your permissionless batch is part of the ledger!", "tx hash", confirmation.TxHash)
+			}
+		case <-interrupt:
+			log.Info("CTRL-C received, shutting down...")
+		}
 	}
 
 	return nil

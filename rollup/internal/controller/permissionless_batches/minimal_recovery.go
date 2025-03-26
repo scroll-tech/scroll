@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
 	"github.com/scroll-tech/go-ethereum/rollup/l1"
+
 	"scroll-tech/common/types"
 
 	"scroll-tech/database/migrate"
@@ -267,7 +268,7 @@ func (r *MinimalRecovery) restoreMinimalPreviousState() (*orm.Chunk, *orm.Batch,
 	// 4. Get the L1 messages count after the latest finalized batch.
 	var l1MessagesCount uint64
 	if r.cfg.RecoveryConfig.ForceL1MessageCount == 0 {
-		l1MessagesCount, err = reader.FinalizedL1MessageQueueIndex(latestFinalizedL1Block)
+		l1MessagesCount, err = reader.NextUnfinalizedL1MessageQueueIndex(latestFinalizedL1Block)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to get L1 messages count: %w", err)
 		}

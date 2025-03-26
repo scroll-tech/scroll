@@ -91,9 +91,11 @@ To produce a batch you need to run the `batch-production-submission` profile in 
 
 
 Run with `docker compose --profile batch-production-submission up`.
+This will produce chunks, a batch and bundle which will be proven in the next step.
+`Success! You're ready to generate proofs!` indicates that everything is working correctly and the batch is ready to be proven.
 
 #### Proving a batch
-To prove a batch you need to run the `proving` profile in `docker-compose.yml`.
+To prove the chunk, batch and bundle you just generated you need to run the `proving` profile in `docker-compose.yml`.
 
 1. Make sure `verifier` `low_version_circuit` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
 2. Download the latest `assets` and `params` for the circuit from [TODO link list with versions](#batch-production-toolkit) into `conf/coordinator/assets` and `conf/coordinator/params` respectively.
@@ -104,8 +106,17 @@ Run with `docker compose --profile proving up`.
 
 
 #### Batch submission
-TODO
+To submit the batch you need to run the `batch-production-submission` profile in `docker-compose.yml`.
 
+1. Fill in required fields in `conf/relayer/config.json` for the sender config.
+
+Run with `docker compose --profile batch-production-submission up`.
+This will submit the batch to L1 and finalize it. The transaction will be retried in case of failure.
+
+**Troubleshooting**
+- in case the submission fails it will print the calldata for the transaction in an error message. You can use this with `cast call --trace --rpc-url "$SCROLL_L1_DEPLOYMENT_RPC" "$L1_SCROLL_CHAIN_PROXY_ADDR" <calldata>` to see what went wrong.
+  - `0x4df567b9: ErrorNotInEnforcedBatchMode`: permissionless batch mode is not activated, you can't submit a batch
+  - `0xa5d305cc: ErrorBatchIsEmpty`: no blob was provided. This is usually returned if you do the `cast call`, permissionless mode is activated but you didn't provide a blob in the transaction.
 
 ## Operator recovery
 Operator recovery needs to be run by the rollup operator to resume normal rollup operation after permissionless batch mode is deactivated. It consists of two main components:
