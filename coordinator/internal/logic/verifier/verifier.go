@@ -99,10 +99,8 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		OpenVMVkMap: make(map[string]struct{}),
 	}
 
-	if cfg.LowVersionCircuit.ForkName == message.EuclidFork {
-		if err := v.loadOpenVMVks(cfg.LowVersionCircuit.ForkName); err != nil {
-			return nil, err
-		}
+	if err := v.loadLowVersionVKs(cfg); err != nil {
+		return nil, err
 	}
 
 	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.ForkName); err != nil {
@@ -203,6 +201,26 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(byt), nil
+}
+
+// load low version vks, current is darwin
+func (v *Verifier) loadLowVersionVKs(cfg *config.VerifierConfig) error {
+	bundleVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_bundle.vkey"))
+	if err != nil {
+		return err
+	}
+	batchVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_batch.vkey"))
+	if err != nil {
+		return err
+	}
+	chunkVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_chunk.vkey"))
+	if err != nil {
+		return err
+	}
+	v.BundleVkMap[bundleVK] = struct{}{}
+	v.BatchVKMap[batchVK] = struct{}{}
+	v.ChunkVKMap[chunkVK] = struct{}{}
+	return nil
 }
 
 func (v *Verifier) loadOpenVMVks(forkName string) error {
