@@ -49,11 +49,11 @@ static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
-    let verifier = EuclidVerifier::new(&config.low_version_circuit.assets_path);
+    let verifier = EuclidVerifier::new(&config.high_version_circuit.assets_path);
     unsafe {
         VERIFIER_LOW
             .set(VerifierPair(
-                config.low_version_circuit.fork_name,
+                "euclid".to_string(),
                 Rc::new(Box::new(verifier)),
             ))
             .unwrap_unchecked();
@@ -63,7 +63,7 @@ pub fn init(config: VerifierConfig) {
     unsafe {
         VERIFIER_HIGH
             .set(VerifierPair(
-                config.high_version_circuit.fork_name,
+                "euclidV2".to_string(),
                 Rc::new(Box::new(verifier)),
             ))
             .unwrap_unchecked();

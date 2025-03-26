@@ -229,7 +229,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs)
+	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs, hardForkName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -258,10 +258,16 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
+	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
 	}
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)

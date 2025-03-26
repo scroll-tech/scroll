@@ -99,15 +99,15 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		OpenVMVkMap: make(map[string]struct{}),
 	}
 
-	if cfg.LowVersionCircuit.ForkName == message.EuclidFork {
-		if err := v.loadOpenVMVks(cfg.LowVersionCircuit.ForkName); err != nil {
-			return nil, err
-		}
+	if err := v.loadLowVersionVKs(cfg); err != nil {
+		return nil, err
 	}
 
 	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.ForkName); err != nil {
 		return nil, err
 	}
+
+	v.loadDarwinVKs()
 
 	return v, nil
 }
@@ -203,6 +203,32 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(byt), nil
+}
+
+// load low version vks, current is darwin
+func (v *Verifier) loadLowVersionVKs(cfg *config.VerifierConfig) error {
+	bundleVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_bundle.vkey"))
+	if err != nil {
+		return err
+	}
+	batchVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_batch.vkey"))
+	if err != nil {
+		return err
+	}
+	chunkVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_chunk.vkey"))
+	if err != nil {
+		return err
+	}
+	v.BundleVkMap[bundleVK] = struct{}{}
+	v.BatchVKMap[batchVK] = struct{}{}
+	v.ChunkVKMap[chunkVK] = struct{}{}
+	return nil
+}
+
+func (v *Verifier) loadDarwinVKs() {
+	v.BundleVkMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD5dsp1rEy7PSqiIFikkkOPqKokLW2mZSwCbtKdkfLQcvTxARUwHSe4iZe27PRJ5WWaLqtRV1+x6+pSVKtcPtaV4kE7v2YJRf0582hxiAF0IBaOoREdpyNfA2a9cvhWb2TMaPrUYP9EDQ7CUiW1FQzxbjGc95ua2htscnpU7d9S5stHWzKb7okkCG7bTIL9aG6qTQo2YXW7n3H3Ir47oVJB7IKrUzKGvI5Wmanh2zpZOJ9Qm4/wY24cT7cJz+Ux6wAg=="] = struct{}{}
+	v.BatchVKMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD1DEjW4Kell67H07wazT5DdzrSh4+amh+cmosQHp9p9snFypyoBGt3UHtoJGQBZlywZWDS9ht5pnaEoGBdaKcQk+lFb+WxTiId0KOAa0mafTZTQw8yToy57Jple64qzlRu1dux30tZZGuerLN1CKzg5Xl2iOpMK+l87jCINwVp5cUtF/XrvhBbU7onKh3KBiy99iUqVyA3Y6iiIZhGKWBSuSA4bNgDYIoVkqjHpdL35aEShoRO6pNXt7rDzxFoPzH0JuPI54nE4OhVrzZXwtkAEosxVa/fszcE092FH+HhhtxZBYe/KEzwdISU9TOPdId3UF/UMYC0MiYOlqffVTgAg="] = struct{}{}
+	v.ChunkVKMap["AAAAGQAAAATyWEABRbJ6hQQ5/zLX1gTasr7349minA9rSgMS6gDeHwZKqikRiO3md+pXjjxMHnKQtmXYgMXhJSvlmZ+Ws+cheuly2X1RuNQzcZuRImaKPR9LJsVZYsXfJbuqdKX8p0Gj8G83wMJOmTzNVUyUol0w0lTU+CEiTpHOnxBsTF3EWaW3s1u4ycOgWt1c9M6s7WmaBZLYgAWYCunO5CLCLApNGbCASeck/LuSoedEri5u6HccCKU2khG6zl6W07jvYSbDVLJktbjRiHv+/HQix+K14j8boo8Z/unhpwXCsPxkQA=="] = struct{}{}
 }
 
 func (v *Verifier) loadOpenVMVks(forkName string) error {

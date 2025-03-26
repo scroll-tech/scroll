@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -194,6 +195,11 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
+	parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
+	}
+
 	var batchProofs []message.BatchProof
 	for _, batch := range batches {
 		proof := message.NewBatchProof(hardForkName)
@@ -205,6 +211,26 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail := message.BundleTaskDetail{
 		BatchProofs: batchProofs,
+	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
+	}
+
+	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
+		ChainID:       bp.cfg.L2.ChainID,
+		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
+		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
+		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
+		NumBatches:    uint32(len(batches)),
+		PrevBatchHash: common.HexToHash(batches[0].ParentBatchHash),
+		BatchHash:     common.HexToHash(batches[len(batches)-1].Hash),
+	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.BundleInfo.MsgQueueHash = common.HexToHash(batches[len(batches)-1].PostL1MessageQueueHash)
 	}
 
 	batchProofsBytes, err := json.Marshal(taskDetail)

@@ -3,14 +3,14 @@ use super::{ProofVerifier, TaskType, VKDump};
 use anyhow::Result;
 
 use crate::utils::panic_catch;
-use euclidv2_prover::{BatchProof, BundleProof, ChunkProof};
-use euclidv2_verifier::verifier::{BatchVerifier, BundleVerifier, ChunkVerifier};
+use euclid_prover::{BatchProof, BundleProof, ChunkProof};
+use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
 use std::{fs::File, path::Path};
 
 pub struct EuclidV2Verifier {
     chunk_verifier: ChunkVerifier,
     batch_verifier: BatchVerifier,
-    bundle_verifier: BundleVerifier,
+    bundle_verifier: BundleVerifierEuclidV2,
 }
 
 impl EuclidV2Verifier {
@@ -24,7 +24,7 @@ impl EuclidV2Verifier {
                 .expect("Setting up chunk verifier"),
             batch_verifier: BatchVerifier::setup(&config, &exe, &verifier_bin)
                 .expect("Setting up batch verifier"),
-            bundle_verifier: BundleVerifier::setup(&config, &exe, &verifier_bin)
+            bundle_verifier: BundleVerifierEuclidV2::setup(&config, &exe, &verifier_bin)
                 .expect("Setting up bundle verifier"),
         }
     }

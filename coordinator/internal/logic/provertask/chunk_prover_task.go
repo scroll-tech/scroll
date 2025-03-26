@@ -192,6 +192,13 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
 	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
+	}
+
 	var err error
 	taskDetailBytes, err = json.Marshal(taskDetail)
 	if err != nil {
