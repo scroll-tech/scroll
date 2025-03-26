@@ -44,6 +44,8 @@ const (
 
 // ChunkTaskDetail is a type containing ChunkTask detail for chunk task.
 type ChunkTaskDetail struct {
+	// use one of the string of EuclidFork / EuclidV2Fork
+	ForkName         string        `json:"fork_name"`
 	BlockHashes      []common.Hash `json:"block_hashes"`
 	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
 }
@@ -93,6 +95,8 @@ func (e *Byte48) UnmarshalJSON(input []byte) error {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
+	// use one of the string of EuclidFork / EuclidV2Fork
+	ForkName        string       `json:"fork_name"`
 	ChunkInfos      []*ChunkInfo `json:"chunk_infos"`
 	ChunkProofs     []ChunkProof `json:"chunk_proofs"`
 	BatchHeader     interface{}  `json:"batch_header"`
@@ -104,7 +108,10 @@ type BatchTaskDetail struct {
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
+	// use one of the string of EuclidFork / EuclidV2Fork
+	ForkName    string       `json:"fork_name"`
 	BatchProofs []BatchProof `json:"batch_proofs"`
+	// TODO: add `bundle_info` field for sanity check
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
