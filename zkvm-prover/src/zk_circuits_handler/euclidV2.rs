@@ -1,62 +1,34 @@
 use std::{path::Path, sync::Arc};
 
-use super::CircuitsHandler;
+use super::{euclid::Phase, CircuitsHandler};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
-use scroll_zkvm_prover_euclidv2::{
+use scroll_zkvm_prover_euclid::{
     task::{batch::BatchProvingTask, bundle::BundleProvingTask, chunk::ChunkProvingTask},
-    BatchProver, BundleProver, ChunkProver, ProverConfig,
+    BatchProver, BundleProverEuclidV2, ChunkProver,
 };
 use tokio::sync::Mutex;
 pub struct EuclidV2Handler {
     chunk_prover: ChunkProver,
     batch_prover: BatchProver,
-    bundle_prover: BundleProver,
+    bundle_prover: BundleProverEuclidV2,
 }
 
 unsafe impl Send for EuclidV2Handler {}
 
 impl EuclidV2Handler {
     pub fn new(workspace_path: &str) -> Self {
+        let p = Phase::EuclidV2;
         let workspace_path = Path::new(workspace_path);
+        let chunk_prover = ChunkProver::setup(p.phase_spec_chunk(workspace_path))
+            .expect("Failed to setup chunk prover");
 
-        let cache_dir = workspace_path.join("cache");
-        let chunk_exe = workspace_path.join("chunk/app.vmexe");
-        let chunk_app_config = workspace_path.join("chunk/openvm.toml");
-        let chunk_prover = ChunkProver::setup(
-            chunk_exe,
-            chunk_app_config,
-            Some(cache_dir.clone()),
-            ProverConfig {
-                segment_len: Some((1 << 22) - 100),
-            },
-        )
-        .expect("Failed to setup chunk prover");
+        let batch_prover = BatchProver::setup(p.phase_spec_batch(workspace_path))
+            .expect("Failed to setup batch prover");
 
-        let batch_exe = workspace_path.join("batch/app.vmexe");
-        let batch_app_config = workspace_path.join("batch/openvm.toml");
-        let batch_prover = BatchProver::setup(
-            batch_exe,
-            batch_app_config,
-            Some(cache_dir.clone()),
-            ProverConfig {
-                segment_len: Some((1 << 22) - 100),
-            },
-        )
-        .expect("Failed to setup batch prover");
-
-        let bundle_exe = workspace_path.join("bundle/app.vmexe");
-        let bundle_app_config = workspace_path.join("bundle/openvm.toml");
-        let bundle_prover = BundleProver::setup(
-            bundle_exe,
-            bundle_app_config,
-            Some(cache_dir),
-            ProverConfig {
-                segment_len: Some((1 << 22) - 100),
-            },
-        )
-        .expect("Failed to setup bundle prover");
+        let bundle_prover = BundleProverEuclidV2::setup(p.phase_spec_bundle(workspace_path))
+            .expect("Failed to setup bundle prover");
 
         Self {
             chunk_prover,
