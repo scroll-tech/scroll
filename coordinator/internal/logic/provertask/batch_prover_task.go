@@ -288,6 +288,10 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
+	if hardForkName == message.EuclidV2Fork && len(taskDetail.BlobBytes) < 126976 {
+		zeroPadding := make([]byte, 126976-len(taskDetail.BlobBytes))
+		taskDetail.BlobBytes = append(taskDetail.BlobBytes, zeroPadding...)
+	}
 
 	if len(dbBatch.BlobDataProof) < 160 {
 		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
