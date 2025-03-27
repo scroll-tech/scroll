@@ -286,6 +286,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
 	}
 	taskDetail.BatchHeader = batchHeader
+	taskDetail.BlobBytes = dbBatch.BlobBytes
 
 	challengeDigest, kzgCommitment, kzgProof, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
 	if err != nil {
