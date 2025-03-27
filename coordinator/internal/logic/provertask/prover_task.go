@@ -122,7 +122,7 @@ func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTa
 	}
 
 	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
-		return "", fmt.Errorf("to be assigned prover task's hard-fork name is not the same as prover, proverName: %s, proverVersion: %s, hardForkName: %s", taskCtx.ProverName, taskCtx.ProverVersion, hardForkName)
+		return "", fmt.Errorf("to be assigned prover task's hard-fork name is not the same as prover, proverName: %s, proverVersion: %s, hardForkName: %s, taskHardForkName: %s", taskCtx.ProverName, taskCtx.ProverVersion, hardForkName, taskCtx.HardForkNames)
 	}
 	return hardForkName, nil
 }
