@@ -117,18 +117,8 @@ impl CircuitsHandler for Arc<Mutex<EuclidHandler>> {
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String> {
         match prove_request.proof_type {
             ProofType::Chunk => {
-                let witnesses: Vec<sbv_primitives::types::BlockWitness> =
-                    serde_json::from_str(&prove_request.input)?;
-
-                let proof = self
-                    .try_lock()
-                    .unwrap()
-                    .chunk_prover
-                    .gen_proof(&ChunkProvingTask {
-                        block_witnesses: witnesses,
-                        prev_msg_queue_hash: Default::default(),
-                        fork_name: Phase::EuclidV1.as_str().to_string(),
-                    })?;
+                let task: ChunkProvingTask = serde_json::from_str(&prove_request.input)?;
+                let proof = self.try_lock().unwrap().chunk_prover.gen_proof(&task)?;
 
                 Ok(serde_json::to_string(&proof)?)
             }
