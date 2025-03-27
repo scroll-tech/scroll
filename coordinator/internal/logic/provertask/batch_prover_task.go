@@ -288,25 +288,25 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
-	if hardForkName == message.EuclidV2Fork && len(taskDetail.BlobBytes) < 126976 {
-		zeroPadding := make([]byte, 126976-len(taskDetail.BlobBytes))
-		taskDetail.BlobBytes = append(taskDetail.BlobBytes, zeroPadding...)
-	}
 
 	if len(dbBatch.BlobDataProof) < 160 {
 		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
 	}
 
-	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
-	// | z       | y       | kzg_commitment | kzg_proof |
-	// |---------|---------|----------------|-----------|
-	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
-	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
-	// FIXME: Challenge = ChallengeDigest % BLS_MODULUS, get the original ChallengeDigest.
-	// Simply omit the field now to skip sanity check in prover side
-	// Resume it later (or FIXME has worked or the prover side has relax its checking)
-	// taskDetail.ChallengeDigest = new(common.Hash)
-	// *taskDetail.ChallengeDigest = common.BytesToHash(dbBatch.BlobDataProof[0:32])
+	challengeDigest, kzgProof, kzgCommitment, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get challenge digest from blob bytes, taskID: %s, err: %w", dbBatch.Hash, err)
+	}
+
+	taskDetail.ChallengeDigest = challengeDigest
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgProof[:]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgCommitment[:]))}
+
+	// FIXME: remove this hot fix logic after stable release.
+	if hardForkName == message.EuclidV2Fork && len(taskDetail.BlobBytes) < 126976 {
+		zeroPadding := make([]byte, 126976-len(taskDetail.BlobBytes))
+		taskDetail.BlobBytes = append(taskDetail.BlobBytes, zeroPadding...)
+	}
+
 	return taskDetail, nil
 }
