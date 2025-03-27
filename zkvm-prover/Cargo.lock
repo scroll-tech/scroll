@@ -7818,7 +7818,7 @@ dependencies = [
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?branch=feat%2Fopenvm-euclid-v2#926ff95d0fe0935b65a0023a5c2cb493a65f4394"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?branch=feat%2Fopenvm-euclid-v2#2a6c3d4b6d71ea3539b7efff7c529b06724409fa"
 dependencies = [
  "alloy",
  "anyhow",
