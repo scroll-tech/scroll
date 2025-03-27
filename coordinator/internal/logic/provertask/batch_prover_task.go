@@ -286,13 +286,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
 	}
 	taskDetail.BatchHeader = batchHeader
-	taskDetail.BlobBytes = dbBatch.BlobBytes
 
-	if len(dbBatch.BlobDataProof) < 160 {
-		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
-	}
-
-	challengeDigest, kzgProof, kzgCommitment, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
+	challengeDigest, kzgCommitment, kzgProof, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge digest from blob bytes, taskID: %s, err: %w", dbBatch.Hash, err)
 	}
