@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
