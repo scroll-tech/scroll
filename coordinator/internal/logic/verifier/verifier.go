@@ -103,7 +103,11 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return nil, err
 	}
 
-	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.ForkName); err != nil {
+	if err := v.loadOpenVMVks("euclid"); err != nil {
+		return nil, err
+	}
+
+	if err := v.loadOpenVMVks("euclidV2"); err != nil {
 		return nil, err
 	}
 
