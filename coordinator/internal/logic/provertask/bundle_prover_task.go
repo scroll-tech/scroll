@@ -17,7 +17,6 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
-	cutils "scroll-tech/coordinator/internal/utils"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -113,18 +112,18 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		}
 
 		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		for i := 0; i < len(proverTasks); i++ {
-			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
-				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-				log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight)
-				return nil, nil
-			}
-		}
+		//proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
+		//if getTaskError != nil {
+		//	log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getTaskError)
+		//	return nil, ErrCoordinatorInternalFailure
+		//}
+		//for i := 0; i < len(proverTasks); i++ {
+		//	if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+		//		taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+		//		log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+		//		return nil, nil
+		//	}
+		//}
 
 		rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)
 		if updateAttemptsErr != nil {
