@@ -35,6 +35,7 @@ type Batch struct {
 	PostL1MessageQueueHash string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
 	EnableCompress         bool   `json:"enable_compress" gorm:"column:enable_compress"`
 	BlobBytes              []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
+	ChallengeDigest        string `json:"challenge_digest" gorm:"column:challenge_digest"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`

@@ -288,21 +288,13 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
-
-	challengeDigest, kzgCommitment, kzgProof, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get challenge digest from blob bytes, taskID: %s, err: %w", dbBatch.Hash, err)
-	}
-
-	taskDetail.ChallengeDigest = challengeDigest
-	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgProof[:]))}
-	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgCommitment[:]))}
-
-	// FIXME: remove this hot fix logic after stable release.
-	if hardForkName == message.EuclidV2Fork && len(taskDetail.BlobBytes) < 126976 {
-		zeroPadding := make([]byte, 126976-len(taskDetail.BlobBytes))
-		taskDetail.BlobBytes = append(taskDetail.BlobBytes, zeroPadding...)
-	}
+	taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
+	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
+	// | z       | y       | kzg_commitment | kzg_proof |
+	// |---------|---------|----------------|-----------|
+	// | bytes32 | bytes32 | bytes48        | bytes48   |
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
 
 	return taskDetail, nil
 }

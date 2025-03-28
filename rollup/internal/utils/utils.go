@@ -164,6 +164,7 @@ type BatchMetadata struct {
 	StartChunkHash     common.Hash
 	EndChunkHash       common.Hash
 	BlobBytes          []byte
+	ChallengeDigest    common.Hash
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
@@ -179,10 +180,11 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 	}
 
 	batchMeta := &BatchMetadata{
-		BatchHash:     daBatch.Hash(),
-		BatchDataHash: daBatch.DataHash(),
-		BatchBytes:    daBatch.Encode(),
-		BlobBytes:     daBatch.BlobBytes(),
+		BatchHash:       daBatch.Hash(),
+		BatchDataHash:   daBatch.DataHash(),
+		BatchBytes:      daBatch.Encode(),
+		BlobBytes:       daBatch.BlobBytes(),
+		ChallengeDigest: daBatch.ChallengeDigest(),
 	}
 
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
