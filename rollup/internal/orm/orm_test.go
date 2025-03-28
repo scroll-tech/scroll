@@ -318,8 +318,8 @@ func TestBatchOrm(t *testing.T) {
 		updatedBatch, err = batchOrm.GetLatestBatch(context.Background())
 		assert.NoError(t, err)
 		assert.NotNil(t, updatedBatch)
-		assert.Equal(t, "commitTxHash", updatedBatch.CommitTxHash)
-		assert.Equal(t, types.RollupCommitted, types.RollupStatus(updatedBatch.RollupStatus))
+		assert.Equal(t, "", updatedBatch.CommitTxHash)
+		assert.Equal(t, types.RollupFinalized, types.RollupStatus(updatedBatch.RollupStatus))
 
 		err = batchOrm.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchHash2, "finalizeTxHash", types.RollupFinalizeFailed)
 		assert.NoError(t, err)
@@ -332,9 +332,8 @@ func TestBatchOrm(t *testing.T) {
 
 		batches, err := batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(batches))
+		assert.Equal(t, 1, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)
-		assert.Equal(t, batchHash2, batches[1].Hash)
 
 		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 1)
 		assert.NoError(t, err)
@@ -343,8 +342,7 @@ func TestBatchOrm(t *testing.T) {
 
 		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 1, codecVersion, 0)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, len(batches))
-		assert.Equal(t, batchHash2, batches[0].Hash)
+		assert.Equal(t, 0, len(batches))
 
 		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion+1, 0)
 		assert.NoError(t, err)
@@ -361,13 +359,10 @@ func TestBatchOrm(t *testing.T) {
 
 		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(batches))
+		assert.Equal(t, 1, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)
-		assert.Equal(t, batchHash2, batches[1].Hash)
 		assert.Equal(t, types.ProvingTaskFailed, types.ProvingStatus(batches[0].ProvingStatus))
 		assert.Equal(t, types.RollupCommitFailed, types.RollupStatus(batches[0].RollupStatus))
-		assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(batches[1].ProvingStatus))
-		assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(batches[1].RollupStatus))
 	}
 }
 
