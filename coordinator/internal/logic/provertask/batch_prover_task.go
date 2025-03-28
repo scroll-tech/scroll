@@ -24,6 +24,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // BatchProverTask is prover task implement for batch proof
@@ -114,18 +115,18 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		// Don't dispatch the same failing job to the same prover
-		//proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
-		//if getFailedTaskError != nil {
-		//	log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
-		//	return nil, ErrCoordinatorInternalFailure
-		//}
-		//for i := 0; i < len(proverTasks); i++ {
-		//	if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
-		//		taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-		//		log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
-		//		return nil, nil
-		//	}
-		//}
+		proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+		if getFailedTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
+				return nil, nil
+			}
+		}
 
 		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
 		if updateAttemptsErr != nil {
