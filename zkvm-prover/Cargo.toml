@@ -21,7 +21,7 @@ futures = "0.3.30"
 scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.2.0", package = "scroll-zkvm-prover" }
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "feat/openvm-euclid-v2", features = [
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "main", features = [
     "openvm",
 ] }
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = [
