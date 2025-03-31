@@ -419,7 +419,7 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 		return fmt.Errorf("Batch.UpdateCommitTxHashAndRollupStatus error when querying current status: %w, batch hash: %v", err, hash)
 	}
 
-	if types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalized {
+	if types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalizing || types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalized {
 		return nil
 	}
 
