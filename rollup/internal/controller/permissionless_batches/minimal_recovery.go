@@ -388,6 +388,7 @@ func (r *MinimalRecovery) decodeLatestFinalizedBatch(reader *l1.Reader, event *l
 		blobClient.AddBlobClient(client)
 	}
 
+	log.Info("Getting blob by versioned hash and block time", "TargetBlobVersionedHash", targetBlobVersionedHash, "BlockTime", blockHeader.Time, "BlockNumber", blockHeader.Number)
 	blob, err := blobClient.GetBlobByVersionedHashAndBlockTime(r.ctx, targetBlobVersionedHash, blockHeader.Time)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get blob by versioned hash and block time for batch %d: %w", event.BatchIndex(), err)

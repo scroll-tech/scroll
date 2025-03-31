@@ -5,11 +5,12 @@ services:
     build:
       context: ../
       dockerfile: build/dockerfiles/recovery_permissionless_batches.Dockerfile
+    network_mode: host
     container_name: permissionless-batches-relayer
     volumes:
       - ./conf/relayer/config.json:/app/conf/config.json
       - ./conf/genesis.json:/app/conf/genesis.json
-    command: "--config /app/conf/config.json"
+    command: "--config /app/conf/config.json --min-codec-version 0"
     profiles:
       - batch-production-submission
     depends_on:
