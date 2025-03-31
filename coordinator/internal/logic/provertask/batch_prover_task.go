@@ -288,7 +288,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
-	taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
+	// taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
 	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
