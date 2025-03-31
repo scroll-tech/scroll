@@ -10,4 +10,5 @@ type RecoveryConfig struct {
 
 	L2BlockHeightLimit  uint64 `json:"l2_block_height_limit"`
 	ForceL1MessageCount uint64 `json:"force_l1_message_count"`
+	SubmitWithoutProof  bool   `json:"submit_without_proof"`
 }

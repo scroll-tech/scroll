@@ -110,7 +110,7 @@ func action(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to create submitter: %w", err)
 		}
-		if err = submitter.Submit(false); err != nil {
+		if err = submitter.Submit(!cfg.RecoveryConfig.SubmitWithoutProof); err != nil {
 			return fmt.Errorf("failed to submit batch: %w", err)
 		}
 

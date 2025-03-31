@@ -50,6 +50,7 @@
     "latest_finalized_batch": <last finalized batch on L1>,
     "l2_block_height_limit": <L2 block up to which to produce batch>,
     "force_latest_finalized_batch": false,
-    "force_l1_message_count": 0
+    "force_l1_message_count": 0,
+    "submit_without_proof": false
   }
 }
