@@ -38,10 +38,10 @@ services:
       context: ../
       dockerfile: build/dockerfiles/coordinator-api.Dockerfile
     volumes:
-      - ./conf/coordinator/config.json:/coordinator/config.json
-      - ./conf/genesis.json:/coordinator/genesis.json
+      - ./conf/coordinator/config.json:/coordinator/config.json:ro
+      - ./conf/genesis.json:/coordinator/genesis.json:ro
       - ./conf/coordinator/coordinator_run.sh:/bin/coordinator_run.sh
-    command: ["bash", "/bin/coordinator_run.sh"]
+    entrypoint: /bin/coordinator_run.sh
     profiles:
       - local-prover
       - cloud-prover
@@ -78,7 +78,7 @@ services:
     image: scrolltech/cuda-prover:v4.4.98-d1138653-5854f81-0cebd85
     platform: linux/amd64
     runtime: nvidia
-    command: ["bash", "/bin/prover_run.sh"]
+    entrypoint: /bin/prover_run.sh
     profiles:
       - local-prover
     environment:
