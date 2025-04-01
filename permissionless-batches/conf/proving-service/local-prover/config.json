@@ -1,0 +1,27 @@
+{
+    "sdk_config": {
+        "prover_name_prefix": "local_prover",
+        "keys_dir": "/prover/volume/keys",
+        "db_path": "/prover/volume/db/",
+        "coordinator": {
+            "base_url": "http://172.17.0.1:8556",
+            "retry_count": 10,
+            "retry_wait_time_sec": 10,
+            "connection_timeout_sec": 30
+        },
+        "l2geth": {
+            "endpoint": "http://172.17.0.1:9999"
+        },
+        "prover": {
+            "circuit_type": 2,
+            "supported_proof_types": [1,2,3],
+            "circuit_version": "v0.13.1"
+        }
+    },
+    "circuits": {
+        "euclidV2": {
+            "hard_fork_name": "euclidV2",
+            "workspace_path": "/openvm"
+        }
+    }
+}
