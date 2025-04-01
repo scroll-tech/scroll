@@ -1,4 +1,6 @@
-use crate::zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler};
+use crate::zk_circuits_handler::{
+    euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler,
+};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::{
@@ -181,9 +183,14 @@ impl LocalProver {
         // coordinator
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
-        Arc::new(match hard_fork_name {
-            "euclid" => Arc::new(Mutex::new(EuclidHandler::new(&config.workspace_path))),
+        match hard_fork_name {
+            "euclid" => Arc::new(Arc::new(Mutex::new(EuclidHandler::new(
+                &config.workspace_path,
+            )))) as Arc<dyn CircuitsHandler>,
+            "euclidV2" => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(
+                &config.workspace_path,
+            )))) as Arc<dyn CircuitsHandler>,
             _ => unreachable!(),
-        }) as Arc<dyn CircuitsHandler>
+        }
     }
 }

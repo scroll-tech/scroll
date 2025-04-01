@@ -1,9 +1,11 @@
 #![allow(static_mut_refs)]
 
 mod euclid;
+mod euclidv2;
 
 use anyhow::{bail, Result};
 use euclid::EuclidVerifier;
+use euclidv2::EuclidV2Verifier;
 use serde::{Deserialize, Serialize};
 use std::{cell::OnceCell, path::Path, rc::Rc};
 
@@ -51,7 +53,17 @@ pub fn init(config: VerifierConfig) {
     unsafe {
         VERIFIER_LOW
             .set(VerifierPair(
-                config.high_version_circuit.fork_name,
+                "euclid".to_string(),
+                Rc::new(Box::new(verifier)),
+            ))
+            .unwrap_unchecked();
+    }
+
+    let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
+    unsafe {
+        VERIFIER_HIGH
+            .set(VerifierPair(
+                "euclidV2".to_string(),
                 Rc::new(Box::new(verifier)),
             ))
             .unwrap_unchecked();

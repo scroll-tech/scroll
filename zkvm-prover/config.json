@@ -23,8 +23,8 @@
     "db_path": "unique-db-path-for-prover-1"
   },
   "circuits": {
-    "euclid": {
-      "hard_fork_name": "euclid",
+    "euclidV2": {
+      "hard_fork_name": "euclidV2",
       "workspace_path": "/home/ubuntu/prover-workdir"
     }
   }

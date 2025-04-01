@@ -103,11 +103,16 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return nil, err
 	}
 
-	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.ForkName); err != nil {
+	if err := v.loadOpenVMVks(message.EuclidFork); err != nil {
 		return nil, err
 	}
 
-	v.loadCurieVersionVKs()
+	if err := v.loadOpenVMVks(message.EuclidV2Fork); err != nil {
+		return nil, err
+	}
+
+	v.loadDarwinVKs()
+
 	return v, nil
 }
 
@@ -224,8 +229,9 @@ func (v *Verifier) loadLowVersionVKs(cfg *config.VerifierConfig) error {
 	return nil
 }
 
-func (v *Verifier) loadCurieVersionVKs() {
-	v.BatchVKMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD9jfGkei+f0wNYpkjW7JO12EfU7CjYVBo+PGku3zaQJI64lbn6BwyTBa4RfrPFpV5mP47ix0sXZ+Wt5wklMLRW7OIJb1yfCDm+gkSsp3/Zqrxt4SY4rQ4WtHfynTCQ0KDi78jNuiFvwxO3ub3DkgGVaxMkGxTRP/Vz6E7MCZMUBR5wZFcMzJn+73f0wYjDxfj00krg9O1VrwVxbVV1ycLR6oQLcOgm/l+xwth8io0vDpF9OY21gD5DgJn9GgcYe8KoRVEbEqApLZPdBibpcSMTY9czZI2LnFcqrDDmYvhEwgjhZrsTog2xLXOODoOupZ/is5ekQ9Gi0y871b1mLlCGA="] = struct{}{}
+func (v *Verifier) loadDarwinVKs() {
+	v.BundleVkMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD5dsp1rEy7PSqiIFikkkOPqKokLW2mZSwCbtKdkfLQcvTxARUwHSe4iZe27PRJ5WWaLqtRV1+x6+pSVKtcPtaV4kE7v2YJRf0582hxiAF0IBaOoREdpyNfA2a9cvhWb2TMaPrUYP9EDQ7CUiW1FQzxbjGc95ua2htscnpU7d9S5stHWzKb7okkCG7bTIL9aG6qTQo2YXW7n3H3Ir47oVJB7IKrUzKGvI5Wmanh2zpZOJ9Qm4/wY24cT7cJz+Ux6wAg=="] = struct{}{}
+	v.BatchVKMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD1DEjW4Kell67H07wazT5DdzrSh4+amh+cmosQHp9p9snFypyoBGt3UHtoJGQBZlywZWDS9ht5pnaEoGBdaKcQk+lFb+WxTiId0KOAa0mafTZTQw8yToy57Jple64qzlRu1dux30tZZGuerLN1CKzg5Xl2iOpMK+l87jCINwVp5cUtF/XrvhBbU7onKh3KBiy99iUqVyA3Y6iiIZhGKWBSuSA4bNgDYIoVkqjHpdL35aEShoRO6pNXt7rDzxFoPzH0JuPI54nE4OhVrzZXwtkAEosxVa/fszcE092FH+HhhtxZBYe/KEzwdISU9TOPdId3UF/UMYC0MiYOlqffVTgAg="] = struct{}{}
 	v.ChunkVKMap["AAAAGQAAAATyWEABRbJ6hQQ5/zLX1gTasr7349minA9rSgMS6gDeHwZKqikRiO3md+pXjjxMHnKQtmXYgMXhJSvlmZ+Ws+cheuly2X1RuNQzcZuRImaKPR9LJsVZYsXfJbuqdKX8p0Gj8G83wMJOmTzNVUyUol0w0lTU+CEiTpHOnxBsTF3EWaW3s1u4ycOgWt1c9M6s7WmaBZLYgAWYCunO5CLCLApNGbCASeck/LuSoedEri5u6HccCKU2khG6zl6W07jvYSbDVLJktbjRiHv+/HQix+K14j8boo8Z/unhpwXCsPxkQA=="] = struct{}{}
 }
 
