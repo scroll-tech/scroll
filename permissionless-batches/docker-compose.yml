@@ -76,6 +76,7 @@ services:
 
   local-prover:
     image: scrolltech/cuda-prover:v4.4.98-d1138653-5854f81-0cebd85
+    network_mode: host
     platform: linux/amd64
     runtime: nvidia
     entrypoint: /bin/prover_run.sh
