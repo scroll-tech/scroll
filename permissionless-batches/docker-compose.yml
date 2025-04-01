@@ -42,7 +42,8 @@ services:
       - ./conf/genesis.json:/app/conf/genesis.json
     command: "--config /app/conf/config.json --http.port 8390 --verbosity 5"
     profiles:
-      - proving
+      - local-prover
+      - cloud-prover
     depends_on:
       db:
         condition: service_healthy
@@ -61,22 +62,24 @@ services:
       - ./conf/coordinator/:/app/conf
     command: "--config /app/conf/config.json --verbosity 3"
     profiles:
-      - proving
+      - local-prover
+      - cloud-prover
     depends_on:
       db:
         condition: service_healthy
 
-
-  proving-service-chunk:
-    image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
+  local-prover:
+    image: scrolltech/cuda-prover:v4.4.98-d1138653-5854f81-0cebd85
     platform: linux/amd64
+    runtime: nvidia
     command: "--config /app/config.json"
     profiles:
-      - proving
+      - local-prover
     environment:
-          PROVER_NAME_PREFIX: "sindri_chunk"
-          CIRCUIT_TYPE: 1 # 1 for chunk proving
-          N_WORKERS: 1
+      - LD_LIBRARY_PATH=/prover:/usr/local/cuda/lib64
+      - RUST_MIN_STACK=16777216
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
     volumes:
       - ./conf/proving-service/chunk/:/app/
       - ./conf/proving-service/config.json:/app/config.json
@@ -84,35 +87,16 @@ services:
       coordinator:
         condition: service_healthy
 
-  proving-service-batch:
+  cloud-prover:
     image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
     platform: linux/amd64
     command: "--config /app/config.json"
     profiles:
-      - proving
+      - cloud-prover
     environment:
-      PROVER_NAME_PREFIX: "sindri_batch"
-      CIRCUIT_TYPE: 2 # 2 for batch proving
-      N_WORKERS: 1
+      -  N_WORKERS=1
     volumes:
-      - ./conf/proving-service/batch/:/app
-      - ./conf/proving-service/config.json:/app/config.json
-    depends_on:
-      coordinator:
-        condition: service_healthy
-
-  proving-service-bundle:
-    image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
-    platform: linux/amd64
-    command: "--config /app/config.json"
-    profiles:
-      - proving
-    environment:
-      PROVER_NAME_PREFIX: "sindri_bundle"
-      CIRCUIT_TYPE: 3 # 3 for bundle proving
-      N_WORKERS: 1
-    volumes:
-      - ./conf/proving-service/bundle/:/app
+      - ./conf/proving-service/chunk/:/app/
       - ./conf/proving-service/config.json:/app/config.json
     depends_on:
       coordinator:

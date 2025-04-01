@@ -1,26 +1,23 @@
 {
-  "prover_name_prefix": "prover_",
-  "keys_dir": "/app/",
-  "db_path": "/app/",
+  "prover_name_prefix": "prover",
+  "keys_dir": "keys",
   "coordinator": {
     "base_url": "http://coordinator:8390",
-    "retry_count": 3,
-    "retry_wait_time_sec": 5,
-    "connection_timeout_sec": 60
+    "retry_count": 10,
+    "retry_wait_time_sec": 10,
+    "connection_timeout_sec": 30
   },
   "l2geth": {
     "endpoint": "<L2 RPC with generated blocks reachable from Docker network>"
   },
   "prover": {
     "circuit_type": 2,
-    "circuit_version": "v0.13.1",
-    "n_workers": 1,
-    "cloud": {
-      "base_url": "https://sindri.app/api/v1/",
-      "api_key": "<API key>",
-      "retry_count": 3,
-      "retry_wait_time_sec": 5,
-      "connection_timeout_sec": 60
-    }
-  }
+    "supported_proof_types": [
+      1,
+      2,
+      3
+    ],
+    "circuit_version": "v0.13.1"
+  },
+  "db_path": "db"
 }
