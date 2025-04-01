@@ -90,7 +90,7 @@ services:
       - ./conf/proving-service/local-prover/config.json:/prover/conf/config.json:ro
       - ./conf/proving-service/local-prover/prover_run.sh:/bin/prover_run.sh
     depends_on:
-      coordinator:
+      coordinator-api:
         condition: service_healthy
 
   cloud-prover:
@@ -105,7 +105,7 @@ services:
       - ./conf/proving-service/chunk/:/app/
       - ./conf/proving-service/config.json:/app/config.json
     depends_on:
-      coordinator:
+      coordinator-api:
         condition: service_healthy
 
 volumes:
