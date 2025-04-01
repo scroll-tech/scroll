@@ -1,4 +1,7 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
+
+apt update
+apt install -y wget libdigest-sha-perl
 
 if [ -z "${HTTP_PORT}" ]; then
   echo "HTTP_PORT not set"

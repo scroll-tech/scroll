@@ -1,4 +1,7 @@
-#!/usr/bin/sh
+#!/usr/bin/bash
+
+apt update
+apt install -y wget curl
 
 BASE_DOWNLOAD_DIR="/openvm"
 # Ensure the base directory exists
