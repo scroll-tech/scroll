@@ -413,6 +413,16 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
+
+	var currentBatch Batch
+	if err := db.Where("hash", hash).First(&currentBatch).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateCommitTxHashAndRollupStatus error when querying current status: %w, batch hash: %v", err, hash)
+	}
+
+	if types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalizing || types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalized {
+		return nil
+	}
+
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
 
