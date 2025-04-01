@@ -33,17 +33,23 @@ services:
     ports:
       - "5432:5432"
 
-  coordinator:
+  coordinator-api:
     build:
       context: ../
       dockerfile: build/dockerfiles/coordinator-api.Dockerfile
     volumes:
-      - ./conf/coordinator/config.json:/app/conf/config.json
-      - ./conf/genesis.json:/app/conf/genesis.json
-    command: "--config /app/conf/config.json --http.port 8390 --verbosity 5"
+      - ./conf/coordinator/config.json:/coordinator/config.json
+      - ./conf/genesis.json:/coordinator/genesis.json
+      - ./conf/coordinator/coordinator_run.sh:/bin/coordinator_run.sh
+    command: ["bash", "/bin/coordinator_run.sh"]
     profiles:
       - local-prover
       - cloud-prover
+    ports: [8555:8555]
+    environment:
+      - SCROLL_PROVER_ASSETS_DIR=/verifier/assets/
+      - HTTP_PORT=8555
+      - METRICS_PORT=8390
     depends_on:
       db:
         condition: service_healthy
@@ -59,7 +65,7 @@ services:
       context: ../
       dockerfile: build/dockerfiles/coordinator-cron.Dockerfile
     volumes:
-      - ./conf/coordinator/:/app/conf
+      - ./conf/coordinator/config.json:/app/conf/config.json
     command: "--config /app/conf/config.json --verbosity 3"
     profiles:
       - local-prover
@@ -72,6 +78,7 @@ services:
     image: scrolltech/cuda-prover:v4.4.98-d1138653-5854f81-0cebd85
     platform: linux/amd64
     runtime: nvidia
+    command: ["bash", "/bin/prover_run.sh"]
     profiles:
       - local-prover
     environment:
@@ -80,8 +87,8 @@ services:
       - RUST_BACKTRACE=1
       - RUST_LOG=info
     volumes:
-      - ./conf/proving-service/local-prover/openvm:/openvm
       - ./conf/proving-service/local-prover/config.json:/prover/conf/config.json:ro
+      - ./conf/proving-service/local-prover/prover_run.sh:/bin/prover_run.sh
     depends_on:
       coordinator:
         condition: service_healthy

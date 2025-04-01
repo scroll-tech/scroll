@@ -1,23 +1,22 @@
 {
   "prover_manager": {
     "provers_per_session": 1,
-    "session_attempts": 5,
-    "bundle_collection_time_sec": 3600,
-    "batch_collection_time_sec": 3600,
-    "chunk_collection_time_sec": 3600,
+    "session_attempts": 100,
+    "chunk_collection_time_sec": 36000,
+    "batch_collection_time_sec": 2700,
+    "bundle_collection_time_sec": 2700,
     "verifier": {
       "mock_mode": false,
-      "low_version_circuit": {
-        "params_path": "./conf/params",
-        "assets_path": "./conf/assets",
+      "low_version_circuit" : {
         "fork_name": "darwinV2",
-        "min_prover_version": "v4.4.55"
-      },
-      "high_version_circuit": {
-        "params_path": "./conf/params",
-        "assets_path": "./conf/assets",
-        "fork_name": "darwinV2",
+        "params_path": "/verifier/params",
+        "assets_path": "/verifier/assets",
         "min_prover_version": "v4.4.56"
+      },
+      "high_version_circuit" : {
+        "fork_name": "euclid",
+        "assets_path": "/verifier/openvm/verifier",
+        "min_prover_version": "v4.4.98"
       }
     }
   },
@@ -28,11 +27,11 @@
     "maxIdleNum": 20
   },
   "l2": {
-    "chain_id": 111
+    "chain_id": 333333
   },
   "auth": {
-    "secret": "prover secret key",
-    "challenge_expire_duration_sec": 3600,
+    "secret": "e788b62d39254928a821ac1c76b274a8c835aa1e20ecfb6f50eb10e87847de44",
+    "challenge_expire_duration_sec": 10,
     "login_expire_duration_sec": 3600
   }
 }
