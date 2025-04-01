@@ -89,6 +89,8 @@ services:
     volumes:
       - ./conf/proving-service/local-prover/config.json:/prover/conf/config.json:ro
       - ./conf/proving-service/local-prover/prover_run.sh:/bin/prover_run.sh
+      - ./conf/proving-service/local-prover/db:/db
+      - ./conf/proving-service/local-prover/keys:/keys
     depends_on:
       coordinator-api:
         condition: service_healthy

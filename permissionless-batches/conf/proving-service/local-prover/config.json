@@ -1,8 +1,8 @@
 {
     "sdk_config": {
         "prover_name_prefix": "local_prover",
-        "keys_dir": "/prover/volume/keys",
-        "db_path": "/prover/volume/db/",
+        "keys_dir": "/keys",
+        "db_path": "/db",
         "coordinator": {
             "base_url": "http://172.17.0.1:8556",
             "retry_count": 10,
