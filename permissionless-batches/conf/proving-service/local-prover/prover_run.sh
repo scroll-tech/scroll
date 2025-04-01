@@ -45,5 +45,5 @@ chmod +x /usr/local/bin/solc
 
 mkdir -p /openvm/cache
 
-RUST_MIN_STACK=16777216 RUST_BACKTRACE=1 exec prover --config /config.json
+RUST_MIN_STACK=16777216 RUST_BACKTRACE=1 exec /prover/prover --config /prover/conf/config.json
 

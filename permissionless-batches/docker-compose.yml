@@ -54,7 +54,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8390/coordinator/v1/challenge"]
+      test: ["CMD", "curl", "-f", "http://localhost:8555/coordinator/v1/challenge"]
       interval: 1s
       timeout: 1s
       retries: 10
