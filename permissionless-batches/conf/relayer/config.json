@@ -40,7 +40,7 @@
   },
   "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://db/scroll?sslmode=disable&user=postgres",
+    "dsn": "postgres://172.17.0.1:5432/scroll?sslmode=disable&user=postgres",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
