@@ -16,7 +16,8 @@
             "circuit_type": 2,
             "supported_proof_types": [1,2,3],
             "circuit_version": "v0.13.1"
-        }
+        },
+        "health_listener_addr": "0.0.0.0:89"
     },
     "circuits": {
         "euclidV2": {
