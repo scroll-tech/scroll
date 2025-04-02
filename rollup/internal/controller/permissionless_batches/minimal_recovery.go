@@ -283,7 +283,7 @@ func (r *MinimalRecovery) restoreMinimalPreviousState() (*orm.Chunk, *orm.Batch,
 		return nil, nil, nil, fmt.Errorf("failed to get state root: %w", err)
 	}
 
-	log.Info("State root after latest finalized batch", "batch", batchCommitEvent.BatchIndex(), "count", l1MessagesCount)
+	log.Info("State root after latest finalized batch", "batch", batchCommitEvent.BatchIndex(), "stateRoot", stateRoot.Hex())
 
 	// 5. Insert minimal state to DB.
 	chunk, err := r.chunkORM.InsertPermissionlessChunk(r.ctx, defaultFakeRestoredChunkIndex, daBatch.Version(), daBlobPayload, l1MessagesCount, stateRoot)
