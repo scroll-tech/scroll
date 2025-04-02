@@ -286,7 +286,7 @@ func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, cod
 		PrevL1MessageQueueHash:       daBlobPayload.PrevL1MessageQueueHash().Hex(),
 		PostL1MessageQueueHash:       daBlobPayload.PostL1MessageQueueHash().Hex(),
 		ParentChunkHash:              emptyHash,
-		StateRoot:                    emptyHash,
+		StateRoot:                    "0x51093cf969a05a5075bb7bc0fe4ae988ef47e25dc4828058d7cf957ef92e9f46",
 		ParentChunkStateRoot:         emptyHash,
 		WithdrawRoot:                 emptyHash,
 		CodecVersion:                 int16(codecVersion),
