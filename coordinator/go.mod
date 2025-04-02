@@ -18,6 +18,8 @@ require (
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
 
+replace github.com/scroll-tech/da-codec => github.com/scroll-tech/da-codec v0.1.3-0.20250327153440-cd3e5728df9c
+
 require (
 	github.com/bytedance/sonic v1.10.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
