@@ -262,7 +262,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	return &newChunk, nil
 }
 
-func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, codecVersion encoding.CodecVersion, daBlobPayload encoding.DABlobPayload, totalL1MessagePoppedBefore uint64) (*Chunk, error) {
+func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, codecVersion encoding.CodecVersion, daBlobPayload encoding.DABlobPayload, totalL1MessagePoppedBefore uint64, stateRoot common.Hash) (*Chunk, error) {
 	// Create some unique identifier. It is not really used for anything except in DB.
 	var chunkBytes []byte
 	for _, block := range daBlobPayload.Blocks() {
@@ -286,7 +286,7 @@ func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, cod
 		PrevL1MessageQueueHash:       daBlobPayload.PrevL1MessageQueueHash().Hex(),
 		PostL1MessageQueueHash:       daBlobPayload.PostL1MessageQueueHash().Hex(),
 		ParentChunkHash:              emptyHash,
-		StateRoot:                    "0x51093cf969a05a5075bb7bc0fe4ae988ef47e25dc4828058d7cf957ef92e9f46",
+		StateRoot:                    stateRoot.Hex(),
 		ParentChunkStateRoot:         emptyHash,
 		WithdrawRoot:                 emptyHash,
 		CodecVersion:                 int16(codecVersion),
