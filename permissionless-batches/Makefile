@@ -6,11 +6,11 @@ PG_URL=postgres://postgres@localhost:5432/scroll
 batch_production_submission:
 	docker compose --profile batch-production-submission up
 
-launch_local_prover:
-	docker compose --profile cloud-prover up
+local_prover:
+	docker compose --profile local_prover up
 
-launch_cloud_prover:
-	docker compose --profile local-prover up
+cloud_prover:
+	docker compose --profile cloud_prover up
 
 psql:
 	psql 'postgres://postgres@localhost:5432/scroll'
