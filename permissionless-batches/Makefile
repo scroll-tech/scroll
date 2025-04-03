@@ -7,10 +7,10 @@ batch_production_submission:
 	docker compose --profile batch-production-submission up
 
 local_prover:
-	docker compose --profile local_prover up
+	docker compose --profile local-prover up
 
 cloud_prover:
-	docker compose --profile cloud_prover up
+	docker compose --profile cloud-prover up
 
 psql:
 	psql 'postgres://postgres@localhost:5432/scroll'
