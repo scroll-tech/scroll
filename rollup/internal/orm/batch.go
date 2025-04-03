@@ -343,7 +343,7 @@ func (o *Batch) InsertPermissionlessBatch(ctx context.Context, batchIndex *big.I
 		StartChunkHash:         chunk.Hash,
 		EndChunkIndex:          chunk.Index,
 		EndChunkHash:           chunk.Hash,
-		StateRoot: 				chunk.StateRoot,
+		StateRoot:              chunk.StateRoot,
 		PrevL1MessageQueueHash: chunk.PrevL1MessageQueueHash,
 		PostL1MessageQueueHash: chunk.PostL1MessageQueueHash,
 		BatchHeader:            []byte{1, 2, 3},
