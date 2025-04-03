@@ -100,7 +100,7 @@ done
 
 # Download OpenVM files (No checksum verification, but skips if file exists)
 for url in "${OPENVM_URLS[@]}"; do
-  dest_subdir="$OPENVM_DIR/verifier"
+  dest_subdir="$OPENVM_DIR/$(basename $(dirname "$url"))"
   mkdir -p "$dest_subdir"
 
   filepath="$dest_subdir/$(basename "$url")"
