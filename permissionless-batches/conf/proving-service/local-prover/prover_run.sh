@@ -3,25 +3,31 @@
 apt update
 apt install -y wget curl
 
+# release version
+if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
+  echo "SCROLL_ZKVM_VERSION not set"
+  exit 1
+fi
+
 BASE_DOWNLOAD_DIR="/openvm"
 # Ensure the base directory exists
 mkdir -p "$BASE_DOWNLOAD_DIR"
 
 # Define URLs for OpenVM files (No checksum verification)
 OPENVM_URLS=(
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/chunk/app.vmexe"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/chunk/openvm.toml"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/batch/app.vmexe"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/batch/openvm.toml"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/app.vmexe"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/app_euclidv1.vmexe"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/openvm.toml"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/verifier.bin"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/verifier.sol"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/digest_1.hex"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/digest_2.hex"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/digest_1_euclidv1.hex"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/bundle/digest_2_euclidv1.hex"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/chunk/app.vmexe"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/chunk/openvm.toml"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/batch/app.vmexe"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/batch/openvm.toml"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/app.vmexe"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/app_euclidv1.vmexe"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/openvm.toml"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/verifier.bin"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/verifier.sol"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/digest_1.hex"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/digest_2.hex"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/digest_1_euclidv1.hex"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/bundle/digest_2_euclidv1.hex"
   "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/params/kzg_bn254_22.srs"
   "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/params/kzg_bn254_24.srs"
 )

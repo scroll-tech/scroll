@@ -90,19 +90,34 @@ To produce a batch you need to run the `batch-production-submission` profile in 
 3. Fill in required fields in `conf/relayer/config.json`
 
 
-Run with `docker compose --profile batch-production-submission up`.
+Run with `make batch_production_submission`.
 This will produce chunks, a batch and bundle which will be proven in the next step.
 `Success! You're ready to generate proofs!` indicates that everything is working correctly and the batch is ready to be proven.
 
 #### Proving a batch
-To prove the chunk, batch and bundle you just generated you need to run the `proving` profile in `docker-compose.yml`.
+To prove the chunk, batch and bundle you just generated you need to run the `local-prover` or `cloud-prover` profile in `docker-compose.yml`.
+
+Local Proving:
+
+1. Hardware spec for local prover: CPU: 36+ core, 128G memory GPU: 24G memory (eg. Rtx 3090/3090Ti/4090/A10/L4)
+2. Make sure `verifier` `low_version_circuit` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
+2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
+4. Fill in the required fields in `conf/proving-service/local-prover/config.json`
+
+Run with `make local_prover`.
+
+Cloud Proving:
 
 1. Make sure `verifier` `low_version_circuit` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
-2. Download the latest `assets` and `params` for the circuit from [TODO link list with versions](#batch-production-toolkit) into `conf/coordinator/assets` and `conf/coordinator/params` respectively.
-3. Fill in the required fields in `conf/proving-service/config.json`. It is recommended to use Sindri. You'll need to obtain credits and an API key from their [website](https://sindri.app/).
-4. Alternatively, you can run your own prover: https://github.com/scroll-tech/scroll-prover. However, this requires more configuration.
+2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
+3. Fill in the required fields in `conf/proving-service/cloud-prover/config.json`. It is recommended to use Sindri. You'll need to obtain credits and an API key from their [website](https://sindri.app/).
 
-Run with `docker compose --profile proving up`.
+Run with `make cloud_prover`.
+
+This will prove chunks, the batch and bundle.
+Run `make check_proving_status`
+`Success! You're ready to submit permissionless batch and proof!` indicates that everything is working correctly and the batch is ready to be submit.
+
 
 
 #### Batch submission
@@ -110,7 +125,7 @@ To submit the batch you need to run the `batch-production-submission` profile in
 
 1. Fill in required fields in `conf/relayer/config.json` for the sender config.
 
-Run with `docker compose --profile batch-production-submission up`.
+Run with `make batch_production_submission`.
 This will submit the batch to L1 and finalize it. The transaction will be retried in case of failure.
 
 **Troubleshooting**

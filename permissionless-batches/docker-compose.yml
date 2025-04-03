@@ -47,6 +47,7 @@ services:
       - cloud-prover
     ports: [8556:8555]
     environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
       - SCROLL_PROVER_ASSETS_DIR=/verifier/assets/
       - HTTP_PORT=8555
       - METRICS_PORT=8390
@@ -83,6 +84,7 @@ services:
     profiles:
       - local-prover
     environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
       - LD_LIBRARY_PATH=/prover:/usr/local/cuda/lib64
       - RUST_MIN_STACK=16777216
       - RUST_BACKTRACE=1

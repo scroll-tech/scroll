@@ -3,6 +3,12 @@
 apt update
 apt install -y wget libdigest-sha-perl
 
+# release version
+if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
+  echo "SCROLL_ZKVM_VERSION not set"
+  exit 1
+fi
+
 if [ -z "${HTTP_PORT}" ]; then
   echo "HTTP_PORT not set"
   exit 1
@@ -48,9 +54,9 @@ ASSETS_URLS=(
 
 # Define URLs for OpenVM files (No checksum verification)
 OPENVM_URLS=(
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/verifier/verifier.bin"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/verifier/root-verifier-vm-config"
-  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.2.0/verifier/root-verifier-committed-exe"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/verifier.bin"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/root-verifier-vm-config"
+  "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/root-verifier-committed-exe"
 )
 
 # Function to download and verify files (skips existing valid files)
