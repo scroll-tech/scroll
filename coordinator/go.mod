@@ -2,8 +2,6 @@ module scroll-tech/coordinator
 
 go 1.22
 
-toolchain go1.22.2
-
 require (
 	github.com/appleboy/gin-jwt/v2 v2.9.1
 	github.com/gin-gonic/gin v1.9.1
@@ -11,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.1.3-0.20250310095435-012aaee6b435
+	github.com/scroll-tech/da-codec v0.1.3-0.20250401062930-9f9f53898493
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305151038-478940e79601
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.10.0

@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
@@ -42,9 +43,10 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 
 	var highHardForks []string
 	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.HighVersionCircuit.ForkName)
-	if cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != "euclid" {
+	if cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != message.EuclidFork && cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != message.EuclidV2Fork {
 		highHardForks = append(highHardForks, cfg.ProverManager.Verifier.LowVersionCircuit.ForkName)
 	}
+	highHardForks = append(highHardForks, message.EuclidFork, message.EuclidV2Fork)
 	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = highHardForks
 
 	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = []string{cfg.ProverManager.Verifier.LowVersionCircuit.ForkName}

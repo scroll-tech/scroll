@@ -39,6 +39,7 @@ type Batch struct {
 	PostL1MessageQueueHash string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
 	EnableCompress         bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
 	BlobBytes              []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
+	ChallengeDigest        string `json:"challenge_digest" gorm:"column:challenge_digest"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -305,6 +306,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		PostL1MessageQueueHash:    batch.PostL1MessageQueueHash.Hex(),
 		EnableCompress:            enableCompress,
 		BlobBytes:                 batchMeta.BlobBytes,
+		ChallengeDigest:           batchMeta.ChallengeDigest.Hex(),
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),

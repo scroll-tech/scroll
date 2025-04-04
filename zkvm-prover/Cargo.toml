@@ -18,13 +18,13 @@ serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
 futures = "0.3.30"
 
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.0-rc.6" }
+scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.2.0", package = "scroll-zkvm-prover" }
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "af95d2a", features = [
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "main", features = [
     "openvm",
 ] }
-sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-v2", features = [
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = [
     "scroll",
 ] }
 base64 = "0.13.1"
@@ -45,3 +45,34 @@ clap = { version = "4.5", features = ["derive"] }
 ctor = "0.2.8"
 url = "2.5.4"
 serde_bytes = "0.11.15"
+
+[patch."https://github.com/openvm-org/stark-backend.git"]
+openvm-stark-backend = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "main", features = ["gpu"] }
+openvm-stark-sdk = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "main", features = ["gpu"] }
+
+[patch."https://github.com/Plonky3/Plonky3.git"]
+p3-air = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-field = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-commit = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-matrix = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-baby-bear = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", features = [
+    "nightly-features",
+], tag = "v0.1.0" }
+p3-util = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-challenger = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-dft = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-fri = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-goldilocks = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-keccak = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-keccak-air = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-blake3 = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-mds = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-merkle-tree = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-monty-31 = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-poseidon = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-poseidon2 = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-poseidon2-air = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-symmetric = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-uni-stark = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }
+p3-maybe-rayon = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" } # the "parallel" feature is NOT on by default to allow single-threaded benchmarking
+p3-bn254-fr = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.0" }

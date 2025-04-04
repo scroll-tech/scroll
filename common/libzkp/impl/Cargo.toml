@@ -14,8 +14,8 @@ ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
 tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2-openvm-v1.0.0-rc.1" }
 
 [dependencies]
-euclid_prover = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.1.0-rc.6", package = "scroll-zkvm-prover" }
-euclid_verifier = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.1.0-rc.6", package = "scroll-zkvm-verifier" }
+euclid_prover = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.2.0", package = "scroll-zkvm-prover" }
+euclid_verifier = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.2.0", package = "scroll-zkvm-verifier" }
 
 base64 = "0.13.0"
 env_logger = "0.9.0"
