@@ -139,6 +139,11 @@ func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, er
 	}
 
 	proverVersion := proverVersionSplits[0]
+
+	if proverVersion == "v4.4.56" {
+		return "darwin", nil
+	}
+
 	if hardForkNames, ok := l.proverVersionHardForkMap[proverVersion]; ok {
 		return strings.Join(hardForkNames, ","), nil
 	}
