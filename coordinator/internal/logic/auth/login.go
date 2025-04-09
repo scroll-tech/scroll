@@ -139,6 +139,12 @@ func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, er
 	}
 
 	proverVersion := proverVersionSplits[0]
+
+	// allowing darwin provers to login, because darwin provers can prove darwinV2 chunk tasks
+	if proverVersion == "v4.4.56" {
+		return "darwin", nil
+	}
+
 	if hardForkNames, ok := l.proverVersionHardForkMap[proverVersion]; ok {
 		return strings.Join(hardForkNames, ","), nil
 	}

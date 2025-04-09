@@ -121,6 +121,11 @@ func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTa
 		return "", getHardForkErr
 	}
 
+	// for backward compatibility, darwin chunk prover can still prove darwinV2 chunk tasks
+	if taskCtx.taskType == message.ProofTypeChunk && hardForkName == "darwinV2" && taskCtx.ProverVersion == "v4.4.56" {
+		return hardForkName, nil
+	}
+
 	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
 		return "", fmt.Errorf("to be assigned prover task's hard-fork name is not the same as prover, proverName: %s, proverVersion: %s, proverSupportHardForkNames: %s, taskHardForkName: %v", taskCtx.ProverName, taskCtx.ProverVersion, taskCtx.HardForkNames, hardForkName)
 	}
