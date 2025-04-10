@@ -75,7 +75,9 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		return errors.New("auth message verify failure")
 	}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion) {
+	// FIXME: for backward compatibility, set prover version as darwin prover version,
+	// change it to l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion after Euclid upgrade.
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, "v4.4.56") {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
 			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
 	}
