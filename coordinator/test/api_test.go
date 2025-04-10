@@ -285,13 +285,13 @@ func testOutdatedProverVersion(t *testing.T) {
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch, "v1.999.999")
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
-	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
+	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s",
 		conf.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, chunkProver.proverVersion)
 	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
 
-	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
+	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s",
 		conf.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
