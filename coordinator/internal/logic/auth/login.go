@@ -76,11 +76,11 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	}
 
 	// FIXME: for backward compatibility, set prover version as darwin prover version,
-	// change it to l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion after Euclid upgrade.
+	// change v4.4.56 to l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion after Euclid upgrade, including the log.
 	// hardcode the prover version because l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion is used in another check and should be set as v4.4.89 for darwinV2 provers.
 	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, "v4.4.56") {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
+			"v4.4.56", login.Message.ProverVersion)
 	}
 
 	if len(login.Message.ProverTypes) > 0 {
