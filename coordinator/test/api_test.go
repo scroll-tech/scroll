@@ -89,7 +89,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 					ParamsPath:       "",
 					AssetsPath:       "",
 					ForkName:         "homestead",
-					MinProverVersion: "v4.4.56",
+					MinProverVersion: "v4.4.57",
 				},
 				HighVersionCircuit: &config.CircuitConfig{
 					ParamsPath:       "",
@@ -142,7 +142,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 func setEnv(t *testing.T) {
 	var err error
 
-	version.Version = "v4.4.56"
+	version.Version = "v4.4.57"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)

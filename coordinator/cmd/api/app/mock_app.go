@@ -95,7 +95,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 				ParamsPath:       "",
 				AssetsPath:       "",
 				ForkName:         "darwin",
-				MinProverVersion: "v4.4.56",
+				MinProverVersion: "v4.4.57",
 			},
 			HighVersionCircuit: &coordinatorConfig.CircuitConfig{
 				ParamsPath:       "",
