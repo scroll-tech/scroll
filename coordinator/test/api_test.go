@@ -89,13 +89,13 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 					ParamsPath:       "",
 					AssetsPath:       "",
 					ForkName:         "homestead",
-					MinProverVersion: "v4.2.0",
+					MinProverVersion: "v4.4.57",
 				},
 				HighVersionCircuit: &config.CircuitConfig{
 					ParamsPath:       "",
 					AssetsPath:       "",
 					ForkName:         "bernoulli",
-					MinProverVersion: "v4.3.0",
+					MinProverVersion: "v4.4.89",
 				},
 			},
 			BatchCollectionTimeSec:  10,
@@ -142,7 +142,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 func setEnv(t *testing.T) {
 	var err error
 
-	version.Version = "v4.2.0"
+	version.Version = "v4.4.57"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)
@@ -285,14 +285,12 @@ func testOutdatedProverVersion(t *testing.T) {
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch, "v1.999.999")
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
-	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-		conf.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, chunkProver.proverVersion)
+	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s", chunkProver.proverVersion)
 	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
 
-	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-		conf.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, batchProver.proverVersion)
+	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s", batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
