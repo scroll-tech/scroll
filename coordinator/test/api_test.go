@@ -292,7 +292,7 @@ func testOutdatedProverVersion(t *testing.T) {
 	assert.Equal(t, expectedErr, errors.New(errMsg))
 
 	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s",
-		conf.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, batchProver.proverVersion)
+		batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
