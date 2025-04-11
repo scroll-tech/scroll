@@ -1,5 +1,8 @@
 pub mod euclid;
 
+#[allow(non_snake_case)]
+pub mod euclidV2;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};

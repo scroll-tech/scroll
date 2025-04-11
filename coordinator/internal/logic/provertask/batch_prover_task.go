@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -121,7 +123,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		for i := 0; i < len(proverTasks); i++ {
 			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
 				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
 				return nil, nil
 			}
 		}
@@ -211,17 +213,23 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
 			DataHash:         common.HexToHash(chunk.Hash),
 			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 			IsPadding:        false,
 		}
-		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
-			if haloProot.ChunkInfo != nil {
-				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+		if halo2Proof, ok := proof.(*message.Halo2ChunkProof); ok {
+			if halo2Proof.ChunkInfo != nil {
+				chunkInfo.TxBytes = halo2Proof.ChunkInfo.TxBytes
 			}
+		}
+		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
+			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
+			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
+			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs)
+	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs, hardForkName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -238,6 +246,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		TaskData:     string(chunkProofsBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeBatch.String(), "hard_fork_name", hardForkName, "task_data", taskMsg.TaskData)
+
 	return taskMsg, nil
 }
 
@@ -247,10 +258,16 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
+	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
 	}
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
@@ -271,17 +288,13 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
-
-	if len(dbBatch.BlobDataProof) < 160 {
-		return nil, fmt.Errorf("blob data proof length is less than 160 bytes = %d, taskID: %s: %s", len(dbBatch.BlobDataProof), dbBatch.Hash, common.Bytes2Hex(dbBatch.BlobDataProof))
-	}
-
+	taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
 	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = dbBatch.BlobDataProof[112:160]
-	taskDetail.KzgCommitment = dbBatch.BlobDataProof[64:112]
-	taskDetail.Challenge = common.Hash(dbBatch.BlobDataProof[0:32])
+	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+
 	return taskDetail, nil
 }

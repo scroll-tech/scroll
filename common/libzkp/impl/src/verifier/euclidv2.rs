@@ -4,16 +4,16 @@ use anyhow::Result;
 
 use crate::utils::panic_catch;
 use euclid_prover::{BatchProof, BundleProof, ChunkProof};
-use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV1, ChunkVerifier};
+use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
 use std::{fs::File, path::Path};
 
-pub struct EuclidVerifier {
+pub struct EuclidV2Verifier {
     chunk_verifier: ChunkVerifier,
     batch_verifier: BatchVerifier,
-    bundle_verifier: BundleVerifierEuclidV1,
+    bundle_verifier: BundleVerifierEuclidV2,
 }
 
-impl EuclidVerifier {
+impl EuclidV2Verifier {
     pub fn new(assets_dir: &str) -> Self {
         let verifier_bin = Path::new(assets_dir).join("verifier.bin");
         let config = Path::new(assets_dir).join("root-verifier-vm-config");
@@ -24,13 +24,13 @@ impl EuclidVerifier {
                 .expect("Setting up chunk verifier"),
             batch_verifier: BatchVerifier::setup(&config, &exe, &verifier_bin)
                 .expect("Setting up batch verifier"),
-            bundle_verifier: BundleVerifierEuclidV1::setup(&config, &exe, &verifier_bin)
+            bundle_verifier: BundleVerifierEuclidV2::setup(&config, &exe, &verifier_bin)
                 .expect("Setting up bundle verifier"),
         }
     }
 }
 
-impl ProofVerifier for EuclidVerifier {
+impl ProofVerifier for EuclidV2Verifier {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
         panic_catch(|| match task_type {
             TaskType::Chunk => {

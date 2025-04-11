@@ -1,90 +1,25 @@
 use std::{path::Path, sync::Arc};
 
-use super::CircuitsHandler;
+use super::{euclid::Phase, CircuitsHandler};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
 use scroll_zkvm_prover_euclid::{
     task::{batch::BatchProvingTask, bundle::BundleProvingTask, chunk::ChunkProvingTask},
-    BatchProver, BundleProverEuclidV1, ChunkProver, ProverConfig,
+    BatchProver, BundleProverEuclidV2, ChunkProver,
 };
 use tokio::sync::Mutex;
-pub struct EuclidHandler {
+pub struct EuclidV2Handler {
     chunk_prover: ChunkProver,
     batch_prover: BatchProver,
-    bundle_prover: BundleProverEuclidV1,
+    bundle_prover: BundleProverEuclidV2,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) enum Phase {
-    EuclidV1,
-    EuclidV2,
-}
+unsafe impl Send for EuclidV2Handler {}
 
-impl Phase {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Phase::EuclidV1 => "euclidv1",
-            Phase::EuclidV2 => "euclidv2",
-        }
-    }
-
-    pub fn phase_spec_chunk(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
-        let path_app_exe = workspace_path.join("chunk/app.vmexe");
-        let path_app_config = workspace_path.join("chunk/openvm.toml");
-        let segment_len = Some((1 << 22) - 100);
-        ProverConfig {
-            dir_cache,
-            path_app_config,
-            path_app_exe,
-            segment_len,
-            ..Default::default()
-        }
-    }
-
-    pub fn phase_spec_batch(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
-        let path_app_exe = workspace_path.join("batch/app.vmexe");
-        let path_app_config = workspace_path.join("batch/openvm.toml");
-        let segment_len = Some((1 << 22) - 100);
-        ProverConfig {
-            dir_cache,
-            path_app_config,
-            path_app_exe,
-            segment_len,
-            ..Default::default()
-        }
-    }
-
-    pub fn phase_spec_bundle(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
-        let path_app_config = workspace_path.join("bundle/openvm.toml");
-        let segment_len = Some((1 << 22) - 100);
-        match self {
-            Phase::EuclidV1 => ProverConfig {
-                dir_cache,
-                path_app_config,
-                segment_len,
-                path_app_exe: workspace_path.join("bundle/app_euclidv1.vmexe"),
-                ..Default::default()
-            },
-            Phase::EuclidV2 => ProverConfig {
-                dir_cache,
-                path_app_config,
-                segment_len,
-                path_app_exe: workspace_path.join("bundle/app.vmexe"),
-                ..Default::default()
-            },
-        }
-    }
-}
-
-unsafe impl Send for EuclidHandler {}
-
-impl EuclidHandler {
+impl EuclidV2Handler {
     pub fn new(workspace_path: &str) -> Self {
-        let p = Phase::EuclidV1;
+        let p = Phase::EuclidV2;
         let workspace_path = Path::new(workspace_path);
         let chunk_prover = ChunkProver::setup(p.phase_spec_chunk(workspace_path))
             .expect("Failed to setup chunk prover");
@@ -92,7 +27,7 @@ impl EuclidHandler {
         let batch_prover = BatchProver::setup(p.phase_spec_batch(workspace_path))
             .expect("Failed to setup batch prover");
 
-        let bundle_prover = BundleProverEuclidV1::setup(p.phase_spec_bundle(workspace_path))
+        let bundle_prover = BundleProverEuclidV2::setup(p.phase_spec_bundle(workspace_path))
             .expect("Failed to setup bundle prover");
 
         Self {
@@ -104,7 +39,7 @@ impl EuclidHandler {
 }
 
 #[async_trait]
-impl CircuitsHandler for Arc<Mutex<EuclidHandler>> {
+impl CircuitsHandler for Arc<Mutex<EuclidV2Handler>> {
     async fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>> {
         Some(match task_type {
             ProofType::Chunk => self.try_lock().unwrap().chunk_prover.get_app_vk(),

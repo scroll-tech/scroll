@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -118,7 +119,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		for i := 0; i < len(proverTasks); i++ {
 			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
 				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-				log.Debug("get empty chunk, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				log.Debug("get empty chunk, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpChunkTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
 				return nil, nil
 			}
 		}
@@ -162,7 +163,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, chunkTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
@@ -179,17 +180,27 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
 	if dbErr != nil || len(blockHashes) == 0 {
 		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
 	}
 
+	var taskDetailBytes []byte
 	taskDetail := message.ChunkTaskDetail{
-		BlockHashes: blockHashes,
+		BlockHashes:      blockHashes,
+		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
 	}
-	blockHashesBytes, err := json.Marshal(taskDetail)
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
+	}
+
+	var err error
+	taskDetailBytes, err = json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
@@ -198,9 +209,11 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeChunk),
-		TaskData:     string(blockHashesBytes),
+		TaskData:     string(taskDetailBytes),
 		HardForkName: hardForkName,
 	}
+
+	log.Debug("TaskData", "task_id", task.TaskID, "task_type", message.ProofTypeChunk.String(), "hard_fork_name", hardForkName, "task_data", proverTaskSchema.TaskData)
 
 	return proverTaskSchema, nil
 }

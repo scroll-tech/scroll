@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
@@ -42,9 +43,10 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 
 	var highHardForks []string
 	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.HighVersionCircuit.ForkName)
-	if cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != "euclid" {
+	if cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != message.EuclidFork && cfg.ProverManager.Verifier.HighVersionCircuit.ForkName != message.EuclidV2Fork {
 		highHardForks = append(highHardForks, cfg.ProverManager.Verifier.LowVersionCircuit.ForkName)
 	}
+	highHardForks = append(highHardForks, message.EuclidFork, message.EuclidV2Fork)
 	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = highHardForks
 
 	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = []string{cfg.ProverManager.Verifier.LowVersionCircuit.ForkName}
@@ -73,9 +75,12 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		return errors.New("auth message verify failure")
 	}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion) {
+	// FIXME: for backward compatibility, set prover version as darwin prover version,
+	// change v4.4.56 to l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion after Euclid upgrade, including the log.
+	// hardcode the prover version because l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion is used in another check and should be set as v4.4.89 for darwinV2 provers.
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, "v4.4.56") {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
+			"v4.4.56", login.Message.ProverVersion)
 	}
 
 	if len(login.Message.ProverTypes) > 0 {
@@ -137,6 +142,12 @@ func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, er
 	}
 
 	proverVersion := proverVersionSplits[0]
+
+	// allowing darwin provers to login, because darwin provers can prove darwinV2 chunk tasks
+	if proverVersion == "v4.4.56" {
+		return "darwin", nil
+	}
+
 	if hardForkNames, ok := l.proverVersionHardForkMap[proverVersion]; ok {
 		return strings.Join(hardForkNames, ","), nil
 	}
