@@ -122,7 +122,7 @@ func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTa
 	}
 
 	// for backward compatibility, darwin chunk prover can still prove darwinV2 chunk tasks
-	if taskCtx.taskType == message.ProofTypeChunk && hardForkName == "darwinV2" && taskCtx.ProverVersion == "v4.4.56" {
+	if taskCtx.taskType == message.ProofTypeChunk && hardForkName == "darwinV2" && strings.HasPrefix(taskCtx.ProverVersion, "v4.4.56") {
 		return hardForkName, nil
 	}
 
