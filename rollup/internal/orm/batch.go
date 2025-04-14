@@ -56,10 +56,6 @@ type Batch struct {
 	FinalizeTxHash string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
 	FinalizedAt    *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 
-	// gas oracle
-	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
-
 	// blob
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
@@ -310,7 +306,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
-		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          metrics.L1CommitGas,
 		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
 		BlobDataProof:             batchMeta.BatchBlobDataProof,
@@ -329,22 +324,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 	return &newBatch, nil
-}
-
-// UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
-func (o *Batch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
-	updateFields := make(map[string]interface{})
-	updateFields["oracle_status"] = int(status)
-	updateFields["oracle_tx_hash"] = txHash
-
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateL2GasOracleStatusAndOracleTxHash error: %w, batch hash: %v, status: %v, txHash: %v", err, hash, status.String(), txHash)
-	}
-	return nil
 }
 
 // UpdateProvingStatus updates the proving status of a batch.

@@ -173,9 +173,9 @@ func TestSenderType(t *testing.T) {
 			"SenderTypeL1GasOracle",
 		},
 		{
-			"SenderTypeL2GasOracle",
-			SenderTypeL2GasOracle,
-			"SenderTypeL2GasOracle",
+			"SenderTypeL2GasOracleDeprecated",
+			SenderTypeL2GasOracleDeprecated,
+			"SenderTypeL2GasOracleDeprecated",
 		},
 		{
 			"Invalid Value",
