@@ -300,16 +300,12 @@ func TestBatchOrm(t *testing.T) {
 		assert.NoError(t, err)
 		err = batchOrm.UpdateRollupStatus(context.Background(), batchHash2, types.RollupFinalized)
 		assert.NoError(t, err)
-		err = batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(context.Background(), batchHash2, types.GasOracleImported, "oracleTxHash")
-		assert.NoError(t, err)
 
 		updatedBatch, err := batchOrm.GetLatestBatch(context.Background())
 		assert.NoError(t, err)
 		assert.NotNil(t, updatedBatch)
 		assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(updatedBatch.ProvingStatus))
 		assert.Equal(t, types.RollupFinalized, types.RollupStatus(updatedBatch.RollupStatus))
-		assert.Equal(t, types.GasOracleImported, types.GasOracleStatus(updatedBatch.OracleStatus))
-		assert.Equal(t, "oracleTxHash", updatedBatch.OracleTxHash)
 
 		err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash1, "commitTxHash", types.RollupCommitted)
 		assert.NoError(t, err)

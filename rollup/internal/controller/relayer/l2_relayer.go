@@ -930,22 +930,6 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
 		}
-	case types.SenderTypeL2GasOracle:
-		batchHash := cfm.ContextID
-		var status types.GasOracleStatus
-		if cfm.IsSuccessful {
-			status = types.GasOracleImported
-			r.metrics.rollupL2UpdateGasOracleConfirmedTotal.Inc()
-		} else {
-			status = types.GasOracleImportedFailed
-			r.metrics.rollupL2UpdateGasOracleConfirmedFailedTotal.Inc()
-			log.Warn("UpdateGasOracleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
-		}
-
-		err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batchHash, status, cfm.TxHash.String())
-		if err != nil {
-			log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "confirmation", cfm, "err", err)
-		}
 	default:
 		log.Warn("Unknown transaction type", "confirmation", cfm)
 	}
