@@ -1,0 +1,6 @@
+{
+    "dsn": "postgres://postgres:postgres@db:5432/scroll?sslmode=disable",
+    "driver_name": "postgres",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+}

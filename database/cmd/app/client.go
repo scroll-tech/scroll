@@ -42,7 +42,7 @@ func resetDB(ctx *cli.Context) error {
 	}
 
 	var version int64
-	err = migrate.Rollback(db.DB, &version)
+	err = migrate.ResetDB(db.DB)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=scroll
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-client:
+    build:
+      context: ..
+      dockerfile: ./build/dockerfiles/db_cli.Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["reset", "--config", "/app/conf/proposer-tool-db-config.json"]
+    volumes:
+      - ./proposer-tool-db-config.json:/app/conf/proposer-tool-db-config.json
+
+  proposer-tool:
+    build:
+      context: ..
+      dockerfile: ./rollup/proposer_tool.Dockerfile
+    depends_on:
+      db-client:
+        condition: service_completed_successfully
+    command: [
+      "--config", "/app/conf/proposer-tool-config.json",
+      "--genesis", "/app/conf/proposer-tool-genesis.json",
+      "--min-codec-version", "4",
+      "--log.debug", "--verbosity", "3"
+    ]
+    volumes:
+      - ./proposer-tool-config.json:/app/conf/proposer-tool-config.json
+      - ./proposer-tool-genesis.json:/app/conf/proposer-tool-genesis.json
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

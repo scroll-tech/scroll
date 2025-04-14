@@ -202,7 +202,7 @@ func testChunkProposerLimitsCodecV4(t *testing.T) {
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, encoding.CodecV4, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, db, nil)
+			}, encoding.CodecV4, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, db, db, nil, false /* not used by tool */)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -253,7 +253,7 @@ func testChunkProposerBlobSizeLimitCodecV4(t *testing.T) {
 			ChunkTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, encoding.CodecV4, chainConfig, db, nil)
+		}, encoding.CodecV4, chainConfig, db, db, nil, false /* not used by tool */)
 
 		for i := 0; i < 2; i++ {
 			cp.TryProposeChunk()

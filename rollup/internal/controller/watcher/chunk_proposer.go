@@ -36,6 +36,7 @@ type ChunkProposer struct {
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
 
+	toolFlag        bool
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -64,7 +65,7 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, l2BlockDB, db *gorm.DB, reg prometheus.Registerer, toolFlag bool) *ChunkProposer {
 	log.Info("new chunk proposer",
 		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
@@ -81,7 +82,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		ctx:                             ctx,
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
-		l2BlockOrm:                      orm.NewL2Block(db),
+		l2BlockOrm:                      orm.NewL2Block(l2BlockDB),
 		maxBlockNumPerChunk:             cfg.MaxBlockNumPerChunk,
 		maxTxNumPerChunk:                cfg.MaxTxNumPerChunk,
 		maxL2GasPerChunk:                cfg.MaxL2GasPerChunk,
@@ -91,6 +92,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		toolFlag:                        toolFlag,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -241,9 +243,11 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 			log.Warn("ChunkProposer.InsertChunk failed", "codec version", codecVersion, "err", err)
 			return err
 		}
-		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
-			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", dbChunk.Hash, "start block", dbChunk.StartBlockNumber, "end block", dbChunk.EndBlockNumber, "err", err)
-			return err
+		if !p.toolFlag {
+			if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
+				log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", dbChunk.Hash, "start block", dbChunk.StartBlockNumber, "end block", dbChunk.EndBlockNumber, "err", err)
+				return err
+			}
 		}
 		return nil
 	})
@@ -441,7 +445,7 @@ func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block
 	}
 
 	prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
-	if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
+	if !p.toolFlag && (err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash) {
 		return false, fmt.Errorf("failed to get parent block: %w", err)
 	}
 

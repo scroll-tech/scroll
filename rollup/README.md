@@ -33,3 +33,32 @@ make rollup_bins
 ./build/bin/gas_oracle --config ./conf/config.json
 ./build/bin/rollup_relayer --config ./conf/config.json
 ```
+
+## How to run the proposer tool?
+
+### Set the configs
+
+1. Set genesis config to enable desired hardforks in [`proposer-tool-genesis.json`](./proposer-tool-genesis.json).
+2. Set proposer config in [`proposer-tool-config.json`](./proposer-tool-config.json) for data analysis.
+
+### Start the proposer tool using docker-compose.
+
+```
+cd rollup
+DOCKER_BUILDKIT=1 docker-compose -f docker-compose-proposer-tool.yml up -d
+```
+
+> Note: The port 5432 of database is mapped to the host machine. You can use `psql` or any db clients to connect to the database.
+
+> The DSN for the database is `postgres://postgres:postgres@db:5432/scroll?sslmode=disable`.
+
+
+### Reset env
+```
+docker-compose -f docker-compose-proposer-tool.yml down -v
+```
+
+If you need to rebuild the images, removing the old images is necessary. You can do this by running the following command:
+```
+docker images | grep rollup | awk '{print $3}' | xargs docker rmi -f
+```
