@@ -20,7 +20,6 @@ var (
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
-		&ImportGenesisFlag,
 		&MinCodecVersionFlag,
 	}
 	// ConfigFileFlag load json type config file.
