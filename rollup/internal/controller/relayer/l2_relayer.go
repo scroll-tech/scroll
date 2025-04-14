@@ -64,7 +64,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
 	var commitSender, finalizeSender *sender.Sender
 
 	switch serviceType {
@@ -129,10 +129,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// Initialize genesis before we do anything else
-	if initGenesis {
-		if err := layer2Relayer.initializeGenesis(); err != nil {
-			return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
-		}
+	if err := layer2Relayer.initializeGenesis(); err != nil {
+		return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
 	}
 	layer2Relayer.metrics = initL2RelayerMetrics(reg)
 

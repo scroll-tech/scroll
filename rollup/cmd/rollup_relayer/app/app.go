@@ -79,8 +79,6 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
 
-	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
-
 	// sanity check config
 	if cfg.L2Config.RelayerConfig.BatchSubmission == nil {
 		log.Crit("cfg.L2Config.RelayerConfig.BatchSubmission must not be nil")
@@ -98,7 +96,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}

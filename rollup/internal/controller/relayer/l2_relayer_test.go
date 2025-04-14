@@ -41,7 +41,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
@@ -61,7 +61,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 			assert.Fail(t, "unsupported codec version, expected CodecV4")
 		}
 
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		patchGuard := gomonkey.ApplyMethodFunc(l2Cli, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
@@ -110,7 +110,7 @@ func testL2RelayerProcessPendingBundles(t *testing.T) {
 		if codecVersion == encoding.CodecV4 {
 			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
 		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -178,7 +178,7 @@ func testL2RelayerFinalizeTimeoutBundles(t *testing.T) {
 		if codecVersion == encoding.CodecV4 {
 			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
 		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		l2BlockOrm := orm.NewL2Block(db)
@@ -254,7 +254,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -310,7 +310,7 @@ func testL2RelayerFinalizeBundleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -393,7 +393,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	defer database.CloseDB(db)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
