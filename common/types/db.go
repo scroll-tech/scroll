@@ -276,7 +276,7 @@ const (
 	SenderTypeFinalizeBatch
 	// SenderTypeL1GasOracle indicates a sender from L2 responsible for updating L1 gas prices.
 	SenderTypeL1GasOracle
-	// SenderTypeL2GasOracleDeprecated indicates a sender from L1 responsible for updating L2 gas prices.
+	// SenderTypeL2GasOracleDeprecated indicates a sender from L1 responsible for updating L2 gas prices, which is deprecated.
 	SenderTypeL2GasOracleDeprecated
 )
 
