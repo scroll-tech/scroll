@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"net/http"
 	"strings"
@@ -14,9 +13,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/params"
-	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -44,7 +41,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
@@ -64,7 +61,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 			assert.Fail(t, "unsupported codec version, expected CodecV4")
 		}
 
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		patchGuard := gomonkey.ApplyMethodFunc(l2Cli, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
@@ -113,7 +110,7 @@ func testL2RelayerProcessPendingBundles(t *testing.T) {
 		if codecVersion == encoding.CodecV4 {
 			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
 		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -181,7 +178,7 @@ func testL2RelayerFinalizeTimeoutBundles(t *testing.T) {
 		if codecVersion == encoding.CodecV4 {
 			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
 		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
 
 		l2BlockOrm := orm.NewL2Block(db)
@@ -257,7 +254,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -313,7 +310,7 @@ func testL2RelayerFinalizeBundleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -374,149 +371,6 @@ func testL2RelayerFinalizeBundleConfirm(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond, "Bundle or Batch status did not update as expected")
 }
 
-func testL2RelayerGasOracleConfirm(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
-
-	batch1 := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk1},
-	}
-
-	batchOrm := orm.NewBatch(db)
-	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV0, rutils.BatchMetrics{})
-	assert.NoError(t, err)
-
-	batch2 := &encoding.Batch{
-		Index:                      batch1.Index + 1,
-		TotalL1MessagePoppedBefore: batch1.TotalL1MessagePoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbBatch1.Hash),
-		Chunks:                     []*encoding.Chunk{chunk2},
-	}
-
-	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV0, rutils.BatchMetrics{})
-	assert.NoError(t, err)
-
-	// Create and set up the Layer2 Relayer.
-	l2Cfg := cfg.L2Config
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
-	assert.NoError(t, err)
-	defer l2Relayer.StopSenders()
-
-	// Simulate message confirmations.
-	type BatchConfirmation struct {
-		batchHash    string
-		isSuccessful bool
-	}
-
-	confirmations := []BatchConfirmation{
-		{batchHash: dbBatch1.Hash, isSuccessful: true},
-		{batchHash: dbBatch2.Hash, isSuccessful: false},
-	}
-
-	for _, confirmation := range confirmations {
-		l2Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-			ContextID:    confirmation.batchHash,
-			IsSuccessful: confirmation.isSuccessful,
-			SenderType:   types.SenderTypeL2GasOracle,
-		})
-	}
-	// Check the database for the updated status using TryTimes.
-	ok := utils.TryTimes(5, func() bool {
-		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleImportedFailed}
-		for i, confirmation := range confirmations {
-			gasOracle, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": confirmation.batchHash}, nil, 0)
-			if err != nil || len(gasOracle) != 1 || types.GasOracleStatus(gasOracle[0].OracleStatus) != expectedStatuses[i] {
-				return false
-			}
-		}
-		return true
-	})
-	assert.True(t, ok)
-}
-
-func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
-
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, relayer)
-	defer relayer.StopSenders()
-
-	var batchOrm *orm.Batch
-	convey.Convey("Failed to GetLatestBatch", t, func() {
-		targetErr := errors.New("GetLatestBatch error")
-		patchGuard := gomonkey.ApplyMethodFunc(batchOrm, "GetLatestBatch", func(context.Context) (*orm.Batch, error) {
-			return nil, targetErr
-		})
-		defer patchGuard.Reset()
-		relayer.ProcessGasPriceOracle()
-	})
-
-	patchGuard := gomonkey.ApplyMethodFunc(batchOrm, "GetLatestBatch", func(context.Context) (*orm.Batch, error) {
-		batch := orm.Batch{
-			OracleStatus: int16(types.GasOraclePending),
-			Hash:         "0x0000000000000000000000000000000000000000",
-		}
-		return &batch, nil
-	})
-	defer patchGuard.Reset()
-
-	convey.Convey("Failed to fetch SuggestGasPrice from l2geth", t, func() {
-		targetErr := errors.New("SuggestGasPrice error")
-		patchGuard.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
-			return nil, targetErr
-		})
-		relayer.ProcessGasPriceOracle()
-	})
-
-	patchGuard.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
-		return big.NewInt(100), nil
-	})
-
-	convey.Convey("Failed to pack setL2BaseFee", t, func() {
-		targetErr := errors.New("setL2BaseFee error")
-		patchGuard.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
-			return nil, targetErr
-		})
-		relayer.ProcessGasPriceOracle()
-	})
-
-	patchGuard.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
-		return nil, nil
-	})
-
-	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
-		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
-			return common.Hash{}, targetErr
-		})
-		relayer.ProcessGasPriceOracle()
-	})
-
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
-		return common.HexToHash("0x56789abcdef1234"), nil
-	})
-
-	convey.Convey("UpdateGasOracleStatusAndOracleTxHash failed", t, func() {
-		targetErr := errors.New("UpdateL2GasOracleStatusAndOracleTxHash error")
-		patchGuard.ApplyMethodFunc(batchOrm, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
-			return targetErr
-		})
-		relayer.ProcessGasPriceOracle()
-	})
-
-	patchGuard.ApplyMethodFunc(batchOrm, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
-		return nil
-	})
-	relayer.ProcessGasPriceOracle()
-}
-
 func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 	router := gin.New()
 	r := router.Group("/v1")
@@ -539,7 +393,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	defer database.CloseDB(db)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()

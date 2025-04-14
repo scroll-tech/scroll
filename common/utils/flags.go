@@ -20,7 +20,6 @@ var (
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
-		&ImportGenesisFlag,
 		&MinCodecVersionFlag,
 	}
 	// ConfigFileFlag load json type config file.
@@ -72,12 +71,6 @@ var (
 		Usage:    "Metrics reporting server listening port",
 		Category: "METRICS",
 		Value:    6060,
-	}
-	// ImportGenesisFlag import genesis batch during startup
-	ImportGenesisFlag = cli.BoolFlag{
-		Name:  "import-genesis",
-		Usage: "Import genesis batch into L1 contract during startup",
-		Value: false,
 	}
 	// ServicePortFlag is the port the service will listen on
 	ServicePortFlag = cli.IntFlag{
