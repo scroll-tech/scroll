@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
