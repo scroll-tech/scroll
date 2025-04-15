@@ -231,8 +231,8 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			return dbErr
 		}
 		if p.replayMode {
-			// if replayMode is true, it means that the batch is proposed by the proposer tool, set the batch status to types.RollupCommitted
-			// and commit tx hash to a unique value so that new bundles can be proposed
+			// If replayMode is true, meaning the batch was proposed by the proposer tool,
+			// set batch status to types.RollupCommitted and assign a unique commit tx hash to enable new bundle proposals.
 			if dbErr = p.batchOrm.UpdateCommitTxHashAndRollupStatus(p.ctx, dbBatch.Hash, dbBatch.Hash, types.RollupCommitted, dbTX); dbErr != nil {
 				log.Warn("BatchProposer.UpdateCommitTxHashAndRollupStatus update the batch's commit tx hash failure", "hash", dbBatch.Hash, "error", dbErr)
 				return dbErr

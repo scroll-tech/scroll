@@ -41,7 +41,7 @@ make rollup_bins
 1. Set genesis config to enable desired hardforks in [`proposer-tool-genesis.json`](./proposer-tool-genesis.json).
 2. Set proposer config in [`proposer-tool-config.json`](./proposer-tool-config.json) for data analysis.
 
-### Start the proposer tool using docker-compose.
+### Start the proposer tool using docker-compose
 
 ```
 cd rollup

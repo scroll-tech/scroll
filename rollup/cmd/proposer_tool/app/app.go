@@ -65,15 +65,15 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// Init l2BlockOrm connection
+	// Init dbForReplay connection
 	dbForReplay, err := database.InitDB(cfg.DBConfigForReplay)
 	if err != nil {
-		log.Crit("failed to init l2BlockOrm connection", "err", err)
+		log.Crit("failed to init dbForReplay connection", "err", err)
 	}
 	defer func() {
 		cancel()
 		if err = database.CloseDB(dbForReplay); err != nil {
-			log.Crit("failed to close l2BlockOrm connection", "error", err)
+			log.Crit("failed to close dbForReplay connection", "error", err)
 		}
 	}()
 
