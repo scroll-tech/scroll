@@ -124,7 +124,7 @@ func testBatchProposerLimitsCodecV4(t *testing.T) {
 				CurieBlock:     big.NewInt(0),
 				DarwinTime:     new(uint64),
 				DarwinV2Time:   new(uint64),
-			}, db, db, nil, false /* not used by tool */)
+			}, db, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
@@ -214,7 +214,7 @@ func testBatchCommitGasAndCalldataSizeEstimationCodecV4(t *testing.T) {
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, encoding.CodecV4, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, db, db, nil, false /* not used by tool */)
+	}, encoding.CodecV4, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, db, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 
@@ -301,7 +301,7 @@ func testBatchProposerBlobSizeLimitCodecV4(t *testing.T) {
 			ChunkTimeoutSec:                 0,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, encoding.CodecV4, chainConfig, db, db, nil, false /* not used by tool */)
+		}, encoding.CodecV4, chainConfig, db, db, nil)
 
 		blockHeight := int64(0)
 		block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
@@ -397,7 +397,7 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV4(t *testing.T) {
 			ChunkTimeoutSec:                 0,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, encoding.CodecV4, chainConfig, db, db, nil, false /* not used by tool */)
+		}, encoding.CodecV4, chainConfig, db, db, nil)
 
 		block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 		for blockHeight := int64(1); blockHeight <= 60; blockHeight++ {

@@ -7,22 +7,22 @@
         "max_l2_gas_per_chunk": 20000000,
         "max_l1_commit_gas_per_chunk": 5000000,
         "max_l1_commit_calldata_size_per_chunk": 123740,
-        "chunk_timeout_sec": 720000,
-        "max_row_consumption_per_chunk": 1000000,
+        "chunk_timeout_sec": 72000000000,
+        "max_row_consumption_per_chunk": 10000000000,
         "gas_cost_increase_multiplier": 1.2,
         "max_uncompressed_batch_bytes_size": 634693
       },
       "batch_proposer_config": {
         "max_l1_commit_gas_per_batch": 5000000,
         "max_l1_commit_calldata_size_per_batch": 123740,
-        "batch_timeout_sec": 720000,
+        "batch_timeout_sec": 72000000000,
         "gas_cost_increase_multiplier": 1.2,
         "max_uncompressed_batch_bytes_size": 634693,
         "max_chunks_per_batch": 45
       },
       "bundle_proposer_config": {
         "max_batch_num_per_bundle": 45,
-        "bundle_timeout_sec": 3600
+        "bundle_timeout_sec": 36000000000
       }
     },
     "db_config": {

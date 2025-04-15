@@ -95,7 +95,7 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, encoding.CodecV4, chainConfig, db, db, nil, false /* not used by tool */)
+	}, encoding.CodecV4, chainConfig, db, db, nil)
 
 	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxL1CommitGasPerBatch:          50000000000,
@@ -291,7 +291,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, encoding.CodecV7, chainConfig, db, db, nil, false /* not used by tool */)
+	}, encoding.CodecV7, chainConfig, db, db, nil)
 
 	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxL1CommitGasPerBatch:          50000000000,

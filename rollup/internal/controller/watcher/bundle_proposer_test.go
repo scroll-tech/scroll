@@ -103,7 +103,7 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 				ChunkTimeoutSec:                 math.MaxUint32,
 				GasCostIncreaseMultiplier:       1,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, encoding.CodecV4, chainConfig, db, db, nil, false /* not used by tool */)
+			}, encoding.CodecV4, chainConfig, db, db, nil)
 
 			bap := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 				MaxL1CommitGasPerBatch:          math.MaxUint64,

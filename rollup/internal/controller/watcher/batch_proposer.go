@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -34,6 +35,7 @@ type BatchProposer struct {
 	maxUncompressedBatchBytesSize   uint64
 	maxChunksPerBatch               int
 
+	replayMode      bool
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -80,6 +82,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
 		maxChunksPerBatch:               cfg.MaxChunksPerBatch,
+		replayMode:                      db != l2BlockDB,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -226,6 +229,15 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", dbBatch.Hash, "error", dbErr)
 			return dbErr
 		}
+		if p.replayMode {
+			// if replayMode is true, it means that the batch is proposed by the proposer tool, set the batch status to types.RollupCommitted
+			// and commit tx hash to a unique value so that new bundles can be proposed
+			if dbErr = p.batchOrm.UpdateCommitTxHashAndRollupStatus(p.ctx, dbBatch.Hash, dbBatch.Hash, types.RollupCommitted, dbTX); dbErr != nil {
+				log.Warn("BatchProposer.UpdateCommitTxHashAndRollupStatus update the batch's commit tx hash failure", "hash", dbBatch.Hash, "error", dbErr)
+				return dbErr
+			}
+		}
+
 		return nil
 	})
 	if err != nil {

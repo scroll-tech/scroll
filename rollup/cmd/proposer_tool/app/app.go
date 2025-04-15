@@ -88,14 +88,6 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
 	}
 
-	genesisTime := genesisHeader.Time
-	currentTime := uint64(time.Now().Unix())
-	timeDrift := currentTime - genesisTime
-
-	cfg.L2Config.ChunkProposerConfig.ChunkTimeoutSec += timeDrift
-	cfg.L2Config.BatchProposerConfig.BatchTimeoutSec += timeDrift
-	cfg.L2Config.BundleProposerConfig.BundleTimeoutSec += timeDrift
-
 	chunk := &encoding.Chunk{
 		Blocks: []*encoding.Block{{
 			Header:         genesisHeader,
@@ -149,7 +141,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, dbForReplay, db, registry, true /* used by tool */)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, dbForReplay, db, registry)
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, dbForReplay, db, registry)
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
