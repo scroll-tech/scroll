@@ -167,6 +167,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}
+				log.Warn("The committing batch has been stuck for a long time, it's likely that the L1 gas fee spiked, set fees to default values", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 				baseFee = r.cfg.GasOracleConfig.L1BaseFeeDefault
 				blobBaseFee = r.cfg.GasOracleConfig.L1BlobBaseFeeDefault
 			} else if err != nil {
