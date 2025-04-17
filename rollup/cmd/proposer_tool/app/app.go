@@ -20,6 +20,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/watcher"
@@ -58,6 +59,14 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Crit("failed to get db connection", "error", err)
+	}
+	if err = migrate.ResetDB(sqlDB); err != nil {
+		log.Crit("failed to reset db", "error", err)
+	}
+	log.Info("successfully reset db")
 	defer func() {
 		cancel()
 		if err = database.CloseDB(db); err != nil {

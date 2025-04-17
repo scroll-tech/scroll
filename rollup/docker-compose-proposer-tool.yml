@@ -17,24 +17,13 @@ services:
       timeout: 5s
       retries: 5
 
-  db-client:
-    build:
-      context: ..
-      dockerfile: ./build/dockerfiles/db_cli.Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    command: ["reset", "--config", "/app/conf/proposer-tool-db-config.json"]
-    volumes:
-      - ./proposer-tool-db-config.json:/app/conf/proposer-tool-db-config.json
-
   proposer-tool:
     build:
       context: ..
       dockerfile: ./rollup/proposer_tool.Dockerfile
     depends_on:
-      db-client:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
     command: [
       "--config", "/app/conf/proposer-tool-config.json",
       "--genesis", "/app/conf/proposer-tool-genesis.json",
