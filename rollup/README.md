@@ -34,6 +34,16 @@ make rollup_bins
 ./build/bin/rollup_relayer --config ./conf/config.json
 ```
 
+# Proposer Tool
+
+The Proposer Tool replays historical blocks with custom configurations (e.g., future hardfork configs, customized chunk/batch/bundle proposer configs) to generate chunks/batches/bundles, helping test parameter changes before protocol upgrade.
+
+You can:
+
+1. Enable different hardforks in the genesis configuration.
+2. Set custom chunk-proposer, batch-proposer, and bundle-proposer parameters.
+3. Analyze resulting metrics (blob size, block count, transaction count, gas usage).
+
 ## How to run the proposer tool?
 
 ### Set the configs
