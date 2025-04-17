@@ -34,7 +34,7 @@ make rollup_bins
 ./build/bin/rollup_relayer --config ./conf/config.json
 ```
 
-# Proposer Tool
+## Proposer Tool
 
 The Proposer Tool replays historical blocks with custom configurations (e.g., future hardfork configs, customized chunk/batch/bundle proposer configs) to generate chunks/batches/bundles, helping test parameter changes before protocol upgrade.
 
