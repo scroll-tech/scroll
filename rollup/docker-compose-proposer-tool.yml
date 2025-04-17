@@ -28,6 +28,7 @@ services:
       "--config", "/app/conf/proposer-tool-config.json",
       "--genesis", "/app/conf/proposer-tool-genesis.json",
       "--min-codec-version", "4",
+      "--start-l2-block", "10000",
       "--log.debug", "--verbosity", "3"
     ]
     volumes:

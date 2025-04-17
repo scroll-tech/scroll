@@ -50,8 +50,11 @@ You can:
 
 1. Set genesis config to enable desired hardforks in [`proposer-tool-genesis.json`](./proposer-tool-genesis.json).
 2. Set proposer config in [`proposer-tool-config.json`](./proposer-tool-config.json) for data analysis.
+3. Set `start-l2-block` in the launch command of proposer-tool in [`docker-compose-proposer-tool.yml`](./docker-compose-proposer-tool.yml) to the block number you want to start from. The default is `0`, which means starting from the genesis block.
 
 ### Start the proposer tool using docker-compose
+
+Prerequisite: an RPC URL to an archive L2 node. The default url in [`proposer-tool-config.json`](./proposer-tool-config.json) is `https://rpc.scroll.io`.
 
 ```
 cd rollup

@@ -17,7 +17,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 	"scroll-tech/database/migrate"
@@ -39,6 +38,7 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, utils.RollupRelayerFlags...)
+	app.Flags = append(app.Flags, utils.ProposerToolFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
@@ -92,28 +92,33 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	genesisHeader, err := l2Client.HeaderByNumber(subCtx, big.NewInt(0))
+	startL2BlockHeight := ctx.Uint64(utils.StartL2BlockFlag.Name)
+	startL2Block, err := l2Client.BlockByNumber(context.Background(), big.NewInt(int64(startL2BlockHeight)))
 	if err != nil {
-		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+		log.Crit("failed to get start l2 block", "startL2BlockHeight", startL2BlockHeight, "error", err)
 	}
 
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{{
-			Header:         genesisHeader,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
-		}},
+	chunk := &encoding.Chunk{Blocks: []*encoding.Block{{Header: startL2Block.Header()}}}
+
+	prevChunk, err := orm.NewChunk(dbForReplay).GetParentChunkByBlockNumber(subCtx, startL2BlockHeight)
+	if err != nil {
+		log.Crit("failed to get previous chunk", "error", err)
 	}
 
-	var dbChunk *orm.Chunk
-	dbChunk, err = orm.NewChunk(db).InsertChunk(subCtx, chunk, encoding.CodecV0, rutils.ChunkMetrics{})
+	var startQueueIndex uint64
+	if prevChunk != nil {
+		startQueueIndex = prevChunk.TotalL1MessagesPoppedBefore + prevChunk.TotalL1MessagesPoppedInChunk
+	}
+
+	for _, tx := range startL2Block.Transactions() {
+		if tx.Type() == gethTypes.L1MessageTxType {
+			startQueueIndex++
+		}
+	}
+
+	_, err = orm.NewChunk(db).InsertTestChunkForProposerTool(subCtx, chunk, encoding.CodecV0, startQueueIndex)
 	if err != nil {
 		log.Crit("failed to insert chunk", "error", err)
-	}
-
-	if err = orm.NewChunk(db).UpdateProvingStatus(subCtx, dbChunk.Hash, types.ProvingTaskVerified); err != nil {
-		log.Crit("failed to update genesis chunk proving status", "error", err)
 	}
 
 	batch := &encoding.Batch{
