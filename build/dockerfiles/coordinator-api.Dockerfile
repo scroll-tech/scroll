@@ -11,6 +11,12 @@ COPY ./common/libzkp/impl/rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
+# local patch for openvm
+# run ./coordinator-api/init-openvm.sh to get openvm-gpu
+COPY coordinator-api/openvm-gpu /openvm-gpu
+COPY coordinator-api/gitconfig /root/.gitconfig
+COPY coordinator-api/config.toml /root/.cargo/config.toml
+
 COPY ./common/libzkp/impl .
 RUN cargo build --release
 
