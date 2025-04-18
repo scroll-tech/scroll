@@ -47,8 +47,8 @@ url = "2.5.4"
 serde_bytes = "0.11.15"
 
 [patch."https://github.com/openvm-org/stark-backend.git"]
-openvm-stark-backend = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "merge/upstream-884f8e6", features = ["gpu"] }
-openvm-stark-sdk = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "merge/upstream-884f8e6", features = ["gpu"] }
+openvm-stark-backend = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "main", features = ["gpu"] }
+openvm-stark-sdk = { git = "ssh://git@github.com/scroll-tech/openvm-stark-gpu.git", branch = "main", features = ["gpu"] }
 
 [patch."https://github.com/Plonky3/Plonky3.git"]
 p3-air = { git = "ssh://git@github.com/scroll-tech/plonky3-gpu.git", tag = "v0.1.1" }
