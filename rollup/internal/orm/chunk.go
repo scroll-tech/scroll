@@ -180,7 +180,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 }
 
 // GetParentChunkByBlockNumber retrieves the parent chunk by block number
-// for test
+// only used by proposer tool for analysis usage
 func (o *Chunk) GetParentChunkByBlockNumber(ctx context.Context, blockNumber uint64) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
@@ -278,7 +278,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	return &newChunk, nil
 }
 
-// InsertTestChunkForProposerTool inserts a new chunk into the database only for testing purposes in the proposer tool.
+// InsertTestChunkForProposerTool inserts a new chunk into the database only for analysis usage by proposer tool.
 func (o *Chunk) InsertTestChunkForProposerTool(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, totalL1MessagePoppedBefore uint64, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
