@@ -613,7 +613,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 			firstUnfinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstUnfinalizedBatch.StartChunkIndex)
 			if err != nil {
-				log.Error("failed to get firsr unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
+				log.Error("failed to get first unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
 				return
 			}
 
