@@ -61,7 +61,6 @@ func action(ctx *cli.Context) error {
 	}
 	proposerTool.Start()
 
-	// Finish start all proposer tool functions.
 	log.Info("Start proposer-tool successfully", "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
