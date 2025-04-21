@@ -36,7 +36,7 @@ make rollup_bins
 
 ## Proposer Tool
 
-The Proposer Tool replays historical blocks with custom configurations (e.g., future hardfork configs, customized chunk/batch/bundle proposer configs) to generate chunks/batches/bundles, helping test parameter changes before protocol upgrade.
+The Proposer Tool replays historical blocks with custom configurations (e.g., future hardfork configs, custom chunk/batch/bundle proposer configs) to generate chunks/batches/bundles, helping test parameter changes before protocol upgrade.
 
 You can:
 
