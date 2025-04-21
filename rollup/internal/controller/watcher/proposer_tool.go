@@ -122,14 +122,6 @@ func NewProposerTool(ctx context.Context, cancel context.CancelFunc, cfg *config
 		return nil, fmt.Errorf("failed to update batch hash for chunks: %w", err)
 	}
 
-	// sanity check config
-	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
-		return nil, fmt.Errorf("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
-	}
-	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
-		return nil, fmt.Errorf("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
-	}
-
 	chunkProposer := NewChunkProposer(ctx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, chainCfg, db, nil)
 	chunkProposer.SetReplayDB(dbForReplay)
 	batchProposer := NewBatchProposer(ctx, cfg.L2Config.BatchProposerConfig, minCodecVersion, chainCfg, db, nil)

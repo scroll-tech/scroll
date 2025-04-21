@@ -55,6 +55,14 @@ func action(ctx *cli.Context) error {
 
 	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
 
+	// sanity check config
+	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
+		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
+	}
+	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
+		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
+	}
+
 	proposerTool, err := watcher.NewProposerTool(subCtx, cancel, cfg, startL2BlockHeight, minCodecVersion, genesis.Config)
 	if err != nil {
 		log.Crit("failed to create proposer tool", "startL2BlockHeight", startL2BlockHeight, "minCodecVersion", minCodecVersion, "error", err)
