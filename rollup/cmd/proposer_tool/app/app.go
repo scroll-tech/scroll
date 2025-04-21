@@ -48,7 +48,7 @@ func init() {
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
+	cfg, err := config.NewConfigForReplay(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
