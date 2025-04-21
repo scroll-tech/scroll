@@ -62,7 +62,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, l2BlockDB, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
 	log.Info("new batch proposer",
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
@@ -76,14 +76,14 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		db:                              db,
 		batchOrm:                        orm.NewBatch(db),
 		chunkOrm:                        orm.NewChunk(db),
-		l2BlockOrm:                      orm.NewL2Block(l2BlockDB),
+		l2BlockOrm:                      orm.NewL2Block(db),
 		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
 		maxChunksPerBatch:               cfg.MaxChunksPerBatch,
-		replayMode:                      db != l2BlockDB,
+		replayMode:                      false,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -154,6 +154,14 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 	}
 
 	return p
+}
+
+// SetReplayDB sets the replay database for the BatchProposer.
+// This is used for the proposer tool only, to change the l2_block data source.
+// This function is not thread-safe and should be called after initializing the BatchProposer and before starting to propose chunks.
+func (p *BatchProposer) SetReplayDB(replayDB *gorm.DB) {
+	p.l2BlockOrm = orm.NewL2Block(replayDB)
+	p.replayMode = true
 }
 
 // TryProposeBatch tries to propose a new batches.

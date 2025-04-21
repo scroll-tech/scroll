@@ -169,8 +169,10 @@ func action(ctx *cli.Context) error {
 	}
 
 	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, dbForReplay, db, registry)
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, dbForReplay, db, registry)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	chunkProposer.SetReplayDB(dbForReplay)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	batchProposer.SetReplayDB(dbForReplay)
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
 	go utils.Loop(subCtx, 100*time.Millisecond, chunkProposer.TryProposeChunk)

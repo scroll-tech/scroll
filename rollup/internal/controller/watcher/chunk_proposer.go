@@ -65,7 +65,7 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, l2BlockDB, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Info("new chunk proposer",
 		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
@@ -82,7 +82,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		ctx:                             ctx,
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
-		l2BlockOrm:                      orm.NewL2Block(l2BlockDB),
+		l2BlockOrm:                      orm.NewL2Block(db),
 		maxBlockNumPerChunk:             cfg.MaxBlockNumPerChunk,
 		maxTxNumPerChunk:                cfg.MaxTxNumPerChunk,
 		maxL2GasPerChunk:                cfg.MaxL2GasPerChunk,
@@ -92,7 +92,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
-		replayMode:                      l2BlockDB != db,
+		replayMode:                      false,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -175,6 +175,14 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 	}
 
 	return p
+}
+
+// SetReplayDB sets the replay database for the ChunkProposer.
+// This is used for the proposer tool only, to change the l2_block data source.
+// This function is not thread-safe and should be called after initializing the ChunkProposer and before starting to propose chunks.
+func (p *ChunkProposer) SetReplayDB(replayDB *gorm.DB) {
+	p.l2BlockOrm = orm.NewL2Block(replayDB)
+	p.replayMode = true
 }
 
 // TryProposeChunk tries to propose a new chunk.
