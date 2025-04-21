@@ -96,7 +96,7 @@ func NewConfig(file string) (*Config, error) {
 	return cfg, nil
 }
 
-// NewConfigForReplay returns a new instance of Config for replay.
+// NewConfigForReplay returns a new instance of ConfigForReplay.
 func NewConfigForReplay(file string) (*ConfigForReplay, error) {
 	buf, err := os.ReadFile(filepath.Clean(file))
 	if err != nil {
