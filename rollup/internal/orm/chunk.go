@@ -291,19 +291,21 @@ func (o *Chunk) InsertTestChunkForProposerTool(ctx context.Context, chunk *encod
 	}
 
 	numBlocks := len(chunk.Blocks)
+	firstBlock := chunk.Blocks[0]
+	lastBlock := chunk.Blocks[numBlocks-1]
 	newChunk := Chunk{
 		Index:                       0,
 		Hash:                        chunkHash.Hex(),
-		StartBlockNumber:            chunk.Blocks[0].Header.Number.Uint64(),
-		StartBlockHash:              chunk.Blocks[0].Header.Hash().Hex(),
-		EndBlockNumber:              chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
-		EndBlockHash:                chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		StartBlockNumber:            firstBlock.Header.Number.Uint64(),
+		StartBlockHash:              firstBlock.Header.Hash().Hex(),
+		EndBlockNumber:              lastBlock.Header.Number.Uint64(),
+		EndBlockHash:                lastBlock.Header.Hash().Hex(),
 		TotalL2TxGas:                chunk.TotalGasUsed(),
 		TotalL2TxNum:                chunk.NumL2Transactions(),
-		StartBlockTime:              chunk.Blocks[0].Header.Time,
+		StartBlockTime:              firstBlock.Header.Time,
 		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
-		StateRoot:                   chunk.Blocks[numBlocks-1].Header.Root.Hex(),
-		WithdrawRoot:                chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
+		StateRoot:                   lastBlock.Header.Root.Hex(),
+		WithdrawRoot:                lastBlock.WithdrawRoot.Hex(),
 		CodecVersion:                int16(codecVersion),
 	}
 

@@ -93,12 +93,6 @@ func action(ctx *cli.Context) error {
 	}
 
 	startL2BlockHeight := ctx.Uint64(utils.StartL2BlockFlag.Name)
-	startL2Block, err := l2Client.BlockByNumber(context.Background(), big.NewInt(int64(startL2BlockHeight)))
-	if err != nil {
-		log.Crit("failed to get start l2 block", "startL2BlockHeight", startL2BlockHeight, "error", err)
-	}
-
-	chunk := &encoding.Chunk{Blocks: []*encoding.Block{{Header: startL2Block.Header()}}}
 
 	prevChunk, err := orm.NewChunk(dbForReplay).GetParentChunkByBlockNumber(subCtx, startL2BlockHeight)
 	if err != nil {
@@ -110,12 +104,32 @@ func action(ctx *cli.Context) error {
 		startQueueIndex = prevChunk.TotalL1MessagesPoppedBefore + prevChunk.TotalL1MessagesPoppedInChunk
 	}
 
-	for _, tx := range startL2Block.Transactions() {
-		if tx.Type() == gethTypes.L1MessageTxType {
-			startQueueIndex++
+	startBlock := uint64(0)
+	if prevChunk != nil {
+		startBlock = prevChunk.EndBlockNumber + 1
+	}
+
+	var chunk *encoding.Chunk
+	for blockNum := startBlock; blockNum <= startL2BlockHeight; blockNum++ {
+		block, err := l2Client.BlockByNumber(context.Background(), big.NewInt(int64(blockNum)))
+		if err != nil {
+			log.Crit("failed to get block", "block number", blockNum, "error", err)
+		}
+
+		for _, tx := range block.Transactions() {
+			if tx.Type() == gethTypes.L1MessageTxType {
+				startQueueIndex++
+			}
+		}
+
+		if blockNum == startL2BlockHeight {
+			chunk = &encoding.Chunk{Blocks: []*encoding.Block{{Header: block.Header()}}}
 		}
 	}
 
+	// Setting empty hash as the post_l1_message_queue_hash of the first chunk,
+	// i.e., treating the first L1 message after this chunk as the first L1 message in message queue v2.
+	// Though this setting is different from mainnet, it's simple yet sufficient for data analysis usage.
 	_, err = orm.NewChunk(db).InsertTestChunkForProposerTool(subCtx, chunk, encoding.CodecV0, startQueueIndex)
 	if err != nil {
 		log.Crit("failed to insert chunk", "error", err)
