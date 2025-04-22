@@ -454,6 +454,9 @@ func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block
 	}
 
 	prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
+	// If we are in replay mode, we don't need to check the parent block.
+	// This is a corner case when StartL2Block is set as 0, it needs to get genesis block, but in mainnet db there is no genesis block.
+	// So we need to bypass this check.
 	if !p.replayMode && (err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash) {
 		return false, fmt.Errorf("failed to get parent block: %w", err)
 	}
