@@ -60,7 +60,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
 	}
 	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
-		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
+		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
 	}
 
 	proposerTool, err := watcher.NewProposerTool(subCtx, cancel, cfg, startL2BlockHeight, minCodecVersion, genesis.Config)
