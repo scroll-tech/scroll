@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uex
 
-OPENVM_GPU_COMMIT=dfa10b4         # branch: v1.0.0-auipc
+OPENVM_GPU_COMMIT=dfa10b4
 
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 
