@@ -13,6 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -34,6 +36,7 @@ type BatchProposer struct {
 	maxUncompressedBatchBytesSize   uint64
 	maxChunksPerBatch               int
 
+	replayMode      bool
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -80,6 +83,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
 		maxChunksPerBatch:               cfg.MaxChunksPerBatch,
+		replayMode:                      false,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -150,6 +154,14 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 	}
 
 	return p
+}
+
+// SetReplayDB sets the replay database for the BatchProposer.
+// This is used for the proposer tool only, to change the l2_block data source.
+// This function is not thread-safe and should be called after initializing the BatchProposer and before starting to propose chunks.
+func (p *BatchProposer) SetReplayDB(replayDB *gorm.DB) {
+	p.l2BlockOrm = orm.NewL2Block(replayDB)
+	p.replayMode = true
 }
 
 // TryProposeBatch tries to propose a new batches.
@@ -226,6 +238,15 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", dbBatch.Hash, "error", dbErr)
 			return dbErr
 		}
+		if p.replayMode {
+			// If replayMode is true, meaning the batch was proposed by the proposer tool,
+			// set batch status to types.RollupCommitted and assign a unique commit tx hash to enable new bundle proposals.
+			if dbErr = p.batchOrm.UpdateCommitTxHashAndRollupStatus(p.ctx, dbBatch.Hash, dbBatch.Hash, types.RollupCommitted, dbTX); dbErr != nil {
+				log.Warn("BatchProposer.UpdateCommitTxHashAndRollupStatus update the batch's commit tx hash failure", "hash", dbBatch.Hash, "error", dbErr)
+				return dbErr
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
