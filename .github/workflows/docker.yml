@@ -319,6 +319,7 @@ jobs:
           REPOSITORY: coordinator-api
           IMAGE_TAG: ${{ github.ref_name }}
         with:
+          ssh: default
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
           push: true
