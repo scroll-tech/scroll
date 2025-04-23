@@ -15,11 +15,6 @@ COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
 COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
 RUN cargo chef cook --release --recipe-path recipe.json
 
-# local patch for openvm
-# run ./build/dockerfiles/coordinator-api/init-openvm.sh to get openvm-gpu
-COPY ./build/dockerfiles/coordinator-api/openvm-gpu /openvm-gpu
-COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
-COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
 COPY ./common/libzkp/impl .
 RUN cargo build --release
 
