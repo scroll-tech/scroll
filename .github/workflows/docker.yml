@@ -307,6 +307,11 @@ jobs:
           REPOSITORY: coordinator-api
         run: |
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Give Github Action access to openvm-gpu
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
