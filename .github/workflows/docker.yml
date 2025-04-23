@@ -336,6 +336,7 @@ jobs:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
           push: true
+          ssh: default
           build-args: |
             CARGO_NET_GIT_FETCH_WITH_CLI=true
           tags: |
