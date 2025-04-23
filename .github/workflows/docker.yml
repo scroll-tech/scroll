@@ -326,11 +326,6 @@ jobs:
           echo 'git-fetch-with-cli = true' >> ~/.cargo/config.toml
       - name: Debug SSH agent
         run: ssh-add -l
-      - name: Build with cargo chef
-        run: cargo chef cook --release --recipe-path recipe.json
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-          SSH_AUTH_SOCK: $SSH_AUTH_SOCK
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
