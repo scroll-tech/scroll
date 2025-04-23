@@ -325,8 +325,6 @@ jobs:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
           push: true
-          build-args: |
-            CARGO_NET_GIT_FETCH_WITH_CLI=true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             scrolltech/${{ env.REPOSITORY }}:latest
