@@ -313,8 +313,7 @@ jobs:
           ssh-private-key: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
       - name: Run custom script
         run: |
-          chmod +x build/dockerfiles/coordinator-api/init-openvm.sh
-          build/dockerfiles/coordinator-api/init-openvm.sh
+          ./build/dockerfiles/coordinator-api/init-openvm.sh
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
