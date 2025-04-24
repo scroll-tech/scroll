@@ -211,8 +211,7 @@ func TestFunction(t *testing.T) {
 	t.Run("testCommitBatchAndFinalizeBundleCodecV4V5V6", testCommitBatchAndFinalizeBundleCodecV4V5V6)
 	t.Run("TestCommitBatchAndFinalizeBundleCodecV7", testCommitBatchAndFinalizeBundleCodecV7)
 
-	// l1/l2 gas oracle
+	// l1 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
 	t.Run("TestImportDefaultL1GasPriceDueToL1GasPriceSpike", testImportDefaultL1GasPriceDueToL1GasPriceSpike)
-	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
 }

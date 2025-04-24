@@ -182,6 +182,25 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 	return chunks, nil
 }
 
+// GetParentChunkByBlockNumber retrieves the parent chunk by block number
+// only used by proposer tool for analysis usage
+func (o *Chunk) GetParentChunkByBlockNumber(ctx context.Context, blockNumber uint64) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("end_block_number < ?", blockNumber)
+	db = db.Order("end_block_number DESC")
+	db = db.Limit(1)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.GetParentChunkByBlockNumber error: %w", err)
+	}
+	return &chunk, nil
+}
+
 // InsertChunk inserts a new chunk into the database.
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics rutils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
@@ -302,6 +321,51 @@ func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, cod
 	}
 
 	return newChunk, nil
+}
+
+// InsertTestChunkForProposerTool inserts a new chunk into the database only for analysis usage by proposer tool.
+func (o *Chunk) InsertTestChunkForProposerTool(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, totalL1MessagePoppedBefore uint64, dbTX ...*gorm.DB) (*Chunk, error) {
+	if chunk == nil || len(chunk.Blocks) == 0 {
+		return nil, errors.New("invalid args")
+	}
+
+	chunkHash, err := rutils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
+	if err != nil {
+		log.Error("failed to get chunk hash", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
+	}
+
+	numBlocks := len(chunk.Blocks)
+	firstBlock := chunk.Blocks[0]
+	lastBlock := chunk.Blocks[numBlocks-1]
+	newChunk := Chunk{
+		Index:                       0,
+		Hash:                        chunkHash.Hex(),
+		StartBlockNumber:            firstBlock.Header.Number.Uint64(),
+		StartBlockHash:              firstBlock.Header.Hash().Hex(),
+		EndBlockNumber:              lastBlock.Header.Number.Uint64(),
+		EndBlockHash:                lastBlock.Header.Hash().Hex(),
+		TotalL2TxGas:                chunk.TotalGasUsed(),
+		TotalL2TxNum:                chunk.NumL2Transactions(),
+		StartBlockTime:              firstBlock.Header.Time,
+		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
+		StateRoot:                   lastBlock.Header.Root.Hex(),
+		WithdrawRoot:                lastBlock.WithdrawRoot.Hex(),
+		CodecVersion:                int16(codecVersion),
+	}
+
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+
+	if err := db.Create(&newChunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w, chunk hash: %v", err, newChunk.Hash)
+	}
+
+	return &newChunk, nil
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.

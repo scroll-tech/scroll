@@ -33,7 +33,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l2Relayer)
 	defer l2Relayer.StopSenders()
@@ -65,7 +65,7 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// add some blocks to db
@@ -236,7 +236,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, relayer.ServiceTypeL2RollupRelayer, nil)
 	require.NoError(t, err)
 
 	defer l2Relayer.StopSenders()

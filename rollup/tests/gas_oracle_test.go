@@ -9,7 +9,6 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -200,57 +199,4 @@ func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
 	assert.Equal(t, len(blocks), 1)
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
-}
-
-func testImportL2GasPrice(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
-	prepareContracts(t)
-
-	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, relayer.ServiceTypeL2GasOracle, nil)
-	assert.NoError(t, err)
-	defer l2Relayer.StopSenders()
-
-	// add fake chunk
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{
-			{
-				Header: &gethTypes.Header{
-					Number:     big.NewInt(1),
-					ParentHash: common.Hash{},
-					Difficulty: big.NewInt(0),
-					BaseFee:    big.NewInt(0),
-				},
-				Transactions:   nil,
-				WithdrawRoot:   common.Hash{},
-				RowConsumption: &gethTypes.RowConsumption{},
-			},
-		},
-	}
-	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk},
-	}
-
-	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
-	assert.NoError(t, err)
-
-	// check db status
-	dbBatch, err := batchOrm.GetLatestBatch(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, batch)
-	assert.Empty(t, dbBatch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOraclePending)
-
-	// relay gas price
-	l2Relayer.ProcessGasPriceOracle()
-	dbBatch, err = batchOrm.GetLatestBatch(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, batch)
-	assert.NotEmpty(t, dbBatch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOracleImporting)
 }

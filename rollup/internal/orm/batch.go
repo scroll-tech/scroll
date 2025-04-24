@@ -59,10 +59,6 @@ type Batch struct {
 	FinalizeTxHash string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
 	FinalizedAt    *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 
-	// gas oracle
-	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
-
 	// blob
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
@@ -313,7 +309,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
-		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          metrics.L1CommitGas,
 		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
 		BlobDataProof:             batchMeta.BatchBlobDataProof,

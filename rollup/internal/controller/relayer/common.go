@@ -25,6 +25,6 @@ const (
 	ServiceTypeL2RollupRelayer
 	// ServiceTypeL1GasOracle indicates the service is a Layer 1 gas oracle.
 	ServiceTypeL1GasOracle
-	// ServiceTypeL2GasOracle indicates the service is a Layer 2 gas oracle.
-	ServiceTypeL2GasOracle
+	// ServiceTypeL2GasOracleDeprecated indicates the service is a Layer 2 gas oracle, which is deprecated.
+	ServiceTypeL2GasOracleDeprecated
 )
