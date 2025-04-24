@@ -10,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
@@ -72,21 +71,11 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 
-	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
-
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, db, registry)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, relayer.ServiceTypeL1GasOracle, registry)
 	if err != nil {
 		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
-	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false /* initGenesis */, relayer.ServiceTypeL2GasOracle, registry)
-	if err != nil {
-		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 	}
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
@@ -106,7 +95,6 @@ func action(ctx *cli.Context) error {
 
 	// Start l1relayer process
 	go utils.Loop(subCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
-	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
 	log.Info("Start gas-oracle successfully", "version", version.Version)

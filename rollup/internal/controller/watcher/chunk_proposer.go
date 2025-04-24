@@ -36,6 +36,7 @@ type ChunkProposer struct {
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
 
+	replayMode      bool
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -91,6 +92,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		replayMode:                      false,
 		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
@@ -175,6 +177,14 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 	return p
 }
 
+// SetReplayDB sets the replay database for the ChunkProposer.
+// This is used for the proposer tool only, to change the l2_block data source.
+// This function is not thread-safe and should be called after initializing the ChunkProposer and before starting to propose chunks.
+func (p *ChunkProposer) SetReplayDB(replayDB *gorm.DB) {
+	p.l2BlockOrm = orm.NewL2Block(replayDB)
+	p.replayMode = true
+}
+
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
 	p.chunkProposerCircleTotal.Inc()
@@ -241,9 +251,12 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 			log.Warn("ChunkProposer.InsertChunk failed", "codec version", codecVersion, "err", err)
 			return err
 		}
-		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
-			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", dbChunk.Hash, "start block", dbChunk.StartBlockNumber, "end block", dbChunk.EndBlockNumber, "err", err)
-			return err
+		// In replayMode we don't need to update chunk_hash in l2_block table.
+		if !p.replayMode {
+			if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
+				log.Error("failed to update chunk_hash for l2_block", "chunk hash", dbChunk.Hash, "start block", dbChunk.StartBlockNumber, "end block", dbChunk.EndBlockNumber, "err", err)
+				return err
+			}
 		}
 		return nil
 	})
@@ -436,6 +449,12 @@ func (p *ChunkProposer) recordTimerChunkMetrics(metrics *utils.ChunkMetrics) {
 }
 
 func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block) (bool, error) {
+	// If we are in replay mode, there is a corner case when StartL2Block is set as 0 in this check,
+	// it needs to get genesis block, but in mainnet db there is no genesis block, so we need to bypass this check.
+	if p.replayMode {
+		return false, nil
+	}
+
 	if !p.chainCfg.IsEuclid(blocks[0].Header.Time) {
 		return false, nil
 	}

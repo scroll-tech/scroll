@@ -20,8 +20,11 @@ var (
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
-		&ImportGenesisFlag,
 		&MinCodecVersionFlag,
+	}
+	// ProposerToolFlags contains flags only used in proposer tool
+	ProposerToolFlags = []cli.Flag{
+		&StartL2BlockFlag,
 	}
 	// ConfigFileFlag load json type config file.
 	ConfigFileFlag = cli.StringFlag{
@@ -73,12 +76,6 @@ var (
 		Category: "METRICS",
 		Value:    6060,
 	}
-	// ImportGenesisFlag import genesis batch during startup
-	ImportGenesisFlag = cli.BoolFlag{
-		Name:  "import-genesis",
-		Usage: "Import genesis batch into L1 contract during startup",
-		Value: false,
-	}
 	// ServicePortFlag is the port the service will listen on
 	ServicePortFlag = cli.IntFlag{
 		Name:  "service.port",
@@ -96,5 +93,11 @@ var (
 		Name:     "min-codec-version",
 		Usage:    "Minimum required codec version for the chunk/batch/bundle proposers",
 		Required: true,
+	}
+	// StartL2BlockFlag indicates the start L2 block number for proposer tool
+	StartL2BlockFlag = cli.Uint64Flag{
+		Name:  "start-l2-block",
+		Usage: "Start L2 block number for proposer tool",
+		Value: 0,
 	}
 )

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -55,12 +54,7 @@ type Layer2Relayer struct {
 	finalizeSender *sender.Sender
 	l1RollupABI    *abi.ABI
 
-	gasOracleSender *sender.Sender
-	l2GasOracleABI  *abi.ABI
-
-	lastGasPrice uint64
-	minGasPrice  uint64
-	gasPriceDiff uint64
+	l2GasOracleABI *abi.ABI
 
 	// Used to get batch status from chain_monitor api.
 	chainMonitorClient *resty.Client
@@ -71,22 +65,10 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	var gasOracleSender, commitSender, finalizeSender *sender.Sender
-	var err error
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
+	var commitSender, finalizeSender *sender.Sender
 
 	switch serviceType {
-	case ServiceTypeL2GasOracle:
-		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
-		if err != nil {
-			return nil, fmt.Errorf("new gas oracle sender failed, err: %w", err)
-		}
-
-		// Ensure test features aren't enabled on the ethereum mainnet.
-		if gasOracleSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
-			return nil, errors.New("cannot enable test env features in mainnet")
-		}
-
 	case ServiceTypeL2RollupRelayer:
 		commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
 		if err != nil {
@@ -119,16 +101,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
-	var minGasPrice uint64
-	var gasPriceDiff uint64
-	if cfg.GasOracleConfig != nil {
-		minGasPrice = cfg.GasOracleConfig.MinGasPrice
-		gasPriceDiff = cfg.GasOracleConfig.GasPriceDiff
-	} else {
-		minGasPrice = 0
-		gasPriceDiff = defaultGasPriceDiff
-	}
-
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -144,11 +116,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		finalizeSender: finalizeSender,
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
-		gasOracleSender: gasOracleSender,
-		l2GasOracleABI:  bridgeAbi.L2GasPriceOracleABI,
-
-		minGasPrice:  minGasPrice,
-		gasPriceDiff: gasPriceDiff,
+		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
 
 		cfg:      cfg,
 		chainCfg: chainCfg,
@@ -162,16 +130,12 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// Initialize genesis before we do anything else
-	if initGenesis {
-		if err := layer2Relayer.initializeGenesis(); err != nil {
-			return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
-		}
+	if err := layer2Relayer.initializeGenesis(); err != nil {
+		return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
 	}
 	layer2Relayer.metrics = initL2RelayerMetrics(reg)
 
 	switch serviceType {
-	case ServiceTypeL2GasOracle:
-		go layer2Relayer.handleL2GasOracleConfirmLoop(ctx)
 	case ServiceTypeL2RollupRelayer:
 		go layer2Relayer.handleL2RollupRelayerConfirmLoop(ctx)
 	default:
@@ -298,80 +262,6 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			}
 			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String())
 			return nil
-		}
-	}
-}
-
-// ProcessGasPriceOracle imports gas price to layer1
-func (r *Layer2Relayer) ProcessGasPriceOracle() {
-	r.metrics.rollupL2RelayerGasPriceOraclerRunTotal.Inc()
-	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
-	if err != nil {
-		log.Error("Failed to GetLatestBatch", "err", err)
-		return
-	}
-
-	if types.GasOracleStatus(batch.OracleStatus) == types.GasOraclePending {
-		suggestGasPrice, err := r.l2Client.SuggestGasPrice(r.ctx)
-		if err != nil {
-			log.Error("Failed to fetch SuggestGasPrice from l2geth", "err", err)
-			return
-		}
-		suggestGasPriceUint64 := uint64(suggestGasPrice.Int64())
-
-		// include the token exchange rate in the fee data if alternative gas token enabled
-		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig != nil && r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
-			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
-			var exchangeRate float64
-			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
-			case "Fixed":
-				exchangeRate = r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate
-			case "BinanceApi":
-				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, 5)
-				if err != nil {
-					log.Error("Failed to get gas token exchange rate from Binance api", "tokenSymbolPair", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, "err", err)
-					return
-				}
-			default:
-				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
-				return
-			}
-			if exchangeRate == 0 {
-				log.Error("Invalid exchange rate", "exchangeRate", exchangeRate)
-				return
-			}
-			suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * exchangeRate))
-			suggestGasPrice = new(big.Int).SetUint64(suggestGasPriceUint64)
-		}
-
-		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
-		if r.lastGasPrice > 0 && expectedDelta == 0 {
-			expectedDelta = 1
-		}
-
-		// last is undefined or (suggestGasPriceUint64 >= minGasPrice && exceed diff)
-		if r.lastGasPrice == 0 || (suggestGasPriceUint64 >= r.minGasPrice &&
-			(math.Abs(float64(suggestGasPriceUint64)-float64(r.lastGasPrice)) >= float64(expectedDelta))) {
-			data, err := r.l2GasOracleABI.Pack("setL2BaseFee", suggestGasPrice)
-			if err != nil {
-				log.Error("Failed to pack setL2BaseFee", "batch.Hash", batch.Hash, "GasPrice", suggestGasPrice.Uint64(), "err", err)
-				return
-			}
-
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
-			if err != nil {
-				log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
-				return
-			}
-
-			err = r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batch.Hash, types.GasOracleImporting, hash.String())
-			if err != nil {
-				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "batch.Hash", batch.Hash, "err", err)
-				return
-			}
-			r.lastGasPrice = suggestGasPriceUint64
-			r.metrics.rollupL2RelayerLastGasPrice.Set(float64(r.lastGasPrice))
-			log.Info("Update l2 gas price", "txHash", hash.String(), "GasPrice", suggestGasPrice)
 		}
 	}
 }
@@ -1041,38 +931,11 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
 		}
-	case types.SenderTypeL2GasOracle:
-		batchHash := cfm.ContextID
-		var status types.GasOracleStatus
-		if cfm.IsSuccessful {
-			status = types.GasOracleImported
-			r.metrics.rollupL2UpdateGasOracleConfirmedTotal.Inc()
-		} else {
-			status = types.GasOracleImportedFailed
-			r.metrics.rollupL2UpdateGasOracleConfirmedFailedTotal.Inc()
-			log.Warn("UpdateGasOracleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
-		}
-
-		err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batchHash, status, cfm.TxHash.String())
-		if err != nil {
-			log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "confirmation", cfm, "err", err)
-		}
 	default:
 		log.Warn("Unknown transaction type", "confirmation", cfm)
 	}
 
 	log.Info("Transaction confirmed in layer1", "confirmation", cfm)
-}
-
-func (r *Layer2Relayer) handleL2GasOracleConfirmLoop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.handleConfirmation(cfm)
-		}
-	}
 }
 
 func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
@@ -1249,10 +1112,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 // StopSenders stops the senders of the rollup-relayer to prevent querying the removed pending_transaction table in unit tests.
 // for unit test
 func (r *Layer2Relayer) StopSenders() {
-	if r.gasOracleSender != nil {
-		r.gasOracleSender.Stop()
-	}
-
 	if r.commitSender != nil {
 		r.commitSender.Stop()
 	}

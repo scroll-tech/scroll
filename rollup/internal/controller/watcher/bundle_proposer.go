@@ -200,7 +200,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if firstChunk.StartBlockTime+p.bundleTimeoutSec < currentTimeSec {
-		log.Info("first block timeout", "batch count", len(batches), "start block number", firstChunk.StartBlockNumber, "start block timestamp", firstChunk.StartBlockTime, "current time", currentTimeSec)
+		log.Info("first block timeout", "batch count", len(batches), "start block number", firstChunk.StartBlockNumber, "start block timestamp", firstChunk.StartBlockTime, "bundle timeout", p.bundleTimeoutSec, "current time", currentTimeSec)
 
 		batches, err = p.allBatchesCommittedInSameTXIncluded(batches)
 		if err != nil {
