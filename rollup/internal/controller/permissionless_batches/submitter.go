@@ -19,6 +19,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/sender"

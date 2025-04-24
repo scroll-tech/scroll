@@ -17,6 +17,7 @@ import (
 	"scroll-tech/common/types"
 
 	"scroll-tech/database/migrate"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/watcher"
 	"scroll-tech/rollup/internal/orm"
