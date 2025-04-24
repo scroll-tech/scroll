@@ -162,7 +162,8 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 	return latestBatch.EndChunkIndex + 1, nil
 }
 
-// GetCommittedBatchesGEIndexGECodecVersion retrieves batches that have been committed (commit_tx_hash is set) and have a batch index greater than or equal to the given index and codec version.
+// GetCommittedBatchesGEIndexGECodecVersion retrieves batches that have been committed (commit_tx_hash is set) and not finalized (finalize_tx_hash is NULL).
+// It returns batches that have an index greater than or equal to the given index and codec version.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetCommittedBatchesGEIndexGECodecVersion(ctx context.Context, index uint64, codecv encoding.CodecVersion, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
@@ -170,6 +171,7 @@ func (o *Batch) GetCommittedBatchesGEIndexGECodecVersion(ctx context.Context, in
 	db = db.Where("index >= ?", index)
 	db = db.Where("codec_version >= ?", codecv)
 	db = db.Where("commit_tx_hash IS NOT NULL") // only include committed batches
+	db = db.Where("finalize_tx_hash IS NULL")   // exclude finalized batches
 	db = db.Order("index ASC")
 
 	if limit > 0 {
