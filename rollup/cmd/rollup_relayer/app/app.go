@@ -109,7 +109,7 @@ func action(ctx *cli.Context) error {
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
 
-	if cfg.RecoveryConfig.Enable {
+	if cfg.RecoveryConfig != nil && cfg.RecoveryConfig.Enable {
 		log.Info("Starting rollup-relayer in recovery mode", "version", version.Version)
 
 		l1Client, err := ethclient.Dial(cfg.L1Config.Endpoint)

@@ -18,7 +18,7 @@ import (
 func testProcessStart(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
-	// rollupApp.RunApp(t, cutils.GasOracleApp, "--genesis", "../conf/genesis.json")
+	rollupApp.RunApp(t, cutils.GasOracleApp, "--genesis", "../conf/genesis.json")
 	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--genesis", "../conf/genesis.json", "--min-codec-version", "4")
 
 	rollupApp.WaitExit()
