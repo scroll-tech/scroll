@@ -1,14 +1,9 @@
 [package]
-name = "prover"
+name = "zkvm-prover"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[patch.crates-io]
-alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.21" }
-ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
-tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2-openvm-v1.0.0-rc.1" }
 
 [dependencies]
 anyhow = "1.0"
@@ -18,7 +13,7 @@ serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
 futures = "0.3.30"
 
-scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.3.0", package = "scroll-zkvm-prover" }
+scroll-zkvm-prover-euclid.workspace = true
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "main", features = [
