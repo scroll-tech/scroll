@@ -16,7 +16,7 @@
       "high_version_circuit" : {
         "fork_name": "euclid",
         "assets_path": "/verifier/openvm/verifier",
-        "min_prover_version": "v4.4.98"
+        "min_prover_version": "v4.5.7"
       }
     }
   },
