@@ -1,6 +1,6 @@
 .PHONY: batch-production-submission launch_local_prover launch_cloud_prover psql check_proving_status
 
-export SCROLL_ZKVM_VERSION=0.2.0
+export SCROLL_ZKVM_VERSION=0.3.0
 PG_URL=postgres://postgres@localhost:5432/scroll
 
 batch_production_submission:
