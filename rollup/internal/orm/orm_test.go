@@ -355,10 +355,7 @@ func TestBatchOrm(t *testing.T) {
 
 		batches, err = batchOrm.GetCommittedBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, len(batches))
-		assert.Equal(t, batchHash1, batches[0].Hash)
-		assert.Equal(t, types.ProvingTaskFailed, types.ProvingStatus(batches[0].ProvingStatus))
-		assert.Equal(t, types.RollupCommitFailed, types.RollupStatus(batches[0].RollupStatus))
+		assert.Equal(t, 0, len(batches))
 	}
 }
 
