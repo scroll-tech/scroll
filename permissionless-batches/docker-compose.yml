@@ -34,9 +34,7 @@ services:
       - "5432:5432"
 
   coordinator-api:
-    build:
-      context: ../
-      dockerfile: build/dockerfiles/coordinator-api.Dockerfile
+    image: scrolltech/coordinator-api:v4.5.7
     volumes:
       - ./conf/coordinator/config.json:/coordinator/config.json:ro
       - ./conf/genesis.json:/coordinator/genesis.json:ro
