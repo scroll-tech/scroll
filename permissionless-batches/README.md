@@ -106,7 +106,7 @@ Local Proving:
 
 Run with `make local_prover`.
 
-Cloud Proving:
+Cloud Proving(not supported yet):
 
 1. Make sure `verifier` `low_version_circuit` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
 2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
@@ -117,7 +117,6 @@ Run with `make cloud_prover`.
 This will prove chunks, the batch and bundle.
 Run `make check_proving_status`
 `Success! You're ready to submit permissionless batch and proof!` indicates that everything is working correctly and the batch is ready to be submit.
-
 
 
 #### Batch submission

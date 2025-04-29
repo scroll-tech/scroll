@@ -7,7 +7,7 @@ batch_production_submission:
 	docker compose --profile batch-production-submission up
 
 local_prover:
-	docker compose --profile local-prover up
+	docker compose --profile local-prover up -d
 
 cloud_prover:
 	docker compose --profile cloud-prover up
