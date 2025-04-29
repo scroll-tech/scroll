@@ -19,7 +19,6 @@ require (
 )
 
 require (
-	github.com/bytedance/sonic v1.10.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
@@ -49,7 +48,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/chenzhuoyu/iasm v0.9.0 // indirect
+	github.com/cloudwego/iasm v0.9.0 // indirect
 	github.com/consensys/bavard v0.1.29 // indirect
 	github.com/consensys/gnark-crypto v0.16.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect

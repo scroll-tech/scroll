@@ -50,7 +50,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	batchOrm := orm.NewBatch(db)
-	taskID := "fa9a290c8f1a46dc626fa67d626fadfe4803968ce776383996f3ae12504a2591"
+	taskID := "9078d06d248f5ee7c910db6191809e4f4c9712ec236e27a5c03cfd50dfe69add"
 	batches, err := batchOrm.GetBatchesByBundleHash(ctx.Context, taskID)
 	if err != nil {
 		log.Error("failed to get batch proofs for batch", "task_id", taskID, "error", err)
