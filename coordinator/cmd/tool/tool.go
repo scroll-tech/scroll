@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -62,9 +63,11 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", taskID)
 	}
 
+	hardForkName := "darwinV2"
+
 	var batchProofs []message.BatchProof
 	for _, batch := range batches {
-		proof := message.NewBatchProof("darwinV2")
+		proof := message.NewBatchProof(hardForkName)
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
 			log.Error("failed to unmarshal batch proof")
 			return fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, taskID, batch.Hash)
@@ -76,16 +79,41 @@ func action(ctx *cli.Context) error {
 		BatchProofs: batchProofs,
 	}
 
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.ForkName = message.EuclidV2ForkNameForProver
+	} else if hardForkName == message.EuclidFork {
+		taskDetail.ForkName = message.EuclidForkNameForProver
+	}
+
+	parentBatch, err := batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
+	if err != nil {
+		return fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", taskID, err)
+	}
+
+	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
+		ChainID:       534352,
+		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
+		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
+		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
+		NumBatches:    uint32(len(batches)),
+		PrevBatchHash: common.HexToHash(batches[0].ParentBatchHash),
+		BatchHash:     common.HexToHash(batches[len(batches)-1].Hash),
+	}
+
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.BundleInfo.MsgQueueHash = common.HexToHash(batches[len(batches)-1].PostL1MessageQueueHash)
+	}
+
 	batchProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		log.Error("failed to marshal batch proof")
 		return fmt.Errorf("failed to marshal batch proofs, taskID:%s err:%w", taskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		TaskID:   taskID,
-		TaskType: int(message.ProofTypeBundle),
-		TaskData: string(batchProofsBytes),
+		TaskID:       taskID,
+		TaskType:     int(message.ProofTypeBundle),
+		TaskData:     string(batchProofsBytes),
+		HardForkName: hardForkName,
 	}
 
 	log.Info("task_msg", "data", taskMsg)

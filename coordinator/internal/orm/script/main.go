@@ -4,20 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
-	"strconv"
-	"strings"
 
-	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/log"
-	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/orm"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 func main() {
@@ -25,149 +20,104 @@ func main() {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	if len(os.Args) < 2 {
-		log.Crit("no batch index range provided")
-		return
-	}
-
-	indexRange := os.Args[1]
-	indices := strings.Split(indexRange, "-")
-	if len(indices) != 2 {
-		log.Crit("invalid batch index range format. Use start-end", "providedRange", indexRange)
-		return
-	}
-
-	startIndex, err := strconv.Atoi(indices[0])
-	endIndex, err2 := strconv.Atoi(indices[1])
-	if err != nil || err2 != nil || startIndex > endIndex {
-		log.Crit("invalid batch index range", "start", indices[0], "end", indices[1], "err", err, "err2", err2)
+	dbDSN := os.Getenv("DB_DSN")
+	if dbDSN == "" {
+		log.Crit("DB_DSN environment variable is not set")
 		return
 	}
 
 	db, err := database.InitDB(&database.Config{
 		DriverName: "postgres",
-		DSN:        os.Getenv("DB_DSN"),
+		DSN:        dbDSN,
 		MaxOpenNum: 200,
 		MaxIdleNum: 20,
 	})
 	if err != nil {
-		log.Crit("failed to init db", "err", err)
+		log.Crit("failed to init db connection", "err", err)
+		return
 	}
 	defer func() {
-		if deferErr := database.CloseDB(db); deferErr != nil {
-			log.Error("failed to close db", "err", err)
+		if err = database.CloseDB(db); err != nil {
+			log.Error("can not close db connection", "error", err)
 		}
 	}()
 
-	for i := startIndex; i <= endIndex; i++ {
-		batchIndex := uint64(i)
-		resultBytes, err := getBatchTask(db, batchIndex)
-		if err != nil {
-			log.Crit("failed to get batch task", "batchIndex", batchIndex, "err", err)
-			continue
-		}
+	taskID := "7591df9c01efb7efc25359cee4600edce7e307f4d8806837a05cf510067a2819"
+	hardForkName := "euclidV2"
 
-		outputFilename := fmt.Sprintf("batch_task_%d.json", batchIndex)
-		if err = os.WriteFile(outputFilename, resultBytes, 0644); err != nil {
-			log.Crit("failed to write output file", "filename", outputFilename, "err", err)
-		}
-	}
-}
+	log.Info("Processing bundle", "taskID", taskID, "hardForkName", hardForkName)
 
-func getBatchTask(db *gorm.DB, batchIndex uint64) ([]byte, error) {
-	batch, err := orm.NewBatch(db).GetBatchByIndex(context.Background(), batchIndex)
+	batchOrm := orm.NewBatch(db)
+	batches, err := batchOrm.GetBatchesByBundleHash(context.Background(), taskID)
 	if err != nil {
-		err = fmt.Errorf("failed to get batch hash by index: %d err: %w ", batchIndex, err)
-		return nil, err
+		log.Error("failed to get batch proofs for batch", "task_id", taskID, "error", err)
+		os.Exit(1)
 	}
 
-	chunks, err := orm.NewChunk(db).GetChunksByBatchHash(context.Background(), batch.Hash)
-	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id: %s err: %w ", batch.Hash, err)
-		return nil, err
+	if len(batches) == 0 {
+		log.Error("failed to get batch proofs for bundle, not found batch", "task_id", taskID)
+		os.Exit(1)
 	}
 
-	var chunkProofs []message.ChunkProof
-	var chunkInfos []*message.ChunkInfo
-	for _, chunk := range chunks {
-		fmt.Println("chunk index: ", chunk.Index)
-		fmt.Print("chunk proof: ", chunk.Proof)
-		proof := message.NewChunkProof("euclid")
-		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, batch.Hash, chunk.Hash)
+	var batchProofs []message.BatchProof
+	for _, batch := range batches {
+		proof := message.NewBatchProof(hardForkName)
+		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
+			log.Error("failed to unmarshal batch proof", "error", encodeErr)
+			os.Exit(1)
 		}
-		chunkProofs = append(chunkProofs, proof)
-
-		chunkInfo := message.ChunkInfo{
-			ChainID:          534351,
-			PrevStateRoot:    common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot:    common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
-			DataHash:         common.HexToHash(chunk.Hash),
-			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
-			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
-			IsPadding:        false,
-		}
-		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
-			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
-			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
-			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
-		}
-		chunkInfos = append(chunkInfos, &chunkInfo)
+		batchProofs = append(batchProofs, proof)
 	}
 
-	taskDetail, err := getBatchTaskDetail(batch, chunkInfos, chunkProofs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", batch.Hash, err)
+	taskDetail := message.BundleTaskDetail{
+		BatchProofs: batchProofs,
 	}
 
-	chunkProofsBytes, err := json.MarshalIndent(taskDetail, "", "    ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", batch.Hash, err)
-	}
-
-	return chunkProofsBytes, nil
-}
-
-func getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof) (*message.BatchTaskDetail, error) {
-	taskDetail := &message.BatchTaskDetail{
-		ChunkInfos:  chunkInfos,
-		ChunkProofs: chunkProofs,
-	}
-
-	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	switch dbBatchCodecVersion {
-	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6:
-	default:
-		return taskDetail, nil
-	}
-
-	if dbBatchCodecVersion >= encoding.CodecV7 {
+	if hardForkName == message.EuclidV2Fork {
 		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else {
+	} else if hardForkName == message.EuclidFork {
 		taskDetail.ForkName = message.EuclidForkNameForProver
 	}
 
-	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
+	parentBatch, err := batchOrm.GetBatchByHash(context.Background(), batches[0].ParentBatchHash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+		log.Error("failed to get parent batch", "task_id", taskID, "error", err)
+		os.Exit(1)
 	}
 
-	batchHeader, decodeErr := codec.NewDABatchFromBytes(dbBatch.BatchHeader)
-	if decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
+	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
+		ChainID:       534352,
+		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
+		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
+		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
+		NumBatches:    uint32(len(batches)),
+		PrevBatchHash: common.HexToHash(batches[0].ParentBatchHash),
+		BatchHash:     common.HexToHash(batches[len(batches)-1].Hash),
 	}
-	taskDetail.BatchHeader = batchHeader
-	taskDetail.BlobBytes = dbBatch.BlobBytes
 
-	challengeDigest, kzgCommitment, kzgProof, err := codec.BlobDataProofFromBlobBytes(dbBatch.BlobBytes)
+	if hardForkName == message.EuclidV2Fork {
+		taskDetail.BundleInfo.MsgQueueHash = common.HexToHash(batches[len(batches)-1].PostL1MessageQueueHash)
+	}
+
+	batchProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get challenge digest from blob bytes, taskID: %s, err: %w", dbBatch.Hash, err)
+		log.Error("failed to marshal batch proofs", "task_id", taskID, "error", err)
+		os.Exit(1)
 	}
 
-	taskDetail.ChallengeDigest = challengeDigest
-	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgProof[:]))}
-	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(kzgCommitment[:]))}
+	taskMsg := &coordinatorType.GetTaskSchema{
+		TaskID:       taskID,
+		TaskType:     int(message.ProofTypeBundle),
+		TaskData:     string(batchProofsBytes),
+		HardForkName: hardForkName,
+	}
 
-	return taskDetail, nil
+	outputFilename := fmt.Sprintf("bundle_task_%s.json", taskID)
+	if err = os.WriteFile(outputFilename, batchProofsBytes, 0644); err != nil {
+		log.Error("failed to write output file", "filename", outputFilename, "error", err)
+		os.Exit(1)
+	}
+
+	log.Info("Task details saved to file", "filename", outputFilename)
+	log.Info("Task message", "data", taskMsg)
 }
