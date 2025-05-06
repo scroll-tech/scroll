@@ -171,19 +171,19 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 
 	switch message.ProofType(proofParameter.TaskType) {
 	case message.ProofTypeChunk:
-		chunkProof := message.NewChunkProof(hardForkName)
+		chunkProof := &message.OpenVMChunkProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)
 	case message.ProofTypeBatch:
-		batchProof := message.NewBatchProof(hardForkName)
+		batchProof := &message.OpenVMBatchProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyBatchProof(batchProof, hardForkName)
 	case message.ProofTypeBundle:
-		bundleProof := message.NewBundleProof(hardForkName)
+		bundleProof := &message.OpenVMBundleProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
