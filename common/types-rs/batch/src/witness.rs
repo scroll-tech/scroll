@@ -1,6 +1,6 @@
-use types_base::public_inputs::{ForkName, chunk::ChunkInfo};
-use types_agg::{ProofCarryingWitness, AggregationInput, ProgramCommitment};
 use crate::header::ReferenceHeader;
+use types_agg::{AggregationInput, ProgramCommitment, ProofCarryingWitness};
+use types_base::public_inputs::{ForkName, chunk::ChunkInfo};
 
 /// Simply rewrap byte48 to avoid unnecessary dep
 pub type Bytes48 = [u8; 48];

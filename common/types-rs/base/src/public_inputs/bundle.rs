@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
 
 use crate::{
-    public_inputs::{ForkName, PublicInputs, MultiVersionPublicInputs},
+    public_inputs::{ForkName, MultiVersionPublicInputs, PublicInputs},
     utils::keccak256,
 };
 

@@ -15,11 +15,11 @@ use sbv_primitives::{
     },
 };
 
-use crate::{
-    ArchivedChunkWitness, make_providers,
-    manually_drop_on_zkvm,
+use crate::{ArchivedChunkWitness, make_providers, manually_drop_on_zkvm};
+use types_base::public_inputs::{
+    ForkName,
+    chunk::{BlockContextV2, ChunkInfo},
 };
-use types_base::public_inputs::{ForkName, chunk::{ChunkInfo, BlockContextV2}};
 
 fn block_ctxv2_from_block(value: &RecoveredBlock<Block>) -> BlockContextV2 {
     use alloy_primitives::U256;
@@ -39,7 +39,6 @@ fn block_ctxv2_from_block(value: &RecoveredBlock<Block>) -> BlockContextV2 {
         .expect("num l1 msgs u16"),
     }
 }
-
 
 type Witness = ArchivedChunkWitness;
 

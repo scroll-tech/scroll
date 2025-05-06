@@ -10,7 +10,6 @@ pub fn reveal_pi_hash(pi_hash: B256) {
     openvm::io::reveal_bytes32(*pi_hash);
 }
 
-
 /// Circuit defines the higher-level behaviour to be observed by a [`openvm`] guest program.
 pub trait Circuit {
     /// The witness provided to the circuit.

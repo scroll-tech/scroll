@@ -1,5 +1,5 @@
-use alloy_primitives::B256;
 use super::BatchHeader;
+use alloy_primitives::B256;
 use types_base::utils::keccak256;
 
 /// Represents the header summarising the batch of chunks as per DA-codec v6.

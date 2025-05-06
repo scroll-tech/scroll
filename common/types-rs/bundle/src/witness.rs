@@ -1,5 +1,5 @@
+use types_agg::{AggregationInput, ProgramCommitment, ProofCarryingWitness};
 use types_base::public_inputs::batch::BatchInfo;
-use types_agg::{ProofCarryingWitness, AggregationInput, ProgramCommitment};
 
 /// The witness for the bundle circuit.
 #[derive(Clone, Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]

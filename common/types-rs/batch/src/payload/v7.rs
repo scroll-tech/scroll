@@ -1,7 +1,10 @@
 use alloy_primitives::B256;
 
 use crate::BatchHeaderV7;
-use types_base::{public_inputs::chunk::{SIZE_BLOCK_CTX, BlockContextV2, ChunkInfo}, utils::keccak256};
+use types_base::{
+    public_inputs::chunk::{BlockContextV2, ChunkInfo, SIZE_BLOCK_CTX},
+    utils::keccak256,
+};
 
 use super::N_BLOB_BYTES;
 

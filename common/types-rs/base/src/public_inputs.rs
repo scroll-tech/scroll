@@ -1,7 +1,7 @@
 use alloy_primitives::B256;
-pub mod chunk;
 pub mod batch;
 pub mod bundle;
+pub mod chunk;
 
 /// Defines behaviour to be implemented by types representing the public-input values of a circuit.
 pub trait PublicInputs {
@@ -12,7 +12,6 @@ pub trait PublicInputs {
     /// Validation logic between public inputs of two contiguous instances.
     fn validate(&self, prev_pi: &Self);
 }
-
 
 #[derive(
     Default,
