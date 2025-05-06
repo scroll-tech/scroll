@@ -1,0 +1,31 @@
+[package]
+name = "scroll-zkvm-types"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+readme.workspace = true
+repository.workspace = true
+version = "0.2.0"
+
+[dependencies]
+alloy-primitives = { workspace = true, default-features = false, features = ["std", "map-hashbrown", "map-fxhash", "rkyv"] }
+alloy-serde.workspace = true
+rkyv.workspace = true
+sbv-trie = { workspace = true }
+sbv-core = { workspace = true }
+sbv-primitives = { workspace = true }
+sbv-kv = { workspace = true }
+vm-zstd = { workspace = true }
+serde.workspace = true
+itertools.workspace = true
+tiny-keccak = { workspace = true }
+
+openvm = { workspace = true, features = ["std"] }
+openvm-rv32im-guest = {  workspace = true }
+openvm-custom-insn = { workspace = true }
+sha3 = "0.10.8"
+sha2 = "0.10.8"
+
+[features]
+default = []
+openvm = ["sbv-trie/openvm", "sbv-core/openvm", "sbv-primitives/openvm", "tiny-keccak/openvm"]

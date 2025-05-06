@@ -1,5 +1,11 @@
 [workspace]
 members = [
+  "common/types-rs/base",
+  "common/types-rs/circuit",
+  "common/types-rs/aggregation",
+  "common/types-rs/chunk",
+  "common/types-rs/batch",
+  "common/types-rs/bundle",
   "zkvm-prover",
 ]
 
@@ -16,7 +22,33 @@ version = "4.5.8"
 [workspace.dependencies]
 scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.3.0", package = "scroll-zkvm-prover"}
 
+openvm = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
+openvm-custom-insn = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
+openvm-rv32im-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
+
+sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = ["scroll"] }
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = ["scroll"] }
+sbv-kv = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
+sbv-trie = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
+
+alloy-primitives = { version = "0.8", default-features = false }
+alloy-serde = { version = "0.11", default-features = false }
+
+rkyv = "0.8"
+serde = { version = "1", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0" }
+serde_with = "3.11.0"
+itertools = "0.14"
+tiny-keccak = "2.0"
+#TODO: upgrade
+vm-zstd = { git = "https://github.com/scroll-tech/rust-zstd-decompressor.git", tag = "v0.1.1" }
+
 [patch.crates-io]
-alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.21" }
+alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.18-euclid-upgrade" }
 ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
-tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2-openvm-v1.0.0-rc.1" }
+tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2-euclid-upgrade" }
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
