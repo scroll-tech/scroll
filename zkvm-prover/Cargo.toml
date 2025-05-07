@@ -12,6 +12,7 @@ env_logger = "0.11.3"
 futures = "0.3.30"
 
 scroll-zkvm-prover-euclid.workspace = true
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "refactor/scroll"}
 sbv-primitives.workspace = true
 serde.workspace = true
 serde_json.workspace = true
