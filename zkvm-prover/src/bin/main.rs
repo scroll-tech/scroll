@@ -1,13 +1,9 @@
-mod prover;
-mod types;
-mod zk_circuits_handler;
-
 use clap::{ArgAction, Parser};
-use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::ProverBuilder,
     utils::{get_version, init_tracing},
 };
+use zkvm_prover::{LocalProver, LocalProverConfig};
 
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
