@@ -24,7 +24,7 @@ on:
         options:
           - nightly-2023-12-03
           - nightly-2022-12-10
-          - nightly-2025-01-17
+          - 1.86.0
         default: "nightly-2023-12-03"
       PYTHON_VERSION:
         description: "Python version"
