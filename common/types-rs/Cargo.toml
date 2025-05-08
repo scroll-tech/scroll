@@ -9,7 +9,6 @@ version = "0.2.0"
 
 [dependencies]
 alloy-primitives = { workspace = true, default-features = false, features = ["std", "map-hashbrown", "map-fxhash", "rkyv"] }
-alloy-serde.workspace = true
 rkyv.workspace = true
 sbv-trie = { workspace = true }
 sbv-core = { workspace = true }

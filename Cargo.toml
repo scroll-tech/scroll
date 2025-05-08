@@ -31,8 +31,8 @@ sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifie
 sbv-kv = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
 sbv-trie = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
 
+alloy = { version = "0.11", default-features = false }
 alloy-primitives = { version = "0.8", default-features = false }
-alloy-serde = { version = "0.11", default-features = false }
 
 rkyv = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }

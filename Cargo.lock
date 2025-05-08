@@ -7080,7 +7080,6 @@ name = "scroll-zkvm-circuit-input-types-aggregation"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "rkyv",
  "serde",
 ]
@@ -7090,7 +7089,6 @@ name = "scroll-zkvm-circuit-input-types-base"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "itertools 0.14.0",
  "rkyv",
  "serde",
@@ -7104,7 +7102,6 @@ name = "scroll-zkvm-circuit-input-types-batch"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "itertools 0.14.0",
  "rkyv",
  "scroll-zkvm-circuit-input-types-aggregation",
@@ -7118,7 +7115,6 @@ name = "scroll-zkvm-circuit-input-types-bundle"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "itertools 0.14.0",
  "rkyv",
  "scroll-zkvm-circuit-input-types-aggregation",
@@ -7132,7 +7128,6 @@ name = "scroll-zkvm-circuit-input-types-chunk"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "itertools 0.14.0",
  "openvm",
  "openvm-custom-insn",
@@ -7151,7 +7146,6 @@ name = "scroll-zkvm-circuit-input-types-circuit"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
- "alloy-serde 0.11.1",
  "openvm",
  "rkyv",
  "scroll-zkvm-circuit-input-types-aggregation",
