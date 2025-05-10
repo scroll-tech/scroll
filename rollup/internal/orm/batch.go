@@ -386,7 +386,12 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["commit_tx_hash"] = commitTxHash
-	updateFields["rollup_status"] = int(status)
+	updateFields["rollup_status"] = gorm.Expr(
+		`CASE
+			WHEN rollup_status NOT IN (?, ?) THEN ?
+			ELSE rollup_status
+		END`,
+		types.RollupFinalizing, types.RollupFinalized, int(status))
 	if status == types.RollupCommitted {
 		updateFields["committed_at"] = utils.NowUTC()
 	}
@@ -396,15 +401,6 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
-
-	var currentBatch Batch
-	if err := db.Where("hash", hash).First(&currentBatch).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateCommitTxHashAndRollupStatus error when querying current status: %w, batch hash: %v", err, hash)
-	}
-
-	if types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalizing || types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalized {
-		return nil
-	}
 
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
