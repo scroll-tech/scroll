@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use alloy::primitives::B256;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {
@@ -6,6 +7,15 @@ pub struct Task {
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
+}
+
+type CommonHash = B256;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkTaskDetail {
+    pub block_hashes: Vec<CommonHash>,
+    pub prev_msg_queue_hash: CommonHash,
+    pub fork_name: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]

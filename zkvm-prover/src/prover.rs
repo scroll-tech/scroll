@@ -1,5 +1,7 @@
 use crate::zk_circuits_handler::{
     euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler,
+    RequestPreHandler,
+    RpcConfig,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -25,6 +27,7 @@ use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LocalProverConfig {
     pub sdk_config: SdkConfig,
+    pub rpc_config: RpcConfig,
     pub circuits: HashMap<String, CircuitConfig>,
 }
 
@@ -54,6 +57,7 @@ pub struct LocalProver {
     current_task: Option<JoinHandle<Result<String>>>,
 
     active_handler: Option<(String, Arc<dyn CircuitsHandler>)>,
+    pre_handler: Option<RequestPreHandler>,
 }
 
 #[async_trait]
@@ -139,6 +143,7 @@ impl LocalProver {
             next_task_id: 0,
             current_task: None,
             active_handler: None,
+            pre_handler: None,
         }
     }
 
@@ -147,6 +152,10 @@ impl LocalProver {
         req: ProveRequest,
         handler: Arc<dyn CircuitsHandler>,
     ) -> Result<ProveResponse> {
+        if self.pre_handler.is_none() {
+            self.pre_handler.replace(RequestPreHandler::create(&self.config.rpc_config)?);
+        }
+
         self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;

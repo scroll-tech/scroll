@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "common/types-rs",
   "common/types-rs/base",
   "common/types-rs/circuit",
   "common/types-rs/aggregation",
@@ -30,6 +31,7 @@ sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", br
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = ["scroll"] }
 sbv-kv = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
 sbv-trie = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
+sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade" }
 
 alloy = { version = "0.11", default-features = false }
 alloy-primitives = { version = "0.8", default-features = false }

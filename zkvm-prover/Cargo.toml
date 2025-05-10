@@ -16,6 +16,7 @@ tracing = "0.1"
 futures = "0.3"
 alloy = { workspace = true, features = ["provider-http", "transport-http", "reqwest", "reqwest-rustls-tls", "json-rpc"] }
 itertools.workspace = true
+url = ">=2.5.3"
 
 # Re-export from proving-sdk
 reqwest = { version = "0.12.4", features = ["gzip"] }
@@ -31,5 +32,6 @@ tiny-keccak = { workspace = true, features = ["sha3", "keccak"] }
 scroll-zkvm-prover-euclid.workspace = true
 scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "refactor/scroll"}
 sbv-primitives.workspace = true
+sbv-utils = { workspace = true, features = ["scroll"] }
 serde.workspace = true
 serde_json.workspace = true

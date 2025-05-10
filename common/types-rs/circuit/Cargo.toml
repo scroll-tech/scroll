@@ -13,6 +13,7 @@ rkyv.workspace = true
 serde.workspace = true
 openvm = { workspace = true, features = ["std"] }
 tiny-keccak = { workspace = true, features = ["openvm"]}
+itertools.workspace = true
 
 types-base = { path = "../base", package = "scroll-zkvm-circuit-input-types-base"}
 types-agg = { path = "../aggregation", package = "scroll-zkvm-circuit-input-types-aggregation"}

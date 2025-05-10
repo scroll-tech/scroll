@@ -3,6 +3,8 @@ pub use io::read_witnesses;
 
 use alloy_primitives::B256;
 use types_base::public_inputs::PublicInputs;
+use types_agg::{ProofCarryingWitness, ProgramCommitment, AggregationInput, verify_proof};
+use itertools::Itertools;
 
 /// Reveal the public-input values as openvm public values.
 pub fn reveal_pi_hash(pi_hash: B256) {
@@ -33,5 +35,62 @@ pub trait Circuit {
     /// Reveal the public inputs.
     fn reveal_pi(pi: &Self::PublicInputs) {
         reveal_pi_hash(pi.pi_hash())
+    }
+}
+
+
+/// Circuit that additional aggregates proofs from other [`Circuits`][Circuit].
+pub trait AggCircuit: Circuit
+where
+    Self::Witness: ProofCarryingWitness,
+{
+    /// The public-input values of the proofs being aggregated.
+    type AggregatedPublicInputs: PublicInputs;
+
+    /// Check if the commitment in proof is valid (from program(s)
+    /// we have expected)
+    fn verify_commitments(commitment: &ProgramCommitment);
+
+    /// Verify the proofs being aggregated.
+    ///
+    /// Also returns the root proofs being aggregated.
+    fn verify_proofs(witness: &Self::Witness) -> Vec<AggregationInput> {
+        let proofs = witness.get_proofs();
+
+        for proof in proofs.iter() {
+            Self::verify_commitments(&proof.commitment);
+            verify_proof(&proof.commitment, proof.public_values.as_slice());
+        }
+
+        proofs
+    }
+
+    /// Derive the public-input values of the proofs being aggregated from the witness.
+    fn aggregated_public_inputs(witness: &Self::Witness) -> Vec<Self::AggregatedPublicInputs>;
+
+    /// Derive the public-input hashes of the aggregated proofs from the proofs itself.
+    fn aggregated_pi_hashes(proofs: &[AggregationInput]) -> Vec<B256>;
+
+    /// Validate that the public-input values of the aggregated proofs are well-formed.
+    ///
+    /// - That the public-inputs of contiguous chunks/batches are valid
+    /// - That the public-input values in fact hash to the pi_hash values from the root proofs.
+    fn validate_aggregated_pi(agg_pis: &[Self::AggregatedPublicInputs], agg_pi_hashes: &[B256]) {
+        // There should be at least a single proof being aggregated.
+        assert!(!agg_pis.is_empty(), "at least 1 pi to aggregate");
+
+        // Validation for the contiguous public-input values.
+        for w in agg_pis.windows(2) {
+            w[1].validate(&w[0]);
+        }
+
+        // Validation for public-input values hash being the pi_hash from root proof.
+        for (agg_pi, &agg_pi_hash) in agg_pis.iter().zip_eq(agg_pi_hashes.iter()) {
+            assert_eq!(
+                agg_pi.pi_hash(),
+                agg_pi_hash,
+                "pi hash mismatch between proofs and witness computed"
+            );
+        }
     }
 }
