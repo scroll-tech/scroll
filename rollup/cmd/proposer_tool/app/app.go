@@ -54,6 +54,9 @@ func action(ctx *cli.Context) error {
 	}
 
 	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
+	if minCodecVersion < encoding.CodecV7 {
+		log.Crit("min codec version must be greater than or equal to CodecV7", "minCodecVersion", minCodecVersion)
+	}
 
 	// sanity check config
 	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {

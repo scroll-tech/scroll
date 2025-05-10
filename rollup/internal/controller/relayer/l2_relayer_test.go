@@ -48,202 +48,186 @@ func testCreateNewRelayer(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV4}
-	for _, codecVersion := range codecVersions {
-		db := setupL2RelayerDB(t)
-		defer database.CloseDB(db)
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
-		l2Cfg := cfg.L2Config
-		var chainConfig *params.ChainConfig
-		if codecVersion == encoding.CodecV4 {
-			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
-		} else {
-			assert.Fail(t, "unsupported codec version, expected CodecV4")
-		}
+	l2Cfg := cfg.L2Config
+	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
-		assert.NoError(t, err)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
 
-		patchGuard := gomonkey.ApplyMethodFunc(l2Cli, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
-			return nil
-		})
+	patchGuard := gomonkey.ApplyMethodFunc(l2Cli, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+		return nil
+	})
 
-		l2BlockOrm := orm.NewL2Block(db)
-		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
-		assert.NoError(t, err)
-		chunkOrm := orm.NewChunk(db)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
 
-		batch := &encoding.Batch{
-			Index:                      1,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		}
-
-		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
-		assert.NoError(t, err)
-
-		relayer.ProcessPendingBatches()
-
-		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(statuses))
-		assert.Equal(t, types.RollupCommitting, statuses[0])
-		relayer.StopSenders()
-		patchGuard.Reset()
+	batch := &encoding.Batch{
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		Blocks:                     []*encoding.Block{block1, block2},
 	}
+
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV7, rutils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	relayer.ProcessPendingBatches()
+
+	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupCommitting, statuses[0])
+	relayer.StopSenders()
+	patchGuard.Reset()
 }
 
 func testL2RelayerProcessPendingBundles(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV4}
-	for _, codecVersion := range codecVersions {
-		db := setupL2RelayerDB(t)
-		defer database.CloseDB(db)
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
-		l2Cfg := cfg.L2Config
-		var chainConfig *params.ChainConfig
-		if codecVersion == encoding.CodecV4 {
-			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
-		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
-		assert.NoError(t, err)
+	l2Cfg := cfg.L2Config
+	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
 
-		batch := &encoding.Batch{
-			Index:                      1,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		}
-
-		chunkOrm := orm.NewChunk(db)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-
-		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
-		assert.NoError(t, err)
-
-		bundleOrm := orm.NewBundle(db)
-		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, codecVersion)
-		assert.NoError(t, err)
-
-		err = bundleOrm.UpdateRollupStatus(context.Background(), bundle.Hash, types.RollupPending)
-		assert.NoError(t, err)
-
-		err = bundleOrm.UpdateProvingStatus(context.Background(), dbBatch.Hash, types.ProvingTaskVerified)
-		assert.NoError(t, err)
-
-		relayer.ProcessPendingBundles()
-
-		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(bundles))
-		// no valid proof, rollup status remains the same
-		assert.Equal(t, types.RollupPending, types.RollupStatus(bundles[0].RollupStatus))
-
-		proof := &message.Halo2BundleProof{
-			RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		}
-		err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, proof, types.ProvingTaskVerified, 600)
-		assert.NoError(t, err)
-
-		relayer.ProcessPendingBundles()
-		bundles, err = bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(bundles))
-		assert.Equal(t, types.RollupFinalizing, types.RollupStatus(bundles[0].RollupStatus))
-		relayer.StopSenders()
+	batch := &encoding.Batch{
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		Blocks:                     []*encoding.Block{block1, block2},
 	}
+
+	chunkOrm := orm.NewChunk(db)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
+
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV7, rutils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	bundleOrm := orm.NewBundle(db)
+	bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, encoding.CodecV7)
+	assert.NoError(t, err)
+
+	err = bundleOrm.UpdateRollupStatus(context.Background(), bundle.Hash, types.RollupPending)
+	assert.NoError(t, err)
+
+	err = bundleOrm.UpdateProvingStatus(context.Background(), bundle.Hash, types.ProvingTaskVerified)
+	assert.NoError(t, err)
+
+	relayer.ProcessPendingBundles()
+
+	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bundles))
+	// no valid proof, rollup status remains the same
+	assert.Equal(t, types.RollupPending, types.RollupStatus(bundles[0].RollupStatus))
+
+	patchGuard := gomonkey.ApplyMethodFunc((*message.OpenVMBundleProof)(nil), "SanityCheck", func() error {
+		return nil
+	})
+	defer patchGuard.Reset()
+
+	proof := &message.OpenVMBundleProof{EvmProof: &message.OpenVMEvmProof{Instances: make([]byte, 384)}}
+	err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, proof, types.ProvingTaskVerified, 600)
+	assert.NoError(t, err)
+
+	relayer.ProcessPendingBundles()
+	bundles, err = bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bundles))
+	assert.Equal(t, types.RollupFinalizing, types.RollupStatus(bundles[0].RollupStatus))
+	relayer.StopSenders()
 }
 
 func testL2RelayerFinalizeTimeoutBundles(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV4}
-	for _, codecVersion := range codecVersions {
-		db := setupL2RelayerDB(t)
-		defer database.CloseDB(db)
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
-		l2Cfg := cfg.L2Config
-		l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
-		l2Cfg.RelayerConfig.FinalizeBundleWithoutProofTimeoutSec = 0
-		var chainConfig *params.ChainConfig
-		if codecVersion == encoding.CodecV4 {
-			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
-		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
-		assert.NoError(t, err)
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
+	l2Cfg.RelayerConfig.FinalizeBundleWithoutProofTimeoutSec = 0
+	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
 
-		l2BlockOrm := orm.NewL2Block(db)
-		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
-		assert.NoError(t, err)
-		chunkOrm := orm.NewChunk(db)
-		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
+	chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV7, rutils.ChunkMetrics{})
+	assert.NoError(t, err)
 
-		batch := &encoding.Batch{
-			Index:                      1,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		}
-
-		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
-		assert.NoError(t, err)
-
-		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
-		assert.NoError(t, err)
-
-		err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
-		assert.NoError(t, err)
-
-		bundleOrm := orm.NewBundle(db)
-		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, codecVersion)
-		assert.NoError(t, err)
-
-		err = batchOrm.UpdateBundleHashInRange(context.Background(), dbBatch.Index, dbBatch.Index, bundle.Hash, nil)
-		assert.NoError(t, err)
-
-		assert.Eventually(t, func() bool {
-			relayer.ProcessPendingBundles()
-
-			bundleInDB, bundleErr := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
-			if bundleErr != nil {
-				return false
-			}
-
-			bundleStatus := len(bundleInDB) == 1 && types.RollupStatus(bundleInDB[0].RollupStatus) == types.RollupFinalizing &&
-				types.ProvingStatus(bundleInDB[0].ProvingStatus) == types.ProvingTaskVerified
-
-			batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
-			if batchErr != nil {
-				return false
-			}
-
-			batchStatus := len(batchInDB) == 1 && types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
-
-			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
-			if chunkErr != nil {
-				return false
-			}
-
-			chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
-				types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
-
-			return bundleStatus && batchStatus && chunkStatus
-		}, 5*time.Second, 100*time.Millisecond, "Bundle or Batch or Chunk status did not update as expected")
-		relayer.StopSenders()
+	batch := &encoding.Batch{
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		Blocks:                     []*encoding.Block{block1, block2},
 	}
+
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV7, rutils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
+	assert.NoError(t, err)
+
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
+	assert.NoError(t, err)
+
+	bundleOrm := orm.NewBundle(db)
+	bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, encoding.CodecV7)
+	assert.NoError(t, err)
+
+	err = batchOrm.UpdateBundleHashInRange(context.Background(), dbBatch.Index, dbBatch.Index, bundle.Hash, nil)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		relayer.ProcessPendingBundles()
+
+		bundleInDB, bundleErr := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+		if bundleErr != nil {
+			return false
+		}
+
+		bundleStatus := len(bundleInDB) == 1 && types.RollupStatus(bundleInDB[0].RollupStatus) == types.RollupFinalizing &&
+			types.ProvingStatus(bundleInDB[0].ProvingStatus) == types.ProvingTaskVerified
+
+		batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
+		if batchErr != nil {
+			return false
+		}
+
+		batchStatus := len(batchInDB) == 1 && types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
+
+		chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
+		if chunkErr != nil {
+			return false
+		}
+
+		chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
+			types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
+
+		return bundleStatus && batchStatus && chunkStatus
+	}, 5*time.Second, 100*time.Millisecond, "Bundle or Batch or Chunk status did not update as expected")
+	relayer.StopSenders()
 }
 
 func testL2RelayerCommitConfirm(t *testing.T) {
@@ -268,6 +252,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+			Blocks:                     []*encoding.Block{block1, block2},
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
@@ -326,13 +311,14 @@ func testL2RelayerFinalizeBundleConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+			Blocks:                     []*encoding.Block{block1, block2},
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 		batchHashes[i] = dbBatch.Hash
 
-		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, encoding.CodecV4)
+		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, encoding.CodecV7)
 		assert.NoError(t, err)
 		bundleHashes[i] = bundle.Hash
 
@@ -412,6 +398,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		Blocks:                     []*encoding.Block{block1, block2},
 	}
 
 	batchOrm := orm.NewBatch(db)

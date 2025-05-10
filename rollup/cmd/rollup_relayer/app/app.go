@@ -102,6 +102,10 @@ func action(ctx *cli.Context) error {
 	}
 
 	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
+	if minCodecVersion < encoding.CodecV7 {
+		log.Crit("min codec version must be greater than or equal to CodecV7", "minCodecVersion", minCodecVersion)
+	}
+
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, registry)
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)

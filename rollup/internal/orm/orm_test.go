@@ -71,12 +71,14 @@ func setupEnv(t *testing.T) {
 	block1 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace, block1)
 	assert.NoError(t, err)
+	block1.RowConsumption = nil
 
 	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	block2 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace, block2)
 	assert.NoError(t, err)
+	block2.RowConsumption = nil
 }
 
 func tearDownEnv(t *testing.T) {

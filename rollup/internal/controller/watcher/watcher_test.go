@@ -101,17 +101,16 @@ func TestFunction(t *testing.T) {
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run chunk proposer test cases.
-	t.Run("TestChunkProposerLimitsCodecV4", testChunkProposerLimitsCodecV4)
-	t.Run("TestChunkProposerBlobSizeLimitCodecV4", testChunkProposerBlobSizeLimitCodecV4)
+	t.Run("TestChunkProposerLimitsCodecV7", testChunkProposerLimitsCodecV7)
+	t.Run("TestChunkProposerBlobSizeLimitCodecV7", testChunkProposerBlobSizeLimitCodecV7)
 
 	// Run batch proposer test cases.
-	t.Run("TestBatchProposerLimitsCodecV4", testBatchProposerLimitsCodecV4)
-	t.Run("TestBatchCommitGasAndCalldataSizeEstimationCodecV4", testBatchCommitGasAndCalldataSizeEstimationCodecV4)
-	t.Run("TestBatchProposerBlobSizeLimitCodecV4", testBatchProposerBlobSizeLimitCodecV4)
-	t.Run("TestBatchProposerMaxChunkNumPerBatchLimitCodecV4", testBatchProposerMaxChunkNumPerBatchLimitCodecV4)
+	t.Run("TestBatchProposerLimitsCodecV7", testBatchProposerLimitsCodecV7)
+	t.Run("TestBatchProposerBlobSizeLimitCodecV7", testBatchProposerBlobSizeLimitCodecV7)
+	t.Run("TestBatchProposerMaxChunkNumPerBatchLimitCodecV7", testBatchProposerMaxChunkNumPerBatchLimitCodecV7)
 
 	// Run bundle proposer test cases.
-	t.Run("TestBundleProposerLimitsCodecV4", testBundleProposerLimitsCodecV4)
+	t.Run("TestBundleProposerLimitsCodecV7", testBundleProposerLimitsCodecV7)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {

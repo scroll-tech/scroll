@@ -10,33 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPackCommitBatch(t *testing.T) {
-	scrollChainABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	version := uint8(1)
-	var parentBatchHeader []byte
-	var chunks [][]byte
-	var skippedL1MessageBitmap []byte
-
-	_, err = scrollChainABI.Pack("commitBatch", version, parentBatchHeader, chunks, skippedL1MessageBitmap)
-	assert.NoError(t, err)
-}
-
-func TestPackCommitBatchWithBlobProof(t *testing.T) {
-	scrollChainABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	version := uint8(1)
-	var parentBatchHeader []byte
-	var chunks [][]byte
-	var skippedL1MessageBitmap []byte
-	var blobDataProof []byte
-
-	_, err = scrollChainABI.Pack("commitBatchWithBlobProof", version, parentBatchHeader, chunks, skippedL1MessageBitmap, blobDataProof)
-	assert.NoError(t, err)
-}
-
 func TestPackCommitBatches(t *testing.T) {
 	scrollChainABI, err := ScrollChainMetaData.GetAbi()
 	assert.NoError(t, err)
@@ -46,58 +19,6 @@ func TestPackCommitBatches(t *testing.T) {
 	var lastBatchHash common.Hash
 
 	_, err = scrollChainABI.Pack("commitBatches", version, parentBatchHash, lastBatchHash)
-	assert.NoError(t, err)
-}
-
-func TestPackFinalizeBatchWithProof(t *testing.T) {
-	l1RollupABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	var batchHeader []byte
-	var prevStateRoot common.Hash
-	var postStateRoot common.Hash
-	var withdrawRoot common.Hash
-	var aggrProof []byte
-
-	_, err = l1RollupABI.Pack("finalizeBatchWithProof", batchHeader, prevStateRoot, postStateRoot, withdrawRoot, aggrProof)
-	assert.NoError(t, err)
-}
-
-func TestPackFinalizeBatchWithProof4844(t *testing.T) {
-	l1RollupABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	var batchHeader []byte
-	var prevStateRoot common.Hash
-	var postStateRoot common.Hash
-	var withdrawRoot common.Hash
-	var blobDataProof []byte
-	var aggrProof []byte
-
-	_, err = l1RollupABI.Pack("finalizeBatchWithProof4844", batchHeader, prevStateRoot, postStateRoot, withdrawRoot, blobDataProof, aggrProof)
-	assert.NoError(t, err)
-}
-
-func TestPackFinalizeBundleWithProof(t *testing.T) {
-	l1RollupABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	var batchHeader []byte
-	var postStateRoot common.Hash
-	var withdrawRoot common.Hash
-	var aggrProof []byte
-
-	_, err = l1RollupABI.Pack("finalizeBundleWithProof", batchHeader, postStateRoot, withdrawRoot, aggrProof)
-	assert.NoError(t, err)
-}
-
-func TestPackFinalizeEuclidInitialBatch(t *testing.T) {
-	l1RollupABI, err := ScrollChainMetaData.GetAbi()
-	assert.NoError(t, err)
-
-	var postStateRoot common.Hash
-
-	_, err = l1RollupABI.Pack("finalizeEuclidInitialBatch", postStateRoot)
 	assert.NoError(t, err)
 }
 

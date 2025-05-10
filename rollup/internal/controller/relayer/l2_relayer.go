@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -159,14 +158,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
-		}},
-	}
+	chunk := &encoding.Chunk{Blocks: []*encoding.Block{{Header: genesis}}}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
@@ -277,12 +269,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	var batchesToSubmit []*dbBatchWithChunksAndParent
 	var forceSubmit bool
 	for i, dbBatch := range dbBatches {
-		if i == 0 && encoding.CodecVersion(dbBatch.CodecVersion) < encoding.CodecV7 {
-			// if the first batch is not >= V7 then we need to submit batches one by one
-			r.processPendingBatchesV4(dbBatches)
-			return
-		}
-
 		var dbChunks []*orm.Chunk
 		var dbParentBatch *orm.Batch
 
@@ -454,117 +440,6 @@ type dbBatchWithChunksAndParent struct {
 	ParentBatch *orm.Batch
 }
 
-func (r *Layer2Relayer) processPendingBatchesV4(dbBatches []*orm.Batch) {
-	for _, dbBatch := range dbBatches {
-		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
-
-		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
-		if err != nil {
-			log.Error("failed to get chunks in range", "err", err)
-			return
-		}
-
-		// check codec version
-		for _, dbChunk := range dbChunks {
-			if dbBatch.CodecVersion != dbChunk.CodecVersion {
-				log.Error("batch codec version is different from chunk codec version", "batch index", dbBatch.Index, "chunk index", dbChunk.Index, "batch codec version", dbBatch.CodecVersion, "chunk codec version", dbChunk.CodecVersion)
-				return
-			}
-		}
-
-		chunks := make([]*encoding.Chunk, len(dbChunks))
-		for i, c := range dbChunks {
-			blocks, getErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
-			if getErr != nil {
-				log.Error("failed to get blocks in range", "err", getErr)
-				return
-			}
-			chunks[i] = &encoding.Chunk{Blocks: blocks}
-		}
-
-		if dbBatch.Index == 0 {
-			log.Error("invalid args: batch index is 0, should only happen in committing genesis batch")
-			return
-		}
-
-		dbParentBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
-		if getErr != nil {
-			log.Error("failed to get parent batch header", "err", getErr)
-			return
-		}
-
-		if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
-			log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
-			return
-		}
-
-		var calldata []byte
-		var blob *kzg4844.Blob
-		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-		switch codecVersion {
-		case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Error("failed to construct commitBatchWithBlobProof payload for V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
-				return
-			}
-		default:
-			log.Error("unsupported codec version in processPendingBatchesV4", "codecVersion", codecVersion)
-			return
-		}
-
-		// fallbackGasLimit is non-zero only in sending non-blob transactions.
-		fallbackGasLimit := uint64(float64(dbBatch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
-		if types.RollupStatus(dbBatch.RollupStatus) == types.RollupCommitFailed {
-			// use eth_estimateGas if this batch has been committed and failed at least once.
-			fallbackGasLimit = 0
-			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", dbBatch.Hash)
-		}
-
-		txHash, err := r.commitSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, []*kzg4844.Blob{blob}, fallbackGasLimit)
-		if err != nil {
-			if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
-				r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
-				log.Debug(
-					"Skipped sending commitBatch tx to L1: too many pending blob txs",
-					"maxPending", r.cfg.SenderConfig.MaxPendingBlobTxs,
-					"err", err,
-				)
-				return
-			}
-			log.Error(
-				"Failed to send commitBatch tx to layer1",
-				"index", dbBatch.Index,
-				"hash", dbBatch.Hash,
-				"RollupContractAddress", r.cfg.RollupContractAddress,
-				"err", err,
-				"calldata", common.Bytes2Hex(calldata),
-			)
-			return
-		}
-
-		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, dbBatch.Hash, txHash.String(), types.RollupCommitting)
-		if err != nil {
-			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", dbBatch.Hash, "index", dbBatch.Index, "err", err)
-			return
-		}
-
-		var maxBlockHeight uint64
-		var totalGasUsed uint64
-		for _, dbChunk := range dbChunks {
-			if dbChunk.EndBlockNumber > maxBlockHeight {
-				maxBlockHeight = dbChunk.EndBlockNumber
-			}
-			totalGasUsed += dbChunk.TotalL2TxGas
-		}
-		r.metrics.rollupL2RelayerCommitBlockHeight.Set(float64(maxBlockHeight))
-		r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
-
-		r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Inc()
-		log.Info("Sent the commitBatch tx to layer1", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String())
-	}
-}
-
 // ProcessPendingBundles submits proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessPendingBundles() {
 	r.metrics.rollupL2RelayerProcessPendingBundlesTotal.Inc()
@@ -597,33 +472,6 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 			if types.RollupStatus(lastBatch.RollupStatus) != types.RollupFinalized {
 				log.Error("previous bundle or batch is not finalized", "batch index", lastBatch.Index, "batch hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
 				return
-			}
-
-			lastFinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, lastBatch.EndChunkIndex)
-			if err != nil {
-				log.Error("failed to get last finalized chunk", "chunk index", lastBatch.EndChunkIndex)
-				return
-			}
-
-			firstUnfinalizedBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex)
-			if err != nil {
-				log.Error("failed to get first unfinalized batch", "batch index", bundle.StartBatchIndex)
-				return
-			}
-
-			firstUnfinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstUnfinalizedBatch.StartChunkIndex)
-			if err != nil {
-				log.Error("failed to get firsr unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
-				return
-			}
-
-			if r.cfg.TestEnvBypassOnlyUntilForkBoundary {
-				lastFork := encoding.GetHardforkName(r.chainCfg, lastFinalizedChunk.StartBlockNumber, lastFinalizedChunk.StartBlockTime)
-				nextFork := encoding.GetHardforkName(r.chainCfg, firstUnfinalizedChunk.StartBlockNumber, firstUnfinalizedChunk.StartBlockTime)
-				if lastFork != nextFork {
-					log.Info("not fake finalizing past the fork boundary", "last fork", lastFork, "next fork", nextFork)
-					return
-				}
 			}
 
 			if err := r.finalizeBundle(bundle, false); err != nil {
@@ -740,11 +588,6 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
-		calldata, err = r.constructFinalizeBundlePayloadCodecV4(dbBatch, aggProof)
-		if err != nil {
-			return fmt.Errorf("failed to construct finalizeBundle payload codecv4, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
-		}
 	case encoding.CodecV7:
 		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
 		if err != nil {
@@ -950,48 +793,6 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
-	}
-
-	daBatch, createErr := codec.NewDABatch(batch)
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codec.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		encodedChunks[i], err = daChunk.Encode()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to encode DA chunk: %w", err)
-		}
-	}
-
-	blobDataProof, err := daBatch.BlobDataProofForPointEvaluation()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get blob data proof for point evaluation: %w", err)
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version(), dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap(), blobDataProof)
-	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
-	}
-	return calldata, daBatch.Blob(), nil
-}
-
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
@@ -1047,34 +848,6 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
-}
-
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
-	if aggProof != nil { // finalizeBundle with proof.
-		calldata, packErr := r.l1RollupABI.Pack(
-			"finalizeBundleWithProof",
-			dbBatch.BatchHeader,
-			common.HexToHash(dbBatch.StateRoot),
-			common.HexToHash(dbBatch.WithdrawRoot),
-			aggProof.Proof(),
-		)
-		if packErr != nil {
-			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)
-		}
-		return calldata, nil
-	}
-
-	// finalizeBundle without proof.
-	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBundle",
-		dbBatch.BatchHeader,
-		common.HexToHash(dbBatch.StateRoot),
-		common.HexToHash(dbBatch.WithdrawRoot),
-	)
-	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack finalizeBundle: %w", packErr)
-	}
-	return calldata, nil
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof message.BundleProof) ([]byte, error) {
