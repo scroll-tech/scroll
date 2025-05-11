@@ -283,7 +283,7 @@ func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 	}
 	// len(batches) == 0 probably shouldn't ever happen, but need to check this
 	// Also, we should check if it's a genesis batch. If so, skip the timeout check.
-	// If finalized/finalizing status is updated before committed status, skip the timeout check of this round.
+	// If finalizing/finalized status is updated before committed status, skip the timeout check of this round.
 	// Because batches[0].CommittedAt is nil in this case, this will only continue for a short time window.
 	return len(batches) == 0 || (batches[0].Index != 0 && batches[0].CommittedAt != nil && utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute), nil
 }
