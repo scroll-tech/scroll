@@ -1,7 +1,5 @@
 use crate::zk_circuits_handler::{
-    euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler,
-    RequestPreHandler,
-    RpcConfig,
+    euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler, RequestPreHandler, RpcConfig,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -153,7 +151,8 @@ impl LocalProver {
         handler: Arc<dyn CircuitsHandler>,
     ) -> Result<ProveResponse> {
         if self.pre_handler.is_none() {
-            self.pre_handler.replace(RequestPreHandler::create(&self.config.rpc_config)?);
+            self.pre_handler
+                .replace(RequestPreHandler::create(&self.config.rpc_config)?);
         }
 
         self.next_task_id += 1;

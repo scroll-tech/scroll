@@ -2,9 +2,10 @@ pub mod io;
 pub use io::read_witnesses;
 
 use alloy_primitives::B256;
-use types_base::public_inputs::PublicInputs;
-use types_agg::{ProofCarryingWitness, ProgramCommitment, AggregationInput, verify_proof};
 use itertools::Itertools;
+use types_agg::{AggregationInput, ProgramCommitment, ProofCarryingWitness, verify_proof};
+
+pub use types_base::public_inputs::PublicInputs;
 
 /// Reveal the public-input values as openvm public values.
 pub fn reveal_pi_hash(pi_hash: B256) {
@@ -37,7 +38,6 @@ pub trait Circuit {
         reveal_pi_hash(pi.pi_hash())
     }
 }
-
 
 /// Circuit that additional aggregates proofs from other [`Circuits`][Circuit].
 pub trait AggCircuit: Circuit

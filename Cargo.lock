@@ -7425,9 +7425,9 @@ version = "0.2.0"
 dependencies = [
  "alloy-primitives",
  "itertools 0.14.0",
- "openvm 1.0.0-rc.2",
- "openvm-custom-insn 0.1.0 (git+https://github.com/openvm-org/openvm.git?rev=3c35e9f)",
- "openvm-rv32im-guest 1.0.0-rc.2",
+ "openvm 1.1.1",
+ "openvm-custom-insn 0.1.0 (git+https://github.com/openvm-org/openvm.git?rev=a0ae88f)",
+ "openvm-rv32im-guest 1.1.1",
  "rkyv",
  "sbv-core",
  "sbv-kv",
@@ -7443,7 +7443,7 @@ version = "0.2.0"
 dependencies = [
  "alloy-primitives",
  "itertools 0.14.0",
- "openvm 1.0.0-rc.2",
+ "openvm 1.1.1",
  "rkyv",
  "scroll-zkvm-circuit-input-types-aggregation",
  "scroll-zkvm-circuit-input-types-base",

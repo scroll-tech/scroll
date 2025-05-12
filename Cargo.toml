@@ -23,9 +23,9 @@ version = "4.5.8"
 [workspace.dependencies]
 scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", package = "scroll-zkvm-prover"}
 
-openvm = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
-openvm-custom-insn = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
-openvm-rv32im-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "3c35e9f", default-features = false }
+openvm = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
+openvm-custom-insn = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
+openvm-rv32im-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 
 sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = ["scroll"] }
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "zkvm/euclid-upgrade", features = ["scroll"] }
