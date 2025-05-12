@@ -314,7 +314,7 @@ func TestBatchOrm(t *testing.T) {
 		updatedBatch, err = batchOrm.GetLatestBatch(context.Background())
 		assert.NoError(t, err)
 		assert.NotNil(t, updatedBatch)
-		assert.Equal(t, "", updatedBatch.CommitTxHash)
+		assert.Equal(t, "commitTxHash", updatedBatch.CommitTxHash)
 		assert.Equal(t, types.RollupFinalized, types.RollupStatus(updatedBatch.RollupStatus))
 
 		err = batchOrm.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchHash2, "finalizeTxHash", types.RollupFinalizeFailed)
