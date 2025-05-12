@@ -5,7 +5,8 @@ use alloy_primitives::B256;
 use itertools::Itertools;
 use types_agg::{AggregationInput, ProgramCommitment, ProofCarryingWitness, verify_proof};
 
-pub use types_base::public_inputs::PublicInputs;
+pub use types_base::{utils, public_inputs};
+use public_inputs::PublicInputs;
 
 /// Reveal the public-input values as openvm public values.
 pub fn reveal_pi_hash(pi_hash: B256) {
