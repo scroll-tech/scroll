@@ -73,7 +73,6 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk: 1,
-				MaxTxNumPerChunk:    10000,
 				MaxL2GasPerChunk:    20000000,
 				ChunkTimeoutSec:     300,
 			}, encoding.CodecV7, &params.ChainConfig{
@@ -154,7 +153,6 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk: math.MaxUint64,
-		MaxTxNumPerChunk:    math.MaxUint64,
 		MaxL2GasPerChunk:    math.MaxUint64,
 		ChunkTimeoutSec:     0,
 	}, encoding.CodecV7, chainConfig, db, nil)
@@ -226,7 +224,6 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk: math.MaxUint64,
-		MaxTxNumPerChunk:    math.MaxUint64,
 		MaxL2GasPerChunk:    math.MaxUint64,
 		ChunkTimeoutSec:     0,
 	}, encoding.CodecV7, chainConfig, db, nil)

@@ -3,7 +3,6 @@
       "endpoint": "https://rpc.scroll.io",
       "chunk_proposer_config": {
         "max_block_num_per_chunk": 100,
-        "max_tx_num_per_chunk": 100,
         "max_l2_gas_per_chunk": 20000000,
         "chunk_timeout_sec": 72000000000,
         "gas_cost_increase_multiplier": 1.2

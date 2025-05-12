@@ -119,7 +119,6 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk: 100,
-		MaxTxNumPerChunk:    10000,
 		MaxL2GasPerChunk:    math.MaxUint64,
 		ChunkTimeoutSec:     300,
 	}, encoding.CodecV7, chainConfig, db, nil)

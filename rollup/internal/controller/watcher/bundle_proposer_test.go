@@ -94,7 +94,6 @@ func testBundleProposerLimitsCodecV7(t *testing.T) {
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk: 1,
-				MaxTxNumPerChunk:    math.MaxUint64,
 				MaxL2GasPerChunk:    math.MaxUint64,
 				ChunkTimeoutSec:     math.MaxUint32,
 			}, encoding.CodecV7, chainConfig, db, nil)

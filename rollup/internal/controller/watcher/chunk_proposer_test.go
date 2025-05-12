@@ -22,7 +22,6 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 	tests := []struct {
 		name                       string
 		maxBlockNum                uint64
-		maxTxNum                   uint64
 		maxL2Gas                   uint64
 		chunkTimeoutSec            uint64
 		expectedChunksLen          int
@@ -31,7 +30,6 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 		{
 			name:              "NoLimitReached",
 			maxBlockNum:       100,
-			maxTxNum:          10000,
 			maxL2Gas:          20_000_000,
 			chunkTimeoutSec:   1000000000000,
 			expectedChunksLen: 0,
@@ -39,24 +37,14 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 		{
 			name:                       "Timeout",
 			maxBlockNum:                100,
-			maxTxNum:                   10000,
 			maxL2Gas:                   20_000_000,
 			chunkTimeoutSec:            0,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 2,
 		},
 		{
-			name:              "MaxTxNumPerChunkIs0",
-			maxBlockNum:       10,
-			maxTxNum:          0,
-			maxL2Gas:          20_000_000,
-			chunkTimeoutSec:   1000000000000,
-			expectedChunksLen: 0,
-		},
-		{
 			name:              "MaxL2GasPerChunkIs0",
 			maxBlockNum:       10,
-			maxTxNum:          10,
 			maxL2Gas:          0,
 			chunkTimeoutSec:   1000000000000,
 			expectedChunksLen: 0,
@@ -64,16 +52,6 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 		{
 			name:                       "MaxBlockNumPerChunkIs1",
 			maxBlockNum:                1,
-			maxTxNum:                   10000,
-			maxL2Gas:                   20_000_000,
-			chunkTimeoutSec:            1000000000000,
-			expectedChunksLen:          1,
-			expectedBlocksInFirstChunk: 1,
-		},
-		{
-			name:                       "MaxTxNumPerChunkIsFirstBlock",
-			maxBlockNum:                10,
-			maxTxNum:                   2,
 			maxL2Gas:                   20_000_000,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -84,7 +62,6 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			// with the first block it exceeds the maxL2GasPerChunk limit.
 			name:                       "MaxL2GasPerChunkIsSecondBlock",
 			maxBlockNum:                10,
-			maxTxNum:                   10000,
 			maxL2Gas:                   1_153_000,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -108,7 +85,6 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk: tt.maxBlockNum,
-				MaxTxNumPerChunk:    tt.maxTxNum,
 				MaxL2GasPerChunk:    tt.maxL2Gas,
 				ChunkTimeoutSec:     tt.chunkTimeoutSec,
 			}, encoding.CodecV7, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}, db, nil)
@@ -153,7 +129,6 @@ func testChunkProposerBlobSizeLimitCodecV7(t *testing.T) {
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk: 255,
-		MaxTxNumPerChunk:    math.MaxUint64,
 		MaxL2GasPerChunk:    math.MaxUint64,
 		ChunkTimeoutSec:     math.MaxUint32,
 	}, encoding.CodecV7, chainConfig, db, nil)

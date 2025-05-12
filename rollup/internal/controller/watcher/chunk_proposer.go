@@ -27,7 +27,6 @@ type ChunkProposer struct {
 	l2BlockOrm *orm.L2Block
 
 	maxBlockNumPerChunk uint64
-	maxTxNumPerChunk    uint64
 	maxL2GasPerChunk    uint64
 	chunkTimeoutSec     uint64
 
@@ -39,7 +38,6 @@ type ChunkProposer struct {
 	proposeChunkFailureTotal           prometheus.Counter
 	proposeChunkUpdateInfoTotal        prometheus.Counter
 	proposeChunkUpdateInfoFailureTotal prometheus.Counter
-	chunkTxNum                         prometheus.Gauge
 	chunkL2Gas                         prometheus.Gauge
 	totalL1CommitBlobSize              prometheus.Gauge
 	chunkBlocksNum                     prometheus.Gauge
@@ -55,7 +53,6 @@ type ChunkProposer struct {
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Info("new chunk proposer",
 		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
-		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL2GasPerChunk", cfg.MaxL2GasPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"maxBlobSize", maxBlobSize)
@@ -66,7 +63,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		chunkOrm:            orm.NewChunk(db),
 		l2BlockOrm:          orm.NewL2Block(db),
 		maxBlockNumPerChunk: cfg.MaxBlockNumPerChunk,
-		maxTxNumPerChunk:    cfg.MaxTxNumPerChunk,
 		maxL2GasPerChunk:    cfg.MaxL2GasPerChunk,
 		chunkTimeoutSec:     cfg.ChunkTimeoutSec,
 		replayMode:          false,
@@ -88,10 +84,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		proposeChunkUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
-		}),
-		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "rollup_propose_chunk_tx_num",
-			Help: "The chunk tx num",
 		}),
 		chunkL2Gas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_l2_gas",
@@ -250,18 +242,13 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.recordTimerChunkMetrics(metrics)
 
-		if metrics.TxNum > p.maxTxNumPerChunk ||
-			metrics.L2Gas > p.maxL2GasPerChunk ||
-			metrics.L1CommitBlobSize > maxBlobSize {
+		if metrics.L2Gas > p.maxL2GasPerChunk || metrics.L1CommitBlobSize > maxBlobSize {
 			if i == 0 {
 				// The first block exceeds hard limits, which indicates a bug in the sequencer, manual fix is needed.
-				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxTxNum: %v, maxBlobSize: %v",
-					block.Header.Number, metrics, p.maxTxNumPerChunk, maxBlobSize)
+				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxBlobSize: %v", block.Header.Number, metrics, maxBlobSize)
 			}
 
 			log.Debug("breaking limit condition in chunking",
-				"txNum", metrics.TxNum,
-				"maxTxNum", p.maxTxNumPerChunk,
 				"l2Gas", metrics.L2Gas,
 				"maxL2Gas", p.maxL2GasPerChunk,
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
@@ -305,7 +292,6 @@ func (p *ChunkProposer) proposeChunk() error {
 }
 
 func (p *ChunkProposer) recordAllChunkMetrics(metrics *utils.ChunkMetrics) {
-	p.chunkTxNum.Set(float64(metrics.TxNum))
 	p.chunkBlocksNum.Set(float64(metrics.NumBlocks))
 	p.chunkL2Gas.Set(float64(metrics.L2Gas))
 	p.totalL1CommitBlobSize.Set(float64(metrics.L1CommitBlobSize))

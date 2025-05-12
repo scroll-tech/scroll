@@ -55,7 +55,7 @@ type Chunk struct {
 
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`                             // deprecated
 	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"` // deprecated
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`                     // deprecated
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
@@ -298,7 +298,6 @@ func (o *Chunk) InsertTestChunkForProposerTool(ctx context.Context, chunk *encod
 		EndBlockNumber:              lastBlock.Header.Number.Uint64(),
 		EndBlockHash:                lastBlock.Header.Hash().Hex(),
 		TotalL2TxGas:                chunk.TotalGasUsed(),
-		TotalL2TxNum:                chunk.NumL2Transactions(),
 		StartBlockTime:              firstBlock.Header.Time,
 		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
 		StateRoot:                   lastBlock.Header.Root.Hex(),
