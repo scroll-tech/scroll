@@ -251,7 +251,11 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 		return true
 	}
 
-	expectedBaseFeeDelta := r.lastBaseFee*r.gasPriceDiff/gasPriceDiffPrecision + 1
+	expectedBaseFeeDelta := r.lastBaseFee * r.gasPriceDiff / gasPriceDiffPrecision
+	// Allowing a minimum of 0 wei if the gas price diff config is 0, this will be used to let the gas oracle send transactions continuously.
+	if r.gasPriceDiff > 0 {
+		expectedBaseFeeDelta += 1
+	}
 	if baseFee >= r.minGasPrice && math.Abs(float64(baseFee)-float64(r.lastBaseFee)) >= float64(expectedBaseFeeDelta) {
 		return true
 	}
@@ -279,5 +283,7 @@ func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 	}
 	// len(batches) == 0 probably shouldn't ever happen, but need to check this
 	// Also, we should check if it's a genesis batch. If so, skip the timeout check.
-	return len(batches) == 0 || (batches[0].Index != 0 && utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute), nil
+	// If finalizing/finalized status is updated before committed status, skip the timeout check of this round.
+	// Because batches[0].CommittedAt is nil in this case, this will only continue for a short time window.
+	return len(batches) == 0 || (batches[0].Index != 0 && batches[0].CommittedAt != nil && utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute), nil
 }
