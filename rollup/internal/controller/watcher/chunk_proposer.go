@@ -44,6 +44,9 @@ type ChunkProposer struct {
 	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
 	chunkEstimateBlobSizeTime          prometheus.Gauge
 
+	// total number of times that chunk proposer stops early due to compressed data compatibility breach
+	compressedDataCompatibilityBreachTotal prometheus.Counter
+
 	chunkProposeBlockHeight prometheus.Gauge
 	chunkProposeThroughput  prometheus.Counter
 }
@@ -81,6 +84,10 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		proposeChunkUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
+		}),
+		compressedDataCompatibilityBreachTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_propose_chunk_due_to_compressed_data_compatibility_breach_total",
+			Help: "Total number of propose chunk due to compressed data compatibility breach.",
 		}),
 		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_tx_num",
@@ -145,6 +152,45 @@ func (p *ChunkProposer) TryProposeChunk() {
 func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics *utils.ChunkMetrics) error {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil
+	}
+
+	compatibilityBreachOccurred := false
+
+	for {
+		compatible, err := encoding.CheckChunkCompressedDataCompatibility(chunk, codecVersion)
+		if err != nil {
+			log.Error("Failed to check chunk compressed data compatibility", "start block number", chunk.Blocks[0].Header.Number, "codecVersion", codecVersion, "err", err)
+			return err
+		}
+
+		if compatible {
+			break
+		}
+
+		compatibilityBreachOccurred = true
+
+		if len(chunk.Blocks) == 1 {
+			log.Warn("Disable compression: cannot truncate chunk with only 1 block for compatibility", "block number", chunk.Blocks[0].Header.Number)
+			break
+		}
+
+		chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+
+		log.Info("Chunk not compatible with compressed data, removing last block", "start block number", chunk.Blocks[0].Header.Number, "truncated block length", len(chunk.Blocks))
+	}
+
+	if compatibilityBreachOccurred {
+		p.compressedDataCompatibilityBreachTotal.Inc()
+
+		// recalculate chunk metrics after truncation
+		var calcErr error
+		metrics, calcErr = utils.CalculateChunkMetrics(chunk, codecVersion)
+		if calcErr != nil {
+			return fmt.Errorf("failed to calculate chunk metrics, start block number: %v, error: %w", chunk.Blocks[0].Header.Number, calcErr)
+		}
+
+		p.recordTimerChunkMetrics(metrics)
+		p.recordAllChunkMetrics(metrics)
 	}
 
 	p.chunkProposeBlockHeight.Set(float64(chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()))
