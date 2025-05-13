@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uex
 
-OPENVM_GPU_COMMIT=dfa10b4
+OPENVM_GPU_COMMIT=ce88ec8
 
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 
