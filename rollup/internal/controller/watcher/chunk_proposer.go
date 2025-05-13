@@ -26,9 +26,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxBlockNumPerChunk uint64
-	maxL2GasPerChunk    uint64
-	chunkTimeoutSec     uint64
+	cfg *config.ChunkProposerConfig
 
 	replayMode      bool
 	minCodecVersion encoding.CodecVersion
@@ -59,16 +57,14 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		"maxBlobSize", maxBlobSize)
 
 	p := &ChunkProposer{
-		ctx:                 ctx,
-		db:                  db,
-		chunkOrm:            orm.NewChunk(db),
-		l2BlockOrm:          orm.NewL2Block(db),
-		maxBlockNumPerChunk: cfg.MaxBlockNumPerChunk,
-		maxL2GasPerChunk:    cfg.MaxL2GasPerChunk,
-		chunkTimeoutSec:     cfg.ChunkTimeoutSec,
-		replayMode:          false,
-		minCodecVersion:     minCodecVersion,
-		chainCfg:            chainCfg,
+		ctx:             ctx,
+		db:              db,
+		chunkOrm:        orm.NewChunk(db),
+		l2BlockOrm:      orm.NewL2Block(db),
+		cfg:             cfg,
+		replayMode:      false,
+		minCodecVersion: minCodecVersion,
+		chainCfg:        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_circle_total",
@@ -185,7 +181,7 @@ func (p *ChunkProposer) proposeChunk() error {
 		return err
 	}
 
-	maxBlocksThisChunk := p.maxBlockNumPerChunk
+	maxBlocksThisChunk := p.cfg.MaxBlockNumPerChunk
 
 	// select at most maxBlocksThisChunk blocks
 	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
@@ -248,7 +244,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.recordTimerChunkMetrics(metrics)
 
-		if metrics.L2Gas > p.maxL2GasPerChunk || metrics.L1CommitBlobSize > maxBlobSize {
+		if metrics.L2Gas > p.cfg.MaxL2GasPerChunk || metrics.L1CommitBlobSize > maxBlobSize {
 			if i == 0 {
 				// The first block exceeds hard limits, which indicates a bug in the sequencer, manual fix is needed.
 				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxBlobSize: %v", block.Header.Number, metrics, maxBlobSize)
@@ -256,7 +252,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 			log.Debug("breaking limit condition in chunking",
 				"l2Gas", metrics.L2Gas,
-				"maxL2Gas", p.maxL2GasPerChunk,
+				"maxL2Gas", p.cfg.MaxL2GasPerChunk,
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
 				"maxBlobSize", maxBlobSize)
 
@@ -279,7 +275,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if metrics.FirstBlockTimestamp+p.chunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
+	if metrics.FirstBlockTimestamp+p.cfg.ChunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
 		log.Info("reached maximum number of blocks in chunk or first block timeout",
 			"block count", len(chunk.Blocks),
 			"start block number", chunk.Blocks[0].Header.Number,

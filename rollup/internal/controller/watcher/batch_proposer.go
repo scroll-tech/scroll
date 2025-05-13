@@ -29,8 +29,7 @@ type BatchProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	batchTimeoutSec   uint64
-	maxChunksPerBatch int
+	cfg *config.BatchProposerConfig
 
 	replayMode      bool
 	minCodecVersion encoding.CodecVersion
@@ -55,21 +54,18 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	log.Info("new batch proposer",
-		"batchTimeoutSec", cfg.BatchTimeoutSec,
-		"maxBlobSize", maxBlobSize)
+	log.Info("new batch proposer", "batchTimeoutSec", cfg.BatchTimeoutSec, "maxBlobSize", maxBlobSize)
 
 	p := &BatchProposer{
-		ctx:               ctx,
-		db:                db,
-		batchOrm:          orm.NewBatch(db),
-		chunkOrm:          orm.NewChunk(db),
-		l2BlockOrm:        orm.NewL2Block(db),
-		batchTimeoutSec:   cfg.BatchTimeoutSec,
-		maxChunksPerBatch: cfg.MaxChunksPerBatch,
-		replayMode:        false,
-		minCodecVersion:   minCodecVersion,
-		chainCfg:          chainCfg,
+		ctx:             ctx,
+		db:              db,
+		batchOrm:        orm.NewBatch(db),
+		chunkOrm:        orm.NewChunk(db),
+		l2BlockOrm:      orm.NewL2Block(db),
+		cfg:             cfg,
+		replayMode:      false,
+		minCodecVersion: minCodecVersion,
+		chainCfg:        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_circle_total",
@@ -245,7 +241,7 @@ func (p *BatchProposer) proposeBatch() error {
 	}
 
 	// always take the minimum of the configured max chunks per batch and the codec's max chunks per batch
-	maxChunksThisBatch := min(codec.MaxNumChunksPerBatch(), p.maxChunksPerBatch)
+	maxChunksThisBatch := min(codec.MaxNumChunksPerBatch(), p.cfg.MaxChunksPerBatch)
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, maxChunksThisBatch)
@@ -328,7 +324,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
 	currentTimeSec := uint64(time.Now().Unix())
-	if metrics.FirstBlockTimestamp+p.batchTimeoutSec < currentTimeSec || metrics.NumChunks == uint64(maxChunksThisBatch) {
+	if metrics.FirstBlockTimestamp+p.cfg.BatchTimeoutSec < currentTimeSec || metrics.NumChunks == uint64(maxChunksThisBatch) {
 		log.Info("reached maximum number of chunks in batch or first block timeout",
 			"chunk count", metrics.NumChunks,
 			"start block number", dbChunks[0].StartBlockNumber,
