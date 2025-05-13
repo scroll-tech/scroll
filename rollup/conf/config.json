@@ -94,14 +94,11 @@
       "propose_interval_milliseconds": 100,
       "max_block_num_per_chunk": 100,
       "max_l2_gas_per_chunk": 20000000,
-      "chunk_timeout_sec": 300,
-      "gas_cost_increase_multiplier": 1.2
+      "chunk_timeout_sec": 300
     },
     "batch_proposer_config": {
       "propose_interval_milliseconds": 1000,
-      "max_l1_commit_gas_per_batch": 11234567,
       "batch_timeout_sec": 300,
-      "gas_cost_increase_multiplier": 1.2,
       "max_chunks_per_batch": 45
     },
     "bundle_proposer_config": {
