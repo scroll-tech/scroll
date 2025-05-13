@@ -38,6 +38,7 @@ type ChunkProposer struct {
 	proposeChunkFailureTotal           prometheus.Counter
 	proposeChunkUpdateInfoTotal        prometheus.Counter
 	proposeChunkUpdateInfoFailureTotal prometheus.Counter
+	chunkTxNum                         prometheus.Gauge
 	chunkL2Gas                         prometheus.Gauge
 	totalL1CommitBlobSize              prometheus.Gauge
 	chunkBlocksNum                     prometheus.Gauge
@@ -85,6 +86,10 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 			Name: "rollup_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
 		}),
+		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_chunk_tx_num",
+			Help: "The chunk tx num",
+		}),
 		chunkL2Gas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_l2_gas",
 			Help: "The chunk l2 gas",
@@ -93,6 +98,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 			Name: "rollup_propose_chunk_total_l1_commit_blob_size",
 			Help: "The total l1 commit blob size",
 		}),
+
 		chunkBlocksNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_chunk_block_number",
 			Help: "The number of blocks in the chunk",
@@ -292,6 +298,7 @@ func (p *ChunkProposer) proposeChunk() error {
 }
 
 func (p *ChunkProposer) recordAllChunkMetrics(metrics *utils.ChunkMetrics) {
+	p.chunkTxNum.Set(float64(metrics.TxNum))
 	p.chunkBlocksNum.Set(float64(metrics.NumBlocks))
 	p.chunkL2Gas.Set(float64(metrics.L2Gas))
 	p.totalL1CommitBlobSize.Set(float64(metrics.L1CommitBlobSize))

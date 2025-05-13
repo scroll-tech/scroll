@@ -11,6 +11,7 @@ import (
 // ChunkMetrics indicates the metrics for proposing a chunk.
 type ChunkMetrics struct {
 	NumBlocks           uint64
+	TxNum               uint64
 	L2Gas               uint64
 	FirstBlockTimestamp uint64
 
@@ -23,6 +24,7 @@ type ChunkMetrics struct {
 // CalculateChunkMetrics calculates chunk metrics.
 func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) (*ChunkMetrics, error) {
 	metrics := &ChunkMetrics{
+		TxNum:               chunk.NumTransactions(),
 		NumBlocks:           uint64(len(chunk.Blocks)),
 		FirstBlockTimestamp: chunk.Blocks[0].Header.Time,
 	}

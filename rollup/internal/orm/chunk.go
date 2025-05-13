@@ -298,6 +298,7 @@ func (o *Chunk) InsertTestChunkForProposerTool(ctx context.Context, chunk *encod
 		EndBlockNumber:              lastBlock.Header.Number.Uint64(),
 		EndBlockHash:                lastBlock.Header.Hash().Hex(),
 		TotalL2TxGas:                chunk.TotalGasUsed(),
+		TotalL2TxNum:                chunk.NumL2Transactions(),
 		StartBlockTime:              firstBlock.Header.Time,
 		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
 		StateRoot:                   lastBlock.Header.Root.Hex(),
