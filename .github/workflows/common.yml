@@ -42,10 +42,13 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "common/libzkp/impl -> target"
-    - name: Setup SSH for private repos
+    - name: Setup SSH for private repositories
       uses: webfactory/ssh-agent@v0.9.0
       with:
-        ssh-private-key: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
+        ssh-private-key: |
+          ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
+          ${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}
+          ${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}
     - name: Lint
       working-directory: 'common'
       run: |
