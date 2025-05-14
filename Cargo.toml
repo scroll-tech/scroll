@@ -34,6 +34,8 @@ sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", b
 
 alloy = { version = "0.11", default-features = false }
 alloy-primitives = { version = "0.8", default-features = false }
+# also use this to trigger "serde" feature for primitives
+alloy-serde = { version = "0.8", default-features = false }
 
 rkyv = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }

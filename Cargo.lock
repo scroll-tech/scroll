@@ -7385,6 +7385,7 @@ name = "scroll-zkvm-circuit-input-types-base"
 version = "0.2.0"
 dependencies = [
  "alloy-primitives",
+ "alloy-serde 0.8.3",
  "itertools 0.14.0",
  "rkyv",
  "serde",
