@@ -5962,7 +5962,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=patch%2F0508-gpu#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.4.1#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 0.8.3",
@@ -5985,7 +5985,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=patch%2F0508-gpu#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.4.1#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -6021,7 +6021,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover.git?branch=patch%2F0508-gpu#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.4.1#50dd20606cc051d2207804f7cccd8b8c39b3b42b"
 dependencies = [
  "bincode",
  "eyre",
