@@ -312,27 +312,18 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          cat > ~/.ssh/id_rsa_1 << 'EOL'
-          ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
-          EOL
+          (
+            echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}"
+            echo ""
+            echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}"
+            echo ""
+            echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}"
+          ) > ~/.ssh/all_keys
 
-          cat > ~/.ssh/id_rsa_2 << 'EOL'
-          ${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}
-          EOL
-
-          cat > ~/.ssh/id_rsa_3 << 'EOL'
-          ${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}
-          EOL
-
-          chmod 600 ~/.ssh/id_rsa_*
-
+          chmod 600 ~/.ssh/all_keys
           eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/id_rsa_1 2>/dev/null
-          ssh-add ~/.ssh/id_rsa_2 2>/dev/null
-          ssh-add ~/.ssh/id_rsa_3 2>/dev/null
-
+          ssh-add ~/.ssh/all_keys 2>/dev/null
           ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
-
           echo "Number of loaded keys: $(ssh-add -l | wc -l)"
       - name: Run custom script
         run: |
