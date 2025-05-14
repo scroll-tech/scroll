@@ -334,12 +334,6 @@ jobs:
           ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
 
           echo "Number of loaded keys: $(ssh-add -l | wc -l)"
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ steps.setup-keys.outputs.keys }}
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }} # just for syntax correctness
       - name: Run custom script
         run: |
           ./build/dockerfiles/coordinator-api/init-openvm.sh
