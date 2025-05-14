@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -46,6 +47,7 @@ type Layer2Relayer struct {
 	batchOrm   *orm.Batch
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
+	l1BlockOrm *orm.L1Block
 
 	cfg *config.RelayerConfig
 
@@ -61,6 +63,22 @@ type Layer2Relayer struct {
 	metrics *l2RelayerMetrics
 
 	chainCfg *params.ChainConfig
+}
+
+// StrategyParams holds the per‐window fee‐submission rules.
+type StrategyParams struct {
+	BaselineType  string  // "pct_min" or "ewma"
+	BaselineParam float64 // percentile (0–1) or α for EWMA
+	Gamma         float64 // relaxation γ
+	Beta          float64 // relaxation β
+	RelaxType     string  // "exponential" or "sigmoid"
+}
+
+// bestParams maps your 2h/5h/12h windows to their best rules.
+var bestParams = map[uint64]StrategyParams{
+	2 * 3600:  {BaselineType: "pct_min", BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: "exponential"},
+	5 * 3600:  {BaselineType: "pct_min", BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: "sigmoid"},
+	12 * 3600: {BaselineType: "pct_min", BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: "sigmoid"},
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -106,6 +124,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		bundleOrm:  orm.NewBundle(db),
 		batchOrm:   orm.NewBatch(db),
+		l1BlockOrm: orm.NewL1Block(db),
 		l2BlockOrm: orm.NewL2Block(db),
 		chunkOrm:   orm.NewChunk(db),
 
@@ -268,10 +287,57 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
+	allBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, 0)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
+	}
+
+	// if backlog outgrow max size, force‐submit enough oldest batches
+	backlogCount := len(allBatches)
+	backlogMax := 75 //r.cfg.BatchSubmission.BacklogMax
+
+	if len(allBatches) < r.cfg.BatchSubmission.MinBatches || len(allBatches) == 0 {
+		log.Debug("Not enough pending batches to submit", "count", len(allBatches), "minBatches", r.cfg.BatchSubmission.MinBatches, "maxBatches", r.cfg.BatchSubmission.MaxBatches)
+		return
+	}
+
+	// return if not hitting target price
+	if backlogCount <= backlogMax {
+		windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
+		strat, ok := bestParams[windowSec]
+		if !ok {
+			log.Warn("unknown timeoutSec in bestParams, falling back to immediate submit",
+				"windowSec", windowSec)
+		} else {
+			// pull the blob‐fee history
+			hist, err := r.fetchBlobFeeHistory(windowSec)
+			if err != nil || len(hist) == 0 {
+				log.Warn("blob-fee history unavailable or empty; fallback to immediate batch submission",
+					"err", err, "history_length", len(hist))
+				// Proceed immediately with batch submission without further checks
+			} else {
+				// compute the target
+				oldest := allBatches[0].CreatedAt
+				target := calculateTargetPrice(windowSec, strat, oldest, hist)
+
+				// current = most recent sample
+				current := hist[len(hist)-1]
+
+				// deadline
+				deadline := time.Duration(windowSec) * time.Second
+				if current.Cmp(target) > 0 && time.Since(oldest) < deadline {
+					log.Debug("blob‐fee above target & window not yet passed; skipping submit",
+						"current", current, "target", target, "age", time.Since(oldest))
+					return
+				}
+			}
+		}
+	}
+
+	dbBatches := allBatches
+	if len(allBatches) > r.cfg.BatchSubmission.MaxBatches {
+		dbBatches = allBatches[:r.cfg.BatchSubmission.MaxBatches]
 	}
 
 	var batchesToSubmit []*dbBatchWithChunksAndParent
@@ -1118,6 +1184,85 @@ func (r *Layer2Relayer) StopSenders() {
 	if r.finalizeSender != nil {
 		r.finalizeSender.Stop()
 	}
+}
+
+// fetchBlobFeeHistory returns the last WindowSec seconds of blob‐fee samples,
+// by reading L1Block table’s BlobBaseFee column.
+func (r *Layer2Relayer) fetchBlobFeeHistory(windowSec uint64) ([]*big.Int, error) {
+	// how many blocks ago? ~12s per block
+	blocksAgo := windowSec / 12
+	latest, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatestL1BlockHeight: %w", err)
+	}
+	start := int64(latest) - int64(blocksAgo)
+	if start < 0 {
+		start = 0
+	}
+
+	// pull all L1Blocks in [start .. latest]
+	filters := map[string]interface{}{
+		"number >= ?": start,
+		"number <= ?": latest,
+	}
+	recs, err := r.l1BlockOrm.GetL1Blocks(r.ctx, filters)
+	if err != nil {
+		return nil, fmt.Errorf("GetL1Blocks: %w", err)
+	}
+	hist := make([]*big.Int, len(recs))
+	for i, b := range recs {
+		hist[i] = new(big.Int).SetUint64(b.BlobBaseFee)
+	}
+	return hist, nil
+}
+
+// calculateTargetPrice applies pct_min/ewma + relaxation to get a BigInt target
+func calculateTargetPrice(windowSec uint64, strat StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
+	n := len(history)
+	if n == 0 {
+		return big.NewInt(0)
+	}
+	// convert to float64 Gwei
+	data := make([]float64, n)
+	for i, v := range history {
+		f, _ := new(big.Float).Quo(new(big.Float).SetInt(v), big.NewFloat(1e9)).Float64()
+		data[i] = f
+	}
+	var baseline float64
+	switch strat.BaselineType {
+	case "pct_min":
+		sort.Float64s(data)
+		idx := int(strat.BaselineParam * float64(n-1))
+		if idx < 0 {
+			idx = 0
+		}
+		baseline = data[idx]
+	case "ewma":
+		alpha := strat.BaselineParam
+		ewma := data[0]
+		for i := 1; i < n; i++ {
+			ewma = alpha*data[i] + (1-alpha)*ewma
+		}
+		baseline = ewma
+	default:
+		baseline = data[n-1]
+	}
+	// relaxation
+	age := time.Since(firstTime).Seconds()
+	frac := age / float64(windowSec)
+	var adjusted float64
+	switch strat.RelaxType {
+	case "exponential":
+		adjusted = baseline * (1 + strat.Gamma*math.Exp(strat.Beta*(frac-1)))
+	case "sigmoid":
+		adjusted = baseline * (1 + strat.Gamma/(1+math.Exp(-strat.Beta*(frac-0.5))))
+	default:
+		adjusted = baseline
+	}
+	// back to wei
+	f := new(big.Float).Mul(big.NewFloat(adjusted), big.NewFloat(1e9))
+	out, _ := f.Int(nil)
+	return out
 }
 
 func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {

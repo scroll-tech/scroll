@@ -54,7 +54,7 @@
       "batch_submission": {
         "min_batches": 1,
         "max_batches": 6,
-        "timeout": 300
+        "timeout": 7200
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
