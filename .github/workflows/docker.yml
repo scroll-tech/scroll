@@ -307,13 +307,19 @@ jobs:
           REPOSITORY: coordinator-api
         run: |
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
-      - name: Setup SSH for private repositories
+      - name: Combine all deploy keys
+        run: |
+          echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" > key1
+          echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" > key2
+          echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}" > key3
+          cat key1 key2 key3 > all_keys
+          chmod 600 all_keys
+      - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: |
-            ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
-            ${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}
-            ${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ steps.setup-keys.outputs.keys }}
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }} # just for syntax correctness
       - name: Run custom script
         run: |
           ./build/dockerfiles/coordinator-api/init-openvm.sh
