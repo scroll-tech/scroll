@@ -7438,20 +7438,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scroll-zkvm-circuit-input-types-circuit"
-version = "0.2.0"
-dependencies = [
- "alloy-primitives",
- "itertools 0.14.0",
- "openvm 1.1.1",
- "rkyv",
- "scroll-zkvm-circuit-input-types-aggregation",
- "scroll-zkvm-circuit-input-types-base",
- "serde",
- "tiny-keccak",
-]
-
-[[package]]
 name = "scroll-zkvm-prover"
 version = "0.2.0"
 source = "git+https://github.com/scroll-tech/zkvm-prover#f51194ce7198c057bbd8e921a2e9771fe628443c"
@@ -8340,7 +8326,6 @@ source = "git+https://github.com/scroll-tech/tiny-keccak?branch=scroll-patch-v2.
 dependencies = [
  "cfg-if",
  "crunchy",
- "openvm-platform 1.0.0-rc.2",
 ]
 
 [[package]]

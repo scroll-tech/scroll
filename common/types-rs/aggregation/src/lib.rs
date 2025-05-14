@@ -71,37 +71,7 @@ impl From<&ArchivedProgramCommitment> for ProgramCommitment {
 /// Number of public-input values, i.e. [u32; N].
 ///
 /// Note that the actual value for each u32 is a byte.
-const NUM_PUBLIC_VALUES: usize = 32;
-
-/// Verify a root proof. The real "proof" will be loaded from StdIn.
-pub fn verify_proof(commitment: &ProgramCommitment, public_inputs: &[u32]) {
-    // Sanity check for the number of public-input values.
-    assert_eq!(public_inputs.len(), NUM_PUBLIC_VALUES);
-
-    // Extend the public-input values by prepending the commitments to the root verifier's exe and
-    // leaf.
-    let mut extended_public_inputs = vec![];
-    extended_public_inputs.extend(commitment.exe);
-    extended_public_inputs.extend(commitment.leaf);
-    extended_public_inputs.extend_from_slice(public_inputs);
-    // Pass through kernel and verify against root verifier's ASM.
-    exec_kernel(extended_public_inputs.as_ptr());
-}
-
-fn exec_kernel(_pi_ptr: *const u32) {
-    // reserve x29, x30, x31 for kernel
-    let mut _buf1: u32 = 0;
-    let mut _buf2: u32 = 0;
-    #[cfg(all(target_os = "zkvm", target_arch = "riscv32"))]
-    unsafe {
-        std::arch::asm!(
-            include_str!("../../../build-guest/root_verifier.asm"),
-            in("x29") _pi_ptr,
-            inout("x30") _buf1,
-            inout("x31") _buf2,
-        )
-    }
-}
+pub const NUM_PUBLIC_VALUES: usize = 32;
 
 /// Witness for an [`AggregationCircuit`][AggCircuit] that also carries proofs that are being
 /// aggregated.

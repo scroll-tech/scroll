@@ -2,7 +2,6 @@
 members = [
   "common/types-rs",
   "common/types-rs/base",
-  "common/types-rs/circuit",
   "common/types-rs/aggregation",
   "common/types-rs/chunk",
   "common/types-rs/batch",
