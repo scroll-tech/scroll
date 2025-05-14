@@ -42,19 +42,33 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "common/libzkp/impl -> target"
-    - name: Combine all deploy keys
+    - name: Setup SSH for private repositories
       run: |
-        echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" > key1
-        echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" > key2
-        echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}" > key3
-        cat key1 key2 key3 > all_keys
-        chmod 600 all_keys
-    - name: Setup SSH Agent
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ steps.setup-keys.outputs.keys }}
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }} # just for syntax correctness
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+
+        cat > ~/.ssh/id_rsa_1 << 'EOL'
+        ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
+        EOL
+
+        cat > ~/.ssh/id_rsa_2 << 'EOL'
+        ${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}
+        EOL
+
+        cat > ~/.ssh/id_rsa_3 << 'EOL'
+        ${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}
+        EOL
+
+        chmod 600 ~/.ssh/id_rsa_*
+
+        eval "$(ssh-agent -s)" > /dev/null
+        ssh-add ~/.ssh/id_rsa_1 2>/dev/null
+        ssh-add ~/.ssh/id_rsa_2 2>/dev/null
+        ssh-add ~/.ssh/id_rsa_3 2>/dev/null
+
+        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+        echo "Number of loaded keys: $(ssh-add -l | wc -l)"
     - name: Lint
       working-directory: 'common'
       run: |
