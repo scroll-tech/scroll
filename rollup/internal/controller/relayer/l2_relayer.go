@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"math"
 	"math/big"
 	"sort"
@@ -32,6 +33,30 @@ import (
 	"scroll-tech/rollup/internal/controller/sender"
 	"scroll-tech/rollup/internal/orm"
 	rutils "scroll-tech/rollup/internal/utils"
+)
+
+// RelaxType enumerates the relaxation functions we support when
+// turning a baseline fee into a “target” fee.
+type RelaxType int
+
+const (
+	// NoRelaxation means “don’t touch the baseline” (i.e. fallback/default).
+	NoRelaxation RelaxType = iota
+	Exponential
+	Sigmoid
+)
+
+// BaselineType enumerates the baseline types we support when
+// turning a baseline fee into a “target” fee.
+type BaselineType int
+
+const (
+	// PctMin means “take the minimum of the last N blocks’ fees, then
+	// take the PCT of that”.
+	PctMin BaselineType = iota
+	// EWMA means “take the exponentially‐weighted moving average of
+	// the last N blocks’ fees”.
+	EWMA
 )
 
 // Layer2Relayer is responsible for:
@@ -63,22 +88,26 @@ type Layer2Relayer struct {
 	metrics *l2RelayerMetrics
 
 	chainCfg *params.ChainConfig
+
+	lastFetchedBlock uint64     // highest block number ever pulled
+	feeHistory       []*big.Int // sliding window of blob fees
+	batchStrategy    StrategyParams
 }
 
 // StrategyParams holds the per‐window fee‐submission rules.
 type StrategyParams struct {
-	BaselineType  string  // "pct_min" or "ewma"
-	BaselineParam float64 // percentile (0–1) or α for EWMA
-	Gamma         float64 // relaxation γ
-	Beta          float64 // relaxation β
-	RelaxType     string  // "exponential" or "sigmoid"
+	BaselineType  BaselineType // "pct_min" or "ewma"
+	BaselineParam float64      // percentile (0–1) or α for EWMA
+	Gamma         float64      // relaxation γ
+	Beta          float64      // relaxation β
+	RelaxType     RelaxType    // Exponential or Sigmoid
 }
 
 // bestParams maps your 2h/5h/12h windows to their best rules.
 var bestParams = map[uint64]StrategyParams{
-	2 * 3600:  {BaselineType: "pct_min", BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: "exponential"},
-	5 * 3600:  {BaselineType: "pct_min", BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: "sigmoid"},
-	12 * 3600: {BaselineType: "pct_min", BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: "sigmoid"},
+	2 * 3600:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	5 * 3600:  {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	12 * 3600: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -160,6 +189,25 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
+	// pick and validate submission strategy
+	windowSec := uint64(cfg.BatchSubmission.TimeoutSec)
+	strategy, ok := bestParams[windowSec]
+	if !ok {
+		return nil, fmt.Errorf(
+			"unsupported BatchSubmission.TimeoutSec: %d (must be one of %v)",
+			windowSec, maps.Keys(bestParams),
+		)
+	}
+	layer2Relayer.batchStrategy = strategy
+
+	latest, err := layer2Relayer.l1BlockOrm.GetLatestL1BlockHeight(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest L1 block height: %v", err)
+	}
+	layer2Relayer.lastFetchedBlock = latest - uint64(layer2Relayer.cfg.BatchSubmission.TimeoutSec)/12 // start ~window seconds ago
+	if _, err = layer2Relayer.fetchBlobFeeHistory(uint64(layer2Relayer.cfg.BatchSubmission.TimeoutSec)); err != nil {
+		return nil, fmt.Errorf("initial blob‐fee load failed: %w", err)
+	}
 	return layer2Relayer, nil
 }
 
@@ -287,57 +335,27 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	allBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, 0)
+	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
 
 	// if backlog outgrow max size, force‐submit enough oldest batches
-	backlogCount := len(allBatches)
-	backlogMax := 75 //r.cfg.BatchSubmission.BacklogMax
-
-	if len(allBatches) < r.cfg.BatchSubmission.MinBatches || len(allBatches) == 0 {
-		log.Debug("Not enough pending batches to submit", "count", len(allBatches), "minBatches", r.cfg.BatchSubmission.MinBatches, "maxBatches", r.cfg.BatchSubmission.MaxBatches)
+	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
+	if err != nil {
+		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
 
 	// return if not hitting target price
-	if backlogCount <= backlogMax {
-		windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
-		strat, ok := bestParams[windowSec]
-		if !ok {
-			log.Warn("unknown timeoutSec in bestParams, falling back to immediate submit",
-				"windowSec", windowSec)
-		} else {
-			// pull the blob‐fee history
-			hist, err := r.fetchBlobFeeHistory(windowSec)
-			if err != nil || len(hist) == 0 {
-				log.Warn("blob-fee history unavailable or empty; fallback to immediate batch submission",
-					"err", err, "history_length", len(hist))
-				// Proceed immediately with batch submission without further checks
-			} else {
-				// compute the target
-				oldest := allBatches[0].CreatedAt
-				target := calculateTargetPrice(windowSec, strat, oldest, hist)
-
-				// current = most recent sample
-				current := hist[len(hist)-1]
-
-				// deadline
-				deadline := time.Duration(windowSec) * time.Second
-				if current.Cmp(target) > 0 && time.Since(oldest) < deadline {
-					log.Debug("blob‐fee above target & window not yet passed; skipping submit",
-						"current", current, "target", target, "age", time.Since(oldest))
-					return
-				}
-			}
+	if backlogCount <= r.cfg.BatchSubmission.BacklogMax {
+		oldest := dbBatches[0].CreatedAt
+		if skip, msg := r.skipSubmitByFee(oldest); skip {
+			log.Debug(msg)
+			return
 		}
-	}
-
-	dbBatches := allBatches
-	if len(allBatches) > r.cfg.BatchSubmission.MaxBatches {
-		dbBatches = allBatches[:r.cfg.BatchSubmission.MaxBatches]
+		// if !skip, we fall through and submit immediately
 	}
 
 	var batchesToSubmit []*dbBatchWithChunksAndParent
@@ -1189,35 +1207,36 @@ func (r *Layer2Relayer) StopSenders() {
 // fetchBlobFeeHistory returns the last WindowSec seconds of blob‐fee samples,
 // by reading L1Block table’s BlobBaseFee column.
 func (r *Layer2Relayer) fetchBlobFeeHistory(windowSec uint64) ([]*big.Int, error) {
-	// how many blocks ago? ~12s per block
-	blocksAgo := windowSec / 12
 	latest, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatestL1BlockHeight: %w", err)
 	}
-	start := int64(latest) - int64(blocksAgo)
-	if start < 0 {
-		start = 0
+	from := r.lastFetchedBlock + 1
+	//if new blocks
+	if from <= latest {
+		raw, err := r.l1BlockOrm.GetBlobFeesInRange(r.ctx, from, latest)
+		if err != nil {
+			return nil, fmt.Errorf("GetBlobFeesInRange: %w", err)
+		}
+		// append them
+		for _, v := range raw {
+			r.feeHistory = append(r.feeHistory, new(big.Int).SetUint64(v))
+			r.lastFetchedBlock++
+		}
 	}
 
-	// pull all L1Blocks in [start .. latest]
-	filters := map[string]interface{}{
-		"number >= ?": start,
-		"number <= ?": latest,
+	maxLen := int(windowSec / 12)
+	if len(r.feeHistory) > maxLen {
+		r.feeHistory = r.feeHistory[len(r.feeHistory)-maxLen:]
 	}
-	recs, err := r.l1BlockOrm.GetL1Blocks(r.ctx, filters)
-	if err != nil {
-		return nil, fmt.Errorf("GetL1Blocks: %w", err)
-	}
-	hist := make([]*big.Int, len(recs))
-	for i, b := range recs {
-		hist[i] = new(big.Int).SetUint64(b.BlobBaseFee)
-	}
-	return hist, nil
+	// return a copy
+	out := make([]*big.Int, len(r.feeHistory))
+	copy(out, r.feeHistory)
+	return out, nil
 }
 
 // calculateTargetPrice applies pct_min/ewma + relaxation to get a BigInt target
-func calculateTargetPrice(windowSec uint64, strat StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
+func calculateTargetPrice(windowSec uint64, strategy StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
 	n := len(history)
 	if n == 0 {
 		return big.NewInt(0)
@@ -1229,16 +1248,16 @@ func calculateTargetPrice(windowSec uint64, strat StrategyParams, firstTime time
 		data[i] = f
 	}
 	var baseline float64
-	switch strat.BaselineType {
-	case "pct_min":
+	switch strategy.BaselineType {
+	case PctMin:
 		sort.Float64s(data)
-		idx := int(strat.BaselineParam * float64(n-1))
+		idx := int(strategy.BaselineParam * float64(n-1))
 		if idx < 0 {
 			idx = 0
 		}
 		baseline = data[idx]
-	case "ewma":
-		alpha := strat.BaselineParam
+	case EWMA:
+		alpha := strategy.BaselineParam
 		ewma := data[0]
 		for i := 1; i < n; i++ {
 			ewma = alpha*data[i] + (1-alpha)*ewma
@@ -1251,11 +1270,11 @@ func calculateTargetPrice(windowSec uint64, strat StrategyParams, firstTime time
 	age := time.Since(firstTime).Seconds()
 	frac := age / float64(windowSec)
 	var adjusted float64
-	switch strat.RelaxType {
-	case "exponential":
-		adjusted = baseline * (1 + strat.Gamma*math.Exp(strat.Beta*(frac-1)))
-	case "sigmoid":
-		adjusted = baseline * (1 + strat.Gamma/(1+math.Exp(-strat.Beta*(frac-0.5))))
+	switch strategy.RelaxType {
+	case Exponential:
+		adjusted = baseline * (1 + strategy.Gamma*math.Exp(strategy.Beta*(frac-1)))
+	case Sigmoid:
+		adjusted = baseline * (1 + strategy.Gamma/(1+math.Exp(-strategy.Beta*(frac-0.5))))
 	default:
 		adjusted = baseline
 	}
@@ -1263,6 +1282,36 @@ func calculateTargetPrice(windowSec uint64, strat StrategyParams, firstTime time
 	f := new(big.Float).Mul(big.NewFloat(adjusted), big.NewFloat(1e9))
 	out, _ := f.Int(nil)
 	return out
+}
+
+// skipSubmitByFee returns (true,msg) when submission should be skipped right now
+// because the blob‐fee is above target and the timeout window hasn’t yet elapsed.
+// Otherwise returns (false,msg) where msg is a warning about falling back.
+func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time) (bool, string) {
+	windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
+
+	hist, err := r.fetchBlobFeeHistory(windowSec)
+	if err != nil || len(hist) == 0 {
+		return false, fmt.Sprintf(
+			"blob‐fee history unavailable or empty; fallback to immediate batch submission – err=%v, history_length=%d",
+			err, len(hist),
+		)
+	}
+
+	// calculate target & get current (in wei)
+	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
+	current := hist[len(hist)-1]
+
+	// if current fee > target and still inside the timeout window, skip
+	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
+		return true, fmt.Sprintf(
+			"blob‐fee above target & window not yet passed; current=%s target=%s age=%s",
+			current.String(), target.String(), time.Since(oldest),
+		)
+	}
+
+	// otherwise proceed with submission
+	return false, ""
 }
 
 func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
