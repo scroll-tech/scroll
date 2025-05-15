@@ -1,0 +1,44 @@
+[package]
+name = "scroll-zkvm-integration"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+scroll-zkvm-circuit-input-types.workspace = true
+scroll-zkvm-prover.workspace = true
+scroll-zkvm-verifier.workspace = true
+sbv-primitives = { workspace = true }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+metrics-tracing-context.workspace = true
+
+openvm-build = { workspace = true, default-features = false }
+openvm-circuit.workspace = true
+openvm-sdk = { workspace = true, default-features = false }
+openvm-native-circuit = { workspace = true, default-features = false }
+openvm-native-compiler = { workspace = true, default-features = false }
+openvm-native-recursion = { workspace = true, default-features = false }
+openvm-native-transpiler = { workspace = true, default-features = false }
+openvm-transpiler = { workspace = true, default-features = false }
+
+alloy-primitives.workspace = true
+eyre.workspace = true
+tiny-keccak.workspace = true
+rayon.workspace = true
+vm-zstd = { workspace = true, features = ["zstd"] }
+
+chrono = "0.4"
+ff = "0.13"
+glob = "0.3"
+once_cell = "1.20"
+serde_json = "1.0"
+sha2 = "0.10"
+
+[dev-dependencies]
+halo2curves-axiom = "0.7.0"
+glob = "0.3"
+
+[features]
+default = ["euclidv2"]
+euclidv2 = []
+limit-logs = []

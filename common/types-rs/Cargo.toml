@@ -1,5 +1,5 @@
 [package]
-name = "scroll-zkvm-types"
+name = "scroll-zkvm-circuit-input-types"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

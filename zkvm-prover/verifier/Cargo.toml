@@ -1,0 +1,27 @@
+[package]
+name = "scroll-zkvm-verifier"
+edition.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+scroll-zkvm-circuit-input-types.workspace = true
+
+openvm-circuit.workspace = true
+openvm-native-circuit.workspace = true
+openvm-native-recursion = { workspace = true, features = ["static-verifier"] }
+openvm-sdk.workspace = true
+openvm-continuations.workspace = true
+openvm-stark-sdk.workspace = true
+
+itertools.workspace = true
+snark-verifier-sdk = {workspace = true, default-features = false, features = ["loader_evm"]}
+
+bincode_v1.workspace = true
+eyre = "0.6"
+revm = "19.0"
+serde.workspace = true
+
+[dev-dependencies]
+scroll-zkvm-prover.workspace = true
