@@ -161,6 +161,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		}
 
 		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+		batch.PostL1MessageQueueHash = batch.Chunks[len(batch.Chunks)-1].PostL1MessageQueueHash
 
 		log.Info("Batch not compatible with compressed data, removing last chunk", "batch index", batch.Index, "truncated chunk length", len(batch.Chunks))
 	}

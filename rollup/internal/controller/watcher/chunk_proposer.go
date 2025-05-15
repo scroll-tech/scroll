@@ -175,6 +175,11 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		}
 
 		chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+		chunk.PostL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(chunk.PrevL1MessageQueueHash, chunk.Blocks)
+		if err != nil {
+			log.Error("Failed to calculate last L1 message queue hash for block", "block number", chunk.Blocks[0].Header.Number, "err", err)
+			return err
+		}
 
 		log.Info("Chunk not compatible with compressed data, removing last block", "start block number", chunk.Blocks[0].Header.Number, "truncated block length", len(chunk.Blocks))
 	}
