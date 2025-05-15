@@ -8,6 +8,7 @@ members = [
   "common/types-rs/bundle",
   "zkvm-prover/prover",
   "zkvm-prover/verifier",
+  "zkvm-prover/integration",
   "zkvm-prover/bin",
 ]
 
@@ -25,12 +26,15 @@ version = "4.5.8"
 scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", package = "scroll-zkvm-prover"}
 
 openvm = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
+openvm-build = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
+openvm-transpiler = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-custom-insn = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-rv32im-guest = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-circuit = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-native-circuit = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-native-compiler = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-native-recursion = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
+openvm-native-transpiler = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-continuations = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false }
 openvm-sdk = { git = "https://github.com/openvm-org/openvm.git", rev = "a0ae88f", default-features = false, features = ["parallel", "bench-metrics", "evm-prove"] }
 openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v1.0.1" }
@@ -57,6 +61,7 @@ serde_with = "3.11.0"
 itertools = "0.14"
 tiny-keccak = "2.0"
 tracing = "0.1"
+eyre = "0.6"
 bincode_v1 = { version = "1.3", package = "bincode"}
 snark-verifier-sdk = { version = "0.2.0", default-features = false, features = [
     "loader_halo2",

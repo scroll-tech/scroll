@@ -418,7 +418,7 @@ dependencies = [
  "alloy-rlp",
  "alloy-serde 0.11.1",
  "alloy-sol-types",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -1421,7 +1421,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.52.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1847,6 +1847,14 @@ dependencies = [
  "serdect",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "encoder"
+version = "0.1.0"
+source = "git+https://github.com/scroll-tech/da-codec.git?tag=v0.1.2#8c5d2f0cd707153151a5154fef702204f6ca40b3"
+dependencies = [
+ "zstd 0.13.0",
 ]
 
 [[package]]
@@ -3301,7 +3309,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a793df0d7afeac54f95b471d3af7f0d4fb975699f972341a4b76988d49cdf0c"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.5",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -3322,7 +3330,7 @@ dependencies = [
  "libc",
  "libz-sys",
  "lz4-sys",
- "zstd-sys",
+ "zstd-sys 2.0.15+zstd.1.5.7",
 ]
 
 [[package]]
@@ -4542,6 +4550,16 @@ dependencies = [
  "serde_with",
  "snark-verifier-sdk",
  "tracing",
+]
+
+[[package]]
+name = "openvm-native-transpiler"
+version = "1.1.1"
+source = "git+https://github.com/openvm-org/openvm.git?rev=a0ae88f#a0ae88f2c4d98b651c653a1e9b7598d3ad15455e"
+dependencies = [
+ "openvm-instructions",
+ "openvm-transpiler",
+ "p3-field",
 ]
 
 [[package]]
@@ -6384,7 +6402,7 @@ dependencies = [
  "serde",
  "thiserror 2.0.12",
  "tracing",
- "zstd",
+ "zstd 1.1.4",
 ]
 
 [[package]]
@@ -6712,7 +6730,7 @@ name = "reth-zstd-compressors"
 version = "1.1.5"
 source = "git+https://github.com/scroll-tech/reth?branch=zkvm%2Feuclid-upgrade#6009111704d286ed6c737fe78dca09d613be0352"
 dependencies = [
- "zstd",
+ "zstd 1.1.4",
 ]
 
 [[package]]
@@ -7474,6 +7492,37 @@ dependencies = [
  "sbv-trie",
  "scroll-zkvm-circuit-input-types-base",
  "serde",
+]
+
+[[package]]
+name = "scroll-zkvm-integration"
+version = "4.5.8"
+dependencies = [
+ "alloy-primitives",
+ "chrono",
+ "eyre",
+ "glob",
+ "halo2curves-axiom",
+ "metrics-tracing-context",
+ "once_cell",
+ "openvm-build",
+ "openvm-circuit",
+ "openvm-native-circuit",
+ "openvm-native-compiler",
+ "openvm-native-recursion",
+ "openvm-native-transpiler",
+ "openvm-sdk",
+ "openvm-transpiler",
+ "rayon",
+ "sbv-primitives",
+ "scroll-zkvm-circuit-input-types",
+ "scroll-zkvm-prover",
+ "scroll-zkvm-verifier",
+ "serde_json",
+ "tiny-keccak",
+ "tracing",
+ "tracing-subscriber",
+ "vm-zstd",
 ]
 
 [[package]]
@@ -8891,6 +8940,7 @@ source = "git+https://github.com/scroll-tech/rust-zstd-decompressor.git?tag=v0.1
 dependencies = [
  "anyhow",
  "bitstream-io",
+ "encoder",
  "itertools 0.11.0",
  "serde",
  "strum 0.25.0",
@@ -9568,8 +9618,33 @@ dependencies = [
 
 [[package]]
 name = "zstd"
+version = "0.13.0"
+source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd"
 version = "1.1.4"
 source = "git+https://github.com/scroll-tech/reth?branch=zkvm%2Feuclid-upgrade#6009111704d286ed6c737fe78dca09d613be0352"
+
+[[package]]
+name = "zstd-safe"
+version = "7.0.0"
+source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
+dependencies = [
+ "zstd-sys 2.0.9+zstd.1.5.5",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "2.0.9+zstd.1.5.5"
+source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
+dependencies = [
+ "cc",
+ "pkg-config",
+]
 
 [[package]]
 name = "zstd-sys"
