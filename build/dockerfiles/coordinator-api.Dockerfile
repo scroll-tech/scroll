@@ -9,7 +9,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef as zkp-builder
 COPY ./common/libzkp/impl/rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
-# run ./build/dockerfiles/coordinator-api/init-openvm.sh to get openvm-gpu
+# run scripts to get openvm-gpu
 COPY ./build/dockerfiles/coordinator-api/plonky3-gpu /plonky3-gpu
 COPY ./build/dockerfiles/coordinator-api/openvm-stark-gpu /openvm-stark-gpu
 COPY ./build/dockerfiles/coordinator-api/openvm-gpu /openvm-gpu
