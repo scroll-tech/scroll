@@ -134,7 +134,7 @@ func (o *Bundle) GetFirstPendingBundle(ctx context.Context) (*Bundle, error) {
 }
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a bundle with the given hash.
-func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash, hardForkName string) (message.BundleProof, error) {
+func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.OpenVMBundleProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Select("proof")
@@ -145,11 +145,11 @@ func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash, hardForkName 
 		return nil, fmt.Errorf("Bundle.GetVerifiedProofByHash error: %w, bundle hash: %v", err, hash)
 	}
 
-	proof := message.NewBundleProof(hardForkName)
+	var proof message.OpenVMBundleProof
 	if err := json.Unmarshal(bundle.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Bundle.GetVerifiedProofByHash error: %w, bundle hash: %v", err, hash)
 	}
-	return proof, nil
+	return &proof, nil
 }
 
 // InsertBundle inserts a new bundle into the database.
@@ -256,7 +256,7 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 
 // UpdateProofAndProvingStatusByHash updates the bundle proof and proving status by hash.
 // only used in unit tests.
-func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof message.BundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.OpenVMBundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

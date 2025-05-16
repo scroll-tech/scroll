@@ -26,12 +26,6 @@ pub unsafe extern "C" fn verify_chunk_proof(
 
 fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
     let fork_name_str = c_char_to_str(fork_name);
-    // Skip verification for darwinV2 as we can't host darwinV2 and euclid verifiers on the same
-    // binary.
-    if fork_name_str == "darwinV2" {
-        return true as c_char;
-    }
-
     let proof = c_char_to_vec(proof);
     let verifier = verifier::get_verifier(fork_name_str);
 
