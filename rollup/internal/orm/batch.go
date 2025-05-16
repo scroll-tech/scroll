@@ -233,17 +233,15 @@ func (o *Batch) GetFailedAndPendingBatchesCount(ctx context.Context) (int64, err
 // GetFailedAndPendingBatches retrieves batches with failed or pending status up to the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetFailedAndPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit < 0 {
-		return nil, errors.New("limit must be greater than or equal to zero")
+	if limit <= 0 {
+		return nil, errors.New("limit must be greater than zero")
 	}
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("rollup_status = ? OR rollup_status = ?", types.RollupCommitFailed, types.RollupPending)
 	db = db.Order("index ASC")
-	if limit > 0 {
-		db = db.Limit(limit)
-	}
+	db = db.Limit(limit)
 
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
