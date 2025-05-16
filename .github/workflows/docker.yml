@@ -309,43 +309,17 @@ jobs:
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Setup SSH for repositories and clone them
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          # Setup for plonky3-gpu
-          echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/plonky3_gpu_key
-          chmod 600 ~/.ssh/plonky3_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/plonky3_gpu_key 2>/dev/null
-          ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
-          echo "Loaded plonky3-gpu key"
-
-          # Clone plonky3-gpu repository
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          eval "$(ssh-agent -s)"
+          ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+          for name in plonky3 openvm_stark openvm; do
+            echo "${{ secrets.${name^^}_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/${name}_gpu_key
+            chmod 600 ~/.ssh/${name}_gpu_key 2>/dev/null
+            ssh-add ~/.ssh/${name}_gpu_key 2>/dev/null
+          done
           ./build/dockerfiles/coordinator-api/clone_plonky3_gpu.sh
-
-          # Setup for openvm-stark-gpu
-          echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_stark_gpu_key
-          chmod 600 ~/.ssh/openvm_stark_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/openvm_stark_gpu_key 2>/dev/null
-          echo "Loaded openvm-stark-gpu key"
-
-          # Clone openvm-stark-gpu repository
           ./build/dockerfiles/coordinator-api/clone_openvm_stark_gpu.sh
-
-          # Setup for openvm-gpu
-          echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_gpu_key
-          chmod 600 ~/.ssh/openvm_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/openvm_gpu_key 2>/dev/null
-          echo "Loaded openvm-gpu key"
-
-          # Clone openvm-gpu repository
           ./build/dockerfiles/coordinator-api/clone_openvm_gpu.sh
-
-          # Show number of loaded keys
-          echo "Number of loaded keys: $(ssh-add -l | wc -l)"
-
       - name: Checkout specific commits
         run: |
           ./build/dockerfiles/coordinator-api/checkout_all.sh
