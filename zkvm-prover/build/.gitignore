@@ -1,0 +1,3 @@
+*.vmexe
+root_verifier.asm
+bundle-circuit/digest_*

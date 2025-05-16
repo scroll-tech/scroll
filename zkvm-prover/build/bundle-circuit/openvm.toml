@@ -1,0 +1,17 @@
+[app_fri_params.fri_params]
+log_blowup = 1
+log_final_poly_len = 0
+num_queries = 100
+proof_of_work_bits = 16
+
+[app_vm_config.rv32i]
+
+[app_vm_config.rv32m]
+
+[app_vm_config.io]
+
+[app_vm_config.keccak]
+
+[app_vm_config.castf]
+
+[app_vm_config.native]

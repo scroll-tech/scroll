@@ -1,0 +1,6 @@
+[patch."https://github.com/scroll-tech/scroll.git"]
+scroll-zkvm-circuit-input-types-base = { path = "../common/types-rs/base"}
+scroll-zkvm-circuit-input-types-aggregation = { path = "../common/types-rs/aggregation"}
+scroll-zkvm-circuit-input-types-chunk = { path = "../common/types-rs/chunk"}
+scroll-zkvm-circuit-input-types-batch = { path = "../common/types-rs/batch"}
+scroll-zkvm-circuit-input-types-bundle = { path = "../common/types-rs/bundle"}
