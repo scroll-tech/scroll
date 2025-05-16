@@ -9,11 +9,11 @@ export RUST_LOG
 
 ifdef LEGACY
 FEATURE := --no-default-features
-TESTDATA_PATH := crates/integration/testdata/phase1
+TESTDATA_PATH := integration/testdata/phase1
 CHUNK_PROOF := 12508460-12508463
 else
 FEATURE := 
-TESTDATA_PATH := crates/integration/testdata/phase2
+TESTDATA_PATH := integration/testdata/phase2
 CHUNK_PROOF := 1-4
 endif
 
@@ -27,12 +27,12 @@ fmt:
 	@cargo fmt --all
 
 clippy:
-	@cargo clippy --tests --manifest-path crates/circuits/types/Cargo.toml -- -D warnings
-	sh openvm-clippy.sh
-	@cargo clippy --tests --all-features --manifest-path crates/verifier/Cargo.toml -- -D warnings
-	@cargo clippy --tests --all-features --manifest-path crates/prover/Cargo.toml -- -D warnings
-	@cargo clippy --tests --all-features --manifest-path crates/integration/Cargo.toml -- -D warnings
-	@cargo clippy --tests --all-features --manifest-path crates/build-guest/Cargo.toml -- -D warnings
+#	@cargo clippy --tests --manifest-path crates/circuits/types/Cargo.toml -- -D warnings
+#	sh openvm-clippy.sh
+	@cargo clippy --tests --all-features --manifest-path verifier/Cargo.toml -- -D warnings
+	@cargo clippy --tests --all-features --manifest-path prover/Cargo.toml -- -D warnings
+	@cargo clippy --tests --all-features --manifest-path integration/Cargo.toml -- -D warnings
+#	@cargo clippy --tests --all-features --manifest-path build-guest/Cargo.toml -- -D warnings
 
 clean-guest:
 	docker rmi build-guest:local

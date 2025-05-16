@@ -38,7 +38,7 @@ pub struct ChunkProverTester;
 impl ProverTester for ChunkProverTester {
     type Prover = ChunkProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/chunk-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/chunk-circuit";
 
     const DIR_ASSETS: &str = "chunk";
 
@@ -93,7 +93,7 @@ pub struct ChunkProverRv32Tester;
 impl ProverTester for ChunkProverRv32Tester {
     type Prover = ChunkProverTypeRv32;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/chunk-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/chunk-circuit";
 
     const DIR_ASSETS: &str = "chunk";
 
@@ -163,7 +163,7 @@ pub struct MultiChunkProverTester;
 impl ProverTester for MultiChunkProverTester {
     type Prover = ChunkProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/chunk-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/chunk-circuit";
 
     const DIR_ASSETS: &str = "chunk";
 

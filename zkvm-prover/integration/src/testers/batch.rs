@@ -15,7 +15,7 @@ pub struct BatchProverTester;
 impl ProverTester for BatchProverTester {
     type Prover = BatchProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/batch-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/batch-circuit";
 
     const DIR_ASSETS: &str = "batch";
 
@@ -34,7 +34,7 @@ pub struct BatchTaskBuildingTester;
 impl ProverTester for BatchTaskBuildingTester {
     type Prover = BatchProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/batch-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/batch-circuit";
 
     const DIR_ASSETS: &str = "batch";
 

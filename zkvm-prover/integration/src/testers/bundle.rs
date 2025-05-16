@@ -19,7 +19,7 @@ pub struct BundleProverTester;
 impl ProverTester for BundleProverTester {
     type Prover = BundleProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/bundle-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/bundle-circuit";
 
     const DIR_ASSETS: &str = "bundle";
 
@@ -49,7 +49,7 @@ pub struct BundleLocalTaskTester;
 impl ProverTester for BundleLocalTaskTester {
     type Prover = BundleProverType;
 
-    const PATH_PROJECT_ROOT: &str = "./../circuits/bundle-circuit";
+    const PATH_PROJECT_ROOT: &str = "./../build/bundle-circuit";
 
     const DIR_ASSETS: &str = "bundle";
 
