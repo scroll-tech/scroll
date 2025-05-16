@@ -11,6 +11,10 @@ members = [
   "zkvm-prover/integration",
   "zkvm-prover/bin",
 ]
+exclude = [
+  "common/libzkp/impl",
+  "prover"
+]
 
 resolver = "2"
 

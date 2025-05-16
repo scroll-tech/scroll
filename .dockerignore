@@ -11,13 +11,6 @@ Dockerfile.backup
 
 docs
 
-*.yml
-
-*.sh
-!build-guest-actions-entrypoint.sh
-
-*.md
-
 openvm-clippy
 
 target
