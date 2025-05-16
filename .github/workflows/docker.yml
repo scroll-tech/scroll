@@ -321,7 +321,7 @@ jobs:
           echo "Loaded plonky3-gpu key"
 
           # Clone plonky3-gpu repository
-          ./clone_plonky3_gpu.sh
+          ./build/dockerfiles/coordinator-api/clone_plonky3_gpu.sh
 
           # Setup for openvm-stark-gpu
           echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_stark_gpu_key
@@ -331,7 +331,7 @@ jobs:
           echo "Loaded openvm-stark-gpu key"
 
           # Clone openvm-stark-gpu repository
-          ./clone_openvm_stark_gpu.sh
+          ./build/dockerfiles/coordinator-api/clone_openvm_stark_gpu.sh
 
           # Setup for openvm-gpu
           echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_gpu_key
@@ -341,14 +341,14 @@ jobs:
           echo "Loaded openvm-gpu key"
 
           # Clone openvm-gpu repository
-          ./clone_openvm_gpu.sh
+          ./build/dockerfiles/coordinator-api/clone_openvm_gpu.sh
 
           # Show number of loaded keys
           echo "Number of loaded keys: $(ssh-add -l | wc -l)"
 
       - name: Checkout specific commits
         run: |
-          ./checkout_all.sh
+          ./build/dockerfiles/coordinator-api/checkout_all.sh
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
