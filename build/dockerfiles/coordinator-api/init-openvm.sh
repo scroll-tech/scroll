@@ -2,8 +2,8 @@
 set -uex
 
 PLONKY3_GPU_COMMIT=261b322        # v0.2.0
-OPENVM_STARK_GPU_COMMIT=d91dbbc   # PR#47
-OPENVM_GPU_COMMIT=ce88ec8         # branch: patch-v1.2.0
+OPENVM_STARK_GPU_COMMIT=3082234   # PR#48
+OPENVM_GPU_COMMIT=8094b4f         # branch: patch-v1.2.0
 
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 
