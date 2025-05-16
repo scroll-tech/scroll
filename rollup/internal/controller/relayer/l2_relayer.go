@@ -345,7 +345,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		if !forceSubmit {
 			if skip, err := r.skipSubmitByFee(oldest); skip {
-				log.Debug("Skipping batch submission", "error", err)
+				log.Debug("Skipping batch submission", "reason", err)
 				return
 			}
 		}
