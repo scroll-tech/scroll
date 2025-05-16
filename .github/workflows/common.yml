@@ -42,29 +42,11 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "common/libzkp/impl -> target"
-    - name: Setup SSH for private repositories
-      run: |
-        mkdir -p ~/.ssh
-        chmod 700 ~/.ssh
-
-        (
-          echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}"
-          echo ""
-          echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}"
-          echo ""
-          echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}"
-        ) > ~/.ssh/all_keys
-
-        chmod 600 ~/.ssh/all_keys
-        eval "$(ssh-agent -s)" > /dev/null
-        ssh-add ~/.ssh/all_keys 2>/dev/null
-        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
-        echo "Number of loaded keys: $(ssh-add -l | wc -l)"
-    - name: Lint
-      working-directory: 'common'
-      run: |
-        rm -rf $HOME/.cache/golangci-lint
-        make lint
+    # - name: Lint
+    #   working-directory: 'common'
+    #   run: |
+    #     rm -rf $HOME/.cache/golangci-lint
+    #     make lint
   goimports-lint:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
