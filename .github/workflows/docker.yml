@@ -312,11 +312,11 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           eval "$(ssh-agent -s)"
           ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-          for name in plonky3 openvm_stark openvm; do
-            echo "${{ secrets.${name^^}_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/${name}_gpu_key
-            chmod 600 ~/.ssh/${name}_gpu_key 2>/dev/null
-            ssh-add ~/.ssh/${name}_gpu_key 2>/dev/null
-          done
+
+          echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}" | ssh-add -
+          echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" | ssh-add -
+          echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" | ssh-add -
+
           ./build/dockerfiles/coordinator-api/clone_plonky3_gpu.sh
           ./build/dockerfiles/coordinator-api/clone_openvm_stark_gpu.sh
           ./build/dockerfiles/coordinator-api/clone_openvm_gpu.sh
