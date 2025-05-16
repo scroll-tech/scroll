@@ -7,17 +7,9 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
-      "mock_mode": true,
-      "low_version_circuit": {
-        "params_path": "params",
-        "assets_path": "assets",
-        "fork_name": "darwin",
-        "min_prover_version": "v4.4.43"
-      },
       "high_version_circuit": {
-        "params_path": "params",
         "assets_path": "assets",
-        "fork_name": "darwinV2",
+        "fork_name": "euclidV2",
         "min_prover_version": "v4.4.45"
       }
     }

@@ -195,8 +195,9 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 
 	if hardForkName == message.EuclidV2Fork {
 		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else if hardForkName == message.EuclidFork {
-		taskDetail.ForkName = message.EuclidForkNameForProver
+	} else {
+		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
+		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
 	}
 
 	var err error

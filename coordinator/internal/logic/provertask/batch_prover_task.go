@@ -197,34 +197,27 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("no chunk found for batch task id:%s", task.TaskID)
 	}
 
-	var chunkProofs []message.ChunkProof
+	var chunkProofs []*message.OpenVMChunkProof
 	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
-		proof := message.NewChunkProof(hardForkName)
+		var proof message.OpenVMChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
-		chunkProofs = append(chunkProofs, proof)
+		chunkProofs = append(chunkProofs, &proof)
 
 		chunkInfo := message.ChunkInfo{
-			ChainID:          bp.cfg.L2.ChainID,
-			PrevStateRoot:    common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot:    common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:     common.HexToHash(chunk.WithdrawRoot),
-			DataHash:         common.HexToHash(chunk.Hash),
-			PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
-			PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
-			IsPadding:        false,
-		}
-		if halo2Proof, ok := proof.(*message.Halo2ChunkProof); ok {
-			if halo2Proof.ChunkInfo != nil {
-				chunkInfo.TxBytes = halo2Proof.ChunkInfo.TxBytes
-			}
-		}
-		if openvmProof, ok := proof.(*message.OpenVMChunkProof); ok {
-			chunkInfo.InitialBlockNumber = openvmProof.MetaData.ChunkInfo.InitialBlockNumber
-			chunkInfo.BlockCtxs = openvmProof.MetaData.ChunkInfo.BlockCtxs
-			chunkInfo.TxDataLength = openvmProof.MetaData.ChunkInfo.TxDataLength
+			ChainID:            bp.cfg.L2.ChainID,
+			PrevStateRoot:      common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot:      common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:       common.HexToHash(chunk.WithdrawRoot),
+			DataHash:           common.HexToHash(chunk.Hash),
+			PrevMsgQueueHash:   common.HexToHash(chunk.PrevL1MessageQueueHash),
+			PostMsgQueueHash:   common.HexToHash(chunk.PostL1MessageQueueHash),
+			IsPadding:          false,
+			InitialBlockNumber: proof.MetaData.ChunkInfo.InitialBlockNumber,
+			BlockCtxs:          proof.MetaData.ChunkInfo.BlockCtxs,
+			TxDataLength:       proof.MetaData.ChunkInfo.TxDataLength,
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -258,7 +251,7 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.OpenVMChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
@@ -266,8 +259,9 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 
 	if hardForkName == message.EuclidV2Fork {
 		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else if hardForkName == message.EuclidFork {
-		taskDetail.ForkName = message.EuclidForkNameForProver
+	} else {
+		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
+		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
 	}
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
