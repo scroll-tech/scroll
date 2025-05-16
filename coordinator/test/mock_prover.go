@@ -207,14 +207,16 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	}
 
 	var proof []byte
-	switch proverTaskSchema.TaskType {
-	case int(message.ProofTypeChunk):
-		encodeData, err := json.Marshal(message.Halo2ChunkProof{})
+	switch message.ProofType(proverTaskSchema.TaskType) {
+	case message.ProofTypeChunk:
+		encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{}, MetaData: struct {
+			ChunkInfo *message.ChunkInfo `json:"chunk_info"`
+		}{ChunkInfo: &message.ChunkInfo{}}})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, encodeData)
 		proof = encodeData
-	case int(message.ProofTypeBatch):
-		encodeData, err := json.Marshal(message.Halo2BatchProof{})
+	case message.ProofTypeBatch:
+		encodeData, err := json.Marshal(message.OpenVMBatchProof{VmProof: &message.OpenVMProof{}})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, encodeData)
 		proof = encodeData
@@ -223,16 +225,14 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	if proofStatus == verifiedFailed {
 		switch proverTaskSchema.TaskType {
 		case int(message.ProofTypeChunk):
-			chunkProof := message.Halo2ChunkProof{}
-			chunkProof.RawProof = []byte(verifier.InvalidTestProof)
-			encodeData, err := json.Marshal(&chunkProof)
+			encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)}, MetaData: struct {
+				ChunkInfo *message.ChunkInfo `json:"chunk_info"`
+			}{ChunkInfo: &message.ChunkInfo{}}})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
 		case int(message.ProofTypeBatch):
-			batchProof := message.Halo2BatchProof{}
-			batchProof.RawProof = []byte(verifier.InvalidTestProof)
-			encodeData, err := json.Marshal(&batchProof)
+			encodeData, err := json.Marshal(&message.OpenVMBatchProof{VmProof: &message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)}})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData

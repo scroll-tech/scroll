@@ -51,7 +51,6 @@ type Config struct {
 
 // CircuitConfig circuit items.
 type CircuitConfig struct {
-	ParamsPath       string `json:"params_path"`
 	AssetsPath       string `json:"assets_path"`
 	ForkName         string `json:"fork_name"`
 	MinProverVersion string `json:"min_prover_version"`
@@ -59,8 +58,6 @@ type CircuitConfig struct {
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	MockMode           bool           `json:"mock_mode"`
-	LowVersionCircuit  *CircuitConfig `json:"low_version_circuit"`
 	HighVersionCircuit *CircuitConfig `json:"high_version_circuit"`
 }
 
