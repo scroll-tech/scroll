@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-
 	"scroll-tech/common/types/message"
 )
 
@@ -21,10 +20,10 @@ type ProverType uint8
 
 func (r ProverType) String() string {
 	switch r {
-	case ProverTypeChunk:
-		return "prover type chunk"
-	case ProverTypeBatch:
-		return "prover type batch"
+	case ProverTypeChunkDeprecated:
+		return "prover type chunk (deprecated)"
+	case ProverTypeBatchDeprecated:
+		return "prover type batch (deprecated)"
 	case ProverTypeOpenVM:
 		return "prover type openvm"
 	default:
@@ -35,10 +34,10 @@ func (r ProverType) String() string {
 const (
 	// ProverTypeUndefined is an unknown prover type
 	ProverTypeUndefined ProverType = iota
-	// ProverTypeChunk signals it's a chunk prover, which can prove chunk_tasks
-	ProverTypeChunk
-	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks
-	ProverTypeBatch
+	// ProverTypeChunk signals it's a chunk prover, which can prove chunk_tasks, which is deprecated
+	ProverTypeChunkDeprecated
+	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks, which is deprecated
+	ProverTypeBatchDeprecated
 	// ProverTypeOpenVM
 	ProverTypeOpenVM
 )
@@ -47,9 +46,9 @@ const (
 func MakeProverType(proofType message.ProofType) ProverType {
 	switch proofType {
 	case message.ProofTypeChunk:
-		return ProverTypeChunk
+		return ProverTypeChunkDeprecated
 	case message.ProofTypeBatch, message.ProofTypeBundle:
-		return ProverTypeBatch
+		return ProverTypeBatchDeprecated
 	default:
 		return ProverTypeUndefined
 	}

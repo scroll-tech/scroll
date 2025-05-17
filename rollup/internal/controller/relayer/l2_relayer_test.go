@@ -148,11 +148,12 @@ func testL2RelayerProcessPendingBundles(t *testing.T) {
 		// no valid proof, rollup status remains the same
 		assert.Equal(t, types.RollupPending, types.RollupStatus(bundles[0].RollupStatus))
 
-		proof := &message.Halo2BundleProof{
-			RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		}
+		patchGuard := gomonkey.ApplyMethodFunc((*message.OpenVMBundleProof)(nil), "SanityCheck", func() error {
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		proof := &message.OpenVMBundleProof{EvmProof: &message.OpenVMEvmProof{Instances: make([]byte, 384)}}
 		err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, proof, types.ProvingTaskVerified, 600)
 		assert.NoError(t, err)
 
