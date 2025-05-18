@@ -3,8 +3,8 @@ use super::{ProofVerifier, TaskType, VKDump};
 use anyhow::Result;
 
 use crate::utils::panic_catch;
-use euclid_prover::{BatchProof, BundleProof, ChunkProof};
-use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV1, ChunkVerifier};
+use scroll_zkvm_prover::{BatchProof, BundleProof, ChunkProof};
+use scroll_zkvm_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV1, ChunkVerifier};
 use std::{fs::File, path::Path};
 
 pub struct EuclidVerifier {

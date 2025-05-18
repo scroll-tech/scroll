@@ -9587,6 +9587,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "env_logger",
+ "libc",
+ "log",
+ "once_cell",
+ "scroll-zkvm-prover",
+ "scroll-zkvm-verifier",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "zkvm-prover-bin"
 version = "0.1.0"
 dependencies = [
