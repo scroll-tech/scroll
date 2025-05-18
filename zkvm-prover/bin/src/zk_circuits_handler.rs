@@ -31,7 +31,7 @@ fn default_cups() -> u64 {
     100
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RpcConfig {
     #[serde(alias = "endpoint")]
     pub rpc_url: String,
