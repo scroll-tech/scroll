@@ -18,19 +18,33 @@ use alloy::{
     rpc::client::ClientBuilder,
     transports::layers::RetryBackoffLayer,
 };
-use sbv_primitives::{ChainId, types::Network};
+use sbv_primitives::types::Network;
 use serde::{Deserialize, Serialize};
+
+fn default_max_retry() -> u32 {
+    10
+}
+fn default_backoff() -> u64 {
+    100
+}
+fn default_cups() -> u64 {
+    100
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RpcConfig {
+    #[serde(alias = "endpoint")]
     pub rpc_url: String,
     // Concurrency Limit, default 10
     // pub max_concurrency: usize,
     // Retry parameters
+    #[serde(default = "default_max_retry")]
     pub max_retry: u32,
     // backoff duration in milliseconds, default 100ms
+    #[serde(default = "default_backoff")]
     pub backoff: u64,
     // compute units per second: default 100
+    #[serde(default = "default_cups")]
     pub cups: u64,
 }
 
@@ -77,6 +91,9 @@ impl RequestPreHandler {
                 .ok_or_else(|| anyhow::anyhow!("Block not found"))?;
 
             let number = block.header.number;
+            if number == 0 {
+                anyhow::bail!("no number in header or use block 0");
+            }
 
             let builder = WitnessBuilder::new()
                 .block(block)

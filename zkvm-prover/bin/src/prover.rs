@@ -25,6 +25,7 @@ use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LocalProverConfig {
     pub sdk_config: SdkConfig,
+    #[serde(alias = "l2geth")]
     pub rpc_config: RpcConfig,
     pub circuits: HashMap<String, CircuitConfig>,
 }
@@ -159,6 +160,12 @@ impl LocalProver {
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
+        let req = self
+            .pre_handler
+            .as_ref()
+            .expect("has been created")
+            .on_request(req)
+            .await?;
         let req_clone = req.clone();
         let handle = Handle::current();
         let task_handle =
