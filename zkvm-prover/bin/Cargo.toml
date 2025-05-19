@@ -8,7 +8,7 @@ edition.workspace = true
 [dependencies]
 env_logger = "0.11.3"
 clap = { version = "4.5", features = ["derive"] }
-base64 = "0.13.1"
+base64.workspace = true
 
 # Re-export from sbv
 anyhow = "1.0"

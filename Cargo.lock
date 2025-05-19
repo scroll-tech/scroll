@@ -9610,7 +9610,7 @@ dependencies = [
  "alloy",
  "anyhow",
  "async-trait",
- "base64 0.13.1",
+ "base64 0.22.1",
  "clap",
  "env_logger",
  "futures",

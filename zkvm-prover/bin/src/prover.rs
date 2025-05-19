@@ -3,6 +3,7 @@ use crate::zk_circuits_handler::{
 };
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
+use base64::{Engine, prelude::BASE64_STANDARD};
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
@@ -72,7 +73,7 @@ impl ProvingService for LocalProver {
                 let vk = handler.get_vk(*proof_type).await;
 
                 if let Some(vk) = vk {
-                    vks.push(base64::encode(vk));
+                    vks.push(BASE64_STANDARD.encode(vk));
                 }
             }
         }
