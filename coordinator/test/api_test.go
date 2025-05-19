@@ -67,7 +67,7 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, forks []string) (*cron.Collector, *http.Server) {
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
 	var err error
 	db, err = testApps.GetGormDBClient()
 
@@ -84,17 +84,9 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		ProverManager: &config.ProverManager{
 			ProversPerSession: proversPerSession,
 			Verifier: &config.VerifierConfig{
-				MockMode: true,
-				LowVersionCircuit: &config.CircuitConfig{
-					ParamsPath:       "",
-					AssetsPath:       "",
-					ForkName:         "homestead",
-					MinProverVersion: "v4.4.57",
-				},
 				HighVersionCircuit: &config.CircuitConfig{
-					ParamsPath:       "",
 					AssetsPath:       "",
-					ForkName:         "bernoulli",
+					ForkName:         "euclidV2",
 					MinProverVersion: "v4.4.89",
 				},
 			},
@@ -109,20 +101,17 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		},
 	}
 
-	var chainConf params.ChainConfig
-	for _, forkName := range forks {
-		switch forkName {
-		case "bernoulli":
-			chainConf.BernoulliBlock = big.NewInt(100)
-		case "homestead":
-			chainConf.HomesteadBlock = big.NewInt(0)
-		}
-	}
-
 	proofCollector := cron.NewCollector(context.Background(), db, conf, nil)
 
 	router := gin.New()
-	api.InitController(conf, &chainConf, db, nil)
+	api.InitController(conf, &params.ChainConfig{
+		BernoulliBlock: big.NewInt(0),
+		CurieBlock:     big.NewInt(0),
+		DarwinTime:     new(uint64),
+		DarwinV2Time:   new(uint64),
+		EuclidTime:     new(uint64),
+		EuclidV2Time:   new(uint64),
+	}, db, nil)
 	route.Route(router, conf, nil)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
@@ -142,7 +131,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 func setEnv(t *testing.T) {
 	var err error
 
-	version.Version = "v4.4.57"
+	version.Version = "v4.4.89"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)
@@ -198,7 +187,7 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"homestead"})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		proofCollector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -211,7 +200,7 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"homestead"})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		proofCollector.Stop()
 	}()
@@ -229,7 +218,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -273,7 +262,7 @@ func testGetTaskBlocked(t *testing.T) {
 
 func testOutdatedProverVersion(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -285,12 +274,12 @@ func testOutdatedProverVersion(t *testing.T) {
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch, "v1.999.999")
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
-	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s", chunkProver.proverVersion)
+	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.89, actual version: %s", chunkProver.proverVersion)
 	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
 
-	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.56, actual version: %s", batchProver.proverVersion)
+	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: v4.4.89, actual version: %s", batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
@@ -298,7 +287,7 @@ func testOutdatedProverVersion(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -381,7 +370,7 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -469,7 +458,7 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -570,7 +559,7 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -593,7 +582,9 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 100, batch.Hash)
 	assert.NoError(t, err)
-	encodeData, err := json.Marshal(message.Halo2ChunkProof{})
+	encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{}, MetaData: struct {
+		ChunkInfo *message.ChunkInfo `json:"chunk_info"`
+	}{ChunkInfo: &message.ChunkInfo{}}})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, encodeData)
 	err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbChunk.Hash, encodeData, types.ProvingTaskUnassigned, 1)

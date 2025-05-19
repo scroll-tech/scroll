@@ -15,15 +15,18 @@ func TestConfig(t *testing.T) {
 		"prover_manager": {
 			"provers_per_session": 1,
 			"session_attempts": 5,
+			"external_prover_threshold": 32,
+			"bundle_collection_time_sec": 180,
 			"batch_collection_time_sec": 180,
 			"chunk_collection_time_sec": 180,
 			"verifier": {
-				"mock_mode": true,
-				"params_path": "",
-				"agg_vk_path": ""
+				"high_version_circuit": {
+					"assets_path": "assets",
+					"fork_name": "euclidV2",
+					"min_prover_version": "v4.4.45"
+				}
 			},
-			"max_verifier_workers": 4,
-			"min_prover_version": "v1.0.0"
+			"max_verifier_workers": 4
 		},
 		"db": {
 			"driver_name": "postgres",

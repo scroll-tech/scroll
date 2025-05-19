@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -147,11 +148,12 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 
 	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
 
-	batchProof := &message.Halo2BatchProof{
-		RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
+	patchGuard1 := gomonkey.ApplyMethodFunc((*message.OpenVMBatchProof)(nil), "SanityCheck", func() error {
+		return nil
+	})
+	defer patchGuard1.Reset()
+
+	batchProof := &message.OpenVMBatchProof{}
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
 	assert.NoError(t, err)
 	batches = batches[1:]
@@ -162,11 +164,12 @@ func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	bundleProof := &message.Halo2BundleProof{
-		RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
+	patchGuard2 := gomonkey.ApplyMethodFunc((*message.OpenVMBundleProof)(nil), "SanityCheck", func() error {
+		return nil
+	})
+	defer patchGuard2.Reset()
+
+	bundleProof := &message.OpenVMBundleProof{EvmProof: &message.OpenVMEvmProof{Instances: make([]byte, 384)}}
 	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
 	assert.NoError(t, err)
 	for _, bundle := range bundles {
