@@ -31,13 +31,11 @@ pub trait ProofVerifier {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub fork_name: String,
-    pub params_path: String,
     pub assets_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifierConfig {
-    pub low_version_circuit: CircuitConfig,
     pub high_version_circuit: CircuitConfig,
 }
 
