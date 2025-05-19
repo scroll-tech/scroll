@@ -165,9 +165,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
-
-		cfg:      cfg,
-		chainCfg: chainCfg,
+		batchStrategy:  bestParams[uint64(cfg.BatchSubmission.TimeoutSec)],
+		cfg:            cfg,
+		chainCfg:       chainCfg,
 	}
 
 	// chain_monitor client
