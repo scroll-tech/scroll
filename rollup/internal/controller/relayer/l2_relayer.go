@@ -335,21 +335,28 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	var forceSubmit bool
 
-	// return if not hitting target price
-	if backlogCount <= r.cfg.BatchSubmission.BacklogMax {
-		// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
-		oldest := dbBatches[0].CreatedAt
+	oldestBatchTimestamp := dbBatches[0].CreatedAt
+	// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
+	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBatchTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
+		forceSubmit = true
+	}
 
-		if r.cfg.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(oldest) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
-			forceSubmit = true
+	// force submit if backlog is too big
+	if backlogCount > r.cfg.BatchSubmission.BacklogMax {
+		forceSubmit = true
+	}
+
+	if !forceSubmit {
+		// check if we should skip submitting the batch based on the fee target
+		skip, err := r.skipSubmitByFee(oldestBatchTimestamp)
+		// return if not hitting target price
+		if skip {
+			log.Debug("Skipping batch submission", "reason", err)
+			return
 		}
-		if !forceSubmit {
-			if skip, err := r.skipSubmitByFee(oldest); skip {
-				log.Debug("Skipping batch submission", "reason", err)
-				return
-			}
+		if err != nil {
+			log.Warn("Failed to check if we should skip batch submission, fallback to immediate submission", "err", err)
 		}
-		// if !skip, fall through and submit
 	}
 
 	var batchesToSubmit []*dbBatchWithChunksAndParent
@@ -1284,7 +1291,7 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time) (bool, error) {
 	hist, err := r.fetchBlobFeeHistory(windowSec)
 	if err != nil || len(hist) == 0 {
 		return false, fmt.Errorf(
-			"blob-fee history unavailable or empty; fallback to immediate submission: %w (history_length=%d)",
+			"blob-fee history unavailable or empty: %w (history_length=%d)",
 			err, len(hist),
 		)
 	}
