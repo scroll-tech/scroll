@@ -190,9 +190,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
-	if _, err := layer2Relayer.fetchBlobFeeHistory(uint64(layer2Relayer.cfg.BatchSubmission.TimeoutSec)); err != nil {
-		return nil, fmt.Errorf("initial blob‐fee load failed: %w", err)
-	}
 	return layer2Relayer, nil
 }
 
@@ -318,6 +315,10 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
+// Pending batchess are submitted if one of the following conditions is met:
+// - the first batch is too old -> forceSubmit
+// - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
+// - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
 	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
@@ -1235,35 +1236,52 @@ func (r *Layer2Relayer) fetchBlobFeeHistory(windowSec uint64) ([]*big.Int, error
 
 // calculateTargetPrice applies pct_min/ewma + relaxation to get a BigInt target
 func calculateTargetPrice(windowSec uint64, strategy StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
+	var baseline float64 // baseline in Gwei (converting to float, small loss of precision)
 	n := len(history)
 	if n == 0 {
 		return big.NewInt(0)
 	}
-	// convert to float64 Gwei
-	data := make([]float64, n)
-	for i, v := range history {
-		f, _ := new(big.Float).Quo(new(big.Float).SetInt(v), big.NewFloat(1e9)).Float64()
-		data[i] = f
-	}
-	var baseline float64
 	switch strategy.BaselineType {
 	case PctMin:
-		sort.Float64s(data)
+		// make a copy, sort by big.Int.Cmp, then pick the percentile element
+		sorted := make([]*big.Int, n)
+		copy(sorted, history)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].Cmp(sorted[j]) < 0
+		})
 		idx := int(strategy.BaselineParam * float64(n-1))
 		if idx < 0 {
 			idx = 0
 		}
-		baseline = data[idx]
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(sorted[idx]), big.NewFloat(1e9)).
+			Float64()
+
 	case EWMA:
-		alpha := strategy.BaselineParam
-		ewma := data[0]
+		one := big.NewFloat(1)
+		alpha := big.NewFloat(strategy.BaselineParam)
+		oneMinusAlpha := new(big.Float).Sub(one, alpha)
+
+		// start from first history point
+		ewma := new(big.Float).
+			Quo(new(big.Float).SetInt(history[0]), big.NewFloat(1e9))
+
 		for i := 1; i < n; i++ {
-			ewma = alpha*data[i] + (1-alpha)*ewma
+			curr := new(big.Float).
+				Quo(new(big.Float).SetInt(history[i]), big.NewFloat(1e9))
+			term1 := new(big.Float).Mul(alpha, curr)
+			term2 := new(big.Float).Mul(oneMinusAlpha, ewma)
+			ewma = new(big.Float).Add(term1, term2)
 		}
-		baseline = ewma
+		baseline, _ = ewma.Float64()
+
 	default:
-		baseline = data[n-1]
-	}
+		// fallback to last element
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(history[n-1]), big.NewFloat(1e9)).
+			Float64()
+	} // now baseline holds our baseline in float64 Gwei
+
 	// relaxation
 	age := time.Since(firstTime).Seconds()
 	frac := age / float64(windowSec)
