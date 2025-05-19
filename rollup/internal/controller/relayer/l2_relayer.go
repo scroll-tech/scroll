@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -33,6 +34,32 @@ import (
 	rutils "scroll-tech/rollup/internal/utils"
 )
 
+// RelaxType enumerates the relaxation functions we support when
+// turning a baseline fee into a “target” fee.
+type RelaxType int
+
+const (
+	// NoRelaxation means “don’t touch the baseline” (i.e. fallback/default).
+	NoRelaxation RelaxType = iota
+	Exponential
+	Sigmoid
+)
+
+const secondsPerBlock = 12
+
+// BaselineType enumerates the baseline types we support when
+// turning a baseline fee into a “target” fee.
+type BaselineType int
+
+const (
+	// PctMin means “take the minimum of the last N blocks’ fees, then
+	// take the PCT of that”.
+	PctMin BaselineType = iota
+	// EWMA means “take the exponentially‐weighted moving average of
+	// the last N blocks’ fees”.
+	EWMA
+)
+
 // Layer2Relayer is responsible for:
 // i. committing and finalizing L2 blocks on L1.
 // ii. updating L2 gas price oracle contract on L1.
@@ -46,6 +73,7 @@ type Layer2Relayer struct {
 	batchOrm   *orm.Batch
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
+	l1BlockOrm *orm.L1Block
 
 	cfg *config.RelayerConfig
 
@@ -61,6 +89,26 @@ type Layer2Relayer struct {
 	metrics *l2RelayerMetrics
 
 	chainCfg *params.ChainConfig
+
+	lastFetchedBlock uint64     // highest block number ever pulled
+	feeHistory       []*big.Int // sliding window of blob fees
+	batchStrategy    StrategyParams
+}
+
+// StrategyParams holds the per‐window fee‐submission rules.
+type StrategyParams struct {
+	BaselineType  BaselineType // "pct_min" or "ewma"
+	BaselineParam float64      // percentile (0–1) or α for EWMA
+	Gamma         float64      // relaxation γ
+	Beta          float64      // relaxation β
+	RelaxType     RelaxType    // Exponential or Sigmoid
+}
+
+// bestParams maps your 2h/5h/12h windows to their best rules.
+var bestParams = map[uint64]StrategyParams{
+	2 * 3600:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	5 * 3600:  {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	12 * 3600: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -106,6 +154,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		bundleOrm:  orm.NewBundle(db),
 		batchOrm:   orm.NewBatch(db),
+		l1BlockOrm: orm.NewL1Block(db),
 		l2BlockOrm: orm.NewL2Block(db),
 		chunkOrm:   orm.NewChunk(db),
 
@@ -116,9 +165,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
-
-		cfg:      cfg,
-		chainCfg: chainCfg,
+		batchStrategy:  bestParams[uint64(cfg.BatchSubmission.TimeoutSec)],
+		cfg:            cfg,
+		chainCfg:       chainCfg,
 	}
 
 	// chain_monitor client
@@ -266,6 +315,10 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
+// Pending batchess are submitted if one of the following conditions is met:
+// - the first batch is too old -> forceSubmit
+// - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
+// - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
 	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
@@ -274,8 +327,40 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	var batchesToSubmit []*dbBatchWithChunksAndParent
+	// if backlog outgrow max size, force‐submit enough oldest batches
+	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
+	if err != nil {
+		log.Error("Failed to fetch pending L2 batches", "err", err)
+		return
+	}
+
 	var forceSubmit bool
+
+	oldestBatchTimestamp := dbBatches[0].CreatedAt
+	// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
+	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBatchTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
+		forceSubmit = true
+	}
+
+	// force submit if backlog is too big
+	if backlogCount > r.cfg.BatchSubmission.BacklogMax {
+		forceSubmit = true
+	}
+
+	if !forceSubmit {
+		// check if we should skip submitting the batch based on the fee target
+		skip, err := r.skipSubmitByFee(oldestBatchTimestamp)
+		// return if not hitting target price
+		if skip {
+			log.Debug("Skipping batch submission", "reason", err)
+			return
+		}
+		if err != nil {
+			log.Warn("Failed to check if we should skip batch submission, fallback to immediate submission", "err", err)
+		}
+	}
+
+	var batchesToSubmit []*dbBatchWithChunksAndParent
 	for i, dbBatch := range dbBatches {
 		if i == 0 && encoding.CodecVersion(dbBatch.CodecVersion) < encoding.CodecV7 {
 			// if the first batch is not >= V7 then we need to submit batches one by one
@@ -334,11 +419,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		batchesToSubmitLen := len(batchesToSubmit)
 		if batchesToSubmitLen > 0 && batchesToSubmit[batchesToSubmitLen-1].Batch.CodecVersion != dbBatch.CodecVersion {
 			break
-		}
-
-		// if one of the batches is too old, we force submit all batches that we have so far in the next step
-		if r.cfg.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
-			forceSubmit = true
 		}
 
 		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
@@ -1116,6 +1196,136 @@ func (r *Layer2Relayer) StopSenders() {
 	if r.finalizeSender != nil {
 		r.finalizeSender.Stop()
 	}
+}
+
+// fetchBlobFeeHistory returns the last WindowSec seconds of blob‐fee samples,
+// by reading L1Block table’s BlobBaseFee column.
+func (r *Layer2Relayer) fetchBlobFeeHistory(windowSec uint64) ([]*big.Int, error) {
+	latest, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatestL1BlockHeight: %w", err)
+	}
+	// bootstrap on first call
+	if r.lastFetchedBlock == 0 {
+		// start window
+		r.lastFetchedBlock = latest - windowSec/secondsPerBlock
+	}
+	from := r.lastFetchedBlock + 1
+	//if new blocks
+	if from <= latest {
+		raw, err := r.l1BlockOrm.GetBlobFeesInRange(r.ctx, from, latest)
+		if err != nil {
+			return nil, fmt.Errorf("GetBlobFeesInRange: %w", err)
+		}
+		// append them
+		for _, v := range raw {
+			r.feeHistory = append(r.feeHistory, new(big.Int).SetUint64(v))
+			r.lastFetchedBlock++
+		}
+	}
+
+	maxLen := int(windowSec / secondsPerBlock)
+	if len(r.feeHistory) > maxLen {
+		r.feeHistory = r.feeHistory[len(r.feeHistory)-maxLen:]
+	}
+
+	return r.feeHistory, nil
+}
+
+// calculateTargetPrice applies pct_min/ewma + relaxation to get a BigInt target
+func calculateTargetPrice(windowSec uint64, strategy StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
+	var baseline float64 // baseline in Gwei (converting to float, small loss of precision)
+	n := len(history)
+	if n == 0 {
+		return big.NewInt(0)
+	}
+	switch strategy.BaselineType {
+	case PctMin:
+		// make a copy, sort by big.Int.Cmp, then pick the percentile element
+		sorted := make([]*big.Int, n)
+		copy(sorted, history)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].Cmp(sorted[j]) < 0
+		})
+		idx := int(strategy.BaselineParam * float64(n-1))
+		if idx < 0 {
+			idx = 0
+		}
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(sorted[idx]), big.NewFloat(1e9)).
+			Float64()
+
+	case EWMA:
+		one := big.NewFloat(1)
+		alpha := big.NewFloat(strategy.BaselineParam)
+		oneMinusAlpha := new(big.Float).Sub(one, alpha)
+
+		// start from first history point
+		ewma := new(big.Float).
+			Quo(new(big.Float).SetInt(history[0]), big.NewFloat(1e9))
+
+		for i := 1; i < n; i++ {
+			curr := new(big.Float).
+				Quo(new(big.Float).SetInt(history[i]), big.NewFloat(1e9))
+			term1 := new(big.Float).Mul(alpha, curr)
+			term2 := new(big.Float).Mul(oneMinusAlpha, ewma)
+			ewma = new(big.Float).Add(term1, term2)
+		}
+		baseline, _ = ewma.Float64()
+
+	default:
+		// fallback to last element
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(history[n-1]), big.NewFloat(1e9)).
+			Float64()
+	} // now baseline holds our baseline in float64 Gwei
+
+	// relaxation
+	age := time.Since(firstTime).Seconds()
+	frac := age / float64(windowSec)
+	var adjusted float64
+	switch strategy.RelaxType {
+	case Exponential:
+		adjusted = baseline * (1 + strategy.Gamma*math.Exp(strategy.Beta*(frac-1)))
+	case Sigmoid:
+		adjusted = baseline * (1 + strategy.Gamma/(1+math.Exp(-strategy.Beta*(frac-0.5))))
+	default:
+		adjusted = baseline
+	}
+	// back to wei
+	f := new(big.Float).Mul(big.NewFloat(adjusted), big.NewFloat(1e9))
+	out, _ := f.Int(nil)
+	return out
+}
+
+// skipSubmitByFee returns (true, nil) when submission should be skipped right now
+// because the blob‐fee is above target and the timeout window hasn’t yet elapsed.
+// Otherwise returns (false, err)
+func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time) (bool, error) {
+	windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
+
+	hist, err := r.fetchBlobFeeHistory(windowSec)
+	if err != nil || len(hist) == 0 {
+		return false, fmt.Errorf(
+			"blob-fee history unavailable or empty: %w (history_length=%d)",
+			err, len(hist),
+		)
+	}
+
+	// calculate target & get current (in wei)
+	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
+	current := hist[len(hist)-1]
+
+	// if current fee > target and still inside the timeout window, skip
+	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
+		return true, fmt.Errorf(
+			"blob-fee above target & window not yet passed; current=%s target=%s age=%s",
+			current.String(), target.String(), time.Since(oldest),
+		)
+	}
+
+	// otherwise proceed with submission
+	return false, nil
 }
 
 func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
