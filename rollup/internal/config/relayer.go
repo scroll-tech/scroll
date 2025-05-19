@@ -38,6 +38,8 @@ type BatchSubmission struct {
 	MaxBatches int `json:"max_batches"`
 	// The time in seconds after which a batch is considered stale and should be submitted ignoring the min batch count.
 	TimeoutSec int64 `json:"timeout"`
+	// The maximum number of pending batches to keep in the backlog.
+	BacklogMax int64 `json:"backlog_max"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.

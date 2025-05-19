@@ -218,6 +218,18 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
+func (o *Batch) GetFailedAndPendingBatchesCount(ctx context.Context) (int64, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("rollup_status = ? OR rollup_status = ?", types.RollupCommitFailed, types.RollupPending)
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Batch.GetFailedAndPendingBatchesCount error: %w", err)
+	}
+	return count, nil
+}
+
 // GetFailedAndPendingBatches retrieves batches with failed or pending status up to the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetFailedAndPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
