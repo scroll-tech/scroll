@@ -1547,7 +1547,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -3623,7 +3623,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -7607,7 +7607,7 @@ dependencies = [
 [[package]]
 name = "sbv-core"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#052946504cce1bfefd0f512c71513fbbf486830e"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "reth-evm",
  "reth-evm-ethereum",
@@ -7624,7 +7624,7 @@ dependencies = [
 [[package]]
 name = "sbv-helpers"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#052946504cce1bfefd0f512c71513fbbf486830e"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "revm 19.4.0",
 ]
@@ -7632,7 +7632,7 @@ dependencies = [
 [[package]]
 name = "sbv-kv"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#052946504cce1bfefd0f512c71513fbbf486830e"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "auto_impl",
  "hashbrown 0.15.2",
@@ -7642,7 +7642,7 @@ dependencies = [
 [[package]]
 name = "sbv-primitives"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#052946504cce1bfefd0f512c71513fbbf486830e"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -7673,7 +7673,7 @@ dependencies = [
 [[package]]
 name = "sbv-trie"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#052946504cce1bfefd0f512c71513fbbf486830e"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "alloy-rlp",
  "alloy-trie",
@@ -7688,7 +7688,7 @@ dependencies = [
 [[package]]
 name = "sbv-utils"
 version = "2.0.0"
-source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#6759d7b0893e31782e3a24abaad6be655edffdde"
+source = "git+https://github.com/scroll-tech/stateless-block-verifier?branch=zkvm%2Feuclid-upgrade#2c46ab68c4d77bf27aa6c27bf7763bede4dab968"
 dependencies = [
  "alloy-provider",
  "alloy-transport",
