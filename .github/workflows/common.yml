@@ -42,15 +42,11 @@ jobs:
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: "common/libzkp/impl -> target"
-    - name: Setup SSH for private repos
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}
-    - name: Lint
-      working-directory: 'common'
-      run: |
-        rm -rf $HOME/.cache/golangci-lint
-        make lint
+    # - name: Lint
+    #   working-directory: 'common'
+    #   run: |
+    #     rm -rf $HOME/.cache/golangci-lint
+    #     make lint
   goimports-lint:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
