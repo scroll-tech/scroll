@@ -92,10 +92,6 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		if err != nil {
 			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
-		if block.RowConsumption == nil && !w.chainCfg.IsEuclid(block.Time()) {
-			w.metrics.fetchNilRowConsumptionBlockTotal.Inc()
-			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
-		}
 
 		var count int
 		for _, tx := range block.Transactions() {
@@ -110,10 +106,9 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
 		blocks = append(blocks, &encoding.Block{
-			Header:         block.Header(),
-			Transactions:   encoding.TxsToTxsData(block.Transactions()),
-			WithdrawRoot:   common.BytesToHash(withdrawRoot),
-			RowConsumption: block.RowConsumption,
+			Header:       block.Header(),
+			Transactions: encoding.TxsToTxsData(block.Transactions()),
+			WithdrawRoot: common.BytesToHash(withdrawRoot),
 		})
 	}
 
@@ -123,11 +118,6 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 			if codec == nil {
 				return fmt.Errorf("failed to retrieve codec for block number %v and time %v", block.Header.Number, block.Header.Time)
 			}
-			blockL1CommitCalldataSize, err := codec.EstimateBlockL1CommitCalldataSize(block)
-			if err != nil {
-				return fmt.Errorf("failed to estimate block L1 commit calldata size: %v", err)
-			}
-			w.metrics.rollupL2BlockL1CommitCalldataSize.Set(float64(blockL1CommitCalldataSize))
 			w.metrics.rollupL2WatcherSyncThroughput.Add(float64(block.Header.GasUsed))
 		}
 		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {

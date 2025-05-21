@@ -26,8 +26,7 @@ type BundleProposer struct {
 	batchOrm  *orm.Batch
 	bundleOrm *orm.Bundle
 
-	maxBatchNumPerBundle uint64
-	bundleTimeoutSec     uint64
+	cfg *config.BundleProposerConfig
 
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
@@ -46,15 +45,14 @@ func NewBundleProposer(ctx context.Context, cfg *config.BundleProposerConfig, mi
 	log.Info("new bundle proposer", "bundleBatchesNum", cfg.MaxBatchNumPerBundle, "bundleTimeoutSec", cfg.BundleTimeoutSec)
 
 	p := &BundleProposer{
-		ctx:                  ctx,
-		db:                   db,
-		chunkOrm:             orm.NewChunk(db),
-		batchOrm:             orm.NewBatch(db),
-		bundleOrm:            orm.NewBundle(db),
-		maxBatchNumPerBundle: cfg.MaxBatchNumPerBundle,
-		bundleTimeoutSec:     cfg.BundleTimeoutSec,
-		minCodecVersion:      minCodecVersion,
-		chainCfg:             chainCfg,
+		ctx:             ctx,
+		db:              db,
+		chunkOrm:        orm.NewChunk(db),
+		batchOrm:        orm.NewBatch(db),
+		bundleOrm:       orm.NewBundle(db),
+		cfg:             cfg,
+		minCodecVersion: minCodecVersion,
+		chainCfg:        chainCfg,
 
 		bundleProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_bundle_circle_total",
@@ -132,7 +130,7 @@ func (p *BundleProposer) proposeBundle() error {
 	}
 
 	// select at most maxBlocksThisChunk blocks
-	maxBatchesThisBundle := p.maxBatchNumPerBundle
+	maxBatchesThisBundle := p.cfg.MaxBatchNumPerBundle
 	batches, err := p.batchOrm.GetCommittedBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, p.minCodecVersion, int(maxBatchesThisBundle))
 	if err != nil {
 		return err
@@ -159,11 +157,6 @@ func (p *BundleProposer) proposeBundle() error {
 
 	if codecVersion < p.minCodecVersion {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, p.minCodecVersion)
-	}
-
-	if codecVersion == encoding.CodecV5 {
-		maxBatchesThisBundle = 1
-		batches = batches[:maxBatchesThisBundle]
 	}
 
 	for i := 1; i < len(batches); i++ {
@@ -198,8 +191,8 @@ func (p *BundleProposer) proposeBundle() error {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if firstChunk.StartBlockTime+p.bundleTimeoutSec < currentTimeSec {
-		log.Info("first block timeout", "batch count", len(batches), "start block number", firstChunk.StartBlockNumber, "start block timestamp", firstChunk.StartBlockTime, "bundle timeout", p.bundleTimeoutSec, "current time", currentTimeSec)
+	if firstChunk.StartBlockTime+p.cfg.BundleTimeoutSec < currentTimeSec {
+		log.Info("first block timeout", "batch count", len(batches), "start block number", firstChunk.StartBlockNumber, "start block timestamp", firstChunk.StartBlockTime, "bundle timeout", p.cfg.BundleTimeoutSec, "current time", currentTimeSec)
 
 		batches, err = p.allBatchesCommittedInSameTXIncluded(batches)
 		if err != nil {

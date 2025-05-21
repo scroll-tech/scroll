@@ -75,8 +75,6 @@ type RelayerConfig struct {
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
-	// Sets rollup-relayer to stop fake finalizing at the fork boundary
-	TestEnvBypassOnlyUntilForkBoundary bool `json:"test_env_bypass_only_until_fork_boundary"`
 	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
 	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 	// The timeout in seconds for finalizing a bundle without proof, only used when EnableTestEnvBypassFeatures is true.
