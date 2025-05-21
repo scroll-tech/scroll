@@ -319,6 +319,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
+	// nothing to do if we don't have any pending batches
+	if len(dbBatches) == 0 {
+		return
+	}
+
 	// if backlog outgrow max size, force‐submit enough oldest batches
 	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
 	if err != nil {
