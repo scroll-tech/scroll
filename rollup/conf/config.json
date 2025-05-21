@@ -88,8 +88,7 @@
         "private_key_signer_config": {
           "private_key": "1515151515151515151515151515151515151515151515151515151515151515"
         }
-      },
-      "l1_commit_gas_limit_multiplier": 1.2
+      }
     },
     "chunk_proposer_config": {
       "propose_interval_milliseconds": 100,
