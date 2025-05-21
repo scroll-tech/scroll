@@ -7,11 +7,10 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-func (s *Sender) estimateLegacyGas(to *common.Address, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateLegacyGas(to *common.Address, data []byte) (*FeeData, error) {
 	gasPrice, err := s.client.SuggestGasPrice(s.ctx)
 	if err != nil {
 		log.Error("estimateLegacyGas SuggestGasPrice failure", "error", err)
@@ -26,21 +25,17 @@ func (s *Sender) estimateLegacyGas(to *common.Address, data []byte, fallbackGasL
 	gasLimit, _, err := s.estimateGasLimit(to, data, nil, gasPrice, nil, nil, nil)
 	if err != nil {
 		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", s.transactionSigner.GetAddr().String(),
-			"nonce", s.transactionSigner.GetNonce(), "to address", to.String(), "fallback gas limit", fallbackGasLimit, "error", err)
-		if fallbackGasLimit == 0 {
-			return nil, err
-		}
-		gasLimit = fallbackGasLimit
-	} else {
-		gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
+			"nonce", s.transactionSigner.GetNonce(), "to address", to.String(), "error", err)
+		return nil, err
 	}
+
 	return &FeeData{
 		gasPrice: gasPrice,
-		gasLimit: gasLimit,
+		gasLimit: gasLimit * 12 / 10, // 20% extra gas to avoid out of gas error
 	}, nil
 }
 
-func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
@@ -57,16 +52,12 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
 			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(),
-			"fallback gas limit", fallbackGasLimit, "error", err)
-		if fallbackGasLimit == 0 {
-			return nil, err
-		}
-		gasLimit = fallbackGasLimit
-	} else {
-		gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
+			"fallback gas limit", "error", err)
+		return nil, err
 	}
+
 	feeData := &FeeData{
-		gasLimit:  gasLimit,
+		gasLimit:  gasLimit * 12 / 10, // 20% extra gas to avoid out of gas error,
 		gasTipCap: gasTipCap,
 		gasFeeCap: gasFeeCap,
 	}
@@ -76,7 +67,7 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	return feeData, nil
 }
 
-func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *types.BlobTxSidecar, baseFee, blobBaseFee uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateBlobGas SuggestGasTipCap failure", "error", err)
@@ -93,17 +84,12 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 	gasLimit, accessList, err := s.estimateGasLimit(to, data, sidecar, nil, gasTipCap, gasFeeCap, blobGasFeeCap)
 	if err != nil {
 		log.Error("estimateBlobGas estimateGasLimit failure",
-			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(),
-			"fallback gas limit", fallbackGasLimit, "error", err)
-		if fallbackGasLimit == 0 {
-			return nil, err
-		}
-		gasLimit = fallbackGasLimit
-	} else {
-		gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
+			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(), "error", err)
+		return nil, err
 	}
+
 	feeData := &FeeData{
-		gasLimit:      gasLimit,
+		gasLimit:      gasLimit * 12 / 10, // 20% extra gas to avoid out of gas error
 		gasTipCap:     gasTipCap,
 		gasFeeCap:     gasFeeCap,
 		blobGasFeeCap: blobGasFeeCap,
@@ -115,7 +101,7 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 	return feeData, nil
 }
 
-func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
+func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *types.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
 	msg := ethereum.CallMsg{
 		From:      s.transactionSigner.GetAddr(),
 		To:        to,

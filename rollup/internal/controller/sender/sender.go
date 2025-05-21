@@ -156,22 +156,22 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
-		return s.estimateLegacyGas(target, data, fallbackGasLimit)
+		return s.estimateLegacyGas(target, data)
 	case DynamicFeeTxType:
 		if sidecar == nil {
-			return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
+			return s.estimateDynamicGas(target, data, baseFee)
 		}
-		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit)
+		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)
 	}
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
+func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
@@ -210,9 +210,9 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to get block number and base fee, err: %w", err)
 	}
 
-	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit); err != nil {
+	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to get fee data", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "fallback gas limit", fallbackGasLimit, "err", err)
+		log.Error("failed to get fee data", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 

@@ -146,13 +146,13 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("send transaction failure", t, func() {
 		targetErr := errors.New("send transaction failure")
-		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob) (hash common.Hash, err error) {
 		return common.Hash{}, nil
 	})
 

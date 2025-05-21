@@ -65,8 +65,6 @@ type RelayerConfig struct {
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service
 	ChainMonitor *ChainMonitor `json:"chain_monitor"`
-	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
-	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
 
 	// Configs of transaction signers (GasOracle, Commit, Finalize)
 	GasOracleSenderSignerConfig *SignerConfig `json:"gas_oracle_sender_signer_config"`

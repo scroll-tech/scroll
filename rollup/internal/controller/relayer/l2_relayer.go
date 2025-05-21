@@ -271,7 +271,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil, 0)
+	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
@@ -452,7 +452,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	txHash, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs, 0)
+	txHash, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
 	if err != nil {
 		if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
 			r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
@@ -675,7 +675,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
 	}
 
-	txHash, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil, 0)
+	txHash, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		log.Error("finalizeBundle in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex,
