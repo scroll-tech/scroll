@@ -326,6 +326,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	// if backlog outgrow max size, force‐submit enough oldest batches
 	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
+	r.metrics.rollupL2RelayerBacklogCounts.Set(float64(backlogCount))
+
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -333,9 +335,15 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	var forceSubmit bool
 
-	oldestBatchTimestamp := dbBatches[0].CreatedAt
+	startChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatches[0].StartChunkIndex)
+	oldestBlockTimestamp := time.Unix(int64(startChunk.StartBlockTime), 0)
+	if err != nil {
+		log.Error("failed to get first chunk", "err", err, "batch index", dbBatches[0].Index, "chunk index", dbBatches[0].StartChunkIndex)
+		return
+	}
+
 	// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
-	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBatchTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
+	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBlockTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
 		forceSubmit = true
 	}
 
@@ -346,10 +354,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	if !forceSubmit {
 		// check if we should skip submitting the batch based on the fee target
-		skip, err := r.skipSubmitByFee(oldestBatchTimestamp)
+		skip, err := r.skipSubmitByFee(oldestBlockTimestamp, r.metrics)
 		// return if not hitting target price
 		if skip {
-			log.Debug("Skipping batch submission", "reason", err)
+			log.Debug("Skipping batch submission", "first batch index", dbBatches[0].Index, "backlog count", backlogCount, "reason", err)
+			log.Debug("first batch index", dbBatches[0].Index)
+			log.Debug("backlog count", backlogCount)
 			return
 		}
 		if err != nil {
@@ -432,7 +442,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 
 	if forceSubmit {
-		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "created at", batchesToSubmit[0].Batch.CreatedAt)
+		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "first block created at", oldestBlockTimestamp)
 	}
 
 	// We have at least 1 batch to commit
@@ -497,6 +507,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
+	r.metrics.rollupL2RelayerCommitLatency.Set(time.Since(oldestBlockTimestamp).Seconds())
 
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
@@ -1079,7 +1090,7 @@ func calculateTargetPrice(windowSec uint64, strategy StrategyParams, firstTime t
 // skipSubmitByFee returns (true, nil) when submission should be skipped right now
 // because the blob‐fee is above target and the timeout window hasn’t yet elapsed.
 // Otherwise returns (false, err)
-func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time) (bool, error) {
+func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetrics) (bool, error) {
 	windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
 
 	hist, err := r.fetchBlobFeeHistory(windowSec)
@@ -1093,6 +1104,11 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time) (bool, error) {
 	// calculate target & get current (in wei)
 	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
 	current := hist[len(hist)-1]
+
+	currentFloat, _ := current.Float64()
+	targetFloat, _ := target.Float64()
+	metrics.rollupL2RelayerCurrentBlobPrice.Set(currentFloat)
+	metrics.rollupL2RelayerTargetBlobPrice.Set(targetFloat)
 
 	// if current fee > target and still inside the timeout window, skip
 	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
