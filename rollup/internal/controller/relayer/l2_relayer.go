@@ -358,6 +358,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// return if not hitting target price
 		if skip {
 			log.Debug("Skipping batch submission", "reason", err)
+			log.Debug("first batch index", dbBatches[0].Index)
+			log.Debug("backlog count", backlogCount)
 			return
 		}
 		if err != nil {
