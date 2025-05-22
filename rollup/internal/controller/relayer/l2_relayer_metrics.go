@@ -109,6 +109,22 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "rollup_l2_relayer_commit_throughput",
 				Help: "The cumulative gas used in blocks committed by the L2 relayer",
 			}),
+			rollupL2RelayerTargetBlobPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_target_blob_price",
+				Help: "The target blob price for the L2 relayer's submission strategy",
+			}),
+			rollupL2RelayerCurrentBlobPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_current_blob_price",
+				Help: "The current blob price",
+			}),
+			rollupL2RelayerCommitLatency: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_commit_latency",
+				Help: "The latency of the commit measured from oldest blocktime",
+			}),
+			rollupL2RelayerBacklogCounts: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_backlog_counts",
+				Help: "The number of pending batches in the backlog",
+			}),
 		}
 	})
 	return l2RelayerMetric
