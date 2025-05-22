@@ -333,9 +333,15 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	var forceSubmit bool
 
-	oldestBatchTimestamp := dbBatches[0].CreatedAt
+	startChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatches[0].StartChunkIndex)
+	oldestBlockTimestamp := time.Unix(int64(startChunk.StartBlockTime), 0)
+	if err != nil {
+		log.Error("failed to get first chunk", "err", err, "batch index", dbBatches[0].Index, "chunk index", dbBatches[0].StartChunkIndex)
+		return
+	}
+
 	// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
-	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBatchTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
+	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBlockTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
 		forceSubmit = true
 	}
 
@@ -346,7 +352,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	if !forceSubmit {
 		// check if we should skip submitting the batch based on the fee target
-		skip, err := r.skipSubmitByFee(oldestBatchTimestamp)
+		skip, err := r.skipSubmitByFee(oldestBlockTimestamp)
 		// return if not hitting target price
 		if skip {
 			log.Debug("Skipping batch submission", "reason", err)
@@ -432,7 +438,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 
 	if forceSubmit {
-		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "created at", batchesToSubmit[0].Batch.CreatedAt)
+		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "first block created at", oldestBlockTimestamp)
 	}
 
 	// We have at least 1 batch to commit
