@@ -357,7 +357,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		skip, err := r.skipSubmitByFee(oldestBlockTimestamp, r.metrics)
 		// return if not hitting target price
 		if skip {
-			log.Debug("Skipping batch submission", "reason", err)
+			log.Debug("Skipping batch submission", "first batch index", dbBatches[0].Index, "backlog count", backlogCount, "reason", err)
 			log.Debug("first batch index", dbBatches[0].Index)
 			log.Debug("backlog count", backlogCount)
 			return
