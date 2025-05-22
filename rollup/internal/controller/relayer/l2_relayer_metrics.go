@@ -26,6 +26,11 @@ type l2RelayerMetrics struct {
 
 	rollupL2RelayerCommitBlockHeight prometheus.Gauge
 	rollupL2RelayerCommitThroughput  prometheus.Counter
+
+	rollupL2RelayerCurrentBlobPrice prometheus.Gauge
+	rollupL2RelayerTargetBlobPrice  prometheus.Gauge
+	rollupL2RelayerCommitLatency    prometheus.Gauge
+	rollupL2RelayerBacklogCounts    prometheus.Gauge
 }
 
 var (
