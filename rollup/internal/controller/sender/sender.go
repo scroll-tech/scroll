@@ -171,7 +171,7 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob) (common.Hash, error, uint64) {
+func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob) (common.Hash, uint64, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
@@ -249,7 +249,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 
 	s.transactionSigner.SetNonce(signedTx.Nonce() + 1)
 
-	return signedTx.Hash(), nil, blobBaseFee
+	return signedTx.Hash(), blobBaseFee, nil
 }
 
 func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, nonce uint64) (*gethTypes.Transaction, error) {
