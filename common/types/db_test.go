@@ -313,6 +313,21 @@ func TestProverTaskFailureType(t *testing.T) {
 			"prover task failure server exception",
 		},
 		{
+			"ProverTaskFailureTypeObjectAlreadyVerified",
+			ProverTaskFailureTypeObjectAlreadyVerified,
+			"prover task failure object already verified",
+		},
+		{
+			"ProverTaskFailureTypeReassignedByAdmin",
+			ProverTaskFailureTypeReassignedByAdmin,
+			"prover task failure reassigned by admin",
+		},
+		{
+			"ProverTaskFailureTypeMaxRetriesExceeded",
+			ProverTaskFailureTypeMaxRetriesExceeded,
+			"prover task failure exceeded maximum number of invalid proof retries",
+		},
+		{
 			"Invalid Value",
 			ProverTaskFailureType(999),
 			"illegal prover task failure type (999)",
