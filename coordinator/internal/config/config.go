@@ -18,6 +18,9 @@ type ProverManager struct {
 	SessionAttempts uint8 `json:"session_attempts"`
 	// Threshold for activating the external prover based on unassigned task count.
 	ExternalProverThreshold int64 `json:"external_prover_threshold"`
+	// Maximum number of invalid proof submissions allowed per prover per task.
+	// This helps prevent DoS attacks through repeated invalid proof submissions.
+	MaxInvalidProofRetries uint8 `json:"max_invalid_proof_retries"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier"`
 	// BatchCollectionTimeSec batch Proof collection time (in seconds).
