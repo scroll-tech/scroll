@@ -39,6 +39,8 @@ var (
 	ErrValidatorFailureVerifiedFailed = errors.New("verification failed, verifier returns error")
 	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
 	ErrValidatorSuccessInvalidProof = errors.New("verification succeeded, it's an invalid proof")
+	// ErrValidatorFailureMaxRetriesExceeded prover exceeded maximum number of invalid proof retries
+	ErrValidatorFailureMaxRetriesExceeded = errors.New("validator failure prover exceeded maximum number of invalid proof retries")
 	// ErrGetHardForkNameFailed failed to get hard fork name
 	ErrGetHardForkNameFailed = errors.New("failed to get hard fork name")
 	// ErrCoordinatorInternalFailure coordinator internal db failure
@@ -69,6 +71,7 @@ type ProofReceiverLogic struct {
 	validateFailureProverTaskStatusNotOk  prometheus.Counter
 	validateFailureProverTaskTimeout      prometheus.Counter
 	validateFailureProverTaskHaveVerifier prometheus.Counter
+	validateFailureMaxRetriesExceeded     prometheus.Counter
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
@@ -126,6 +129,10 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, chainCfg *params.Cha
 		validateFailureProverTaskHaveVerifier: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_validate_failure_submit_have_been_verifier",
 			Help: "Total number of submit proof validate failure proof have been verifier.",
+		}),
+		validateFailureMaxRetriesExceeded: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_max_retries_exceeded",
+			Help: "Total number of submit proof validate failure max retries exceeded.",
 		}),
 	}
 }
@@ -252,7 +259,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the prover for each submission of invalid proof
-		// (ii) set the maximum failure retry times
+		// (ii) set the maximum failure retry times - IMPLEMENTED via MaxInvalidProofRetries config
 		log.Warn(
 			"cannot submit valid proof for a prover task twice",
 			"taskType", proverTask.TaskType, "hash", proofParameter.TaskID,
@@ -302,6 +309,32 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "proverPublicKey", pk)
 		return ErrValidatorFailureTaskHaveVerifiedSuccess
 	}
+
+	// Check if prover has exceeded maximum invalid proof retries
+	if m.cfg.MaxInvalidProofRetries > 0 {
+		failedTasks, getFailedErr := m.proverTaskOrm.GetFailedProverTasksByHash(ctx, message.ProofType(proofParameter.TaskType), proofParameter.TaskID, int(m.cfg.MaxInvalidProofRetries)+1)
+		if getFailedErr != nil {
+			log.Error("failed to get failed prover tasks", "hash", proofParameter.TaskID, "proverPublicKey", pk, "error", getFailedErr)
+			return getFailedErr
+		}
+
+		proverFailureCount := 0
+		for _, task := range failedTasks {
+			if task.ProverPublicKey == pk && task.ProvingStatus == int16(types.ProverProofInvalid) {
+				proverFailureCount++
+			}
+		}
+
+		if proverFailureCount >= int(m.cfg.MaxInvalidProofRetries) {
+			m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeMaxRetriesExceeded, proofParameter)
+			m.validateFailureMaxRetriesExceeded.Inc()
+			log.Warn("prover has exceeded maximum invalid proof retries",
+				"hash", proofParameter.TaskID, "proverPublicKey", pk, "failureCount", proverFailureCount,
+				"maxRetries", m.cfg.MaxInvalidProofRetries, "taskType", proverTask.TaskType, "proverName", proverTask.ProverName)
+			return ErrValidatorFailureMaxRetriesExceeded
+		}
+	}
+
 	return nil
 }
 
