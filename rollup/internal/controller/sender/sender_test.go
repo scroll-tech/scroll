@@ -187,7 +187,7 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		if txBlob[i] != nil {
 			blobs = []*kzg4844.Blob{txBlob[i]}
 		}
-		hash, err := s.SendTransaction("0", &common.Address{}, nil, blobs)
+		hash, _, err := s.SendTransaction("0", &common.Address{}, nil, blobs)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -545,10 +545,10 @@ func testResubmitNonceGappedTransaction(t *testing.T) {
 		if txBlob[i] != nil {
 			blobs = []*kzg4844.Blob{txBlob[i]}
 		}
-		_, err = s.SendTransaction("test-1", &common.Address{}, nil, blobs)
+		_, _, err = s.SendTransaction("test-1", &common.Address{}, nil, blobs)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test-2", &common.Address{}, nil, blobs)
+		_, _, err = s.SendTransaction("test-2", &common.Address{}, nil, blobs)
 		assert.NoError(t, err)
 
 		s.checkPendingTransaction()
@@ -589,7 +589,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
+		_, _, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -631,7 +631,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		originTxHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
+		originTxHash, _, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -691,7 +691,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 			return nil
 		})
 
-		txHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
+		txHash, _, err := s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -761,7 +761,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 			return nil
 		})
 
-		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
+		_, _, err = s.SendTransaction("test", &common.Address{}, nil, randBlobs(1))
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -835,7 +835,7 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.NoError(t, err)
 	defer s.Stop()
 
-	_, err = s.SendTransaction("0", &testContractsAddress, data, blobs)
+	_, _, err = s.SendTransaction("0", &testContractsAddress, data, blobs)
 	assert.NoError(t, err)
 
 	var txHash common.Hash
@@ -893,10 +893,10 @@ func testSendBlobCarryingTxOverLimit(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i := 0; i < int(cfgCopy.MaxPendingBlobTxs); i++ {
-		_, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1))
+		_, _, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1))
 		assert.NoError(t, err)
 	}
-	_, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1))
+	_, _, err = s.SendTransaction("0", &common.Address{}, nil, randBlobs(1))
 	assert.ErrorIs(t, err, ErrTooManyPendingBlobTxs)
 	s.Stop()
 }
