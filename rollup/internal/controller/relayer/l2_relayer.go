@@ -518,6 +518,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerCommitLatency.Set(time.Since(oldestBlockTimestamp).Seconds())
+	if len(r.feeHistory) != 0 {
+		current := r.feeHistory[len(r.feeHistory)-1]
+		currentFloat, _ := current.Float64()
+		r.metrics.rollupL2RelayerCommitPrice.Set(float64(currentFloat))
+	}
+
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
@@ -1127,7 +1133,6 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 		)
 	}
 
-	r.metrics.rollupL2RelayerCommitPrice.Set(currentFloat)
 	// otherwise proceed with submission
 	return false, nil
 }
