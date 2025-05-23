@@ -1127,7 +1127,7 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 		)
 	}
 
-	r.metrics.rollupL2RelayerCommitPrice.Set(target)
+	r.metrics.rollupL2RelayerCommitPrice.Set(currentFloat)
 	// otherwise proceed with submission
 	return false, nil
 }
