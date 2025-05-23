@@ -113,6 +113,8 @@ const (
 	ProverTaskFailureTypeObjectAlreadyVerified
 	// ProverTaskFailureTypeReassignedByAdmin reassigned by admin, this value is used in admin-system and defined here for clarity
 	ProverTaskFailureTypeReassignedByAdmin
+	// ProverTaskFailureTypeMaxRetriesExceeded prover exceeded maximum number of invalid proof retries
+	ProverTaskFailureTypeMaxRetriesExceeded
 )
 
 func (r ProverTaskFailureType) String() string {
@@ -131,6 +133,8 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure object already verified"
 	case ProverTaskFailureTypeReassignedByAdmin:
 		return "prover task failure reassigned by admin"
+	case ProverTaskFailureTypeMaxRetriesExceeded:
+		return "prover task failure exceeded maximum number of invalid proof retries"
 	default:
 		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
