@@ -31,6 +31,7 @@ type l2RelayerMetrics struct {
 	rollupL2RelayerTargetBlobPrice  prometheus.Gauge
 	rollupL2RelayerCommitLatency    prometheus.Gauge
 	rollupL2RelayerBacklogCounts    prometheus.Gauge
+	rollupL2RelayerCommitPrice      prometheus.Gauge
 }
 
 var (
@@ -124,6 +125,10 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 			rollupL2RelayerBacklogCounts: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_l2_relayer_backlog_counts",
 				Help: "The number of pending batches in the backlog",
+			}),
+			rollupL2RelayerCommitPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_commit_price",
+				Help: "The commit price for the L2 relayer's submission strategy",
 			}),
 		}
 	})

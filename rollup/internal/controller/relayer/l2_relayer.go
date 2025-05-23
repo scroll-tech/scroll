@@ -104,10 +104,15 @@ type StrategyParams struct {
 }
 
 // bestParams maps your 2h/5h/12h windows to their best rules.
+// Timeouts are in seconds, 2, 5 and 12 hours (and same + 20 mins to account for
+// time to create batch currently roughly, as time is measured from block creation)
 var bestParams = map[uint64]StrategyParams{
-	2 * 3600:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
-	5 * 3600:  {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
-	12 * 3600: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
+	7200:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	8400:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	18000: {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	19200: {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	42800: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
+	44400: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -147,6 +152,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
+	strategy, ok := bestParams[uint64(cfg.BatchSubmission.TimeoutSec)]
+	if !ok {
+		return nil, fmt.Errorf("invalid timeout for batch submission: %v", cfg.BatchSubmission.TimeoutSec)
+	}
+
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -164,7 +174,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
-		batchStrategy:  bestParams[uint64(cfg.BatchSubmission.TimeoutSec)],
+		batchStrategy:  strategy,
 		cfg:            cfg,
 		chainCfg:       chainCfg,
 	}
@@ -508,7 +518,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerCommitLatency.Set(time.Since(oldestBlockTimestamp).Seconds())
-
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
@@ -1118,6 +1127,7 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 		)
 	}
 
+	r.metrics.rollupL2RelayerCommitPrice.Set(target)
 	// otherwise proceed with submission
 	return false, nil
 }
