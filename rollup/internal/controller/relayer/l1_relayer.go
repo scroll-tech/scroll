@@ -179,13 +179,13 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
+			txHash, _, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil)
 			if err != nil {
 				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
 				return
 			}
 
-			err = r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
+			err = r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, txHash.String())
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
@@ -195,7 +195,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			r.lastBlobBaseFee = blobBaseFee
 			r.metrics.rollupL1RelayerLatestBaseFee.Set(float64(r.lastBaseFee))
 			r.metrics.rollupL1RelayerLatestBlobBaseFee.Set(float64(r.lastBlobBaseFee))
-			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee)
+			log.Info("Update l1 base fee", "txHash", txHash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 		}
 	}
 }

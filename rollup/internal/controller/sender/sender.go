@@ -156,22 +156,22 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
-		return s.estimateLegacyGas(target, data, fallbackGasLimit)
+		return s.estimateLegacyGas(target, data)
 	case DynamicFeeTxType:
 		if sidecar == nil {
-			return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
+			return s.estimateDynamicGas(target, data, baseFee)
 		}
-		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit)
+		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)
 	}
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
+func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blobs []*kzg4844.Blob) (common.Hash, uint64, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
@@ -190,37 +190,37 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 			numPendingTransactions, err = s.pendingTransactionOrm.GetCountPendingTransactionsBySenderType(s.ctx, s.senderType)
 			if err != nil {
 				log.Error("failed to count pending transactions", "err: %w", err)
-				return common.Hash{}, fmt.Errorf("failed to count pending transactions, err: %w", err)
+				return common.Hash{}, 0, fmt.Errorf("failed to count pending transactions, err: %w", err)
 			}
 			if numPendingTransactions >= s.config.MaxPendingBlobTxs {
-				return common.Hash{}, ErrTooManyPendingBlobTxs
+				return common.Hash{}, 0, ErrTooManyPendingBlobTxs
 			}
 
 		}
 		sidecar, err = makeSidecar(blobs)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)
-			return common.Hash{}, fmt.Errorf("failed to make sidecar for blob transaction, err: %w", err)
+			return common.Hash{}, 0, fmt.Errorf("failed to make sidecar for blob transaction, err: %w", err)
 		}
 	}
 
 	blockNumber, baseFee, blobBaseFee, err := s.getBlockNumberAndBaseFeeAndBlobFee(s.ctx)
 	if err != nil {
 		log.Error("failed to get block number and base fee", "error", err)
-		return common.Hash{}, fmt.Errorf("failed to get block number and base fee, err: %w", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to get block number and base fee, err: %w", err)
 	}
 
-	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit); err != nil {
+	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to get fee data", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "fallback gas limit", fallbackGasLimit, "err", err)
-		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
+		log.Error("failed to get fee data", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
 	signedTx, err := s.createTx(feeData, target, data, sidecar, s.transactionSigner.GetNonce())
 	if err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to create signed tx (non-resubmit case)", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
-		return common.Hash{}, fmt.Errorf("failed to create signed transaction, err: %w", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to create signed transaction, err: %w", err)
 	}
 
 	// Insert the transaction into the pending transaction table.
@@ -228,14 +228,14 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	// This case will be handled by the checkPendingTransaction function.
 	if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), signedTx, blockNumber); err != nil {
 		log.Error("failed to insert transaction", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
-		return common.Hash{}, fmt.Errorf("failed to insert transaction, err: %w", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to insert transaction, err: %w", err)
 	}
 
 	if err := s.client.SendTransaction(s.ctx, signedTx); err != nil {
 		// Delete the transaction from the pending transaction table if it fails to send.
 		if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
 			log.Error("failed to delete transaction", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", updateErr)
-			return common.Hash{}, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
+			return common.Hash{}, 0, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
 		}
 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", err)
@@ -244,12 +244,12 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		if strings.Contains(err.Error(), "nonce too low") {
 			s.resetNonce(context.Background())
 		}
-		return common.Hash{}, fmt.Errorf("failed to send transaction, err: %w", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to send transaction, err: %w", err)
 	}
 
 	s.transactionSigner.SetNonce(signedTx.Nonce() + 1)
 
-	return signedTx.Hash(), nil
+	return signedTx.Hash(), blobBaseFee, nil
 }
 
 func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, nonce uint64) (*gethTypes.Transaction, error) {

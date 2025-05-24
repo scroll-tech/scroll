@@ -96,11 +96,6 @@ func (o *L2Block) GetL2BlocksGEHeight(ctx context.Context, height uint64, limit 
 		}
 
 		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
-
-		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksGEHeight error: %w", err)
-		}
-
 		blocks = append(blocks, &block)
 	}
 
@@ -171,11 +166,6 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		}
 
 		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
-
-		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
-		}
-
 		blocks = append(blocks, &block)
 	}
 
@@ -198,12 +188,6 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) 
 			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
-		rc, err := json.Marshal(block.RowConsumption)
-		if err != nil {
-			log.Error("failed to marshal RowConsumption", "hash", block.Header.Hash().String(), "err", err)
-			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
-		}
-
 		l2Block := L2Block{
 			Number:         block.Header.Number.Uint64(),
 			Hash:           block.Header.Hash().String(),
@@ -214,7 +198,6 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) 
 			TxNum:          uint32(len(block.Transactions)),
 			GasUsed:        block.Header.GasUsed,
 			BlockTimestamp: block.Header.Time,
-			RowConsumption: string(rc),
 			Header:         string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)

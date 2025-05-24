@@ -23,7 +23,7 @@ import (
 	"scroll-tech/rollup/internal/utils"
 )
 
-func testBundleProposerLimitsCodecV4(t *testing.T) {
+func testBundleProposerLimitsCodecV7(t *testing.T) {
 	tests := []struct {
 		name                         string
 		maxBatchNumPerBundle         uint64
@@ -69,7 +69,6 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 				Header: &gethTypes.Header{
 					Number: big.NewInt(0),
 				},
-				RowConsumption: &gethTypes.RowConsumption{},
 			}
 			chunk := &encoding.Chunk{
 				Blocks: []*encoding.Block{block},
@@ -91,27 +90,18 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
-			chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}
+			chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk:             1,
-				MaxTxNumPerChunk:                math.MaxUint64,
-				MaxL2GasPerChunk:                math.MaxUint64,
-				MaxL1CommitGasPerChunk:          math.MaxUint64,
-				MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
-				MaxRowConsumptionPerChunk:       math.MaxUint64,
-				ChunkTimeoutSec:                 math.MaxUint32,
-				GasCostIncreaseMultiplier:       1,
-				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, encoding.CodecV4, chainConfig, db, nil)
+				MaxBlockNumPerChunk: 1,
+				MaxL2GasPerChunk:    math.MaxUint64,
+				ChunkTimeoutSec:     math.MaxUint32,
+			}, encoding.CodecV7, chainConfig, db, nil)
 
 			bap := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-				MaxL1CommitGasPerBatch:          math.MaxUint64,
-				MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
-				BatchTimeoutSec:                 0,
-				GasCostIncreaseMultiplier:       1,
-				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, encoding.CodecV4, chainConfig, db, nil)
+				MaxChunksPerBatch: math.MaxInt32,
+				BatchTimeoutSec:   0,
+			}, encoding.CodecV7, chainConfig, db, nil)
 
 			cp.TryProposeChunk()  // chunk1 contains block1
 			bap.TryProposeBatch() // batch1 contains chunk1
@@ -121,7 +111,7 @@ func testBundleProposerLimitsCodecV4(t *testing.T) {
 			bup := NewBundleProposer(context.Background(), &config.BundleProposerConfig{
 				MaxBatchNumPerBundle: tt.maxBatchNumPerBundle,
 				BundleTimeoutSec:     tt.bundleTimeoutSec,
-			}, encoding.CodecV4, chainConfig, db, nil)
+			}, encoding.CodecV7, chainConfig, db, nil)
 
 			batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
 			require.NoError(t, err)
