@@ -1,0 +1,23 @@
+{
+  "prover_name_prefix": "prover",
+  "keys_dir": "keys",
+  "coordinator": {
+    "base_url": "http://coordinator:8390",
+    "retry_count": 10,
+    "retry_wait_time_sec": 10,
+    "connection_timeout_sec": 30
+  },
+  "l2geth": {
+    "endpoint": "<L2 RPC with generated blocks reachable from Docker network>"
+  },
+  "prover": {
+    "circuit_type": 2,
+    "supported_proof_types": [
+      1,
+      2,
+      3
+    ],
+    "circuit_version": "v0.13.1"
+  },
+  "db_path": "db"
+}

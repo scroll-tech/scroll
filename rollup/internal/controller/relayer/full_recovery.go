@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/watcher"
 	"scroll-tech/rollup/internal/orm"
@@ -118,7 +119,7 @@ func (f *FullRecovery) RestoreFullPreviousState() error {
 
 			var bundle []*batchEvents
 
-			// with bundles all commited batches until this finalized batch are finalized in the same bundle
+			// with bundles all committed batches until this finalized batch are finalized in the same bundle
 			for commitsHeapMap.Len() > 0 {
 				commitEvent := commitsHeapMap.Peek()
 				if commitEvent.BatchIndex().Uint64() > finalizeEvent.BatchIndex().Uint64() {
@@ -138,7 +139,7 @@ func (f *FullRecovery) RestoreFullPreviousState() error {
 				return false
 			}
 
-		case l1.RevertEventType:
+		case l1.RevertEventV7Type:
 			// We ignore reverted batches.
 			commitsHeapMap.RemoveByKey(event.BatchIndex().Uint64())
 		}
@@ -252,9 +253,7 @@ func (f *FullRecovery) processFinalizedBatch(nextBatch *batchEvents) error {
 		log.Info("Reproducing chunk", "start block", start, "end block", end)
 
 		var chunk encoding.Chunk
-		for _, block := range blocks {
-			chunk.Blocks = append(chunk.Blocks, block)
-		}
+		chunk.Blocks = append(chunk.Blocks, blocks...)
 
 		metrics, err := butils.CalculateChunkMetrics(&chunk, codec.Version())
 		if err != nil {
@@ -297,9 +296,7 @@ func (f *FullRecovery) processFinalizedBatch(nextBatch *batchEvents) error {
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
 	batch.TotalL1MessagePoppedBefore = dbChunks[0].TotalL1MessagesPoppedBefore
 
-	for _, chunk := range daChunks {
-		batch.Chunks = append(batch.Chunks, chunk)
-	}
+	batch.Chunks = append(batch.Chunks, daChunks...)
 
 	metrics, err := butils.CalculateBatchMetrics(&batch, codec.Version())
 	if err != nil {

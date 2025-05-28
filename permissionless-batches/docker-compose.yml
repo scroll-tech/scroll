@@ -5,11 +5,12 @@ services:
     build:
       context: ../
       dockerfile: build/dockerfiles/recovery_permissionless_batches.Dockerfile
+    network_mode: host
     container_name: permissionless-batches-relayer
     volumes:
       - ./conf/relayer/config.json:/app/conf/config.json
       - ./conf/genesis.json:/app/conf/genesis.json
-    command: "--config /app/conf/config.json"
+    command: "--config /app/conf/config.json --min-codec-version 0"
     profiles:
       - batch-production-submission
     depends_on:
@@ -32,21 +33,27 @@ services:
     ports:
       - "5432:5432"
 
-  coordinator:
-    build:
-      context: ../
-      dockerfile: build/dockerfiles/coordinator-api.Dockerfile
+  coordinator-api:
+    image: scrolltech/coordinator-api:v4.5.7
     volumes:
-      - ./conf/coordinator/config.json:/app/conf/config.json
-      - ./conf/genesis.json:/app/conf/genesis.json
-    command: "--config /app/conf/config.json --http.port 8390 --verbosity 5"
+      - ./conf/coordinator/config.json:/coordinator/config.json:ro
+      - ./conf/genesis.json:/coordinator/genesis.json:ro
+      - ./conf/coordinator/coordinator_run.sh:/bin/coordinator_run.sh
+    entrypoint: /bin/coordinator_run.sh
     profiles:
-      - proving
+      - local-prover
+      - cloud-prover
+    ports: [8556:8555]
+    environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
+      - SCROLL_PROVER_ASSETS_DIR=/verifier/assets/
+      - HTTP_PORT=8555
+      - METRICS_PORT=8390
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8390/coordinator/v1/challenge"]
+      test: ["CMD", "curl", "-f", "http://localhost:8555/coordinator/v1/challenge"]
       interval: 1s
       timeout: 1s
       retries: 10
@@ -57,64 +64,51 @@ services:
       context: ../
       dockerfile: build/dockerfiles/coordinator-cron.Dockerfile
     volumes:
-      - ./conf/coordinator/:/app/conf
+      - ./conf/coordinator/config.json:/app/conf/config.json
     command: "--config /app/conf/config.json --verbosity 3"
     profiles:
-      - proving
+      - local-prover
+      - cloud-prover
     depends_on:
       db:
         condition: service_healthy
 
+  local-prover:
+    image: scrolltech/cuda-prover:v4.5.7-a18fe064-fcc09d1-9174aff
+    network_mode: host
+    platform: linux/amd64
+    runtime: nvidia
+    entrypoint: /bin/prover_run.sh
+    profiles:
+      - local-prover
+    environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
+      - LD_LIBRARY_PATH=/prover:/usr/local/cuda/lib64
+      - RUST_MIN_STACK=16777216
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+    volumes:
+      - ./conf/proving-service/local-prover/config.json:/prover/conf/config.json:ro
+      - ./conf/proving-service/local-prover/prover_run.sh:/bin/prover_run.sh
+      - ./conf/proving-service/local-prover/db:/db
+      - ./conf/proving-service/local-prover/keys:/keys
+    depends_on:
+      coordinator-api:
+        condition: service_healthy
 
-  proving-service-chunk:
+  cloud-prover:
     image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
     platform: linux/amd64
     command: "--config /app/config.json"
     profiles:
-      - proving
+      - cloud-prover
     environment:
-          PROVER_NAME_PREFIX: "sindri_chunk"
-          CIRCUIT_TYPE: 1 # 1 for chunk proving
-          N_WORKERS: 1
+      -  N_WORKERS=1
     volumes:
       - ./conf/proving-service/chunk/:/app/
       - ./conf/proving-service/config.json:/app/config.json
     depends_on:
-      coordinator:
-        condition: service_healthy
-
-  proving-service-batch:
-    image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
-    platform: linux/amd64
-    command: "--config /app/config.json"
-    profiles:
-      - proving
-    environment:
-      PROVER_NAME_PREFIX: "sindri_batch"
-      CIRCUIT_TYPE: 2 # 2 for batch proving
-      N_WORKERS: 1
-    volumes:
-      - ./conf/proving-service/batch/:/app
-      - ./conf/proving-service/config.json:/app/config.json
-    depends_on:
-      coordinator:
-        condition: service_healthy
-
-  proving-service-bundle:
-    image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
-    platform: linux/amd64
-    command: "--config /app/config.json"
-    profiles:
-      - proving
-    environment:
-      PROVER_NAME_PREFIX: "sindri_bundle"
-      CIRCUIT_TYPE: 3 # 3 for bundle proving
-      N_WORKERS: 1
-    volumes:
-      - ./conf/proving-service/bundle/:/app
-      - ./conf/proving-service/config.json:/app/config.json
-    depends_on:
-      coordinator:
+      coordinator-api:
         condition: service_healthy
 
 volumes:

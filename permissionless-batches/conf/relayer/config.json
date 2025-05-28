@@ -9,7 +9,7 @@
       "commit_sender_signer_config": {
         "signer_type": "PrivateKey",
         "private_key_signer_config": {
-          "private_key": "1414141414141414141414141414141414141414141414141414141414141414"
+          "private_key": "<the private key of L1 address to submit permissionless batch, please fund it in advance>"
         }
       },
       "l1_commit_gas_limit_multiplier": 1.2
@@ -40,16 +40,17 @@
   },
   "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://db/scroll?sslmode=disable&user=postgres",
+    "dsn": "postgres://172.17.0.1:5432/scroll?sslmode=disable&user=postgres",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
   "recovery_config": {
     "enable": true,
-    "l1_block_height": <commit tx of last finalized batch on L1>,
-    "latest_finalized_batch": <last finalized batch on L1>,
-    "l2_block_height_limit": <L2 block up to which to produce batch>,
+    "l1_block_height": "<commit tx of last finalized batch on L1>",
+    "latest_finalized_batch": "<last finalized batch on L1>",
+    "l2_block_height_limit": "<L2 block up to which to produce batch>",
     "force_latest_finalized_batch": false,
-    "force_l1_message_count": 0
+    "force_l1_message_count": 0,
+    "submit_without_proof": false
   }
 }

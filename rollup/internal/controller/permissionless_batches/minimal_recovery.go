@@ -17,6 +17,7 @@ import (
 	"scroll-tech/common/types"
 
 	"scroll-tech/database/migrate"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/watcher"
 	"scroll-tech/rollup/internal/orm"
@@ -265,7 +266,7 @@ func (r *MinimalRecovery) restoreMinimalPreviousState() (*orm.Chunk, *orm.Batch,
 
 	log.Info("Last L2 block in batch", "batch", batchCommitEvent.BatchIndex(), "L2 block", lastBlockInBatch, "PostL1MessageQueueHash", daBlobPayload.PostL1MessageQueueHash())
 
-	// 4. Get the L1 messages count after the latest finalized batch.
+	// 4. Get the L1 messages count and state root after the latest finalized batch.
 	var l1MessagesCount uint64
 	if r.cfg.RecoveryConfig.ForceL1MessageCount == 0 {
 		l1MessagesCount, err = reader.NextUnfinalizedL1MessageQueueIndex(latestFinalizedL1Block)
@@ -278,8 +279,15 @@ func (r *MinimalRecovery) restoreMinimalPreviousState() (*orm.Chunk, *orm.Batch,
 
 	log.Info("L1 messages count after latest finalized batch", "batch", batchCommitEvent.BatchIndex(), "count", l1MessagesCount)
 
+	stateRoot, err := reader.GetFinalizedStateRootByBatchIndex(latestFinalizedL1Block, latestFinalizedBatchIndex)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get state root: %w", err)
+	}
+
+	log.Info("State root after latest finalized batch", "batch", batchCommitEvent.BatchIndex(), "stateRoot", stateRoot.Hex())
+
 	// 5. Insert minimal state to DB.
-	chunk, err := r.chunkORM.InsertPermissionlessChunk(r.ctx, defaultFakeRestoredChunkIndex, daBatch.Version(), daBlobPayload, l1MessagesCount)
+	chunk, err := r.chunkORM.InsertPermissionlessChunk(r.ctx, defaultFakeRestoredChunkIndex, daBatch.Version(), daBlobPayload, l1MessagesCount, stateRoot)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to insert chunk raw: %w", err)
 	}
@@ -388,6 +396,7 @@ func (r *MinimalRecovery) decodeLatestFinalizedBatch(reader *l1.Reader, event *l
 		blobClient.AddBlobClient(client)
 	}
 
+	log.Info("Fetching blob by versioned hash and block time", "TargetBlobVersionedHash", targetBlobVersionedHash, "BlockTime", blockHeader.Time, "BlockNumber", blockHeader.Number)
 	blob, err := blobClient.GetBlobByVersionedHashAndBlockTime(r.ctx, targetBlobVersionedHash, blockHeader.Time)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get blob by versioned hash and block time for batch %d: %w", event.BatchIndex(), err)
