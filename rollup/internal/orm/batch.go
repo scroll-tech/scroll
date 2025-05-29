@@ -263,6 +263,28 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 	return &batch, nil
 }
 
+// GetFirstUnuploadedAndFailedBatch retrieves the first batch that either hasn't been uploaded to any blob storage service
+// or has failed upload status. The batch must have a commit_tx_hash (committed).
+func (o *Batch) GetFirstUnuploadedAndFailedBatch(ctx context.Context, platform types.BlobStoragePlatform) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Joins("LEFT JOIN blob_upload ON blob_upload.batch_index = batch.index")
+	db = db.Where("batch.commit_tx_hash IS NOT NULL")
+	db = db.Where("blob_upload.batch_index IS NULL OR blob_upload.status = ?", types.BlobUploadStatusFailed)
+	db = db.Where("blob_upload.platform = ?", platform)
+	db = db.Order("batch.index ASC")
+	db = db.Limit(1)
+
+	var batch Batch
+	if err := db.First(&batch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Batch.GetFirstUnuploadedAndFailedBatch error: %w", err)
+	}
+	return &batch, nil
+}
+
 // InsertBatch inserts a new batch into the database.
 func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {

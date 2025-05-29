@@ -24,6 +24,8 @@ type L2Config struct {
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
 	// The bundle_proposer config
 	BundleProposerConfig *BundleProposerConfig `json:"bundle_proposer_config"`
+	// The blob_uploader config
+	BlobUploaderConfig *BlobUploaderConfig `json:"blob_uploader_config"`
 }
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
@@ -45,4 +47,17 @@ type BatchProposerConfig struct {
 type BundleProposerConfig struct {
 	MaxBatchNumPerBundle uint64 `json:"max_batch_num_per_bundle"`
 	BundleTimeoutSec     uint64 `json:"bundle_timeout_sec"`
+}
+
+// BlobUploaderConfig loads blob_uploader configuration items.
+type BlobUploaderConfig struct {
+	AWSS3Config   *AWSS3Config `json:"aws_s3_config"`
+}
+
+// AWSS3Config loads s3_uploader configuration items.
+type AWSS3Config struct {
+	Bucket    string `json:"bucket"`
+	Region    string `json:"region"`
+	AccessKey string `json:"access_key"`
+	SecretKey string `json:"secret_key"`
 }
