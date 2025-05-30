@@ -2,14 +2,17 @@ package blob_uploader
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -23,6 +26,8 @@ type BlobUploader struct {
 
 	s3Uploader *S3Uploader
 	batchOrm   *orm.Batch
+	chunkOrm   *orm.Chunk
+	l2BlockOrm *orm.L2Block
 
 	metrics *blobUploaderMetrics
 }
@@ -43,6 +48,8 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 		cfg:        cfg,
 		s3Uploader: s3Uploader,
 		batchOrm:   orm.NewBatch(db),
+		chunkOrm:   orm.NewChunk(db),
+		l2BlockOrm: orm.NewL2Block(db),
 	}
 
 	blobUploader.metrics = initblobUploaderMetrics(reg)
@@ -52,18 +59,94 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 
 func (b *BlobUploader) UploadBlobToS3() {
 	// get un-uploaded batches from database in ascending order by their index.
-	dbBatches, err := b.batchOrm.GetFirstUnuploadedAndFailedBatch(b.ctx, types.BlobStoragePlatformS3)
+	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatch(b.ctx, types.BlobStoragePlatformS3)
 	if err != nil {
 		log.Error("Failed to fetch unuploaded batch", "err", err)
 		return
 	}
 
 	// nothing to do if we don't have any pending batches
-	if dbBatches == nil {
+	if dbBatch == nil {
 		return
 	}
 
-	// upload data to s3 bucket
-	b.s3Uploader.UploadData(b.ctx, )
+	// construct blob
+	var blob *kzg4844.Blob
+	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
+	switch codecVersion {
+	case encoding.CodecV7:
+		blob, err = b.constructBlobCodecV7(dbBatch)
+		if err != nil {
+			log.Error("failed to construct constructBlobCodecV7 payload for V7", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
+			return
+		}
+	default:
+		log.Error("unsupported codec version in UploadBlobToS3", "codecVersion", codecVersion, "batch index", dbBatch.Index)
+		return
+	}
+
+	// calculate versioned blob hash 
+	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
+	if err != nil {
+		log.Error("failed to versioned blob hash", "batch index", dbBatch.Index, "err", err)
+		return
+	}
+
+	// upload blob data to s3 bucket
+	key := common.Bytes2Hex(versionedBlobHash[:])
+	err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
+	if err != nil {
+		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
+		return
+	}
+
+	// update db status
+	
 }
 
+func (b *BlobUploader) constructBlobCodecV7(dbBatch *orm.Batch) (*kzg4844.Blob, error) {
+	var dbChunks []*orm.Chunk
+
+	// Verify batches compatibility
+	dbChunks, err := b.chunkOrm.GetChunksInRange(b.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chunks in range: %v", err)
+	}
+
+	// check codec version
+	var batchBlocks []*encoding.Block
+	for _, dbChunk := range dbChunks {
+		if dbBatch.CodecVersion != dbChunk.CodecVersion {
+			return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
+		}
+
+		blocks, err := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
+		}
+
+		batchBlocks = append(batchBlocks, blocks...)
+	}
+
+	encodingBatch := &encoding.Batch{
+		Index:                  dbBatch.Index,
+		ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
+		PrevL1MessageQueueHash: common.HexToHash(dbBatch.PrevL1MessageQueueHash),
+		PostL1MessageQueueHash: common.HexToHash(dbBatch.PostL1MessageQueueHash),
+		Blocks:                 batchBlocks,
+	}
+
+	version := encoding.CodecVersion(dbBatch.CodecVersion)
+	codec, err := encoding.CodecFromVersion(version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+	}
+
+	daBatch, err := codec.NewDABatch(encodingBatch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DA batch: %w", err)
+	}
+
+	return daBatch.Blob(), nil
+
+}

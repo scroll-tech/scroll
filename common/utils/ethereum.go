@@ -1,20 +1,23 @@
 package utils
 
-import "crypto/sha256"
+import (
+	"crypto/sha256"
+	"fmt"
 
-// CalculateVersionedBlobHash computes the versioned hash for blob data
-// Following Ethereum's approach where:
-// version = 0x01
-// hash = sha256(blob)
-// versionedHash = version + hash[1:]
-func CalculateVersionedBlobHash(blobData []byte) [32]byte {
-	// Step 1: Compute SHA-256 hash of the blob data
-	hash := sha256.Sum256(blobData)
-	
-	// Step 2: Create versioned hash (version byte + hash[1:])
-	var versionedHash [32]byte
-	versionedHash[0] = 0x01 // Version byte
-	copy(versionedHash[1:], hash[1:])
-	
-	return versionedHash
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
+)
+
+// CalculateVersionedBlobHash calculate the kzg4844 versioned blob hash from a blob
+func CalculateVersionedBlobHash(blob kzg4844.Blob) ([32]byte, error) {
+	// calculate kzg4844 commitment from blob
+	commit, err := kzg4844.BlobToCommitment(&blob)
+	if err != nil {
+		return [32]byte{}, fmt.Errorf("failed to get blob commitment, err: %w", err)
+	}
+
+	// calculate kzg4844 versioned blob hash from blob commitment
+	hasher := sha256.New()
+	vh := kzg4844.CalcBlobHashV1(hasher, &commit)
+
+	return vh, nil
 }
