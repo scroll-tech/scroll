@@ -24,6 +24,7 @@ on:
         options:
           - nightly-2023-12-03
           - nightly-2022-12-10
+          - 1.86.0
         default: "nightly-2023-12-03"
       PYTHON_VERSION:
         description: "Python version"
@@ -47,6 +48,7 @@ on:
         type: choice
         options:
           - 0.1.41
+          - 0.1.71
       BASE_IMAGE:
         description: "which intermediate image you want to update"
         required: true

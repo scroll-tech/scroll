@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -34,6 +34,32 @@ import (
 	rutils "scroll-tech/rollup/internal/utils"
 )
 
+// RelaxType enumerates the relaxation functions we support when
+// turning a baseline fee into a “target” fee.
+type RelaxType int
+
+const (
+	// NoRelaxation means “don’t touch the baseline” (i.e. fallback/default).
+	NoRelaxation RelaxType = iota
+	Exponential
+	Sigmoid
+)
+
+const secondsPerBlock = 12
+
+// BaselineType enumerates the baseline types we support when
+// turning a baseline fee into a “target” fee.
+type BaselineType int
+
+const (
+	// PctMin means “take the minimum of the last N blocks’ fees, then
+	// take the PCT of that”.
+	PctMin BaselineType = iota
+	// EWMA means “take the exponentially‐weighted moving average of
+	// the last N blocks’ fees”.
+	EWMA
+)
+
 // Layer2Relayer is responsible for:
 // i. committing and finalizing L2 blocks on L1.
 // ii. updating L2 gas price oracle contract on L1.
@@ -47,6 +73,7 @@ type Layer2Relayer struct {
 	batchOrm   *orm.Batch
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
+	l1BlockOrm *orm.L1Block
 
 	cfg *config.RelayerConfig
 
@@ -62,6 +89,31 @@ type Layer2Relayer struct {
 	metrics *l2RelayerMetrics
 
 	chainCfg *params.ChainConfig
+
+	lastFetchedBlock uint64     // highest block number ever pulled
+	feeHistory       []*big.Int // sliding window of blob fees
+	batchStrategy    StrategyParams
+}
+
+// StrategyParams holds the per‐window fee‐submission rules.
+type StrategyParams struct {
+	BaselineType  BaselineType // "pct_min" or "ewma"
+	BaselineParam float64      // percentile (0–1) or α for EWMA
+	Gamma         float64      // relaxation γ
+	Beta          float64      // relaxation β
+	RelaxType     RelaxType    // Exponential or Sigmoid
+}
+
+// bestParams maps your 2h/5h/12h windows to their best rules.
+// Timeouts are in seconds, 2, 5 and 12 hours (and same + 20 mins to account for
+// time to create batch currently roughly, as time is measured from block creation)
+var bestParams = map[uint64]StrategyParams{
+	7200:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	8400:  {BaselineType: PctMin, BaselineParam: 0.10, Gamma: 0.4, Beta: 8, RelaxType: Exponential},
+	18000: {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	19200: {BaselineType: PctMin, BaselineParam: 0.30, Gamma: 0.6, Beta: 20, RelaxType: Sigmoid},
+	42800: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
+	44400: {BaselineType: PctMin, BaselineParam: 0.50, Gamma: 0.5, Beta: 20, RelaxType: Sigmoid},
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -101,12 +153,18 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
+	strategy, ok := bestParams[uint64(cfg.BatchSubmission.TimeoutSec)]
+	if !ok {
+		return nil, fmt.Errorf("invalid timeout for batch submission: %v", cfg.BatchSubmission.TimeoutSec)
+	}
+
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
 
 		bundleOrm:  orm.NewBundle(db),
 		batchOrm:   orm.NewBatch(db),
+		l1BlockOrm: orm.NewL1Block(db),
 		l2BlockOrm: orm.NewL2Block(db),
 		chunkOrm:   orm.NewChunk(db),
 
@@ -117,9 +175,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
-
-		cfg:      cfg,
-		chainCfg: chainCfg,
+		batchStrategy:  strategy,
+		cfg:            cfg,
+		chainCfg:       chainCfg,
 	}
 
 	// chain_monitor client
@@ -160,14 +218,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
-		}},
-	}
+	chunk := &encoding.Chunk{Blocks: []*encoding.Block{{Header: genesis}}}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
@@ -231,11 +282,11 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil, 0)
+	txHash, _, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
-	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash.String(), "batchHash", batchHash)
+	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
 
 	// wait for confirmation
 	// we assume that no other transactions are sent before initializeGenesis completes
@@ -267,6 +318,10 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
+// Pending batchess are submitted if one of the following conditions is met:
+// - the first batch is too old -> forceSubmit
+// - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
+// - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
 	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
@@ -275,15 +330,56 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	var batchesToSubmit []*dbBatchWithChunksAndParent
+	// nothing to do if we don't have any pending batches
+	if len(dbBatches) == 0 {
+		return
+	}
+
+	// if backlog outgrow max size, force‐submit enough oldest batches
+	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
+	r.metrics.rollupL2RelayerBacklogCounts.Set(float64(backlogCount))
+
+	if err != nil {
+		log.Error("Failed to fetch pending L2 batches", "err", err)
+		return
+	}
+
 	var forceSubmit bool
-	for i, dbBatch := range dbBatches {
-		if i == 0 && encoding.CodecVersion(dbBatch.CodecVersion) < encoding.CodecV7 {
-			// if the first batch is not >= V7 then we need to submit batches one by one
-			r.processPendingBatchesV4(dbBatches)
+
+	startChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatches[0].StartChunkIndex)
+	if err != nil {
+		log.Error("failed to get first chunk", "err", err, "batch index", dbBatches[0].Index, "chunk index", dbBatches[0].StartChunkIndex)
+		return
+	}
+	oldestBlockTimestamp := time.Unix(int64(startChunk.StartBlockTime), 0)
+
+	// if the batch with the oldest index is too old, we force submit all batches that we have so far in the next step
+	if r.cfg.BatchSubmission.TimeoutSec > 0 && time.Since(oldestBlockTimestamp) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
+		forceSubmit = true
+	}
+
+	// force submit if backlog is too big
+	if backlogCount > r.cfg.BatchSubmission.BacklogMax {
+		forceSubmit = true
+	}
+
+	if !forceSubmit {
+		// check if we should skip submitting the batch based on the fee target
+		skip, err := r.skipSubmitByFee(oldestBlockTimestamp, r.metrics)
+		// return if not hitting target price
+		if skip {
+			log.Debug("Skipping batch submission", "first batch index", dbBatches[0].Index, "backlog count", backlogCount, "reason", err)
+			log.Debug("first batch index", dbBatches[0].Index)
+			log.Debug("backlog count", backlogCount)
 			return
 		}
+		if err != nil {
+			log.Warn("Failed to check if we should skip batch submission, fallback to immediate submission", "err", err)
+		}
+	}
 
+	var batchesToSubmit []*dbBatchWithChunksAndParent
+	for i, dbBatch := range dbBatches {
 		var dbChunks []*orm.Chunk
 		var dbParentBatch *orm.Batch
 
@@ -337,11 +433,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			break
 		}
 
-		// if one of the batches is too old, we force submit all batches that we have so far in the next step
-		if r.cfg.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.BatchSubmission.TimeoutSec)*time.Second {
-			forceSubmit = true
-		}
-
 		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
 			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunksAndParent{
 				Batch:       dbBatch,
@@ -362,7 +453,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 
 	if forceSubmit {
-		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "created at", batchesToSubmit[0].Batch.CreatedAt)
+		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "first block created at", oldestBlockTimestamp)
 	}
 
 	// We have at least 1 batch to commit
@@ -387,7 +478,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	txHash, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs, 0)
+	txHash, blobBaseFee, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
 	if err != nil {
 		if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
 			r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
@@ -427,6 +518,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
+	r.metrics.rollupL2RelayerCommitLatency.Set(time.Since(oldestBlockTimestamp).Seconds())
+	r.metrics.rollupL2RelayerCommitPrice.Set(float64(blobBaseFee))
 
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
@@ -453,117 +546,6 @@ type dbBatchWithChunksAndParent struct {
 	Batch       *orm.Batch
 	Chunks      []*orm.Chunk
 	ParentBatch *orm.Batch
-}
-
-func (r *Layer2Relayer) processPendingBatchesV4(dbBatches []*orm.Batch) {
-	for _, dbBatch := range dbBatches {
-		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
-
-		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
-		if err != nil {
-			log.Error("failed to get chunks in range", "err", err)
-			return
-		}
-
-		// check codec version
-		for _, dbChunk := range dbChunks {
-			if dbBatch.CodecVersion != dbChunk.CodecVersion {
-				log.Error("batch codec version is different from chunk codec version", "batch index", dbBatch.Index, "chunk index", dbChunk.Index, "batch codec version", dbBatch.CodecVersion, "chunk codec version", dbChunk.CodecVersion)
-				return
-			}
-		}
-
-		chunks := make([]*encoding.Chunk, len(dbChunks))
-		for i, c := range dbChunks {
-			blocks, getErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
-			if getErr != nil {
-				log.Error("failed to get blocks in range", "err", getErr)
-				return
-			}
-			chunks[i] = &encoding.Chunk{Blocks: blocks}
-		}
-
-		if dbBatch.Index == 0 {
-			log.Error("invalid args: batch index is 0, should only happen in committing genesis batch")
-			return
-		}
-
-		dbParentBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
-		if getErr != nil {
-			log.Error("failed to get parent batch header", "err", getErr)
-			return
-		}
-
-		if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
-			log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
-			return
-		}
-
-		var calldata []byte
-		var blob *kzg4844.Blob
-		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-		switch codecVersion {
-		case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Error("failed to construct commitBatchWithBlobProof payload for V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
-				return
-			}
-		default:
-			log.Error("unsupported codec version in processPendingBatchesV4", "codecVersion", codecVersion)
-			return
-		}
-
-		// fallbackGasLimit is non-zero only in sending non-blob transactions.
-		fallbackGasLimit := uint64(float64(dbBatch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
-		if types.RollupStatus(dbBatch.RollupStatus) == types.RollupCommitFailed {
-			// use eth_estimateGas if this batch has been committed and failed at least once.
-			fallbackGasLimit = 0
-			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", dbBatch.Hash)
-		}
-
-		txHash, err := r.commitSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, []*kzg4844.Blob{blob}, fallbackGasLimit)
-		if err != nil {
-			if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
-				r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
-				log.Debug(
-					"Skipped sending commitBatch tx to L1: too many pending blob txs",
-					"maxPending", r.cfg.SenderConfig.MaxPendingBlobTxs,
-					"err", err,
-				)
-				return
-			}
-			log.Error(
-				"Failed to send commitBatch tx to layer1",
-				"index", dbBatch.Index,
-				"hash", dbBatch.Hash,
-				"RollupContractAddress", r.cfg.RollupContractAddress,
-				"err", err,
-				"calldata", common.Bytes2Hex(calldata),
-			)
-			return
-		}
-
-		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, dbBatch.Hash, txHash.String(), types.RollupCommitting)
-		if err != nil {
-			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", dbBatch.Hash, "index", dbBatch.Index, "err", err)
-			return
-		}
-
-		var maxBlockHeight uint64
-		var totalGasUsed uint64
-		for _, dbChunk := range dbChunks {
-			if dbChunk.EndBlockNumber > maxBlockHeight {
-				maxBlockHeight = dbChunk.EndBlockNumber
-			}
-			totalGasUsed += dbChunk.TotalL2TxGas
-		}
-		r.metrics.rollupL2RelayerCommitBlockHeight.Set(float64(maxBlockHeight))
-		r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
-
-		r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Inc()
-		log.Info("Sent the commitBatch tx to layer1", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String())
-	}
 }
 
 // ProcessPendingBundles submits proof to layer 1 rollup contract
@@ -598,33 +580,6 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 			if types.RollupStatus(lastBatch.RollupStatus) != types.RollupFinalized {
 				log.Error("previous bundle or batch is not finalized", "batch index", lastBatch.Index, "batch hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
 				return
-			}
-
-			lastFinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, lastBatch.EndChunkIndex)
-			if err != nil {
-				log.Error("failed to get last finalized chunk", "chunk index", lastBatch.EndChunkIndex)
-				return
-			}
-
-			firstUnfinalizedBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex)
-			if err != nil {
-				log.Error("failed to get first unfinalized batch", "batch index", bundle.StartBatchIndex)
-				return
-			}
-
-			firstUnfinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstUnfinalizedBatch.StartChunkIndex)
-			if err != nil {
-				log.Error("failed to get firsr unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
-				return
-			}
-
-			if r.cfg.TestEnvBypassOnlyUntilForkBoundary {
-				lastFork := encoding.GetHardforkName(r.chainCfg, lastFinalizedChunk.StartBlockNumber, lastFinalizedChunk.StartBlockTime)
-				nextFork := encoding.GetHardforkName(r.chainCfg, firstUnfinalizedChunk.StartBlockNumber, firstUnfinalizedChunk.StartBlockTime)
-				if lastFork != nextFork {
-					log.Info("not fake finalizing past the fork boundary", "last fork", lastFork, "next fork", nextFork)
-					return
-				}
 			}
 
 			if err := r.finalizeBundle(bundle, false); err != nil {
@@ -725,11 +680,9 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return fmt.Errorf("failed to get end chunk of batch: %w", err)
 	}
 
-	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
-
-	var aggProof message.BundleProof
+	var aggProof *message.OpenVMBundleProof
 	if withProof {
-		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash, hardForkName)
+		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash)
 		if err != nil {
 			return fmt.Errorf("failed to get verified proof by bundle index: %d, err: %w", bundle.Index, err)
 		}
@@ -741,11 +694,6 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
-		calldata, err = r.constructFinalizeBundlePayloadCodecV4(dbBatch, aggProof)
-		if err != nil {
-			return fmt.Errorf("failed to construct finalizeBundle payload codecv4, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
-		}
 	case encoding.CodecV7:
 		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
 		if err != nil {
@@ -755,7 +703,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
 	}
 
-	txHash, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil, 0)
+	txHash, _, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		log.Error("finalizeBundle in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex,
@@ -951,48 +899,6 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
-	}
-
-	daBatch, createErr := codec.NewDABatch(batch)
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codec.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		encodedChunks[i], err = daChunk.Encode()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to encode DA chunk: %w", err)
-		}
-	}
-
-	blobDataProof, err := daBatch.BlobDataProofForPointEvaluation()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get blob data proof for point evaluation: %w", err)
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version(), dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap(), blobDataProof)
-	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
-	}
-	return calldata, daBatch.Blob(), nil
-}
-
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
@@ -1050,35 +956,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
-	if aggProof != nil { // finalizeBundle with proof.
-		calldata, packErr := r.l1RollupABI.Pack(
-			"finalizeBundleWithProof",
-			dbBatch.BatchHeader,
-			common.HexToHash(dbBatch.StateRoot),
-			common.HexToHash(dbBatch.WithdrawRoot),
-			aggProof.Proof(),
-		)
-		if packErr != nil {
-			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)
-		}
-		return calldata, nil
-	}
-
-	// finalizeBundle without proof.
-	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBundle",
-		dbBatch.BatchHeader,
-		common.HexToHash(dbBatch.StateRoot),
-		common.HexToHash(dbBatch.WithdrawRoot),
-	)
-	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack finalizeBundle: %w", packErr)
-	}
-	return calldata, nil
-}
-
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof message.BundleProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundlePostEuclidV2",
@@ -1119,6 +997,141 @@ func (r *Layer2Relayer) StopSenders() {
 	if r.finalizeSender != nil {
 		r.finalizeSender.Stop()
 	}
+}
+
+// fetchBlobFeeHistory returns the last WindowSec seconds of blob‐fee samples,
+// by reading L1Block table’s BlobBaseFee column.
+func (r *Layer2Relayer) fetchBlobFeeHistory(windowSec uint64) ([]*big.Int, error) {
+	latest, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatestL1BlockHeight: %w", err)
+	}
+	// bootstrap on first call
+	if r.lastFetchedBlock == 0 {
+		// start window
+		r.lastFetchedBlock = latest - windowSec/secondsPerBlock
+	}
+	from := r.lastFetchedBlock + 1
+	//if new blocks
+	if from <= latest {
+		raw, err := r.l1BlockOrm.GetBlobFeesInRange(r.ctx, from, latest)
+		if err != nil {
+			return nil, fmt.Errorf("GetBlobFeesInRange: %w", err)
+		}
+		// append them
+		for _, v := range raw {
+			r.feeHistory = append(r.feeHistory, new(big.Int).SetUint64(v))
+			r.lastFetchedBlock++
+		}
+	}
+
+	maxLen := int(windowSec / secondsPerBlock)
+	if len(r.feeHistory) > maxLen {
+		r.feeHistory = r.feeHistory[len(r.feeHistory)-maxLen:]
+	}
+
+	return r.feeHistory, nil
+}
+
+// calculateTargetPrice applies pct_min/ewma + relaxation to get a BigInt target
+func calculateTargetPrice(windowSec uint64, strategy StrategyParams, firstTime time.Time, history []*big.Int) *big.Int {
+	var baseline float64 // baseline in Gwei (converting to float, small loss of precision)
+	n := len(history)
+	if n == 0 {
+		return big.NewInt(0)
+	}
+	switch strategy.BaselineType {
+	case PctMin:
+		// make a copy, sort by big.Int.Cmp, then pick the percentile element
+		sorted := make([]*big.Int, n)
+		copy(sorted, history)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].Cmp(sorted[j]) < 0
+		})
+		idx := int(strategy.BaselineParam * float64(n-1))
+		if idx < 0 {
+			idx = 0
+		}
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(sorted[idx]), big.NewFloat(1e9)).
+			Float64()
+
+	case EWMA:
+		one := big.NewFloat(1)
+		alpha := big.NewFloat(strategy.BaselineParam)
+		oneMinusAlpha := new(big.Float).Sub(one, alpha)
+
+		// start from first history point
+		ewma := new(big.Float).
+			Quo(new(big.Float).SetInt(history[0]), big.NewFloat(1e9))
+
+		for i := 1; i < n; i++ {
+			curr := new(big.Float).
+				Quo(new(big.Float).SetInt(history[i]), big.NewFloat(1e9))
+			term1 := new(big.Float).Mul(alpha, curr)
+			term2 := new(big.Float).Mul(oneMinusAlpha, ewma)
+			ewma = new(big.Float).Add(term1, term2)
+		}
+		baseline, _ = ewma.Float64()
+
+	default:
+		// fallback to last element
+		baseline, _ = new(big.Float).
+			Quo(new(big.Float).SetInt(history[n-1]), big.NewFloat(1e9)).
+			Float64()
+	} // now baseline holds our baseline in float64 Gwei
+
+	// relaxation
+	age := time.Since(firstTime).Seconds()
+	frac := age / float64(windowSec)
+	var adjusted float64
+	switch strategy.RelaxType {
+	case Exponential:
+		adjusted = baseline * (1 + strategy.Gamma*math.Exp(strategy.Beta*(frac-1)))
+	case Sigmoid:
+		adjusted = baseline * (1 + strategy.Gamma/(1+math.Exp(-strategy.Beta*(frac-0.5))))
+	default:
+		adjusted = baseline
+	}
+	// back to wei
+	f := new(big.Float).Mul(big.NewFloat(adjusted), big.NewFloat(1e9))
+	out, _ := f.Int(nil)
+	return out
+}
+
+// skipSubmitByFee returns (true, nil) when submission should be skipped right now
+// because the blob‐fee is above target and the timeout window hasn’t yet elapsed.
+// Otherwise returns (false, err)
+func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetrics) (bool, error) {
+	windowSec := uint64(r.cfg.BatchSubmission.TimeoutSec)
+
+	hist, err := r.fetchBlobFeeHistory(windowSec)
+	if err != nil || len(hist) == 0 {
+		return false, fmt.Errorf(
+			"blob-fee history unavailable or empty: %w (history_length=%d)",
+			err, len(hist),
+		)
+	}
+
+	// calculate target & get current (in wei)
+	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
+	current := hist[len(hist)-1]
+
+	currentFloat, _ := current.Float64()
+	targetFloat, _ := target.Float64()
+	metrics.rollupL2RelayerCurrentBlobPrice.Set(currentFloat)
+	metrics.rollupL2RelayerTargetBlobPrice.Set(targetFloat)
+
+	// if current fee > target and still inside the timeout window, skip
+	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
+		return true, fmt.Errorf(
+			"blob-fee above target & window not yet passed; current=%s target=%s age=%s",
+			current.String(), target.String(), time.Since(oldest),
+		)
+	}
+
+	// otherwise proceed with submission
+	return false, nil
 }
 
 func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {

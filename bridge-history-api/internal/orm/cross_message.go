@@ -154,7 +154,7 @@ func (c *CrossMessage) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, s
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
-	db = db.Where("tx_status = ?", types.TxStatusTypeSent)
+	db = db.Where("tx_status in (?)", []types.TxStatusType{types.TxStatusTypeSent, types.TxStatusTypeFailedRelayed, types.TxStatusTypeRelayTxReverted})
 	db = db.Where("sender = ?", sender)
 	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)

@@ -30,14 +30,12 @@ import (
 // in `*config.CircuitConfig` being changed
 type rustCircuitConfig struct {
 	ForkName   string `json:"fork_name"`
-	ParamsPath string `json:"params_path"`
 	AssetsPath string `json:"assets_path"`
 }
 
 func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 	return &rustCircuitConfig{
 		ForkName:   cfg.ForkName,
-		ParamsPath: cfg.ParamsPath,
 		AssetsPath: cfg.AssetsPath,
 	}
 }
@@ -46,13 +44,11 @@ func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
-	LowVersionCircuit  *rustCircuitConfig `json:"low_version_circuit"`
 	HighVersionCircuit *rustCircuitConfig `json:"high_version_circuit"`
 }
 
 func newRustVerifierConfig(cfg *config.VerifierConfig) *rustVerifierConfig {
 	return &rustVerifierConfig{
-		LowVersionCircuit:  newRustCircuitConfig(cfg.LowVersionCircuit),
 		HighVersionCircuit: newRustCircuitConfig(cfg.HighVersionCircuit),
 	}
 }
@@ -65,19 +61,6 @@ type rustVkDump struct {
 
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	if cfg.MockMode {
-		chunkVKMap := map[string]struct{}{"mock_vk": {}}
-		batchVKMap := map[string]struct{}{"mock_vk": {}}
-		bundleVKMap := map[string]struct{}{"mock_vk": {}}
-		openVMVkMap := map[string]struct{}{"mock_vk": {}}
-		return &Verifier{
-			cfg:         cfg,
-			ChunkVKMap:  chunkVKMap,
-			BatchVKMap:  batchVKMap,
-			BundleVkMap: bundleVKMap,
-			OpenVMVkMap: openVMVkMap,
-		}, nil
-	}
 	verifierConfig := newRustVerifierConfig(cfg)
 	configBytes, err := json.Marshal(verifierConfig)
 	if err != nil {
@@ -93,39 +76,18 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 
 	v := &Verifier{
 		cfg:         cfg,
-		ChunkVKMap:  make(map[string]struct{}),
-		BatchVKMap:  make(map[string]struct{}),
-		BundleVkMap: make(map[string]struct{}),
 		OpenVMVkMap: make(map[string]struct{}),
-	}
-
-	if err := v.loadLowVersionVKs(cfg); err != nil {
-		return nil, err
-	}
-
-	if err := v.loadOpenVMVks(message.EuclidFork); err != nil {
-		return nil, err
 	}
 
 	if err := v.loadOpenVMVks(message.EuclidV2Fork); err != nil {
 		return nil, err
 	}
 
-	v.loadDarwinVKs()
-
 	return v, nil
 }
 
-// VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof message.BatchProof, forkName string) (bool, error) {
-	if v.cfg.MockMode {
-		log.Info("Mock mode, batch verifier disabled")
-		if string(proof.Proof()) == InvalidTestProof {
-			return false, nil
-		}
-		return true, nil
-
-	}
+// VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Verifier.
+func (v *Verifier) VerifyBatchProof(proof *message.OpenVMBatchProof, forkName string) (bool, error) {
 	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
@@ -143,16 +105,8 @@ func (v *Verifier) VerifyBatchProof(proof message.BatchProof, forkName string) (
 	return verified != 0, nil
 }
 
-// VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof message.ChunkProof, forkName string) (bool, error) {
-	if v.cfg.MockMode {
-		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof()) == InvalidTestProof {
-			return false, nil
-		}
-		return true, nil
-
-	}
+// VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Verifier.
+func (v *Verifier) VerifyChunkProof(proof *message.OpenVMChunkProof, forkName string) (bool, error) {
 	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
@@ -171,15 +125,7 @@ func (v *Verifier) VerifyChunkProof(proof message.ChunkProof, forkName string) (
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
-func (v *Verifier) VerifyBundleProof(proof message.BundleProof, forkName string) (bool, error) {
-	if v.cfg.MockMode {
-		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof()) == InvalidTestProof {
-			return false, nil
-		}
-		return true, nil
-
-	}
+func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName string) (bool, error) {
 	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
@@ -207,32 +153,6 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(byt), nil
-}
-
-// load low version vks, current is darwin
-func (v *Verifier) loadLowVersionVKs(cfg *config.VerifierConfig) error {
-	bundleVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_bundle.vkey"))
-	if err != nil {
-		return err
-	}
-	batchVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_batch.vkey"))
-	if err != nil {
-		return err
-	}
-	chunkVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_chunk.vkey"))
-	if err != nil {
-		return err
-	}
-	v.BundleVkMap[bundleVK] = struct{}{}
-	v.BatchVKMap[batchVK] = struct{}{}
-	v.ChunkVKMap[chunkVK] = struct{}{}
-	return nil
-}
-
-func (v *Verifier) loadDarwinVKs() {
-	v.BundleVkMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD5dsp1rEy7PSqiIFikkkOPqKokLW2mZSwCbtKdkfLQcvTxARUwHSe4iZe27PRJ5WWaLqtRV1+x6+pSVKtcPtaV4kE7v2YJRf0582hxiAF0IBaOoREdpyNfA2a9cvhWb2TMaPrUYP9EDQ7CUiW1FQzxbjGc95ua2htscnpU7d9S5stHWzKb7okkCG7bTIL9aG6qTQo2YXW7n3H3Ir47oVJB7IKrUzKGvI5Wmanh2zpZOJ9Qm4/wY24cT7cJz+Ux6wAg=="] = struct{}{}
-	v.BatchVKMap["AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD1DEjW4Kell67H07wazT5DdzrSh4+amh+cmosQHp9p9snFypyoBGt3UHtoJGQBZlywZWDS9ht5pnaEoGBdaKcQk+lFb+WxTiId0KOAa0mafTZTQw8yToy57Jple64qzlRu1dux30tZZGuerLN1CKzg5Xl2iOpMK+l87jCINwVp5cUtF/XrvhBbU7onKh3KBiy99iUqVyA3Y6iiIZhGKWBSuSA4bNgDYIoVkqjHpdL35aEShoRO6pNXt7rDzxFoPzH0JuPI54nE4OhVrzZXwtkAEosxVa/fszcE092FH+HhhtxZBYe/KEzwdISU9TOPdId3UF/UMYC0MiYOlqffVTgAg="] = struct{}{}
-	v.ChunkVKMap["AAAAGQAAAATyWEABRbJ6hQQ5/zLX1gTasr7349minA9rSgMS6gDeHwZKqikRiO3md+pXjjxMHnKQtmXYgMXhJSvlmZ+Ws+cheuly2X1RuNQzcZuRImaKPR9LJsVZYsXfJbuqdKX8p0Gj8G83wMJOmTzNVUyUol0w0lTU+CEiTpHOnxBsTF3EWaW3s1u4ycOgWt1c9M6s7WmaBZLYgAWYCunO5CLCLApNGbCASeck/LuSoedEri5u6HccCKU2khG6zl6W07jvYSbDVLJktbjRiHv+/HQix+K14j8boo8Z/unhpwXCsPxkQA=="] = struct{}{}
 }
 
 func (v *Verifier) loadOpenVMVks(forkName string) error {

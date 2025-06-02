@@ -200,13 +200,13 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
 	}
 
-	var batchProofs []message.BatchProof
+	var batchProofs []*message.OpenVMBatchProof
 	for _, batch := range batches {
-		proof := message.NewBatchProof(hardForkName)
+		var proof message.OpenVMBatchProof
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, task.TaskID, batch.Hash)
 		}
-		batchProofs = append(batchProofs, proof)
+		batchProofs = append(batchProofs, &proof)
 	}
 
 	taskDetail := message.BundleTaskDetail{
@@ -215,8 +215,9 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	if hardForkName == message.EuclidV2Fork {
 		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else if hardForkName == message.EuclidFork {
-		taskDetail.ForkName = message.EuclidForkNameForProver
+	} else {
+		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
+		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
 	}
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
@@ -227,10 +228,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		NumBatches:    uint32(len(batches)),
 		PrevBatchHash: common.HexToHash(batches[0].ParentBatchHash),
 		BatchHash:     common.HexToHash(batches[len(batches)-1].Hash),
-	}
-
-	if hardForkName == message.EuclidV2Fork {
-		taskDetail.BundleInfo.MsgQueueHash = common.HexToHash(batches[len(batches)-1].PostL1MessageQueueHash)
+		MsgQueueHash:  common.HexToHash(batches[len(batches)-1].PostL1MessageQueueHash),
 	}
 
 	batchProofsBytes, err := json.Marshal(taskDetail)

@@ -71,6 +71,20 @@ func (o *L1Block) GetL1Blocks(ctx context.Context, fields map[string]interface{}
 	return l1Blocks, nil
 }
 
+// GetBlobFeesInRange returns all blob_base_fee values for blocks
+// with number ∈ [startBlock..endBlock], ordered by block number ascending.
+func (o *L1Block) GetBlobFeesInRange(ctx context.Context, startBlock, endBlock uint64) ([]uint64, error) {
+	var fees []uint64
+	db := o.db.WithContext(ctx).
+		Model(&L1Block{}).
+		Where("number >= ? AND number <= ?", startBlock, endBlock).
+		Order("number ASC")
+	if err := db.Pluck("blob_base_fee", &fees).Error; err != nil {
+		return nil, fmt.Errorf("L1Block.GetBlobFeesInRange error: %w", err)
+	}
+	return fees, nil
+}
+
 // InsertL1Blocks batch inserts l1 blocks.
 // If there's a block number conflict (e.g., due to reorg), soft deletes the existing block and inserts the new one.
 func (o *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {

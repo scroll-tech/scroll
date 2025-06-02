@@ -18,7 +18,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/relayer"
@@ -53,170 +52,6 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	assert.Equal(t, genesisBatchHash.String(), batch.Hash)
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(batch.ProvingStatus))
 	assert.Equal(t, types.RollupFinalized, types.RollupStatus(batch.RollupStatus))
-}
-
-func testCommitBatchAndFinalizeBundleCodecV4V5V6(t *testing.T) {
-	db := setupDB(t)
-
-	prepareContracts(t)
-
-	euclidTime := uint64(3)
-	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: &euclidTime}
-
-	// Create L2Relayer
-	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, relayer.ServiceTypeL2RollupRelayer, nil)
-	assert.NoError(t, err)
-
-	// add some blocks to db
-	var blocks []*encoding.Block
-	for i := int64(0); i < 10; i++ {
-		header := gethTypes.Header{
-			Number:     big.NewInt(i + 1),
-			ParentHash: common.Hash{},
-			Difficulty: big.NewInt(0),
-			BaseFee:    big.NewInt(0),
-			Root:       common.HexToHash("0x1"),
-			Time:       uint64(i),
-		}
-		blocks = append(blocks, &encoding.Block{
-			Header:         &header,
-			Transactions:   nil,
-			WithdrawRoot:   common.HexToHash("0x2"),
-			RowConsumption: &gethTypes.RowConsumption{},
-		})
-	}
-
-	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:             100,
-		MaxTxNumPerChunk:                10000,
-		MaxL1CommitGasPerChunk:          50000000000,
-		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MaxRowConsumptionPerChunk:       1048319,
-		ChunkTimeoutSec:                 300,
-		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, encoding.CodecV4, chainConfig, db, nil)
-
-	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxL1CommitGasPerBatch:          50000000000,
-		MaxL1CommitCalldataSizePerBatch: 1000000,
-		BatchTimeoutSec:                 300,
-		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		MaxChunksPerBatch:               math.MaxInt32,
-	}, encoding.CodecV4, chainConfig, db, nil)
-
-	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
-		MaxBatchNumPerBundle: 1000000,
-		BundleTimeoutSec:     300,
-	}, encoding.CodecV4, chainConfig, db, nil)
-
-	l2BlockOrm := orm.NewL2Block(db)
-	batchOrm := orm.NewBatch(db)
-	bundleOrm := orm.NewBundle(db)
-
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
-	assert.NoError(t, err)
-
-	cp.TryProposeChunk()
-	bap.TryProposeBatch()
-
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[5:])
-	assert.NoError(t, err)
-
-	cp.TryProposeChunk()
-	bap.TryProposeBatch()
-
-	l2Relayer.ProcessPendingBatches()
-
-	// make sure that batches are committed before proposing bundles (as bundle proposing depends on batches being committed).
-	require.Eventually(t, func() bool {
-		batches, getErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-		assert.NoError(t, getErr)
-
-		assert.Len(t, batches, 3)
-		batches = batches[1:]
-		for _, batch := range batches {
-			if types.RollupCommitted != types.RollupStatus(batch.RollupStatus) {
-				return false
-			}
-		}
-
-		// make sure that batches 1 and 2 have been committed in separate transactions
-		return batches[0].CommitTxHash != batches[1].CommitTxHash
-	}, 30*time.Second, time.Second)
-
-	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
-
-	batchProof := &message.Halo2BatchProof{
-		RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
-	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-	assert.NoError(t, err)
-	batches = batches[1:]
-	for _, batch := range batches {
-		err = batchOrm.UpdateProofByHash(context.Background(), batch.Hash, batchProof, 100)
-		assert.NoError(t, err)
-		err = batchOrm.UpdateProvingStatus(context.Background(), batch.Hash, types.ProvingTaskVerified)
-		assert.NoError(t, err)
-	}
-
-	bundleProof := &message.Halo2BundleProof{
-		RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
-	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
-	assert.NoError(t, err)
-	for _, bundle := range bundles {
-		err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, bundleProof, types.ProvingTaskVerified, 100)
-		assert.NoError(t, err)
-	}
-
-	assert.Eventually(t, func() bool {
-		l2Relayer.ProcessPendingBundles()
-
-		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
-		assert.NoError(t, err)
-		assert.Len(t, batches, 3)
-		batches = batches[1:]
-		for _, batch := range batches {
-			if types.RollupStatus(batch.RollupStatus) != types.RollupFinalized {
-				return false
-			}
-
-			assert.NotEmpty(t, batch.FinalizeTxHash)
-			receipt, getErr := l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
-			assert.NoError(t, getErr)
-			assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
-		}
-
-		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
-		assert.NoError(t, err)
-		assert.Len(t, bundles, 1)
-
-		bundle := bundles[0]
-		if types.RollupStatus(bundle.RollupStatus) != types.RollupFinalized {
-			return false
-		}
-		assert.NotEmpty(t, bundle.FinalizeTxHash)
-		receipt, err := l1Client.TransactionReceipt(context.Background(), common.HexToHash(bundle.FinalizeTxHash))
-		assert.NoError(t, err)
-		assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
-		batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{"bundle_hash": bundle.Hash}, nil, 0)
-		assert.NoError(t, err)
-		assert.Len(t, batches, 2)
-		for _, batch := range batches {
-			assert.Equal(t, batch.RollupStatus, bundle.RollupStatus)
-			assert.Equal(t, bundle.FinalizeTxHash, batch.FinalizeTxHash)
-		}
-
-		return true
-	}, 30*time.Second, time.Second)
-
-	l2Relayer.StopSenders()
-	database.CloseDB(db)
 }
 
 func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
@@ -275,29 +110,22 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		}
 
 		blocks = append(blocks, &encoding.Block{
-			Header:         &header,
-			Transactions:   transactions,
-			WithdrawRoot:   common.HexToHash("0x2"),
-			RowConsumption: &gethTypes.RowConsumption{},
+			Header:       &header,
+			Transactions: transactions,
+			WithdrawRoot: common.HexToHash("0x2"),
 		})
 		parentHash = header.Hash()
 	}
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:             100,
-		MaxTxNumPerChunk:                10000,
-		MaxL1CommitGasPerChunk:          50000000000,
-		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MaxRowConsumptionPerChunk:       1048319,
-		ChunkTimeoutSec:                 300,
-		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+		MaxBlockNumPerChunk: 100,
+		MaxL2GasPerChunk:    math.MaxUint64,
+		ChunkTimeoutSec:     300,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxL1CommitGasPerBatch:          50000000000,
-		MaxL1CommitCalldataSizePerBatch: 1000000,
-		BatchTimeoutSec:                 300,
-		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+		MaxChunksPerBatch: math.MaxInt32,
+		BatchTimeoutSec:   300,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{

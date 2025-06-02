@@ -53,14 +53,14 @@ type Chunk struct {
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
 	// blob
-	CrcMax   uint64 `json:"crc_max" gorm:"column:crc_max"`
+	CrcMax   uint64 `json:"crc_max" gorm:"column:crc_max"` // deprecated
 	BlobSize uint64 `json:"blob_size" gorm:"column:blob_size"`
 
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
 	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
-	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"` // deprecated
+	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`                     // deprecated
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
@@ -249,8 +249,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
 		TotalL2TxGas:                 chunk.TotalGasUsed(),
 		TotalL2TxNum:                 chunk.NumL2Transactions(),
-		TotalL1CommitCalldataSize:    metrics.L1CommitCalldataSize,
-		TotalL1CommitGas:             metrics.L1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
@@ -263,7 +261,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		CodecVersion:                 int16(codecVersion),
 		EnableCompress:               enableCompress,
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
-		CrcMax:                       metrics.CrcMax,
 		BlobSize:                     metrics.L1CommitBlobSize,
 	}
 

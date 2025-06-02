@@ -208,7 +208,6 @@ func TestFunction(t *testing.T) {
 
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
-	t.Run("testCommitBatchAndFinalizeBundleCodecV4V5V6", testCommitBatchAndFinalizeBundleCodecV4V5V6)
 	t.Run("TestCommitBatchAndFinalizeBundleCodecV7", testCommitBatchAndFinalizeBundleCodecV7)
 
 	// l1 gas oracle

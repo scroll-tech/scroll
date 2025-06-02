@@ -62,14 +62,14 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", taskID)
 	}
 
-	var batchProofs []message.BatchProof
+	var batchProofs []*message.OpenVMBatchProof
 	for _, batch := range batches {
-		proof := message.NewBatchProof("darwinV2")
+		var proof message.OpenVMBatchProof
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
 			log.Error("failed to unmarshal batch proof")
 			return fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, taskID, batch.Hash)
 		}
-		batchProofs = append(batchProofs, proof)
+		batchProofs = append(batchProofs, &proof)
 	}
 
 	taskDetail := message.BundleTaskDetail{

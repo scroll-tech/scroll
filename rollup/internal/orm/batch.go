@@ -124,7 +124,7 @@ func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 }
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
-func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash, hardForkName string) (message.BatchProof, error) {
+func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.OpenVMBatchProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proof")
@@ -135,11 +135,11 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash, hardForkName s
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
 
-	proof := message.NewBatchProof(hardForkName)
+	var proof message.OpenVMBatchProof
 	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
-	return proof, nil
+	return &proof, nil
 }
 
 // GetLatestBatch retrieves the latest batch from the database.
@@ -221,6 +221,18 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
+func (o *Batch) GetFailedAndPendingBatchesCount(ctx context.Context) (int64, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("rollup_status = ? OR rollup_status = ?", types.RollupCommitFailed, types.RollupPending)
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Batch.GetFailedAndPendingBatchesCount error: %w", err)
+	}
+	return count, nil
+}
+
 // GetFailedAndPendingBatches retrieves batches with failed or pending status up to the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetFailedAndPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
@@ -291,30 +303,28 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	}
 
 	newBatch := Batch{
-		Index:                     batch.Index,
-		Hash:                      batchMeta.BatchHash.Hex(),
-		DataHash:                  batchMeta.BatchDataHash.Hex(),
-		StartChunkHash:            batchMeta.StartChunkHash.Hex(),
-		StartChunkIndex:           startChunkIndex,
-		EndChunkHash:              batchMeta.EndChunkHash.Hex(),
-		EndChunkIndex:             startChunkIndex + numChunks - 1,
-		StateRoot:                 batch.StateRoot().Hex(),
-		WithdrawRoot:              batch.WithdrawRoot().Hex(),
-		ParentBatchHash:           batch.ParentBatchHash.Hex(),
-		BatchHeader:               batchMeta.BatchBytes,
-		CodecVersion:              int16(codecVersion),
-		PrevL1MessageQueueHash:    batch.PrevL1MessageQueueHash.Hex(),
-		PostL1MessageQueueHash:    batch.PostL1MessageQueueHash.Hex(),
-		EnableCompress:            enableCompress,
-		BlobBytes:                 batchMeta.BlobBytes,
-		ChallengeDigest:           batchMeta.ChallengeDigest.Hex(),
-		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
-		ProvingStatus:             int16(types.ProvingTaskUnassigned),
-		RollupStatus:              int16(types.RollupPending),
-		TotalL1CommitGas:          metrics.L1CommitGas,
-		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
-		BlobDataProof:             batchMeta.BatchBlobDataProof,
-		BlobSize:                  metrics.L1CommitBlobSize,
+		Index:                  batch.Index,
+		Hash:                   batchMeta.BatchHash.Hex(),
+		DataHash:               batchMeta.BatchDataHash.Hex(),
+		StartChunkHash:         batchMeta.StartChunkHash.Hex(),
+		StartChunkIndex:        startChunkIndex,
+		EndChunkHash:           batchMeta.EndChunkHash.Hex(),
+		EndChunkIndex:          startChunkIndex + numChunks - 1,
+		StateRoot:              batch.StateRoot().Hex(),
+		WithdrawRoot:           batch.WithdrawRoot().Hex(),
+		ParentBatchHash:        batch.ParentBatchHash.Hex(),
+		BatchHeader:            batchMeta.BatchBytes,
+		CodecVersion:           int16(codecVersion),
+		PrevL1MessageQueueHash: batch.PrevL1MessageQueueHash.Hex(),
+		PostL1MessageQueueHash: batch.PostL1MessageQueueHash.Hex(),
+		EnableCompress:         enableCompress,
+		BlobBytes:              batchMeta.BlobBytes,
+		ChallengeDigest:        batchMeta.ChallengeDigest.Hex(),
+		ChunkProofsStatus:      int16(types.ChunkProofsStatusPending),
+		ProvingStatus:          int16(types.ProvingTaskUnassigned),
+		RollupStatus:           int16(types.RollupPending),
+		BlobDataProof:          batchMeta.BatchBlobDataProof,
+		BlobSize:               metrics.L1CommitBlobSize,
 	}
 
 	db := o.db
@@ -459,7 +469,12 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["commit_tx_hash"] = commitTxHash
-	updateFields["rollup_status"] = int(status)
+	updateFields["rollup_status"] = gorm.Expr(
+		`CASE
+			WHEN rollup_status NOT IN (?, ?) THEN ?
+			ELSE rollup_status
+		END`,
+		types.RollupFinalizing, types.RollupFinalized, int(status))
 	if status == types.RollupCommitted {
 		updateFields["committed_at"] = utils.NowUTC()
 	}
@@ -469,15 +484,6 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
-
-	var currentBatch Batch
-	if err := db.Where("hash", hash).First(&currentBatch).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateCommitTxHashAndRollupStatus error when querying current status: %w, batch hash: %v", err, hash)
-	}
-
-	if types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalizing || types.RollupStatus(currentBatch.RollupStatus) == types.RollupFinalized {
-		return nil
-	}
 
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
@@ -509,7 +515,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 
 // UpdateProofByHash updates the batch proof by hash.
 // for unit test.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof message.BatchProof, proofTimeSec uint64) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.OpenVMBatchProof, proofTimeSec uint64) error {
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)

@@ -1,10 +1,7 @@
 #![allow(static_mut_refs)]
 
-mod euclid;
 mod euclidv2;
-
 use anyhow::{bail, Result};
-use euclid::EuclidVerifier;
 use euclidv2::EuclidV2Verifier;
 use serde::{Deserialize, Serialize};
 use std::{cell::OnceCell, path::Path, rc::Rc};
@@ -31,39 +28,25 @@ pub trait ProofVerifier {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub fork_name: String,
-    pub params_path: String,
     pub assets_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifierConfig {
-    pub low_version_circuit: CircuitConfig,
     pub high_version_circuit: CircuitConfig,
 }
 
 type HardForkName = String;
 
 struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
-
-static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
-    let verifier = EuclidVerifier::new(&config.high_version_circuit.assets_path);
-    unsafe {
-        VERIFIER_LOW
-            .set(VerifierPair(
-                "euclid".to_string(),
-                Rc::new(Box::new(verifier)),
-            ))
-            .unwrap_unchecked();
-    }
-
     let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
     unsafe {
         VERIFIER_HIGH
             .set(VerifierPair(
-                "euclidV2".to_string(),
+                config.high_version_circuit.fork_name,
                 Rc::new(Box::new(verifier)),
             ))
             .unwrap_unchecked();
@@ -72,12 +55,6 @@ pub fn init(config: VerifierConfig) {
 
 pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
     unsafe {
-        if let Some(verifier) = VERIFIER_LOW.get() {
-            if verifier.0 == fork_name {
-                return Ok(verifier.1.clone());
-            }
-        }
-
         if let Some(verifier) = VERIFIER_HIGH.get() {
             if verifier.0 == fork_name {
                 return Ok(verifier.1.clone());

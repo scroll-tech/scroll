@@ -71,12 +71,14 @@ func setupEnv(t *testing.T) {
 	block1 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace, block1)
 	assert.NoError(t, err)
+	block1.RowConsumption = nil
 
 	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	block2 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace, block2)
 	assert.NoError(t, err)
+	block2.RowConsumption = nil
 }
 
 func tearDownEnv(t *testing.T) {
@@ -292,7 +294,7 @@ func TestBatchOrm(t *testing.T) {
 		err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)
 		assert.NoError(t, err)
 
-		dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1, "darwinV2")
+		dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1)
 		assert.Error(t, err)
 		assert.Nil(t, dbProof)
 
@@ -314,7 +316,7 @@ func TestBatchOrm(t *testing.T) {
 		updatedBatch, err = batchOrm.GetLatestBatch(context.Background())
 		assert.NoError(t, err)
 		assert.NotNil(t, updatedBatch)
-		assert.Equal(t, "", updatedBatch.CommitTxHash)
+		assert.Equal(t, "commitTxHash", updatedBatch.CommitTxHash)
 		assert.Equal(t, types.RollupFinalized, types.RollupStatus(updatedBatch.RollupStatus))
 
 		err = batchOrm.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchHash2, "finalizeTxHash", types.RollupFinalizeFailed)
@@ -451,18 +453,16 @@ func TestBundleOrm(t *testing.T) {
 	})
 
 	t.Run("GetVerifiedProofByHash", func(t *testing.T) {
-		proof := &message.Halo2BundleProof{
-			RawProof: []byte("test proof"),
-		}
+		proof := &message.OpenVMBundleProof{EvmProof: &message.OpenVMEvmProof{Instances: make([]byte, 384)}}
 		proofBytes, err := json.Marshal(proof)
 		assert.NoError(t, err)
 
 		err = db.Model(&Bundle{}).Where("hash = ?", bundle1.Hash).Update("proof", proofBytes).Error
 		assert.NoError(t, err)
 
-		retrievedProof, err := bundleOrm.GetVerifiedProofByHash(context.Background(), bundle1.Hash, "darwinV2")
+		retrievedProof, err := bundleOrm.GetVerifiedProofByHash(context.Background(), bundle1.Hash)
 		assert.NoError(t, err)
-		assert.Equal(t, proof.RawProof, retrievedProof.Proof())
+		assert.Equal(t, proof.Proof(), retrievedProof.Proof())
 	})
 
 	t.Run("GetBundles", func(t *testing.T) {
@@ -474,9 +474,7 @@ func TestBundleOrm(t *testing.T) {
 	})
 
 	t.Run("UpdateProofAndProvingStatusByHash", func(t *testing.T) {
-		proof := &message.Halo2BundleProof{
-			RawProof: []byte("new test proof"),
-		}
+		proof := &message.OpenVMBundleProof{EvmProof: &message.OpenVMEvmProof{Instances: make([]byte, 384)}}
 		err := bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle2.Hash, proof, types.ProvingTaskVerified, 600)
 		assert.NoError(t, err)
 
@@ -487,10 +485,10 @@ func TestBundleOrm(t *testing.T) {
 		assert.Equal(t, int32(600), bundle.ProofTimeSec)
 		assert.NotNil(t, bundle.ProvedAt)
 
-		retrievedProof := message.Halo2BundleProof{}
+		retrievedProof := &message.OpenVMBundleProof{}
 		err = json.Unmarshal(bundle.Proof, &retrievedProof)
 		assert.NoError(t, err)
-		assert.Equal(t, proof.RawProof, retrievedProof.Proof())
+		assert.Equal(t, proof.Proof(), retrievedProof.Proof())
 	})
 
 	t.Run("UpdateRollupStatus", func(t *testing.T) {

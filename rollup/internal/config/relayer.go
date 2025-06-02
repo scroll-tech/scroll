@@ -38,6 +38,8 @@ type BatchSubmission struct {
 	MaxBatches int `json:"max_batches"`
 	// The time in seconds after which a batch is considered stale and should be submitted ignoring the min batch count.
 	TimeoutSec int64 `json:"timeout"`
+	// The maximum number of pending batches to keep in the backlog.
+	BacklogMax int64 `json:"backlog_max"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
@@ -63,8 +65,6 @@ type RelayerConfig struct {
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service
 	ChainMonitor *ChainMonitor `json:"chain_monitor"`
-	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
-	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
 
 	// Configs of transaction signers (GasOracle, Commit, Finalize)
 	GasOracleSenderSignerConfig *SignerConfig `json:"gas_oracle_sender_signer_config"`
@@ -73,8 +73,6 @@ type RelayerConfig struct {
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
-	// Sets rollup-relayer to stop fake finalizing at the fork boundary
-	TestEnvBypassOnlyUntilForkBoundary bool `json:"test_env_bypass_only_until_fork_boundary"`
 	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
 	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 	// The timeout in seconds for finalizing a bundle without proof, only used when EnableTestEnvBypassFeatures is true.
