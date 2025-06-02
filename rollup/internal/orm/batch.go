@@ -268,10 +268,9 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 func (o *Batch) GetFirstUnuploadedAndFailedBatch(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
-	db = db.Joins("LEFT JOIN blob_upload ON blob_upload.batch_index = batch.index")
+	db = db.Joins("LEFT JOIN blob_upload ON blob_upload.batch_index = batch.index AND blob_upload.platform = ?", platform)
 	db = db.Where("batch.commit_tx_hash IS NOT NULL AND batch.index >= ?", startBatch)
 	db = db.Where("blob_upload.batch_index IS NULL OR blob_upload.status = ?", types.BlobUploadStatusFailed)
-	db = db.Where("blob_upload.platform = ?", platform)
 	db = db.Order("batch.index ASC")
 	db = db.Limit(1)
 
