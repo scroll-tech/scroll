@@ -9,7 +9,7 @@ CREATE TABLE blob_upload (
 
 -- metadata
     updated_at      TIMESTAMP       NOT NULL DEFAULT now(),
-    deleted_at      TIMESTAMP(0)    DEFAULT NULL
+    deleted_at      TIMESTAMP(0)    DEFAULT NULL,
 
     PRIMARY KEY (batch_index, platform),
     FOREIGN KEY (batch_index) REFERENCES batch(index)
