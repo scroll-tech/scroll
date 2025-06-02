@@ -9,7 +9,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -19,9 +18,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/rollup/internal/config"
-	"scroll-tech/rollup/internal/controller/relayer"
-	"scroll-tech/rollup/internal/controller/watcher"
-	rutils "scroll-tech/rollup/internal/utils"
+	"scroll-tech/rollup/internal/controller/blob_uploader"
 )
 
 var app *cli.App
@@ -67,36 +64,12 @@ func action(ctx *cli.Context) error {
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
 
-	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
-
-	genesisPath := ctx.String(utils.Genesis.Name)
-	genesis, err := utils.ReadGenesis(genesisPath)
-	if err != nil {
-		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
-	}
-
 	// sanity check config
-	if cfg.L2Config.RelayerConfig.BatchSubmission == nil {
-		log.Crit("cfg.L2Config.RelayerConfig.BatchSubmission must not be nil")
-	}
-	if cfg.L2Config.RelayerConfig.BatchSubmission.MinBatches < 1 {
-		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MinBatches must be at least 1")
-	}
-	if cfg.L2Config.RelayerConfig.BatchSubmission.MaxBatches < 1 {
-		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MaxBatches must be at least 1")
-	}
-	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
-		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
-	}
-	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
-		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
+	if cfg.L2Config.BlobUploaderConfig == nil {
+		log.Crit("cfg.L2Config.BlobUploaderConfig must not be nil")
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
+	blobUploader, err := blob_uploader.NewBlobUploader(ctx.Context, db, cfg.L2Config.BlobUploaderConfig, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
@@ -106,31 +79,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("min codec version must be greater than or equal to CodecV7", "minCodecVersion", minCodecVersion)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, registry)
-	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
-
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
-
-	// Watcher loop to fetch missing blocks
-	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
-		if loopErr != nil {
-			log.Error("failed to get block number", "err", loopErr)
-			return
-		}
-		l2watcher.TryFetchRunningMissingBlocks(number)
-	})
-
-	go utils.Loop(subCtx, time.Duration(cfg.L2Config.ChunkProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, chunkProposer.TryProposeChunk)
-
-	go utils.Loop(subCtx, time.Duration(cfg.L2Config.BatchProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, batchProposer.TryProposeBatch)
-
-	go utils.Loop(subCtx, 10*time.Second, bundleProposer.TryProposeBundle)
-
-	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
-
-	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
+	go utils.Loop(subCtx, 2*time.Second, blobUploader.UploadBlobToS3)
 
 	// Finish start all blob-uploader functions.
 	log.Info("Start blob-uploader successfully", "version", version.Version)
@@ -145,7 +94,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run rollup relayer cmd instance.
+// Run blob uploader cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

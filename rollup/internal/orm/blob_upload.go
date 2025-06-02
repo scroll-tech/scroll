@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
 )
@@ -15,7 +16,7 @@ type BlobUpload struct {
 	db *gorm.DB `gorm:"-"`
 
 	BatchIndex uint64    `json:"batch_index" gorm:"column:batch_index;primaryKey"`
-	Platform   string    `json:"platform" gorm:"column:platform;primaryKey"`
+	Platform   int16     `json:"platform" gorm:"column:platform;primaryKey"`
 	Status     int16     `json:"status" gorm:"column:status"`
 	UpdatedAt  time.Time `json:"updated_at" gorm:"column:updated_at"`
 }
@@ -31,15 +32,19 @@ func (*BlobUpload) TableName() string {
 }
 
 // InsertBlobUpload inserts a new blob upload record into the database.
-func (o *BlobUpload) InsertBlobUpload(ctx context.Context, batchIndex uint64, platform string, status types.BlobUploadStatus) error {
+func (o *BlobUpload) InsertBlobUpload(ctx context.Context, batchIndex uint64, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
 	blobUpload := &BlobUpload{
 		BatchIndex: batchIndex,
-		Platform:   platform,
+		Platform:   int16(platform),
 		Status:     int16(status),
 		UpdatedAt:  time.Now(),
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	if err := db.Create(blobUpload).Error; err != nil {
 		return fmt.Errorf("BlobUpload.InsertBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
 	}
@@ -47,8 +52,12 @@ func (o *BlobUpload) InsertBlobUpload(ctx context.Context, batchIndex uint64, pl
 }
 
 // UpdateBlobUploadStatus updates the status of a blob upload record.
-func (o *BlobUpload) UpdateBlobUploadStatus(ctx context.Context, batchIndex uint64, platform string, status types.BlobUploadStatus) error {
-	db := o.db.WithContext(ctx)
+func (o *BlobUpload) UpdateBlobUploadStatus(ctx context.Context, batchIndex uint64, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
 	db = db.Where("batch_index = ? AND platform = ?", batchIndex, platform)
 
@@ -63,8 +72,30 @@ func (o *BlobUpload) UpdateBlobUploadStatus(ctx context.Context, batchIndex uint
 	return nil
 }
 
+// InsertOrUpdateBlobUpload inserts a new blob upload record or updates the existing one.
+func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex uint64, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	blobUpload := &BlobUpload{
+		BatchIndex: batchIndex,
+		Platform:   int16(platform),
+		Status:     int16(status),
+		UpdatedAt:  time.Now(),
+	}
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "platform"}},
+		DoUpdates: clause.AssignmentColumns([]string{"status", "updated_at"}),
+	}).Create(blobUpload).Error; err != nil {
+		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
+	}
+	return nil
+}
+
 // GetBlobUploadByBatchIndexAndPlatform retrieves a blob upload record by batch index and platform.
-func (o *BlobUpload) GetBlobUploadByBatchIndexAndPlatform(ctx context.Context, batchIndex uint64, platform string) (*BlobUpload, error) {
+func (o *BlobUpload) GetBlobUploadByBatchIndexAndPlatform(ctx context.Context, batchIndex uint64, platform types.BlobStoragePlatform) (*BlobUpload, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
 	db = db.Where("batch_index = ? AND platform = ?", batchIndex, platform)
@@ -79,42 +110,31 @@ func (o *BlobUpload) GetBlobUploadByBatchIndexAndPlatform(ctx context.Context, b
 	return &blobUpload, nil
 }
 
-// GetPendingBlobUploads retrieves all pending blob upload records.
-func (o *BlobUpload) GetPendingBlobUploads(ctx context.Context) ([]*BlobUpload, error) {
+// GetPendingBlobUploadsByPlatform retrieves all pending blob upload records by platform.
+func (o *BlobUpload) GetPendingBlobUploadsByPlatform(ctx context.Context, platform types.BlobStoragePlatform) ([]*BlobUpload, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
-	db = db.Where("status = ?", types.BlobUploadStatusPending)
+	db = db.Where("status = ? AND platform = ?", types.BlobUploadStatusPending, platform)
 	db = db.Order("batch_index ASC")
 
 	var blobUploads []*BlobUpload
 	if err := db.Find(&blobUploads).Error; err != nil {
-		return nil, fmt.Errorf("BlobUpload.GetPendingBlobUploads error: %w", err)
+		return nil, fmt.Errorf("BlobUpload.GetPendingBlobUploadsByPlatform error: %w", err)
 	}
 	return blobUploads, nil
 }
 
-// GetFailedBlobUploads retrieves all failed blob upload records.
-func (o *BlobUpload) GetFailedBlobUploads(ctx context.Context) ([]*BlobUpload, error) {
+// GetFailedBlobUploadsByPlatform retrieves all failed blob upload records by platform.
+func (o *BlobUpload) GetFailedBlobUploadsByPlatform(ctx context.Context, platform types.BlobStoragePlatform) ([]*BlobUpload, error) {
+	
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
-	db = db.Where("status = ?", types.BlobUploadStatusFailed)
+	db = db.Where("status = ? AND platform = ?", types.BlobUploadStatusFailed, platform)
 	db = db.Order("batch_index ASC")
 
 	var blobUploads []*BlobUpload
 	if err := db.Find(&blobUploads).Error; err != nil {
-		return nil, fmt.Errorf("BlobUpload.GetFailedBlobUploads error: %w", err)
+		return nil, fmt.Errorf("BlobUpload.GetFailedBlobUploadsByPlatform error: %w", err)
 	}
 	return blobUploads, nil
-}
-
-// DeleteBlobUpload deletes a blob upload record.
-func (o *BlobUpload) DeleteBlobUpload(ctx context.Context, batchIndex uint64, platform string) error {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&BlobUpload{})
-	db = db.Where("batch_index = ? AND platform = ?", batchIndex, platform)
-
-	if err := db.Delete(&BlobUpload{}).Error; err != nil {
-		return fmt.Errorf("BlobUpload.DeleteBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
-	}
-	return nil
 }

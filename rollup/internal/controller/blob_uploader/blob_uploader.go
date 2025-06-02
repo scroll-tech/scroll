@@ -25,9 +25,11 @@ type BlobUploader struct {
 	cfg *config.BlobUploaderConfig
 
 	s3Uploader *S3Uploader
-	batchOrm   *orm.Batch
-	chunkOrm   *orm.Chunk
-	l2BlockOrm *orm.L2Block
+
+	blobUploadOrm *orm.BlobUpload
+	batchOrm      *orm.Batch
+	chunkOrm      *orm.Chunk
+	l2BlockOrm    *orm.L2Block
 
 	metrics *blobUploaderMetrics
 }
@@ -44,12 +46,13 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 	}
 
 	blobUploader := &BlobUploader{
-		ctx:        ctx,
-		cfg:        cfg,
-		s3Uploader: s3Uploader,
-		batchOrm:   orm.NewBatch(db),
-		chunkOrm:   orm.NewChunk(db),
-		l2BlockOrm: orm.NewL2Block(db),
+		ctx:           ctx,
+		cfg:           cfg,
+		s3Uploader:    s3Uploader,
+		batchOrm:      orm.NewBatch(db),
+		chunkOrm:      orm.NewChunk(db),
+		l2BlockOrm:    orm.NewL2Block(db),
+		blobUploadOrm: orm.NewBlobUpload(db),
 	}
 
 	blobUploader.metrics = initblobUploaderMetrics(reg)
@@ -85,10 +88,10 @@ func (b *BlobUploader) UploadBlobToS3() {
 		return
 	}
 
-	// calculate versioned blob hash 
+	// calculate versioned blob hash
 	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
 	if err != nil {
-		log.Error("failed to versioned blob hash", "batch index", dbBatch.Index, "err", err)
+		log.Error("failed to calculate versioned blob hash", "batch index", dbBatch.Index, "err", err)
 		return
 	}
 
@@ -97,11 +100,21 @@ func (b *BlobUploader) UploadBlobToS3() {
 	err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
 	if err != nil {
 		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
+		// Update status to failed
+		if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); err != nil {
+			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", err)
+		}
 		return
 	}
 
-	// update db status
-	
+	// Update status to uploaded
+	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded); err != nil {
+		log.Error("failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
+		return
+	}
+
+	b.metrics.rollupBlobUploaderUploadToS3Total.Inc()
+	log.Info("Successfully uploaded blob to S3", "batch index", dbBatch.Index, "versioned blob hash", key)
 }
 
 func (b *BlobUploader) constructBlobCodecV7(dbBatch *orm.Batch) (*kzg4844.Blob, error) {

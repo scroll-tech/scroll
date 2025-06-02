@@ -51,7 +51,8 @@ type BundleProposerConfig struct {
 
 // BlobUploaderConfig loads blob_uploader configuration items.
 type BlobUploaderConfig struct {
-	AWSS3Config   *AWSS3Config `json:"aws_s3_config"`
+	StartBatch  uint64       `json:"start_batch"`
+	AWSS3Config *AWSS3Config `json:"aws_s3_config"`
 }
 
 // AWSS3Config loads s3_uploader configuration items.
