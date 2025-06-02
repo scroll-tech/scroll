@@ -61,6 +61,7 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 }
 
 func (b *BlobUploader) UploadBlobToS3() {
+	log.Info("Try to UploadBlobToS3")
 	// get un-uploaded batches from database in ascending order by their index.
 	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatch(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
 	if err != nil {
