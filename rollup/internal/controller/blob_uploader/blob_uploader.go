@@ -61,7 +61,6 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 }
 
 func (b *BlobUploader) UploadBlobToS3() {
-	log.Info("Try to UploadBlobToS3")
 	// get un-uploaded batches from database in ascending order by their index.
 	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatch(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
 	if err != nil {
@@ -98,7 +97,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	}
 
 	// upload blob data to s3 bucket
-	key := common.Bytes2Hex(versionedBlobHash[:])
+	key := common.BytesToHash(versionedBlobHash[:]).Hex()
 	err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
 	if err != nil {
 		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
