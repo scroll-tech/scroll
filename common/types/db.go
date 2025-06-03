@@ -360,9 +360,9 @@ type BlobStoragePlatform int
 const (
 	// BlobStoragePlatformUndefined indicates an undefined platform
 	BlobStoragePlatformUndefined BlobStoragePlatform = iota
-	// BlobStoragePlatformS3 represents AWS S3 
+	// BlobStoragePlatformS3 represents AWS S3
 	BlobStoragePlatformS3
-	// BlobUploadStatusUploaded represents storage blockchain Arweave
+	// BlobStoragePlatformArweave represents storage blockchain Arweave
 	BlobStoragePlatformArweave
 )
 

@@ -126,7 +126,7 @@ func (o *BlobUpload) GetPendingBlobUploadsByPlatform(ctx context.Context, platfo
 
 // GetFailedBlobUploadsByPlatform retrieves all failed blob upload records by platform.
 func (o *BlobUpload) GetFailedBlobUploadsByPlatform(ctx context.Context, platform types.BlobStoragePlatform) ([]*BlobUpload, error) {
-	
+
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
 	db = db.Where("status = ? AND platform = ?", types.BlobUploadStatusFailed, platform)
