@@ -83,7 +83,6 @@ func (b *BlobUploader) UploadBlobToS3() {
 		return
 	}
 
-
 	// calculate versioned blob hash
 	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
 	if err != nil {
@@ -132,7 +131,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 
 	var encodingBatch *encoding.Batch
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	switch codecVersion {		
+	switch codecVersion {
 	case encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
@@ -142,7 +141,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 			}
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
-	
+
 		encodingBatch = &encoding.Batch{
 			Index:                      dbBatch.Index,
 			TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -156,15 +155,15 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 			if dbBatch.CodecVersion != dbChunk.CodecVersion {
 				return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
 			}
-	
+
 			blocks, err := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
 			}
-	
+
 			batchBlocks = append(batchBlocks, blocks...)
 		}
-	
+
 		encodingBatch = &encoding.Batch{
 			Index:                  dbBatch.Index,
 			ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
@@ -176,7 +175,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 		log.Error("unsupported codec version in UploadBlobToS3", "codecVersion", codecVersion, "batch index", dbBatch.Index)
 		return nil, fmt.Errorf("unsupported codec version, batch index: %d, batch codec version: %d,  %w", dbBatch.Index, codecVersion, err)
 	}
-	
+
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
@@ -188,5 +187,4 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	}
 
 	return daBatch.Blob(), nil
-
 }
