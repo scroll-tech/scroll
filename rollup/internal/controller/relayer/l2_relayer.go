@@ -377,7 +377,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 	}
 
-	var batchesToSubmit []*dbBatchWithChunksAndParent
+	var batchesToSubmit []*dbBatchWithChunks
 	for i, dbBatch := range dbBatches {
 		var dbChunks []*orm.Chunk
 		var dbParentBatch *orm.Batch
@@ -433,10 +433,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 
 		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
-			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunksAndParent{
-				Batch:       dbBatch,
-				Chunks:      dbChunks,
-				ParentBatch: dbParentBatch,
+			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunks{
+				Batch:  dbBatch,
+				Chunks: dbChunks,
 			})
 		}
 
@@ -523,7 +522,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunksAndParent) string {
+func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunks) string {
 	contextIDs := []string{"v7"}
 
 	for _, batch := range batches {
@@ -541,10 +540,9 @@ func (r *Layer2Relayer) batchHashesFromContextID(contextID string) []string {
 	return []string{contextID}
 }
 
-type dbBatchWithChunksAndParent struct {
-	Batch       *orm.Batch
-	Chunks      []*orm.Chunk
-	ParentBatch *orm.Batch
+type dbBatchWithChunks struct {
+	Batch  *orm.Batch
+	Chunks []*orm.Chunk
 }
 
 // ProcessPendingBundles submits proof to layer 1 rollup contract
@@ -898,7 +896,7 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunks, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
@@ -929,7 +927,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 
 		encodingBatch := &encoding.Batch{
 			Index:                  b.Batch.Index,
-			ParentBatchHash:        common.HexToHash(b.ParentBatch.Hash),
+			ParentBatchHash:        common.HexToHash(b.Batch.ParentBatchHash),
 			PrevL1MessageQueueHash: common.HexToHash(b.Batch.PrevL1MessageQueueHash),
 			PostL1MessageQueueHash: common.HexToHash(b.Batch.PostL1MessageQueueHash),
 			Blocks:                 batchBlocks,
