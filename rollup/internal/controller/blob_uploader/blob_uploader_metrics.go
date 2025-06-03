@@ -8,7 +8,8 @@ import (
 )
 
 type blobUploaderMetrics struct {
-	rollupBlobUploaderUploadToS3Total prometheus.Counter
+	rollupBlobUploaderUploadToS3SuccessTotal prometheus.Counter
+	rollupBlobUploaderUploadToS3FailedTotal  prometheus.Counter
 }
 
 var (
@@ -19,9 +20,13 @@ var (
 func initblobUploaderMetrics(reg prometheus.Registerer) *blobUploaderMetrics {
 	initBlobUploaderMetricsOnce.Do(func() {
 		blobUploaderMetric = &blobUploaderMetrics{
-			rollupBlobUploaderUploadToS3Total: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_blob_uploader_upload_to_s3_total",
-				Help: "The total number of upload blob to S3 run total",
+			rollupBlobUploaderUploadToS3SuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_blob_uploader_upload_to_s3_success_total",
+				Help: "The total number of upload blob to S3 run success total",
+			}),
+			rollupBlobUploaderUploadToS3FailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_blob_uploader_upload_to_s3_failed_total",
+				Help: "The total number of upload blob to S3 run failed total",
 			}),
 		}
 	})

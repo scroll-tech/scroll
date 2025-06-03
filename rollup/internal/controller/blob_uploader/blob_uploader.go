@@ -75,19 +75,14 @@ func (b *BlobUploader) UploadBlobToS3() {
 	}
 
 	// construct blob
-	var blob *kzg4844.Blob
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	switch codecVersion {
-	case encoding.CodecV7:
-		blob, err = b.constructBlobCodecV7(dbBatch)
-		if err != nil {
-			log.Error("failed to construct constructBlobCodecV7 payload for V7", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
-			return
-		}
-	default:
-		log.Error("unsupported codec version in UploadBlobToS3", "codecVersion", codecVersion, "batch index", dbBatch.Index)
+	blob, err := b.constructBlobCodec(dbBatch)
+	if err != nil {
+		log.Error("failed to construct constructBlobCodec payload ", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
+		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		return
 	}
+
 
 	// calculate versioned blob hash
 	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
@@ -101,6 +96,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
 	if err != nil {
 		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
+		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		// Update status to failed
 		if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); err != nil {
 			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", err)
@@ -111,47 +107,77 @@ func (b *BlobUploader) UploadBlobToS3() {
 	// Update status to uploaded
 	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded); err != nil {
 		log.Error("failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
+		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		return
 	}
 
-	b.metrics.rollupBlobUploaderUploadToS3Total.Inc()
+	b.metrics.rollupBlobUploaderUploadToS3SuccessTotal.Inc()
 	log.Info("Successfully uploaded blob to S3", "batch index", dbBatch.Index, "versioned blob hash", key)
 }
 
-func (b *BlobUploader) constructBlobCodecV7(dbBatch *orm.Batch) (*kzg4844.Blob, error) {
+func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, error) {
 	var dbChunks []*orm.Chunk
 
-	// Verify batches compatibility
 	dbChunks, err := b.chunkOrm.GetChunksInRange(b.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chunks in range: %v", err)
 	}
 
 	// check codec version
-	var batchBlocks []*encoding.Block
 	for _, dbChunk := range dbChunks {
 		if dbBatch.CodecVersion != dbChunk.CodecVersion {
 			return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
 		}
+	}
 
-		blocks, err := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
+	var encodingBatch *encoding.Batch
+	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
+	switch codecVersion {		
+	case encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
+		chunks := make([]*encoding.Chunk, len(dbChunks))
+		for i, c := range dbChunks {
+			blocks, getErr := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			if getErr != nil {
+				return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
+			}
+			chunks[i] = &encoding.Chunk{Blocks: blocks}
+		}
+	
+		encodingBatch = &encoding.Batch{
+			Index:                      dbBatch.Index,
+			TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
+			ParentBatchHash:            common.HexToHash(dbBatch.ParentBatchHash),
+			Chunks:                     chunks,
 		}
 
-		batchBlocks = append(batchBlocks, blocks...)
+	case encoding.CodecV7:
+		var batchBlocks []*encoding.Block
+		for _, dbChunk := range dbChunks {
+			if dbBatch.CodecVersion != dbChunk.CodecVersion {
+				return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
+			}
+	
+			blocks, err := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
+			}
+	
+			batchBlocks = append(batchBlocks, blocks...)
+		}
+	
+		encodingBatch = &encoding.Batch{
+			Index:                  dbBatch.Index,
+			ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
+			PrevL1MessageQueueHash: common.HexToHash(dbBatch.PrevL1MessageQueueHash),
+			PostL1MessageQueueHash: common.HexToHash(dbBatch.PostL1MessageQueueHash),
+			Blocks:                 batchBlocks,
+		}
+	default:
+		log.Error("unsupported codec version in UploadBlobToS3", "codecVersion", codecVersion, "batch index", dbBatch.Index)
+		return nil, fmt.Errorf("unsupported codec version, batch index: %d, batch codec version: %d,  %w", dbBatch.Index, codecVersion, err)
 	}
-
-	encodingBatch := &encoding.Batch{
-		Index:                  dbBatch.Index,
-		ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
-		PrevL1MessageQueueHash: common.HexToHash(dbBatch.PrevL1MessageQueueHash),
-		PostL1MessageQueueHash: common.HexToHash(dbBatch.PostL1MessageQueueHash),
-		Blocks:                 batchBlocks,
-	}
-
-	version := encoding.CodecVersion(dbBatch.CodecVersion)
-	codec, err := encoding.CodecFromVersion(version)
+	
+	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
 	}
