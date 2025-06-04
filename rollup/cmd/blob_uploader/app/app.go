@@ -31,13 +31,10 @@ func init() {
 	app.Usage = "The Scroll Blob Uploader"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, utils.RollupRelayerFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
 	}
-	// Register `rollup-relayer-test` app for integration-test.
-	utils.RegisterSimulation(app, utils.RollupRelayerApp)
 }
 
 func action(ctx *cli.Context) error {

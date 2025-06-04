@@ -17,16 +17,16 @@ var (
 	blobUploaderMetric          *blobUploaderMetrics
 )
 
-func initblobUploaderMetrics(reg prometheus.Registerer) *blobUploaderMetrics {
+func initBlobUploaderMetrics(reg prometheus.Registerer) *blobUploaderMetrics {
 	initBlobUploaderMetricsOnce.Do(func() {
 		blobUploaderMetric = &blobUploaderMetrics{
 			rollupBlobUploaderUploadToS3SuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_blob_uploader_upload_to_s3_success_total",
-				Help: "The total number of upload blob to S3 run success total",
+				Help: "The total number of upload blob to S3 runs success total",
 			}),
 			rollupBlobUploaderUploadToS3FailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_blob_uploader_upload_to_s3_failed_total",
-				Help: "The total number of upload blob to S3 run failed total",
+				Help: "The total number of upload blob to S3 runs failed total",
 			}),
 		}
 	})

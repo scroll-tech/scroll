@@ -37,7 +37,6 @@ func (o *BlobUpload) InsertBlobUpload(ctx context.Context, batchIndex uint64, pl
 		BatchIndex: batchIndex,
 		Platform:   int16(platform),
 		Status:     int16(status),
-		UpdatedAt:  time.Now(),
 	}
 
 	db := o.db
@@ -63,7 +62,6 @@ func (o *BlobUpload) UpdateBlobUploadStatus(ctx context.Context, batchIndex uint
 
 	updates := map[string]interface{}{
 		"status":     status,
-		"updated_at": time.Now(),
 	}
 
 	if err := db.Updates(updates).Error; err != nil {
@@ -83,7 +81,6 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 		BatchIndex: batchIndex,
 		Platform:   int16(platform),
 		Status:     int16(status),
-		UpdatedAt:  time.Now(),
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "platform"}},
