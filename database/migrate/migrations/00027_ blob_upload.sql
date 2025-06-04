@@ -8,11 +8,11 @@ CREATE TABLE blob_upload (
     status          SMALLINT        NOT NULL,
 
 -- metadata
-    updated_at      TIMESTAMP       NOT NULL DEFAULT now(),
-    deleted_at      TIMESTAMP(0)    DEFAULT NULL,
+    created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 
-    PRIMARY KEY (batch_index, platform),
-    FOREIGN KEY (batch_index) REFERENCES batch(index)
+    PRIMARY KEY (batch_index, platform)
 );
 
 COMMENT ON COLUMN blob_upload.status IS 'undefined, pending, uploaded, failed';

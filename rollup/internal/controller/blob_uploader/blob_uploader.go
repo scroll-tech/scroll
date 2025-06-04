@@ -55,14 +55,19 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 		blobUploadOrm: orm.NewBlobUpload(db),
 	}
 
-	blobUploader.metrics = initblobUploaderMetrics(reg)
+	blobUploader.metrics = initBlobUploaderMetrics(reg)
 
 	return blobUploader, nil
 }
 
 func (b *BlobUploader) UploadBlobToS3() {
+	// skip upload if s3 uploader is not configured
+	if b.s3Uploader == nil {
+		return
+	}
+
 	// get un-uploaded batches from database in ascending order by their index.
-	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatch(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
+	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatchByPlatform(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
 	if err != nil {
 		log.Error("Failed to fetch unuploaded batch", "err", err)
 		return
@@ -191,7 +196,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	}
 
 	if daBatch.Blob() == nil {
-		return nil, fmt.Errorf("codec version doesn't support blob, batch index: %d, batch codec version: %d, err: %w", dbBatch.Index, dbBatch.CodecVersion, err)
+		return nil, fmt.Errorf("codec version doesn't support blob, batch index: %d, batch codec version: %d", dbBatch.Index, dbBatch.CodecVersion)
 	}
 
 	return daBatch.Blob(), nil

@@ -263,9 +263,9 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 	return &batch, nil
 }
 
-// GetFirstUnuploadedAndFailedBatch retrieves the first batch that either hasn't been uploaded to any blob storage service
+// GetFirstUnuploadedAndFailedBatchByPlatform retrieves the first batch that either hasn't been uploaded to any blob storage service
 // or has failed upload status. The batch must have a commit_tx_hash (committed).
-func (o *Batch) GetFirstUnuploadedAndFailedBatch(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
+func (o *Batch) GetFirstUnuploadedAndFailedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Joins("LEFT JOIN blob_upload ON blob_upload.batch_index = batch.index AND blob_upload.platform = ?", platform)

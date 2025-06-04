@@ -28,7 +28,6 @@ func TestCalculateVersionedBlobHash(t *testing.T) {
 		t.Fatalf("Failed to parse blobdata.json: %v", err)
 	}
 
-	fmt.Println(blobData.BlobData)
 	blobBytes, err := hex.DecodeString(blobData.BlobData)
 	if err != nil {
 		t.Fatalf("Failed to decode blob data: %v", err)
