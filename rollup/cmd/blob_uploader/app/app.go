@@ -74,11 +74,6 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
-	if minCodecVersion < encoding.CodecV7 {
-		log.Crit("min codec version must be greater than or equal to CodecV7", "minCodecVersion", minCodecVersion)
-	}
-
 	go utils.Loop(subCtx, 2*time.Second, blobUploader.UploadBlobToS3)
 
 	// Finish start all blob-uploader functions.
