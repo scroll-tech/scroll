@@ -264,7 +264,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // GetFirstUnuploadedBatchByPlatform retrieves the first batch that either hasn't been uploaded to corresponding blob storage service
-// or has failed upload status. The batch must have a commit_tx_hash (committed).
+// The batch must have a commit_tx_hash (committed).
 func (o *Batch) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
