@@ -221,7 +221,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	chunk := &encoding.Chunk{Blocks: []*encoding.Block{{Header: genesis}}}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
-		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
+		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks, dbTX); err != nil {
 			return fmt.Errorf("failed to insert genesis block: %v", err)
 		}
 
