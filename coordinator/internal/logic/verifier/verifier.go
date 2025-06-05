@@ -79,10 +79,6 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		OpenVMVkMap: make(map[string]struct{}),
 	}
 
-	if err := v.loadOpenVMVks(message.EuclidFork); err != nil {
-		return nil, err
-	}
-
 	if err := v.loadOpenVMVks(message.EuclidV2Fork); err != nil {
 		return nil, err
 	}

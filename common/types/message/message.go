@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	EuclidFork   = "euclid"
 	EuclidV2Fork = "euclidV2"
 
 	EuclidV2ForkNameForProver = "euclidv2"
@@ -46,7 +45,7 @@ const (
 
 // ChunkTaskDetail is a type containing ChunkTask detail for chunk task.
 type ChunkTaskDetail struct {
-	// use one of the string of EuclidFork / EuclidV2Fork
+	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName         string        `json:"fork_name"`
 	BlockHashes      []common.Hash `json:"block_hashes"`
 	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
@@ -97,7 +96,7 @@ func (e *Byte48) UnmarshalJSON(input []byte) error {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	// use one of the string of EuclidFork / EuclidV2Fork
+	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName        string              `json:"fork_name"`
 	ChunkInfos      []*ChunkInfo        `json:"chunk_infos"`
 	ChunkProofs     []*OpenVMChunkProof `json:"chunk_proofs"`
@@ -110,7 +109,7 @@ type BatchTaskDetail struct {
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
-	// use one of the string of EuclidFork / EuclidV2Fork
+	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName    string              `json:"fork_name"`
 	BatchProofs []*OpenVMBatchProof `json:"batch_proofs"`
 	BundleInfo  *OpenVMBundleInfo   `json:"bundle_info,omitempty"`
