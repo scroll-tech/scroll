@@ -285,12 +285,8 @@ func (o *Batch) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatc
 	}
 
 	batch, err := o.GetBatchByIndex(ctx, BatchIndex)
-	if err != nil {
-		return nil, fmt.Errorf("Batch.GetLatestSuccessfulBlobUploadIndex error: %w", err)
-	}
-
-	if len(batch.CommitTxHash) == 0 {
-		log.Debug("got uncommitted un-uploaded batch", "index", batch.Index, "platform", int16(platform))
+	if err != nil || len(batch.CommitTxHash) == 0 {
+		log.Debug("got batch not ready for blob uploading", "batch_index", batch.Index, "platform", platform.String())
 		return nil, nil
 	}
 

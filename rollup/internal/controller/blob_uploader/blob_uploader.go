@@ -75,7 +75,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 
 	// nothing to do if we don't have any pending batches
 	if dbBatch == nil {
-		log.Info("not found any un-uploaded batches")
+		log.Debug("no pending batches to upload")
 		return
 	}
 
