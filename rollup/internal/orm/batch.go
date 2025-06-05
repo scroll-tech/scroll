@@ -273,20 +273,20 @@ func (o *Batch) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatc
 	db = db.Limit(1)
 
 	var blobUpload BlobUpload
-	var BatchIndex uint64
+	var batchIndex uint64
 	if err := db.First(&blobUpload).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			BatchIndex = startBatch
+			batchIndex = startBatch
 		} else {
 			return nil, fmt.Errorf("Batch.GetLatestSuccessfulBlobUploadIndex error: %w", err)
 		}
 	} else {
-		BatchIndex = blobUpload.BatchIndex + 1
+		batchIndex = blobUpload.BatchIndex + 1
 	}
 
-	batch, err := o.GetBatchByIndex(ctx, BatchIndex)
+	batch, err := o.GetBatchByIndex(ctx, batchIndex)
 	if err != nil || len(batch.CommitTxHash) == 0 {
-		log.Debug("got batch not ready for blob uploading", "batch_index", batch.Index, "platform", platform.String())
+		log.Debug("got batch not ready for blob uploading", "batch_index", batchIndex, "platform", platform.String())
 		return nil, nil
 	}
 
