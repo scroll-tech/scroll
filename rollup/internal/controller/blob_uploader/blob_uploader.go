@@ -67,7 +67,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	}
 
 	// get un-uploaded batches from database in ascending order by their index.
-	dbBatch, err := b.batchOrm.GetFirstUnuploadedAndFailedBatchByPlatform(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
+	dbBatch, err := b.batchOrm.GetFirstUnuploadedBatchByPlatform(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
 	if err != nil {
 		log.Error("Failed to fetch unuploaded batch", "err", err)
 		return

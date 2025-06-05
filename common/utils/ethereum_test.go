@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 

@@ -263,25 +263,38 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 	return &batch, nil
 }
 
-// GetFirstUnuploadedAndFailedBatchByPlatform retrieves the first batch that either hasn't been uploaded to any blob storage service
+// GetFirstUnuploadedBatchByPlatform retrieves the first batch that either hasn't been uploaded to corresponding blob storage service
 // or has failed upload status. The batch must have a commit_tx_hash (committed).
-func (o *Batch) GetFirstUnuploadedAndFailedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
+func (o *Batch) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
 	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Joins("LEFT JOIN blob_upload ON blob_upload.batch_index = batch.index AND blob_upload.platform = ?", platform)
-	db = db.Where("batch.commit_tx_hash IS NOT NULL AND batch.index >= ?", startBatch)
-	db = db.Where("blob_upload.batch_index IS NULL OR blob_upload.status = ?", types.BlobUploadStatusFailed)
-	db = db.Order("batch.index ASC")
+	db = db.Model(&BlobUpload{})
+	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
+	db = db.Order("batch_index DESC")
 	db = db.Limit(1)
 
-	var batch Batch
-	if err := db.First(&batch).Error; err != nil {
+	var blobUpload BlobUpload
+	var BatchIndex uint64
+	if err := db.First(&blobUpload).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
+			BatchIndex = startBatch
+		} else {
+			return nil, fmt.Errorf("Batch.GetLatestSuccessfulBlobUploadIndex error: %w", err)
 		}
-		return nil, fmt.Errorf("Batch.GetFirstUnuploadedAndFailedBatch error: %w", err)
+	} else {
+		BatchIndex = blobUpload.BatchIndex + 1
 	}
-	return &batch, nil
+
+	batch, err := o.GetBatchByIndex(ctx, BatchIndex)
+	if err != nil {
+		return nil, fmt.Errorf("Batch.GetLatestSuccessfulBlobUploadIndex error: %w", err)
+	}
+
+	if len(batch.CommitTxHash) == 0 {
+		log.Debug("got uncommitted un-uploaded batch", "index", batch.Index, "platform", int16(platform))
+		return nil, nil
+	}
+
+	return batch, nil
 }
 
 // InsertBatch inserts a new batch into the database.

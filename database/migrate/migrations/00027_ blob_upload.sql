@@ -10,7 +10,7 @@ CREATE TABLE blob_upload (
 -- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at              TIMESTAMP(0)    DEFAULT NULL
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
 
     PRIMARY KEY (batch_index, platform)
 );
@@ -22,6 +22,8 @@ CREATE INDEX IF NOT EXISTS idx_blob_upload_batch_index ON blob_upload(batch_inde
 CREATE INDEX IF NOT EXISTS idx_blob_upload_platform ON blob_upload(platform) WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_blob_upload_status ON blob_upload(status) WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_blob_upload_created_at ON blob_upload(created_at) WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_blob_upload_updated_at ON blob_upload(updated_at) WHERE deleted_at IS NULL;
 
