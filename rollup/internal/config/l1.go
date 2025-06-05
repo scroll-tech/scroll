@@ -8,4 +8,7 @@ type L1Config struct {
 	StartHeight uint64 `json:"start_height"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
+
+	// beacon node url
+	BeaconNodeEndpoint string `json:"beacon_node_endpoint"`
 }

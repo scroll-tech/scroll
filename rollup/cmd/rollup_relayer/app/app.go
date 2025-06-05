@@ -128,7 +128,10 @@ func action(ctx *cli.Context) error {
 			return fmt.Errorf("failed to create L1 reader: %w", err)
 		}
 
-		fullRecovery := relayer.NewFullRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2watcher, l1Client, reader)
+		fullRecovery, err := relayer.NewFullRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2watcher, l1Client, reader)
+		if err != nil {
+			return fmt.Errorf("failed to create full recovery: %w", err)
+		}
 		if err = fullRecovery.RestoreFullPreviousState(); err != nil {
 			log.Crit("failed to restore full previous state", "error", err)
 		}
