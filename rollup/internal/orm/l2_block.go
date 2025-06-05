@@ -173,7 +173,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
-func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block, dbTX ...*gorm.DB) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)
@@ -203,7 +203,11 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) 
 		l2Blocks = append(l2Blocks, l2Block)
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 
 	if err := db.Create(&l2Blocks).Error; err != nil {
