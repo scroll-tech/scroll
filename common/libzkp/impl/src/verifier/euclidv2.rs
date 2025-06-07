@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::utils::panic_catch;
 use euclid_prover::{BatchProof, BundleProof, ChunkProof};
-use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
+use scroll_zkvm_verifier_euclid::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
 use std::{fs::File, path::Path};
 
 pub struct EuclidV2Verifier {

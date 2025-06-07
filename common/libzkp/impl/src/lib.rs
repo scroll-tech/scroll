@@ -30,12 +30,12 @@ fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskT
     let verifier = verifier::get_verifier(fork_name_str);
 
     if let Err(e) = verifier {
-        log::warn!("failed to get verifier, error: {:#}", e);
+        tracing::warn!("failed to get verifier, error: {:#}", e);
         return 0 as c_char;
     }
     match verifier.unwrap().verify(task_type, proof) {
         Err(e) => {
-            log::error!("{:?} verify failed, error: {:#}", task_type, e);
+            tracing::error!("{:?} verify failed, error: {:#}", task_type, e);
             false as c_char
         }
         Ok(result) => result as c_char,
