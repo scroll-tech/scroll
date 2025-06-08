@@ -154,7 +154,9 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	var encodingBatch *encoding.Batch
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
+	case encoding.CodecV0:
+		return nil, fmt.Errorf("codec version 0 doesn't support blob, batch index: %d", dbBatch.Index)
+	case encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
 		encodingBatch = &encoding.Batch{
 			Index:                      dbBatch.Index,
 			TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
