@@ -10,10 +10,11 @@ CREATE TABLE blob_upload (
 -- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
-
-    PRIMARY KEY (batch_index, platform)
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS batch_index_platform_uindex
+ON blob_upload(batch_index, platform) WHERE deleted_at IS NULL;
 
 COMMENT ON COLUMN blob_upload.status IS 'undefined, pending, uploaded, failed';
 
