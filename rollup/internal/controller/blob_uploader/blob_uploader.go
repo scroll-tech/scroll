@@ -96,7 +96,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	if err != nil {
 		log.Error("failed to calculate versioned blob hash", "batch index", dbBatch.Index, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		// Update status to failed
+		// update status to failed
 		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
 			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
 		}
@@ -109,14 +109,14 @@ func (b *BlobUploader) UploadBlobToS3() {
 	if err != nil {
 		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		// Update status to failed
-		if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); err != nil {
-			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", err)
+		// update status to failed
+		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
+			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
 		}
 		return
 	}
 
-	// Update status to uploaded
+	// update status to uploaded
 	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded); err != nil {
 		log.Error("failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
@@ -143,12 +143,14 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	}
 
 	chunks := make([]*encoding.Chunk, len(dbChunks))
+	var allBlocks []*encoding.Block // collect blocks for CodecV7
 	for i, c := range dbChunks {
 		blocks, getErr := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if getErr != nil {
 			return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, getErr)
 		}
 		chunks[i] = &encoding.Chunk{Blocks: blocks}
+		allBlocks = append(allBlocks, blocks...)
 	}
 
 	var encodingBatch *encoding.Batch
@@ -165,23 +167,13 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 		}
 
 	case encoding.CodecV7:
-		var batchBlocks []*encoding.Block
-		for _, dbChunk := range dbChunks {
-			blocks, err := b.l2BlockOrm.GetL2BlocksInRange(b.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get blocks in range for batch %d: %w", dbBatch.Index, err)
-			}
-
-			batchBlocks = append(batchBlocks, blocks...)
-		}
-
 		encodingBatch = &encoding.Batch{
 			Index:                  dbBatch.Index,
 			ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
 			Chunks:                 chunks,
 			PrevL1MessageQueueHash: common.HexToHash(dbBatch.PrevL1MessageQueueHash),
 			PostL1MessageQueueHash: common.HexToHash(dbBatch.PostL1MessageQueueHash),
-			Blocks:                 batchBlocks,
+			Blocks:                 allBlocks,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported codec version, batch index: %d, batch codec version: %d", dbBatch.Index, codecVersion)
