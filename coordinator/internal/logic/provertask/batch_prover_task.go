@@ -266,7 +266,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 	switch dbBatchCodecVersion {
-	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7:
+	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8:
 	default:
 		return taskDetail, nil
 	}

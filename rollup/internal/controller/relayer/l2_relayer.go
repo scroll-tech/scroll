@@ -466,7 +466,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV7:
+	case encoding.CodecV7, encoding.CodecV8:
 		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
 		if err != nil {
 			log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
@@ -477,7 +477,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	txHash, blobBaseFee, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
+	txHash, blobBaseFee, err := r.commitSender.SendTransaction(r.contextIDFromBatches(codecVersion, batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
 	if err != nil {
 		if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
 			r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
@@ -523,21 +523,25 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunksAndParent) string {
-	contextIDs := []string{"v7"}
+func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunksAndParent) string {
+	var prefix string
+	if codecVersion == encoding.CodecV7 {
+		prefix = "v7"
+	} else {
+		prefix = "v8"
+	}
 
+	contextIDs := []string{prefix}
 	for _, batch := range batches {
 		contextIDs = append(contextIDs, batch.Batch.Hash)
 	}
-
 	return strings.Join(contextIDs, "-")
 }
 
 func (r *Layer2Relayer) batchHashesFromContextID(contextID string) []string {
-	if strings.HasPrefix(contextID, "v7-") {
+	if strings.HasPrefix(contextID, "v7-") || strings.HasPrefix(contextID, "v8-") {
 		return strings.Split(contextID, "-")[1:]
 	}
-
 	return []string{contextID}
 }
 
@@ -693,7 +697,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV7:
+	case encoding.CodecV7, encoding.CodecV8:
 		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
