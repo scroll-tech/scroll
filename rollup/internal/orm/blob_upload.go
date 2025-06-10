@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,8 +17,9 @@ type BlobUpload struct {
 	db *gorm.DB `gorm:"-"`
 
 	// blob upload
-	BatchIndex uint64 `json:"batch_index" gorm:"column:batch_index;primaryKey"`
-	Platform   int16  `json:"platform" gorm:"column:platform;primaryKey"`
+	BatchIndex uint64 `json:"batch_index" gorm:"column:batch_index"`
+	BatchHash  string `json:"batch_hash" gorm:"column:batch_hash"`
+	Platform   int16  `json:"platform" gorm:"column:platform"`
 	Status     int16  `json:"status" gorm:"column:status"`
 
 	// metadata
@@ -36,8 +38,58 @@ func (*BlobUpload) TableName() string {
 	return "blob_upload"
 }
 
+// GetFirstUnuploadedBatchIndexByPlatform retrieves the first batch index that either hasn't been uploaded to corresponding blob storage service
+func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&BlobUpload{})
+	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
+	db = db.Order("batch_index DESC")
+	db = db.Limit(1)
+
+	var blobUpload BlobUpload
+	var batchIndex uint64
+	if err := db.First(&blobUpload).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			batchIndex = startBatch
+		} else {
+			return 0, fmt.Errorf("Batch.GetFirstUnuploadedBatchIndexByPlatform error: %w", err)
+		}
+	} else {
+		batchIndex = blobUpload.BatchIndex + 1
+	}
+
+	return batchIndex, nil
+}
+
+// GetBlobUpload retrieves the selected blob uploads from the database.
+func (o *BlobUpload) GetBlobUploads(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*BlobUpload, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&BlobUpload{})
+
+	for key, value := range fields {
+		db = db.Where(key, value)
+	}
+
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	db = db.Order("batch_index ASC")
+
+	var blobUploads []*BlobUpload
+	if err := db.Find(&blobUploads).Error; err != nil {
+		return nil, fmt.Errorf("BlobUpload.GetBlobUploads error: %w", err)
+	}
+
+	return blobUploads, nil
+}
+
 // InsertOrUpdateBlobUpload inserts a new blob upload record or updates the existing one.
-func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex uint64, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
+func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex uint64, batchHash string, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -45,11 +97,12 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 	db = db.WithContext(ctx)
 	blobUpload := &BlobUpload{
 		BatchIndex: batchIndex,
+		BatchHash:  batchHash,
 		Platform:   int16(platform),
 		Status:     int16(status),
 	}
 	if err := db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "platform"}},
+		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "batch_hash"}, {Name: "platform"}},
 		DoUpdates: clause.AssignmentColumns([]string{"status"}),
 	}).Create(blobUpload).Error; err != nil {
 		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)

@@ -2,6 +2,7 @@ package blob_uploader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,7 +68,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	}
 
 	// get un-uploaded batches from database in ascending order by their index.
-	dbBatch, err := b.batchOrm.GetFirstUnuploadedBatchByPlatform(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
+	dbBatch, err := b.GetFirstUnuploadedBatchByPlatform(b.ctx, b.cfg.StartBatch, types.BlobStoragePlatformS3)
 	if err != nil {
 		log.Error("Failed to fetch unuploaded batch", "err", err)
 		return
@@ -85,7 +86,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 	if err != nil {
 		log.Error("failed to construct constructBlobCodec payload ", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
+		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
 			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
 		}
 		return
@@ -97,7 +98,7 @@ func (b *BlobUploader) UploadBlobToS3() {
 		log.Error("failed to calculate versioned blob hash", "batch index", dbBatch.Index, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
+		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
 			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
 		}
 		return
@@ -110,14 +111,14 @@ func (b *BlobUploader) UploadBlobToS3() {
 		log.Error("failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
+		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed); updateErr != nil {
 			log.Error("failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
 		}
 		return
 	}
 
 	// update status to uploaded
-	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded); err != nil {
+	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded); err != nil {
 		log.Error("failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
 		return
@@ -194,4 +195,52 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	}
 
 	return daBatch.Blob(), nil
+}
+
+// GetFirstUnuploadedBatchByPlatform retrieves the first batch that either hasn't been uploaded to corresponding blob storage service
+// The batch must have a commit_tx_hash (committed).
+func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*orm.Batch, error) {
+	batchIndex, err := b.blobUploadOrm.GetFirstUnuploadedBatchIndexByPlatform(ctx, startBatch, platform)
+	if err != nil {
+		return nil, err
+	}
+
+	var batch *orm.Batch
+	for {
+		var err error
+		batch, err = b.batchOrm.GetBatchByIndex(ctx, batchIndex)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Debug("got batch not proposed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
+				return nil, nil
+			}
+			return nil, err
+		}
+
+		// to check if the parent batch uploaded
+		// if no, there is a batch revert happened, we need to fallback to upload previous batch
+		fields := map[string]interface{}{
+			"batch_index = ?": batchIndex - 1,
+			"batch_hash = ?":  batch.ParentBatchHash,
+			"platform = ?":    platform,
+			"status = ?":      types.BlobUploadStatusUploaded,
+		}
+		blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(blobUpload) == 0 {
+			batchIndex--
+			continue
+		}
+		break
+	}
+
+	if len(batch.CommitTxHash) == 0 {
+		log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
+		return nil, nil
+	}
+
+	return batch, nil
 }
