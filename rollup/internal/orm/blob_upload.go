@@ -103,7 +103,7 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "batch_hash"}, {Name: "platform"}},
-		Where:     clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "deleted_at", Value: nil}}},
+		Where:     clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "blob_upload.deleted_at", Value: nil}}},
 		DoUpdates: clause.AssignmentColumns([]string{"status"}),
 	}).Create(blobUpload).Error; err != nil {
 		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
