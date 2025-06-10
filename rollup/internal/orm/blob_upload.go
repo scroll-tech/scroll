@@ -42,7 +42,7 @@ func (*BlobUpload) TableName() string {
 func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
-	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
+	db = db.Where("platform = ? AND status = ? AND deleted_at IS NULL", platform, types.BlobUploadStatusUploaded)
 	db = db.Order("batch_index DESC")
 	db = db.Limit(1)
 
@@ -103,6 +103,7 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "batch_hash"}, {Name: "platform"}},
+		Where:     clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "deleted_at", Value: nil}}},
 		DoUpdates: clause.AssignmentColumns([]string{"status"}),
 	}).Create(blobUpload).Error; err != nil {
 		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
