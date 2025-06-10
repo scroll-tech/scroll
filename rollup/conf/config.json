@@ -104,6 +104,15 @@
     "bundle_proposer_config": {
       "max_batch_num_per_bundle": 20,
       "bundle_timeout_sec": 36000
+    },
+    "blob_uploader_config": {
+      "start_batch": 0,
+      "aws_s3_config": {
+        "bucket": "blob-data",
+        "region": "us-west-2",
+        "access_key": "ACCESSKEY",
+        "secret_key": "SECRETKEY"
+      }
     }
   },
   "db_config": {

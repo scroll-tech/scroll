@@ -14,9 +14,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
-	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
