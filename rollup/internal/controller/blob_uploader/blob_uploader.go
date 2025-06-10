@@ -219,28 +219,30 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 
 		// to check if the parent batch uploaded
 		// if no, there is a batch revert happened, we need to fallback to upload previous batch
-		if batchIndex > 0 {
-			fields := map[string]interface{}{
-				"batch_index = ?": batchIndex - 1,
-				"batch_hash = ?":  batch.ParentBatchHash,
-				"platform = ?":    platform,
-				"status = ?":      types.BlobUploadStatusUploaded,
-			}
-			blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
-			if err != nil {
-				return nil, err
-			}
-	
-			if len(blobUpload) == 0 {
-				batchIndex--
-				continue
-			}
+		// skip the check if the parent batch is genesis batch
+		if batchIndex <= 1 {
+			break
+		}
+		fields := map[string]interface{}{
+			"batch_index = ?": batchIndex - 1,
+			"batch_hash = ?":  batch.ParentBatchHash,
+			"platform = ?":    platform,
+			"status = ?":      types.BlobUploadStatusUploaded,
+		}
+		blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(blobUpload) == 0 {
+			batchIndex--
+			continue
 		}
 
 		break
 	}
 
-	if batchIndex > 0 && len(batch.CommitTxHash) == 0 {
+	if len(batch.CommitTxHash) == 0 {
 		log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
 		return nil, nil
 	}
