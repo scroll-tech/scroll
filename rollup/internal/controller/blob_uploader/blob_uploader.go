@@ -222,8 +222,8 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		fields := map[string]interface{}{
 			"batch_index = ?": batchIndex - 1,
 			"batch_hash = ?":  batch.ParentBatchHash,
-			"platform = ?":    platform,
-			"status = ?":      types.BlobUploadStatusUploaded,
+			"platform = ?":    int16(platform),
+			"status = ?":      int16(types.BlobUploadStatusUploaded),
 		}
 		blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
 		if err != nil {
