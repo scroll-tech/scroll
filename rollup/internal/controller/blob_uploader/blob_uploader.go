@@ -240,7 +240,7 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		break
 	}
 
-	if len(batch.CommitTxHash) == 0 {
+	if batchIndex > 0 && len(batch.CommitTxHash) == 0 {
 		log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
 		return nil, nil
 	}
