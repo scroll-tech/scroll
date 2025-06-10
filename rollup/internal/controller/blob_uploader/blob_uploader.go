@@ -219,21 +219,24 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 
 		// to check if the parent batch uploaded
 		// if no, there is a batch revert happened, we need to fallback to upload previous batch
-		fields := map[string]interface{}{
-			"batch_index = ?": batchIndex - 1,
-			"batch_hash = ?":  batch.ParentBatchHash,
-			"platform = ?":    int16(platform),
-			"status = ?":      int16(types.BlobUploadStatusUploaded),
-		}
-		blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
-		if err != nil {
-			return nil, err
+		if batchIndex > 0 {
+			fields := map[string]interface{}{
+				"batch_index = ?": batchIndex - 1,
+				"batch_hash = ?":  batch.ParentBatchHash,
+				"platform = ?":    platform,
+				"status = ?":      types.BlobUploadStatusUploaded,
+			}
+			blobUpload, err := b.blobUploadOrm.GetBlobUploads(ctx, fields, nil, 1)
+			if err != nil {
+				return nil, err
+			}
+	
+			if len(blobUpload) == 0 {
+				batchIndex--
+				continue
+			}
 		}
 
-		if len(blobUpload) == 0 {
-			batchIndex--
-			continue
-		}
 		break
 	}
 

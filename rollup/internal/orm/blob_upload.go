@@ -38,7 +38,7 @@ func (*BlobUpload) TableName() string {
 	return "blob_upload"
 }
 
-// GetFirstUnuploadedBatchIndexByPlatform retrieves the first batch index that either hasn't been uploaded to corresponding blob storage service
+// GetFirstUnuploadedBatchIndexByPlatform retrieves the first batch index that hasn't been uploaded to corresponding blob storage service
 func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
