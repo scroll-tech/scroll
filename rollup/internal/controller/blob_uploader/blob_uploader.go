@@ -220,7 +220,7 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		// to check if the parent batch uploaded
 		// if no, there is a batch revert happened, we need to fallback to upload previous batch
 		// skip the check if the parent batch is genesis batch
-		if batchIndex <= 1 {
+		if batchIndex <= 1 || batchIndex == startBatch {
 			break
 		}
 		fields := map[string]interface{}{
