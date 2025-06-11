@@ -41,7 +41,7 @@ func (*BlobUpload) TableName() string {
 func (o *BlobUpload) GetNextBatchIndexToUploadByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
-	db = db.Where("platform = ? AND status = ? AND deleted_at IS NULL", platform, types.BlobUploadStatusUploaded)
+	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
 	db = db.Order("batch_index DESC")
 	db = db.Limit(1)
 
