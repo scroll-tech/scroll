@@ -37,8 +37,8 @@ func (*BlobUpload) TableName() string {
 	return "blob_upload"
 }
 
-// GetFirstUnuploadedBatchIndexByPlatform retrieves the first batch index that hasn't been uploaded to corresponding blob storage service
-func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
+// GetNextBatchIndexToUploadByPlatform retrieves the next batch index that hasn't been uploaded to corresponding blob storage service
+func (o *BlobUpload) GetNextBatchIndexToUploadByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
 	db = db.Where("platform = ? AND status = ? AND deleted_at IS NULL", platform, types.BlobUploadStatusUploaded)
@@ -51,7 +51,7 @@ func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context,
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			batchIndex = startBatch
 		} else {
-			return 0, fmt.Errorf("BlobUpload.GetFirstUnuploadedBatchIndexByPlatform error: %w", err)
+			return 0, fmt.Errorf("BlobUpload.GetNextBatchIndexToUploadByPlatform error: %w", err)
 		}
 	} else {
 		batchIndex = blobUpload.BatchIndex + 1

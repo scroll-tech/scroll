@@ -200,7 +200,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 // GetFirstUnuploadedBatchByPlatform retrieves the first batch that either hasn't been uploaded to corresponding blob storage service
 // The batch must have a commit_tx_hash (committed).
 func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*orm.Batch, error) {
-	batchIndex, err := b.blobUploadOrm.GetFirstUnuploadedBatchIndexByPlatform(ctx, startBatch, platform)
+	batchIndex, err := b.blobUploadOrm.GetNextBatchIndexToUploadByPlatform(ctx, startBatch, platform)
 	if err != nil {
 		return nil, err
 	}
