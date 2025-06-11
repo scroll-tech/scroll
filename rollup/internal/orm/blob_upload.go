@@ -51,7 +51,7 @@ func (o *BlobUpload) GetFirstUnuploadedBatchIndexByPlatform(ctx context.Context,
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			batchIndex = startBatch
 		} else {
-			return 0, fmt.Errorf("Batch.GetFirstUnuploadedBatchIndexByPlatform error: %w", err)
+			return 0, fmt.Errorf("BlobUpload.GetFirstUnuploadedBatchIndexByPlatform error: %w", err)
 		}
 	} else {
 		batchIndex = blobUpload.BatchIndex + 1
