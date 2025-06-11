@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
 )
@@ -95,18 +94,30 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
-	blobUpload := &BlobUpload{
-		BatchIndex: batchIndex,
-		BatchHash:  batchHash,
-		Platform:   int16(platform),
-		Status:     int16(status),
+
+	var existing BlobUpload
+	err := db.Where("batch_index = ? AND batch_hash = ? AND platform = ? AND deleted_at IS NULL",
+		batchIndex, batchHash, int16(platform),
+	).First(&existing).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		newRecord := BlobUpload{
+			BatchIndex: batchIndex,
+			BatchHash:  batchHash,
+			Platform:   int16(platform),
+			Status:     int16(status),
+		}
+		if err := db.Create(&newRecord).Error; err != nil {
+			return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload insert error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
+		}
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload query error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
-	if err := db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "batch_index"}, {Name: "batch_hash"}, {Name: "platform"}},
-		Where:     clause.Where{Exprs: []clause.Expression{clause.Eq{Column: "blob_upload.deleted_at", Value: nil}}},
-		DoUpdates: clause.AssignmentColumns([]string{"status"}),
-	}).Create(blobUpload).Error; err != nil {
-		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload error: %w, batch index: %v, platform: %v", err, batchIndex, platform)
+
+	if err := db.Model(&existing).Update("status", int16(status)).Error; err != nil {
+		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload update error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
+
 	return nil
 }
