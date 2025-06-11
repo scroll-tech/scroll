@@ -136,7 +136,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 		return nil, fmt.Errorf("failed to get chunks in range: %v", err)
 	}
 
-	// disable this check temporarily because the codec_version field for chunk was added later.
+	// temporarily disable this check because the codec_version field for chunk was added later.
 	// check codec version
 	// for _, dbChunk := range dbChunks {
 	// 	if dbBatch.CodecVersion != dbChunk.CodecVersion {
@@ -158,9 +158,10 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	var encodingBatch *encoding.Batch
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV0:
-		return nil, fmt.Errorf("codec version 0 doesn't support blob, batch index: %d", dbBatch.Index)
-	case encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
+	// temporarily disable this check because the codec_version field for chunk was added later.
+	// case encoding.CodecV0:
+	// 	return nil, fmt.Errorf("codec version 0 doesn't support blob, batch index: %d", dbBatch.Index)
+	case encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
 		encodingBatch = &encoding.Batch{
 			Index:                      dbBatch.Index,
 			TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
