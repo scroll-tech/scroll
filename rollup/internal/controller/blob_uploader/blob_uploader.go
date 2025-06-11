@@ -136,12 +136,13 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 		return nil, fmt.Errorf("failed to get chunks in range: %v", err)
 	}
 
+	// disable this check temporarily because the codec_version field for chunk was added later.
 	// check codec version
-	for _, dbChunk := range dbChunks {
-		if dbBatch.CodecVersion != dbChunk.CodecVersion {
-			return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
-		}
-	}
+	// for _, dbChunk := range dbChunks {
+	// 	if dbBatch.CodecVersion != dbChunk.CodecVersion {
+	// 		return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
+	// 	}
+	// }
 
 	chunks := make([]*encoding.Chunk, len(dbChunks))
 	var allBlocks []*encoding.Block // collect blocks for CodecV7
