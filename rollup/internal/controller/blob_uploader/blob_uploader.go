@@ -159,7 +159,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 
 	// temporarily add this check because the codec_version field for chunk was added later.
-	if codecVersion == encoding.CodecV0 {
+	if codecVersion == encoding.CodecV0 && dbBatch.Index < 73224 {
 		codecVersion = encoding.CodecV1
 	}
 	if codecVersion == encoding.CodecV0 && dbBatch.Index >= 73224 { // for sepolia

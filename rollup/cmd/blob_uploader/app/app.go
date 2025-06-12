@@ -70,7 +70,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	go utils.Loop(subCtx, 2*time.Second, blobUploader.UploadBlobToS3)
+	go utils.Loop(subCtx, 1*time.Second, blobUploader.UploadBlobToS3)
 
 	// Finish start all blob-uploader functions.
 	log.Info("Start blob-uploader successfully", "version", version.Version)
