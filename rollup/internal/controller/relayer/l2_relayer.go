@@ -524,14 +524,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 }
 
 func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunksAndParent) string {
-	var prefix string
-	if codecVersion == encoding.CodecV7 {
-		prefix = "v7"
-	} else {
-		prefix = "v8"
-	}
-
-	contextIDs := []string{prefix}
+	contextIDs := []string{fmt.Sprintf("v%d", codecVersion)}
 	for _, batch := range batches {
 		contextIDs = append(contextIDs, batch.Batch.Hash)
 	}
@@ -539,8 +532,9 @@ func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion,
 }
 
 func (r *Layer2Relayer) batchHashesFromContextID(contextID string) []string {
-	if strings.HasPrefix(contextID, "v7-") || strings.HasPrefix(contextID, "v8-") {
-		return strings.Split(contextID, "-")[1:]
+	parts := strings.SplitN(contextID, "-", 2)
+	if len(parts) == 2 && strings.HasPrefix(parts[0], "v") {
+		return strings.Split(parts[1], "-")
 	}
 	return []string{contextID}
 }
