@@ -179,11 +179,11 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		var err error
 		switch message.ProofType(proofParameter.TaskType) {
 		case message.ProofTypeChunk:
-			metadata, err = m.ChunkTask.GetTaskMetaData(proofParameter.TaskID)
+			metadata, err = m.ChunkTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
 		case message.ProofTypeBatch:
-			metadata, err = m.BatchTask.GetTaskMetaData(proofParameter.TaskID)
+			metadata, err = m.BatchTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
 		case message.ProofTypeBundle:
-			metadata, err = m.BundleTask.GetTaskMetaData(proofParameter.TaskID)
+			metadata, err = m.BundleTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
 		}
 
 		if err != nil {

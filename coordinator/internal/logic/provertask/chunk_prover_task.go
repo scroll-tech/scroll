@@ -189,12 +189,37 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) GetTaskMetaData(taskID string) (string, error) {
+func (cp *ChunkProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.ProverTask, hardForkName string) (string, error) {
+	taskID := proverTask.TaskID
 	if cached := cp.taskCache.Query(taskID); cached != nil {
 		return cached.MetaData, nil
 	}
 
-	return "", fmt.Errorf("can not re-acquire the metadata for specified task, see coordinator log for the reason")
+	// for most case we simply query metadata from cache, but if the task is not in cache, we need quite a few
+	// effort to resume the cached universal task
+	chunkTask, err := cp.chunkOrm.GetChunkByHash(ctx.Copy(), taskID)
+	if err != nil {
+		log.Error("failed to get chunk by hash", "task_id", taskID, "err", err)
+		return "", ErrCoordinatorInternalFailure
+	}
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), proverTask, chunkTask, hardForkName)
+	if err != nil {
+		log.Error("re-format prover task failure", "task_id", taskID, "err", err)
+		return "", ErrCoordinatorInternalFailure
+	}
+
+	taskMsg, err = cp.applyUniversal(taskMsg)
+	if err != nil {
+		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
+		return "", ErrCoordinatorInternalFailure
+	}
+
+	if cached := cp.taskCache.Query(taskID); cached == nil {
+		log.Error("Still can not obtain metadata, something wrong?", "task_id", taskID, "type", "chunk")
+		return "", ErrCoordinatorInternalFailure
+	} else {
+		return cached.MetaData, nil
+	}
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

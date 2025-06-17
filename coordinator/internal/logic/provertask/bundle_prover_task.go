@@ -192,12 +192,32 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	return taskMsg, nil
 }
 
-func (bp *BundleProverTask) GetTaskMetaData(taskID string) (string, error) {
+func (bp *BundleProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.ProverTask, hardForkName string) (string, error) {
+	taskID := proverTask.TaskID
 	if cached := bp.taskCache.Query(taskID); cached != nil {
 		return cached.MetaData, nil
 	}
 
-	return "", fmt.Errorf("can not re-acquire the metadata for specified task, see coordinator log for the reason")
+	// for most case we simply query metadata from cache, but if the task is not in cache, we need quite a few
+	// effort to resume the cached universal task
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, hardForkName)
+	if err != nil {
+		log.Error("re-format prover task failure", "task_id", taskID, "err", err)
+		return "", ErrCoordinatorInternalFailure
+	}
+
+	taskMsg, err = bp.applyUniversal(taskMsg)
+	if err != nil {
+		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
+		return "", ErrCoordinatorInternalFailure
+	}
+
+	if cached := bp.taskCache.Query(taskID); cached == nil {
+		log.Error("Still can not obtain metadata, something wrong?", "task_id", taskID, "type", "chunk")
+		return "", ErrCoordinatorInternalFailure
+	} else {
+		return cached.MetaData, nil
+	}
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
