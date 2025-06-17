@@ -51,8 +51,9 @@ type BundleProposerConfig struct {
 
 // BlobUploaderConfig loads blob_uploader configuration items.
 type BlobUploaderConfig struct {
-	StartBatch  uint64       `json:"start_batch"`
-	AWSS3Config *AWSS3Config `json:"aws_s3_config"`
+	StartBatch    uint64         `json:"start_batch"`
+	AWSS3Config   *AWSS3Config   `json:"aws_s3_config"`
+	ArweaveConfig *ArweaveConfig `json:"arweave_config"`
 }
 
 // AWSS3Config loads s3_uploader configuration items.
@@ -61,4 +62,12 @@ type AWSS3Config struct {
 	Region    string `json:"region"`
 	AccessKey string `json:"access_key"`
 	SecretKey string `json:"secret_key"`
+}
+
+// ArweaveConfig loads arweave_uploader configuration items.
+type ArweaveConfig struct {
+	Endpoint      string `json:"endpoint"`
+	PrivateKey    string `json:"private_key"`
+	TxTag         string `json:"tx_tag"`
+	Confirmations uint64 `json:"confirmations"`
 }

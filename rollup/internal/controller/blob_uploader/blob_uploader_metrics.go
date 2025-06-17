@@ -10,6 +10,8 @@ import (
 type blobUploaderMetrics struct {
 	rollupBlobUploaderUploadToS3SuccessTotal prometheus.Counter
 	rollupBlobUploaderUploadToS3FailedTotal  prometheus.Counter
+	rollupBlobUploaderUploadToArweaveSuccessTotal prometheus.Counter
+	rollupBlobUploaderUploadToArweaveFailedTotal  prometheus.Counter
 }
 
 var (
@@ -27,6 +29,14 @@ func initBlobUploaderMetrics(reg prometheus.Registerer) *blobUploaderMetrics {
 			rollupBlobUploaderUploadToS3FailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_blob_uploader_upload_to_s3_failed_total",
 				Help: "The total number of upload blob to S3 runs failed total",
+			}),
+			rollupBlobUploaderUploadToArweaveSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_blob_uploader_upload_to_arweave_success_total",
+				Help: "The total number of upload blob to arweave runs success total",
+			}),
+			rollupBlobUploaderUploadToArweaveFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_blob_uploader_upload_to_arweave_failed_total",
+				Help: "The total number of upload blob to arweave runs failed total",
 			}),
 		}
 	})

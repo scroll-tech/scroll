@@ -20,6 +20,7 @@ type BlobUpload struct {
 	BatchHash  string `json:"batch_hash" gorm:"column:batch_hash"`
 	Platform   int16  `json:"platform" gorm:"column:platform"`
 	Status     int16  `json:"status" gorm:"column:status"`
+	TxHash     string `json:"tx_hash" gorm:"column:tx_hash;default:NULL"`
 
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
@@ -41,7 +42,8 @@ func (*BlobUpload) TableName() string {
 func (o *BlobUpload) GetNextBatchIndexToUploadByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})
-	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
+	db = db.Where("platform = ?", platform, types.BlobUploadStatusUploaded)
+	db = db.Where("status = ? OR status = ?", types.BlobUploadStatusUploaded, types.BatchProofsStatusPending)
 	db = db.Order("batch_index DESC")
 	db = db.Limit(1)
 
@@ -87,8 +89,22 @@ func (o *BlobUpload) GetBlobUploads(ctx context.Context, fields map[string]inter
 	return blobUploads, nil
 }
 
+// GetPendingOrReplacedTransactionsBySenderType retrieves pending or replaced transactions filtered by sender type, ordered by nonce, then gas_fee_cap (gas_price in legacy tx), and limited to a specified count.
+func (o *BlobUpload) GetPendingBlobUploads(ctx context.Context, limit int) ([]BlobUpload, error) {
+	var blobUploads []BlobUpload
+	db := o.db.WithContext(ctx)
+	db = db.Model(&BlobUpload{})
+	db = db.Where("status = ?", types.BatchProofsStatusPending)
+	db = db.Order("batch_index asc")
+	db = db.Limit(limit)
+	if err := db.Find(&blobUploads).Error; err != nil {
+		return nil, fmt.Errorf("failed to get pending blob uploads, error: %w", err)
+	}
+	return blobUploads, nil
+}
+
 // InsertOrUpdateBlobUpload inserts a new blob upload record or updates the existing one.
-func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex uint64, batchHash string, platform types.BlobStoragePlatform, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
+func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex uint64, batchHash string, platform types.BlobStoragePlatform, status types.BlobUploadStatus, txHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -106,19 +122,43 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 			BatchHash:  batchHash,
 			Platform:   int16(platform),
 			Status:     int16(status),
+			TxHash:     txHash,
 		}
 		if err := db.Create(&newRecord).Error; err != nil {
-			return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload insert error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
+			return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload insert error: %w, batch index: %v, batch hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 		}
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload query error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
+		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload query error: %w, batch index: %v, batch hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
 
+	updateFields := map[string]interface{}{
+		"status":  int16(status),
+		"tx_hash": txHash,
+	}
 	if err := db.Model(&existing).Where("batch_index = ? AND batch_hash = ? AND platform = ? AND deleted_at IS NULL",
-		batchIndex, batchHash, int16(platform)).Update("status", int16(status)).Error; err != nil {
-		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload update error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
+		batchIndex, batchHash, int16(platform)).Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload update error: %w, batch index: %v, batch hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
 
+	return nil
+}
+
+// UpdateUploadStatus updates the upload status of a blob upload.
+func (o *BlobUpload) UpdateUploadStatus(ctx context.Context, txHash string, status types.BlobUploadStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&BlobUpload{})
+	db = db.Where("tx_hash", txHash)
+
+	updateFields := map[string]interface{}{
+		"status": int16(status),
+	}
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("BlobUpload.UpdateUploadStatus error: %w, tx hash: %v, status: %v", err, txHash, status.String())
+	}
 	return nil
 }
