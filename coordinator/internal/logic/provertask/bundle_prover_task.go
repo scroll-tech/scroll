@@ -45,6 +45,7 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 			bundleOrm:          orm.NewBundle(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
+			taskCache:          newCache(128),
 		},
 		bundleTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_bundle_get_task_total",
@@ -172,6 +173,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		taskMsg, err = bp.applyUniversal(taskMsg)
+		if err != nil {
+			bp.recoverActiveAttempts(ctx, bundleTask)
+			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle")
+			return nil, ErrCoordinatorInternalFailure
+		}
+	}
 
 	bp.bundleTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.bundleTaskGetTaskProver.With(prometheus.Labels{
@@ -181,6 +190,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (bp *BundleProverTask) GetTaskMetaData(taskID string) (string, error) {
+	if cached := bp.taskCache.Query(taskID); cached != nil {
+		return cached.MetaData, nil
+	}
+
+	return "", fmt.Errorf("can not re-acquire the metadata for specified task, see coordinator log for the reason")
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

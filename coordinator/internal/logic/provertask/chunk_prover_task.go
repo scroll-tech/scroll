@@ -43,6 +43,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
+			taskCache:          newCache(1024),
 		},
 		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
@@ -169,6 +170,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		taskMsg, err = cp.applyUniversal(taskMsg)
+		if err != nil {
+			cp.recoverActiveAttempts(ctx, chunkTask)
+			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk")
+			return nil, ErrCoordinatorInternalFailure
+		}
+	}
 
 	cp.chunkTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	cp.chunkTaskGetTaskProver.With(prometheus.Labels{
@@ -178,6 +187,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (cp *ChunkProverTask) GetTaskMetaData(taskID string) (string, error) {
+	if cached := cp.taskCache.Query(taskID); cached != nil {
+		return cached.MetaData, nil
+	}
+
+	return "", fmt.Errorf("can not re-acquire the metadata for specified task, see coordinator log for the reason")
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

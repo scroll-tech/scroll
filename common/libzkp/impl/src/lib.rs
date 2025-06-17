@@ -1,15 +1,17 @@
 mod utils;
 mod verifier;
 
-use std::path::Path;
+use std::{
+    ffi::{c_char, c_int, CString},
+    path::Path,
+};
 
 use crate::utils::{c_char_to_str, c_char_to_vec};
-use libc::c_char;
 use verifier::{TaskType, VerifierConfig};
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init(config: *const c_char) {
+pub unsafe extern "C" fn init_verifier(config: *const c_char) {
     let config_str = c_char_to_str(config);
     let verifier_config = serde_json::from_str::<VerifierConfig>(config_str).unwrap();
     verifier::init(verifier_config);
@@ -73,4 +75,61 @@ fn _dump_vk(fork_name: *const c_char, file: *const c_char) {
     if let Ok(verifier) = verifier {
         verifier.as_ref().dump_vk(Path::new(c_char_to_str(file)));
     }
+}
+
+/// Represents the result of generating a universal task
+#[repr(C)]
+pub struct HandlingResult {
+    ok: c_char,
+    universal_task: *mut c_char,
+    metadata: *mut c_char,
+    expected_pi_hash: [c_char; 32],
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn gen_universal_task(
+    _task_type: c_int,
+    _task: *const c_char,
+    _fork_name: *const c_char,
+) -> HandlingResult {
+    unimplemented!("next phase");
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn release_task_result(result: HandlingResult) {
+    // Free the allocated strings
+    if !result.universal_task.is_null() {
+        let _ = CString::from_raw(result.universal_task);
+    }
+
+    if !result.metadata.is_null() {
+        let _ = CString::from_raw(result.metadata);
+    }
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn gen_wrapped_proof(
+    _proof_json: *const c_char,
+    _metadata: *const c_char,
+    _vk: *const c_char,
+    _vk_len: usize,
+) -> *mut c_char {
+    unimplemented!("next phase");
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn release_string(string_ptr: *mut c_char) {
+    if !string_ptr.is_null() {
+        let _ = CString::from_raw(string_ptr);
+    }
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn init_l2geth(_config: *const c_char) {
+    unimplemented!("next phase");
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
@@ -33,6 +34,7 @@ var (
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
+	GetTaskMetaData(taskID string) (string, error)
 }
 
 // BaseProverTask a base prover task which contain series functions
@@ -47,6 +49,8 @@ type BaseProverTask struct {
 	blockOrm           *orm.L2Block
 	proverTaskOrm      *orm.ProverTask
 	proverBlockListOrm *orm.ProverBlockList
+
+	taskCache *TaskCache
 }
 
 type proverTaskContext struct {
@@ -183,6 +187,26 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
+}
+
+func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, error) {
+	if cached := b.taskCache.Query(schema.TaskID); cached != nil {
+		schema.TaskData = cached.UTaskData
+		return schema, nil
+	}
+
+	ok, metadata, uTaskData, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
+	if !ok {
+		return nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
+	}
+
+	cacheData := CachedTaskData{
+		MetaData:  metadata,
+		UTaskData: uTaskData,
+	}
+	b.taskCache.Add(schema.TaskID, &cacheData)
+	schema.TaskData = uTaskData
+	return schema, nil
 }
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {

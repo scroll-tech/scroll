@@ -47,6 +47,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			batchOrm:           orm.NewBatch(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
+			taskCache:          newCache(128),
 		},
 		batchTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_batch_get_task_total",
@@ -174,6 +175,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		taskMsg, err = bp.applyUniversal(taskMsg)
+		if err != nil {
+			bp.recoverActiveAttempts(ctx, batchTask)
+			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch")
+			return nil, ErrCoordinatorInternalFailure
+		}
+	}
 
 	bp.batchTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.batchTaskGetTaskProver.With(prometheus.Labels{
@@ -183,6 +192,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (bp *BatchProverTask) GetTaskMetaData(taskID string) (string, error) {
+	if cached := bp.taskCache.Query(taskID); cached != nil {
+		return cached.MetaData, nil
+	}
+
+	return "", fmt.Errorf("can not re-acquire the metadata for specified task, see coordinator log for the reason")
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

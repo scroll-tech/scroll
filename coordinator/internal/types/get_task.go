@@ -4,6 +4,8 @@ package types
 type GetTaskParameter struct {
 	ProverHeight uint64 `form:"prover_height" json:"prover_height"`
 	TaskTypes    []int  `form:"task_types" json:"task_types"`
+	TaskID       string `form:"task_id,omitempty" json:"task_id,omitempty"`
+	Universal    bool   `form:"universal,omitempty" json:"universal,omitempty"`
 }
 
 // GetTaskSchema the schema data return to prover for get prover task

@@ -15,10 +15,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/provertask"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
@@ -69,6 +71,10 @@ type ProofReceiverLogic struct {
 	validateFailureProverTaskStatusNotOk  prometheus.Counter
 	validateFailureProverTaskTimeout      prometheus.Counter
 	validateFailureProverTaskHaveVerifier prometheus.Counter
+
+	ChunkTask  provertask.ProverTask
+	BundleTask provertask.ProverTask
+	BatchTask  provertask.ProverTask
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
@@ -167,6 +173,26 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 	hardForkName, getHardForkErr := m.hardForkName(ctx, proofParameter.TaskID, proofParameter.TaskType)
 	if getHardForkErr != nil {
 		return ErrGetHardForkNameFailed
+	}
+	if proofParameter.Universal {
+		var metadata string
+		var err error
+		switch message.ProofType(proofParameter.TaskType) {
+		case message.ProofTypeChunk:
+			metadata, err = m.ChunkTask.GetTaskMetaData(proofParameter.TaskID)
+		case message.ProofTypeBatch:
+			metadata, err = m.BatchTask.GetTaskMetaData(proofParameter.TaskID)
+		case message.ProofTypeBundle:
+			metadata, err = m.BundleTask.GetTaskMetaData(proofParameter.TaskID)
+		}
+
+		if err != nil {
+			return err
+		}
+		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, metadata, []byte{})
+		if proofParameter.Proof == "" {
+			return errors.New("can not re-wrapping proof, see coordinator log for reason")
+		}
 	}
 
 	switch message.ProofType(proofParameter.TaskType) {

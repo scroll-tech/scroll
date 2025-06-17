@@ -8281,7 +8281,6 @@ dependencies = [
  "anyhow",
  "base64 0.13.1",
  "env_logger",
- "libc",
  "log",
  "once_cell",
  "scroll-zkvm-prover",

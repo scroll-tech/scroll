@@ -2,24 +2,17 @@
 
 package verifier
 
-/*
-#cgo LDFLAGS: -lzkp -lm -ldl -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#include <stdlib.h>
-#include "./lib/libzkp.h"
-*/
-import "C" //nolint:typecheck
-
 import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
 	"path"
-	"unsafe"
+	"path/filepath"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
@@ -67,12 +60,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return nil, err
 	}
 
-	configStr := C.CString(string(configBytes))
-	defer func() {
-		C.free(unsafe.Pointer(configStr))
-	}()
-
-	C.init(configStr)
+	libzkp.InitVerifier(string(configBytes))
 
 	v := &Verifier{
 		cfg:         cfg,
@@ -94,15 +82,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.OpenVMBatchProof, forkName st
 	}
 
 	log.Info("Start to verify batch proof", "forkName", forkName)
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
-
-	verified := C.verify_batch_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyBatchProof(string(buf), forkName), nil
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Verifier.
@@ -113,15 +93,8 @@ func (v *Verifier) VerifyChunkProof(proof *message.OpenVMChunkProof, forkName st
 	}
 
 	log.Info("Start to verify chunk proof", "forkName", forkName)
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
 
-	verified := C.verify_chunk_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyChunkProof(string(buf), forkName), nil
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
@@ -131,20 +104,13 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 		return false, err
 	}
 
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
-
 	log.Info("Start to verify bundle proof ...")
-	verified := C.verify_bundle_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyBundleProof(string(buf), forkName), nil
 }
 
-func (v *Verifier) readVK(filePat string) (string, error) {
-	f, err := os.Open(filePat)
+func (v *Verifier) ReadVK(filePat string) (string, error) {
+
+	f, err := os.Open(filepath.Clean(filePat))
 	if err != nil {
 		return "", err
 	}
@@ -157,20 +123,12 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 
 func (v *Verifier) loadOpenVMVks(forkName string) error {
 	tempFile := path.Join(os.TempDir(), "openVmVk.json")
-	defer func() {
-		if err := os.Remove(tempFile); err != nil {
-			log.Error("failed to remove temp file", "err", err)
-		}
-	}()
+	err := libzkp.DumpVk(forkName, tempFile)
+	if err != nil {
+		return err
+	}
 
-	forkNameCStr := C.CString(forkName)
-	defer C.free(unsafe.Pointer(forkNameCStr))
-	tempFileCStr := C.CString(tempFile)
-	defer C.free(unsafe.Pointer(tempFileCStr))
-
-	C.dump_vk(forkNameCStr, tempFileCStr)
-
-	f, err := os.Open(tempFile)
+	f, err := os.Open(filepath.Clean(tempFile))
 	if err != nil {
 		return err
 	}

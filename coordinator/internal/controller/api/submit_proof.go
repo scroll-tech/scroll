@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submitproof"
@@ -22,10 +23,15 @@ type SubmitProofController struct {
 }
 
 // NewSubmitProofController create the submit proof api controller instance
-func NewSubmitProofController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *SubmitProofController {
-	return &SubmitProofController{
+func NewSubmitProofController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer, getTaskController *GetTaskController) *SubmitProofController {
+	controller := SubmitProofController{
 		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, chainCfg, db, vf, reg),
 	}
+	proverTaskIf := getTaskController.ProverTasks()
+	controller.submitProofReceiverLogic.ChunkTask = proverTaskIf[message.ProofTypeChunk]
+	controller.submitProofReceiverLogic.BatchTask = proverTaskIf[message.ProofTypeBatch]
+	controller.submitProofReceiverLogic.BundleTask = proverTaskIf[message.ProofTypeBundle]
+	return &controller
 }
 
 // SubmitProof prover submit the proof to coordinator
