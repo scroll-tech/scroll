@@ -80,10 +80,10 @@ fn _dump_vk(fork_name: *const c_char, file: *const c_char) {
 /// Represents the result of generating a universal task
 #[repr(C)]
 pub struct HandlingResult {
-    ok: c_char,
-    universal_task: *mut c_char,
-    metadata: *mut c_char,
-    expected_pi_hash: [c_char; 32],
+    pub ok: bool,
+    pub universal_task: *mut c_char,
+    pub metadata: *mut c_char,
+    pub expected_pi_hash: [u8; 32],
 }
 
 /// # Safety
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn gen_universal_task(
     _task: *const c_char,
     _fork_name: *const c_char,
 ) -> HandlingResult {
-    unimplemented!("next phase");
+    unimplemented!("implementation will be added in later PRs");
 }
 
 /// # Safety
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn gen_wrapped_proof(
     _vk: *const c_char,
     _vk_len: usize,
 ) -> *mut c_char {
-    unimplemented!("next phase");
+    unimplemented!("implementation will be added in later PRs");
 }
 
 /// # Safety
@@ -131,5 +131,5 @@ pub unsafe extern "C" fn release_string(string_ptr: *mut c_char) {
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init_l2geth(_config: *const c_char) {
-    unimplemented!("next phase");
+    unimplemented!("implementation will be added in later PRs");
 }

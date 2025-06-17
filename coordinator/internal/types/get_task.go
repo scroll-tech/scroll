@@ -13,6 +13,7 @@ type GetTaskSchema struct {
 	UUID         string `json:"uuid"`
 	TaskID       string `json:"task_id"`
 	TaskType     int    `json:"task_type"`
+	UseSnark     bool   `json:"use_snark,omitempty"`
 	TaskData     string `json:"task_data"`
 	HardForkName string `json:"hard_fork_name"`
 }

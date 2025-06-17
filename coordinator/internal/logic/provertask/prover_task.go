@@ -195,7 +195,7 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 		return schema, nil
 	}
 
-	ok, metadata, uTaskData, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
 	if !ok {
 		return nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}
