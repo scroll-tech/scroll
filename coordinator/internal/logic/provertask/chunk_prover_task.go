@@ -208,7 +208,7 @@ func (cp *ChunkProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.Pro
 		return "", ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err = cp.applyUniversal(taskMsg)
+	_, err = cp.applyUniversal(taskMsg)
 	if err != nil {
 		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
 		return "", ErrCoordinatorInternalFailure

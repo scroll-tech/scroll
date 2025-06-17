@@ -206,7 +206,7 @@ func (bp *BundleProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.Pr
 		return "", ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err = bp.applyUniversal(taskMsg)
+	_, err = bp.applyUniversal(taskMsg)
 	if err != nil {
 		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
 		return "", ErrCoordinatorInternalFailure
