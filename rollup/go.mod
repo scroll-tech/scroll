@@ -14,7 +14,6 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/holiman/uint256 v1.3.2
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/permadao/goar v1.1.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/scroll-tech/da-codec v0.1.3-0.20250519114140-bfa7133d4ad1
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20250609212349-f30b2b1832a2
@@ -43,6 +42,7 @@ require (
 	github.com/aws/smithy-go v1.22.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
+	github.com/btcsuite/btcd v0.23.5-0.20231215221805-96c9fd8078fd // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect
 	github.com/bytedance/sonic v1.10.1 // indirect
@@ -107,6 +107,7 @@ require (
 	github.com/onsi/gomega v1.27.1 // indirect
 	github.com/panjf2000/ants/v2 v2.10.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
+	github.com/permadao/goar v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect

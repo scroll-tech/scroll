@@ -112,6 +112,12 @@
         "region": "us-west-2",
         "access_key": "ACCESSKEY",
         "secret_key": "SECRETKEY"
+      },
+      "arweave_config": {
+        "endpoint": "",
+        "private_key_path": "",
+        "tx_tag": "",
+        "confirmations": ""
       }
     }
   },

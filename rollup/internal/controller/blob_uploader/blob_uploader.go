@@ -49,17 +49,36 @@ func NewBlobUploader(ctx context.Context, db *gorm.DB, cfg *config.BlobUploaderC
 
 	var arweaveUploader *ArweaveUploader
 	if cfg.ArweaveConfig != nil {
-		arweaveUploader, err = NewArweaveUploader(ctx, cfg.ArweaveConfig, db)
+		// 先创建 blobUploader 实例
+		blobUploader := &BlobUploader{
+			ctx:             ctx,
+			cfg:             cfg,
+			s3Uploader:      s3Uploader,
+			arweaveUploader: nil, // 稍后设置
+			batchOrm:        orm.NewBatch(db),
+			chunkOrm:        orm.NewChunk(db),
+			l2BlockOrm:      orm.NewL2Block(db),
+			blobUploadOrm:   orm.NewBlobUpload(db),
+		}
+
+		arweaveUploader, err = NewArweaveUploader(ctx, cfg.ArweaveConfig, db, func(batch *orm.Batch, platform types.BlobStoragePlatform, speedFactor int64) (string, error) {
+			return blobUploader.uploadBlob(batch, platform, speedFactor)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("new blob uploader failed, err: %w", err)
 		}
+
+		// 设置 arweaveUploader
+		blobUploader.arweaveUploader = arweaveUploader
+		blobUploader.metrics = initBlobUploaderMetrics(reg)
+		return blobUploader, nil
 	}
 
 	blobUploader := &BlobUploader{
 		ctx:             ctx,
 		cfg:             cfg,
 		s3Uploader:      s3Uploader,
-		arweaveUploader: arweaveUploader,
+		arweaveUploader: nil,
 		batchOrm:        orm.NewBatch(db),
 		chunkOrm:        orm.NewChunk(db),
 		l2BlockOrm:      orm.NewL2Block(db),
@@ -90,52 +109,14 @@ func (b *BlobUploader) UploadBlobToS3() {
 		return
 	}
 
-	// construct blob
-	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	blob, err := b.constructBlobCodec(dbBatch)
+	key, err := b.uploadBlob(dbBatch, types.BlobStoragePlatformS3, 0)
 	if err != nil {
-		log.Error("s3Uploader: failed to construct constructBlobCodec payload", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
+		log.Error("s3Uploader: failed to upload blob data", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "err", err)
 		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("s3Uploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
-		}
-		return
-	}
-
-	// calculate versioned blob hash
-	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
-	if err != nil {
-		log.Error("s3Uploader: failed to calculate versioned blob hash", "batch index", dbBatch.Index, "err", err)
-		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("s3Uploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
-		}
-		return
-	}
-
-	// upload blob data to s3 bucket
-	key := common.BytesToHash(versionedBlobHash[:]).Hex()
-	err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
-	if err != nil {
-		log.Error("s3Uploader: failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
-		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("s3Uploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
-		}
-		return
-	}
-
-	// update status to uploaded
-	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusUploaded, ""); err != nil {
-		log.Error("s3Uploader: failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
-		b.metrics.rollupBlobUploaderUploadToS3FailedTotal.Inc()
-		return
 	}
 
 	b.metrics.rollupBlobUploaderUploadToS3SuccessTotal.Inc()
-	log.Info("s3Uploader: successfully uploaded blob to S3", "batch index", dbBatch.Index, "versioned blob hash", key)
+	log.Info("s3Uploader: successfully uploaded blob to S3", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "versioned blob hash", key)
 }
 
 func (b *BlobUploader) UploadBlobToArweave() {
@@ -157,52 +138,63 @@ func (b *BlobUploader) UploadBlobToArweave() {
 		return
 	}
 
-	// construct blob
-	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	blob, err := b.constructBlobCodec(dbBatch)
+	key, err := b.uploadBlob(dbBatch, types.BlobStoragePlatformArweave, 0)
 	if err != nil {
-		log.Error("arweaveUploader: failed to construct constructBlobCodec payload", "codecVersion", codecVersion, "batch index", dbBatch.Index, "err", err)
+		log.Error("arweaveUploader: failed to upload blob data", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "err", err)
 		b.metrics.rollupBlobUploaderUploadToArweaveFailedTotal.Inc()
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformArweave, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("arweaveUploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
-		}
-		return
+	}
+
+	b.metrics.rollupBlobUploaderUploadToArweaveSuccessTotal.Inc()
+	log.Info("arweaveUploader: successfully uploaded blob to Arweave", "batch index", dbBatch.Index, "versioned blob hash", key)
+}
+
+func (b *BlobUploader) uploadBlob(batch *orm.Batch, platform types.BlobStoragePlatform, speedFactorArweave int64) (string, error) {
+	// construct blob
+	blob, err := b.constructBlobCodec(batch)
+	if err != nil {
+		return "", fmt.Errorf("failed to construct blob, err: %w", err)
 	}
 
 	// calculate versioned blob hash
 	versionedBlobHash, err := utils.CalculateVersionedBlobHash(*blob)
 	if err != nil {
-		log.Error("arweaveUploader: failed to calculate versioned blob hash", "batch index", dbBatch.Index, "err", err)
-		b.metrics.rollupBlobUploaderUploadToArweaveFailedTotal.Inc()
-		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformArweave, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("arweaveUploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
-		}
-		return
+		return "", fmt.Errorf("failed to calculate versioned blob hash, err: %w", err)
 	}
-
-	// upload blob data to s3 bucket
 	key := common.BytesToHash(versionedBlobHash[:]).Hex()
-	tx, err := b.arweaveUploader.UploadData(b.ctx, blob[:], key)
-	if err != nil {
-		log.Error("arweaveUploader: failed to upload blob data to AWS S3", "batch index", dbBatch.Index, "versioned blob hash", key, "err", err)
-		b.metrics.rollupBlobUploaderUploadToArweaveFailedTotal.Inc()
-		// update status to failed
-		if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformArweave, types.BlobUploadStatusFailed, ""); updateErr != nil {
-			log.Error("arweaveUploader: failed to update blob upload status to failed", "batch index", dbBatch.Index, "err", updateErr)
+
+	// upload blob data
+	switch platform {
+	case types.BlobStoragePlatformS3:
+		err = b.s3Uploader.UploadData(b.ctx, blob[:], key)
+		if err != nil {
+			if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, batch.Index, batch.Hash, types.BlobStoragePlatformS3, types.BlobUploadStatusFailed, ""); updateErr != nil {
+				return "", fmt.Errorf("failed to update blob upload status to failed, err: %w", updateErr)
+			}
+			return "", fmt.Errorf("failed to upload blob data to S3, err: %w", err)
 		}
-		return
+
+		// update status to uploaded
+		if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, batch.Index, batch.Hash, platform, types.BlobUploadStatusUploaded, ""); err != nil {
+			return "", fmt.Errorf("failed to update blob upload status to uploaded, err: %w", err)
+		}
+	case types.BlobStoragePlatformArweave:
+		tx, err := b.arweaveUploader.UploadData(b.ctx, blob[:], key, speedFactorArweave)
+		if err != nil {
+			if updateErr := b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, batch.Index, batch.Hash, platform, types.BlobUploadStatusFailed, ""); updateErr != nil {
+				return "", fmt.Errorf("failed to update blob upload status to failed, err: %w", updateErr)
+			}
+			return "", fmt.Errorf("failed to upload blob data to Arweave, err: %w", err)
+		}
+
+		// update status to pending with new transaction hash
+		if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, batch.Index, batch.Hash, platform, types.BlobUploadStatusPending, tx.ID); err != nil {
+			return "", fmt.Errorf("failed to update blob upload status to pending, err: %w", err)
+		}
+	default:
+		return "", fmt.Errorf("unsupported blob storage platform, platform: %d", platform)
 	}
 
-	// update status to uploaded
-	if err = b.blobUploadOrm.InsertOrUpdateBlobUpload(b.ctx, dbBatch.Index, dbBatch.Hash, types.BlobStoragePlatformArweave, types.BlobUploadStatusPending, tx.ID); err != nil {
-		log.Error("arweaveUploader: failed to update blob upload status to uploaded", "batch index", dbBatch.Index, "err", err)
-		b.metrics.rollupBlobUploaderUploadToArweaveFailedTotal.Inc()
-		return
-	}
-
-	b.metrics.rollupBlobUploaderUploadToArweaveSuccessTotal.Inc()
-	log.Info("arweaveUploader: successfully uploaded blob to Arweave", "batch index", dbBatch.Index, "versioned blob hash", key)
+	return key, nil
 }
 
 func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, error) {
@@ -298,7 +290,7 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		batch, err = b.batchOrm.GetBatchByIndex(ctx, batchIndex)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Debug("got batch not proposed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
+				log.Debug("got batch not proposed for blob uploading", "batch index", batchIndex, "platform", platform.String())
 				return nil, nil
 			}
 			return nil, err

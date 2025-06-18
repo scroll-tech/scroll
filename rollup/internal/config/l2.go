@@ -66,8 +66,8 @@ type AWSS3Config struct {
 
 // ArweaveConfig loads arweave_uploader configuration items.
 type ArweaveConfig struct {
-	Endpoint      string `json:"endpoint"`
-	PrivateKey    string `json:"private_key"`
-	TxTag         string `json:"tx_tag"`
-	Confirmations uint64 `json:"confirmations"`
+	Endpoint       string `json:"endpoint"`
+	PrivateKeyPath string `json:"private_key_path"`
+	TxTag          string `json:"tx_tag"`
+	Confirmations  uint64 `json:"confirmations"`
 }
