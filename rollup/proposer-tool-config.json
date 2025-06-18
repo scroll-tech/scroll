@@ -2,8 +2,8 @@
     "l2_config": {
       "endpoint": "https://rpc.scroll.io",
       "chunk_proposer_config": {
-        "max_block_num_per_chunk": 1000,
-        "max_l2_gas_per_chunk": 200000000000,
+        "max_block_num_per_chunk": 100,
+        "max_l2_gas_per_chunk": 20000000,
         "chunk_timeout_sec": 72000000000
       },
       "batch_proposer_config": {

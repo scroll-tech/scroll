@@ -522,7 +522,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunksAndParent) string {
+func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunks) string {
 	contextIDs := []string{fmt.Sprintf("v%d", codecVersion)}
 	for _, batch := range batches {
 		contextIDs = append(contextIDs, batch.Batch.Hash)
