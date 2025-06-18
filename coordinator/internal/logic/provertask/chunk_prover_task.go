@@ -43,7 +43,6 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
-			taskCache:          newCache(1024),
 		},
 		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
@@ -158,12 +157,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		AssignedAt: utils.NowUTC(),
 	}
 
-	if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
 	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, chunkTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
@@ -171,12 +164,20 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 	if getTaskParameter.Universal {
-		taskMsg, err = cp.applyUniversal(taskMsg)
+		var metadata []byte
+		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
 		if err != nil {
 			cp.recoverActiveAttempts(ctx, chunkTask)
 			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk")
 			return nil, ErrCoordinatorInternalFailure
 		}
+		proverTask.Metadata = metadata
+	}
+
+	if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
+		cp.recoverActiveAttempts(ctx, chunkTask)
+		log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	cp.chunkTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
@@ -187,39 +188,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (cp *ChunkProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.ProverTask, hardForkName string) (string, error) {
-	taskID := proverTask.TaskID
-	if cached := cp.taskCache.Query(taskID); cached != nil {
-		return cached.MetaData, nil
-	}
-
-	// for most case we simply query metadata from cache, but if the task is not in cache, we need quite a few
-	// effort to resume the cached universal task
-	chunkTask, err := cp.chunkOrm.GetChunkByHash(ctx.Copy(), taskID)
-	if err != nil {
-		log.Error("failed to get chunk by hash", "task_id", taskID, "err", err)
-		return "", ErrCoordinatorInternalFailure
-	}
-	taskMsg, err := cp.formatProverTask(ctx.Copy(), proverTask, chunkTask, hardForkName)
-	if err != nil {
-		log.Error("re-format prover task failure", "task_id", taskID, "err", err)
-		return "", ErrCoordinatorInternalFailure
-	}
-
-	_, err = cp.applyUniversal(taskMsg)
-	if err != nil {
-		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
-		return "", ErrCoordinatorInternalFailure
-	}
-
-	if cached := cp.taskCache.Query(taskID); cached == nil {
-		log.Error("Still can not obtain metadata, something wrong?", "task_id", taskID, "type", "chunk")
-		return "", ErrCoordinatorInternalFailure
-	} else {
-		return cached.MetaData, nil
-	}
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

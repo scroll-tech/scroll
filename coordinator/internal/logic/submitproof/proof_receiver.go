@@ -175,21 +175,10 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		return ErrGetHardForkNameFailed
 	}
 	if proofParameter.Universal {
-		var metadata string
-		var err error
-		switch message.ProofType(proofParameter.TaskType) {
-		case message.ProofTypeChunk:
-			metadata, err = m.ChunkTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
-		case message.ProofTypeBatch:
-			metadata, err = m.BatchTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
-		case message.ProofTypeBundle:
-			metadata, err = m.BundleTask.GetTaskMetaData(ctx.Copy(), proverTask, hardForkName)
+		if len(proverTask.Metadata) == 0 {
+			return errors.New("can not re-wrapping proof: no metadata has been recorded in advance")
 		}
-
-		if err != nil {
-			return err
-		}
-		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, metadata, []byte{})
+		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), []byte{})
 		if proofParameter.Proof == "" {
 			return errors.New("can not re-wrapping proof, see coordinator log for reason")
 		}

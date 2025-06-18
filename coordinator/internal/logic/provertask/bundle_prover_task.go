@@ -45,7 +45,6 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 			bundleOrm:          orm.NewBundle(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
-			taskCache:          newCache(128),
 		},
 		bundleTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_bundle_get_task_total",
@@ -160,13 +159,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		AssignedAt: utils.NowUTC(),
 	}
 
-	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
@@ -174,12 +166,21 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, ErrCoordinatorInternalFailure
 	}
 	if getTaskParameter.Universal {
-		taskMsg, err = bp.applyUniversal(taskMsg)
+		var metadata []byte
+		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
 			bp.recoverActiveAttempts(ctx, bundleTask)
 			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle")
 			return nil, ErrCoordinatorInternalFailure
 		}
+		proverTask.Metadata = metadata
+	}
+
+	// Store session info.
+	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
+		bp.recoverActiveAttempts(ctx, bundleTask)
+		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	bp.bundleTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
@@ -190,34 +191,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}).Inc()
 
 	return taskMsg, nil
-}
-
-func (bp *BundleProverTask) GetTaskMetaData(ctx *gin.Context, proverTask *orm.ProverTask, hardForkName string) (string, error) {
-	taskID := proverTask.TaskID
-	if cached := bp.taskCache.Query(taskID); cached != nil {
-		return cached.MetaData, nil
-	}
-
-	// for most case we simply query metadata from cache, but if the task is not in cache, we need quite a few
-	// effort to resume the cached universal task
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, hardForkName)
-	if err != nil {
-		log.Error("re-format prover task failure", "task_id", taskID, "err", err)
-		return "", ErrCoordinatorInternalFailure
-	}
-
-	_, err = bp.applyUniversal(taskMsg)
-	if err != nil {
-		log.Error("Generate universal prover task failure", "task_id", taskID, "type", "chunk")
-		return "", ErrCoordinatorInternalFailure
-	}
-
-	if cached := bp.taskCache.Query(taskID); cached == nil {
-		log.Error("Still can not obtain metadata, something wrong?", "task_id", taskID, "type", "chunk")
-		return "", ErrCoordinatorInternalFailure
-	} else {
-		return cached.MetaData, nil
-	}
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

@@ -34,7 +34,6 @@ var (
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
-	GetTaskMetaData(ctx *gin.Context, task *orm.ProverTask, HardForkName string) (string, error)
 }
 
 // BaseProverTask a base prover task which contain series functions
@@ -49,8 +48,6 @@ type BaseProverTask struct {
 	blockOrm           *orm.L2Block
 	proverTaskOrm      *orm.ProverTask
 	proverBlockListOrm *orm.ProverBlockList
-
-	taskCache *TaskCache
 }
 
 type proverTaskContext struct {
@@ -189,24 +186,15 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 	return &ptc, nil
 }
 
-func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, error) {
-	if cached := b.taskCache.Query(schema.TaskID); cached != nil {
-		schema.TaskData = cached.UTaskData
-		return schema, nil
-	}
+func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, []byte, error) {
 
 	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
 	if !ok {
-		return nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
+		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}
 
-	cacheData := CachedTaskData{
-		MetaData:  metadata,
-		UTaskData: uTaskData,
-	}
-	b.taskCache.Add(schema.TaskID, &cacheData)
 	schema.TaskData = uTaskData
-	return schema, nil
+	return schema, []byte(metadata), nil
 }
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {
