@@ -184,6 +184,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	// notice uuid is set as a side effect of InsertProverTask
+	taskMsg.UUID = proverTask.UUID.String()
 
 	bp.batchTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.batchTaskGetTaskProver.With(prometheus.Labels{
@@ -212,7 +214,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	for _, chunk := range chunks {
 		var proof message.OpenVMChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v, (%s)", encodeErr, task.TaskID, chunk.Hash, chunk.Proof)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
@@ -243,7 +245,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBatch),
 		TaskData:     string(chunkProofsBytes),

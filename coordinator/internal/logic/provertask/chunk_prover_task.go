@@ -163,6 +163,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+
 	if getTaskParameter.Universal {
 		var metadata []byte
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
@@ -179,6 +180,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	// notice uuid is set as a side effect of InsertProverTask
+	taskMsg.UUID = proverTask.UUID.String()
 
 	cp.chunkTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	cp.chunkTaskGetTaskProver.With(prometheus.Labels{
@@ -217,7 +220,6 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeChunk),
 		TaskData:     string(taskDetailBytes),
