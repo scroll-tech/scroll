@@ -173,6 +173,8 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle")
 			return nil, ErrCoordinatorInternalFailure
 		}
+		// bundle proof require snark
+		taskMsg.UseSnark = true
 		proverTask.Metadata = metadata
 	}
 

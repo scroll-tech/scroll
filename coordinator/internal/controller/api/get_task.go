@@ -47,10 +47,6 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 	return ptc
 }
 
-func (ptc *GetTaskController) ProverTasks() map[message.ProofType]provertask.ProverTask {
-	return ptc.proverTasks
-}
-
 func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
