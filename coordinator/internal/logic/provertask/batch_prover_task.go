@@ -214,7 +214,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	for _, chunk := range chunks {
 		var proof message.OpenVMChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v, (%s)", encodeErr, task.TaskID, chunk.Hash, chunk.Proof)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
