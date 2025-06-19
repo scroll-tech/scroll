@@ -1,11 +1,8 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use scroll_proving_sdk::prover::types::CircuitType;
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {
     #[serde(rename = "type", default)]
-    pub task_type: CircuitType,
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
@@ -15,7 +12,6 @@ pub struct Task {
 pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
-    pub proof_type: CircuitType,
     pub proof_data: String,
     pub error: String,
 }

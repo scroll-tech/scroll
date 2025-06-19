@@ -26,7 +26,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> eyre::Result<()> {
     init_tracing();
 
     let args = Args::parse();
@@ -39,7 +39,10 @@ async fn main() -> anyhow::Result<()> {
     let cfg = LocalProverConfig::from_file(args.config_file)?;
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg);
-    let prover = ProverBuilder::new(sdk_config, local_prover).build().await?;
+    let prover = ProverBuilder::new(sdk_config, local_prover)
+        .build()
+        .await
+        .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
 
     prover.run().await;
 

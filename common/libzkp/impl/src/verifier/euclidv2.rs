@@ -1,10 +1,12 @@
 use super::{ProofVerifier, TaskType, VKDump};
 
-use anyhow::Result;
+use eyre::Result;
 
-use crate::utils::panic_catch;
-use euclid_prover::{BatchProof, BundleProof, ChunkProof, IntoEvmProof};
-use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
+use crate::{
+    proofs::{AsRootProof, BatchProof, BundleProof, ChunkProof, IntoEvmProof},
+    utils::panic_catch,
+};
+use scroll_zkvm_verifier_euclid::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
 use std::{fs::File, path::Path};
 
 pub struct EuclidV2Verifier {
@@ -35,13 +37,11 @@ impl ProofVerifier for EuclidV2Verifier {
         panic_catch(|| match task_type {
             TaskType::Chunk => {
                 let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
-                self.chunk_verifier
-                    .verify_proof(proof.proof.as_root_proof().unwrap())
+                self.chunk_verifier.verify_proof(proof.as_root_proof())
             }
             TaskType::Batch => {
                 let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
-                self.batch_verifier
-                    .verify_proof(proof.proof.as_root_proof().unwrap())
+                self.batch_verifier.verify_proof(proof.as_root_proof())
             }
             TaskType::Bundle => {
                 let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
@@ -49,16 +49,17 @@ impl ProofVerifier for EuclidV2Verifier {
                     .verify_proof_evm(&proof.into_evm_proof())
             }
         })
-        .map_err(|err_str: String| anyhow::anyhow!(err_str))
+        .map_err(|err_str: String| eyre::eyre!("{err_str}"))
     }
 
     fn dump_vk(&self, file: &Path) {
+        use base64::{prelude::BASE64_STANDARD, Engine};
         let f = File::create(file).expect("Failed to open file to dump VK");
 
         let dump = VKDump {
-            chunk_vk: base64::encode(self.chunk_verifier.get_app_vk()),
-            batch_vk: base64::encode(self.batch_verifier.get_app_vk()),
-            bundle_vk: base64::encode(self.bundle_verifier.get_app_vk()),
+            chunk_vk: BASE64_STANDARD.encode(self.chunk_verifier.get_app_vk()),
+            batch_vk: BASE64_STANDARD.encode(self.batch_verifier.get_app_vk()),
+            bundle_vk: BASE64_STANDARD.encode(self.bundle_verifier.get_app_vk()),
         };
         serde_json::to_writer(f, &dump).expect("Failed to dump VK");
     }

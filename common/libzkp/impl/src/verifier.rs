@@ -1,8 +1,8 @@
 #![allow(static_mut_refs)]
 
 mod euclidv2;
-use anyhow::{bail, Result};
 use euclidv2::EuclidV2Verifier;
+use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::{cell::OnceCell, path::Path, rc::Rc};
 
@@ -11,6 +11,16 @@ pub enum TaskType {
     Chunk,
     Batch,
     Bundle,
+}
+
+impl std::fmt::Display for TaskType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Chunk => write!(f, "chunk"),
+            Self::Batch => write!(f, "batch"),
+            Self::Bundle => write!(f, "bundle"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,5 +71,8 @@ pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
             }
         }
     }
-    bail!("failed to get verifier, key not found, {}", fork_name)
+    Err(eyre::eyre!(
+        "failed to get verifier, key not found, {}",
+        fork_name
+    ))
 }

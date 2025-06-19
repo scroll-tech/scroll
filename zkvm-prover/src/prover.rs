@@ -1,8 +1,7 @@
-use crate::zk_circuits_handler::{
-    euclid::EuclidHandler, euclidV2::EuclidV2Handler, CircuitsHandler,
-};
-use anyhow::{anyhow, Result};
+use crate::zk_circuits_handler::{euclidV2::EuclidV2Handler, CircuitsHandler};
 use async_trait::async_trait;
+use base64::{prelude::BASE64_STANDARD, Engine};
+use eyre::Result;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
@@ -33,7 +32,7 @@ impl LocalProverConfig {
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+        serde_json::from_reader(reader).map_err(|e| eyre::eyre!(e))
     }
 
     pub fn from_file(file_name: String) -> Result<Self> {
@@ -69,7 +68,7 @@ impl ProvingService for LocalProver {
                 let vk = handler.get_vk(*proof_type).await;
 
                 if let Some(vk) = vk {
-                    vks.push(base64::encode(vk));
+                    vks.push(BASE64_STANDARD.encode(vk));
                 }
             }
         }
@@ -184,9 +183,6 @@ impl LocalProver {
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
         match hard_fork_name {
-            "euclid" => Arc::new(Arc::new(Mutex::new(EuclidHandler::new(
-                &config.workspace_path,
-            )))) as Arc<dyn CircuitsHandler>,
             "euclidV2" => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(
                 &config.workspace_path,
             )))) as Arc<dyn CircuitsHandler>,

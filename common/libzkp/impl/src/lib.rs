@@ -1,135 +1,121 @@
+pub mod proofs;
+pub mod tasks;
+pub mod verifier;
+pub use verifier::{TaskType, VerifierConfig};
 mod utils;
-mod verifier;
 
-use std::{
-    ffi::{c_char, c_int, CString},
-    path::Path,
-};
+use sbv_primitives::B256;
+use scroll_zkvm_types::util::vec_as_base64;
+use serde::{Deserialize, Serialize};
+use serde_json::value::RawValue;
+use std::path::Path;
+use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
-use crate::utils::{c_char_to_str, c_char_to_vec};
-use verifier::{TaskType, VerifierConfig};
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn init_verifier(config: *const c_char) {
-    let config_str = c_char_to_str(config);
-    let verifier_config = serde_json::from_str::<VerifierConfig>(config_str).unwrap();
-    verifier::init(verifier_config);
+/// Turn the coordinator's chunk task into a json string for formal chunk proving
+/// task (with full witnesses)
+pub fn checkout_chunk_task(
+    task_json: &str,
+    interpreter: impl ChunkInterpreter,
+) -> eyre::Result<String> {
+    let chunk_task = serde_json::from_str::<tasks::ChunkTask>(task_json)?;
+    let ret = serde_json::to_string(&tasks::ChunkProvingTask::try_from_with_interpret(
+        chunk_task,
+        interpreter,
+    )?)?;
+    Ok(ret)
 }
 
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn verify_chunk_proof(
-    proof: *const c_char,
-    fork_name: *const c_char,
-) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Chunk)
-}
+/// Generate required staff for proving tasks
+pub fn gen_universal_task(
+    task_type: i32,
+    task_json: &str,
+    fork_name: &str,
+    interpreter: Option<impl ChunkInterpreter>,
+) -> eyre::Result<(B256, String, String)> {
+    use proofs::*;
+    use tasks::*;
 
-fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
-    let fork_name_str = c_char_to_str(fork_name);
-    let proof = c_char_to_vec(proof);
-    let verifier = verifier::get_verifier(fork_name_str);
-
-    if let Err(e) = verifier {
-        log::warn!("failed to get verifier, error: {:#}", e);
-        return 0 as c_char;
+    /// Wrapper for metadata
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    #[serde(untagged)]
+    enum AnyMetaData {
+        Chunk(ChunkProofMetadata),
+        Batch(BatchProofMetadata),
+        Bundle(BundleProofMetadata),
     }
-    match verifier.unwrap().verify(task_type, proof) {
-        Err(e) => {
-            log::error!("{:?} verify failed, error: {:#}", task_type, e);
-            false as c_char
+
+    let (pi_hash, metadata, u_task) = match task_type {
+        x if x == TaskType::Chunk as i32 => {
+            let task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
+            let (pi_hash, metadata, u_task) =
+                gen_universal_chunk_task(task, fork_name.into(), interpreter)?;
+            (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
-        Ok(result) => result as c_char,
-    }
+        x if x == TaskType::Batch as i32 => {
+            let task = serde_json::from_str::<BatchProvingTask>(task_json)?;
+            let (pi_hash, metadata, u_task) = gen_universal_batch_task(task, fork_name.into())?;
+            (pi_hash, AnyMetaData::Batch(metadata), u_task)
+        }
+        x if x == TaskType::Bundle as i32 => {
+            let task = serde_json::from_str::<BundleProvingTask>(task_json)?;
+            let (pi_hash, metadata, u_task) = gen_universal_bundle_task(task, fork_name.into())?;
+            (pi_hash, AnyMetaData::Bundle(metadata), u_task)
+        }
+        _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),
+    };
+
+    Ok((
+        pi_hash,
+        serde_json::to_string(&metadata)?,
+        serde_json::to_string(&u_task)?,
+    ))
 }
 
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn verify_batch_proof(
-    proof: *const c_char,
-    fork_name: *const c_char,
-) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Batch)
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn verify_bundle_proof(
-    proof: *const c_char,
-    fork_name: *const c_char,
-) -> c_char {
-    verify_proof(proof, fork_name, TaskType::Bundle)
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn dump_vk(fork_name: *const c_char, file: *const c_char) {
-    _dump_vk(fork_name, file);
-}
-
-fn _dump_vk(fork_name: *const c_char, file: *const c_char) {
-    let fork_name_str = c_char_to_str(fork_name);
-    let verifier = verifier::get_verifier(fork_name_str);
-
-    if let Ok(verifier) = verifier {
-        verifier.as_ref().dump_vk(Path::new(c_char_to_str(file)));
-    }
-}
-
-/// Represents the result of generating a universal task
-#[repr(C)]
-pub struct HandlingResult {
-    pub ok: bool,
-    pub universal_task: *mut c_char,
-    pub metadata: *mut c_char,
-    pub expected_pi_hash: [u8; 32],
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn gen_universal_task(
-    _task_type: c_int,
-    _task: *const c_char,
-    _fork_name: *const c_char,
-) -> HandlingResult {
-    unimplemented!("implementation will be added in later PRs");
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn release_task_result(result: HandlingResult) {
-    // Free the allocated strings
-    if !result.universal_task.is_null() {
-        let _ = CString::from_raw(result.universal_task);
+/// helper to rearrange the proof return by universal prover into corresponding wrapped proof
+pub fn gen_wrapped_proof(proof_json: &str, metadata: &str, vk: &[u8]) -> eyre::Result<String> {
+    #[derive(Serialize)]
+    struct RearrangeWrappedProofJson<'a> {
+        #[serde(borrow)]
+        pub metadata: &'a RawValue,
+        #[serde(borrow)]
+        pub proof: &'a RawValue,
+        #[serde(with = "vec_as_base64", default)]
+        pub vk: Vec<u8>,
+        pub git_version: String,
     }
 
-    if !result.metadata.is_null() {
-        let _ = CString::from_raw(result.metadata);
-    }
+    let re_arrange = RearrangeWrappedProofJson {
+        metadata: serde_json::from_str(metadata)?,
+        proof: serde_json::from_str(proof_json)?,
+        vk: vk.to_vec(),
+        git_version: utils::short_git_version(),
+    };
+
+    let ret = serde_json::to_string(&re_arrange)?;
+    Ok(ret)
 }
 
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn gen_wrapped_proof(
-    _proof_json: *const c_char,
-    _metadata: *const c_char,
-    _vk: *const c_char,
-    _vk_len: usize,
-) -> *mut c_char {
-    unimplemented!("implementation will be added in later PRs");
+/// init verifier
+pub fn verifier_init(config: &str) -> eyre::Result<()> {
+    let cfg: VerifierConfig = serde_json::from_str(config)?;
+    verifier::init(cfg);
+    Ok(())
 }
 
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn release_string(string_ptr: *mut c_char) {
-    if !string_ptr.is_null() {
-        let _ = CString::from_raw(string_ptr);
-    }
+/// verify proof
+pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyre::Result<bool> {
+    let verifier = verifier::get_verifier(fork_name)?;
+
+    let ret = verifier.verify(task_type, proof)?;
+
+    Ok(ret)
 }
 
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn init_l2geth(_config: *const c_char) {
-    unimplemented!("implementation will be added in later PRs");
+/// dump vk
+pub fn dump_vk(fork_name: &str, file: &str) -> eyre::Result<()> {
+    let verifier = verifier::get_verifier(fork_name)?;
+
+    verifier.dump_vk(Path::new(file));
+
+    Ok(())
 }
