@@ -3,7 +3,7 @@ use super::{ProofVerifier, TaskType, VKDump};
 use anyhow::Result;
 
 use crate::utils::panic_catch;
-use euclid_prover::{BatchProof, BundleProof, ChunkProof};
+use euclid_prover::{BatchProof, BundleProof, ChunkProof, IntoEvmProof};
 use euclid_verifier::verifier::{BatchVerifier, BundleVerifierEuclidV2, ChunkVerifier};
 use std::{fs::File, path::Path};
 
@@ -46,7 +46,7 @@ impl ProofVerifier for EuclidV2Verifier {
             TaskType::Bundle => {
                 let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
                 self.bundle_verifier
-                    .verify_proof_evm(&proof.proof.as_evm_proof().unwrap())
+                    .verify_proof_evm(&proof.into_evm_proof())
             }
         })
         .map_err(|err_str: String| anyhow::anyhow!(err_str))
