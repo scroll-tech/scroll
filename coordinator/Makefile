@@ -4,23 +4,23 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	OPENVM_VERSION=$(shell grep -m 1 "openvm.git" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	OPENVM_VERSION=$(shell grep -m 1 "openvm.git" ../Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
+ZK_VERSION=${ZKVM_VERSION}-${OPENVM_VERSION}
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 ../common/libzkp/lib/libzkp.so:
-	$(MAKE) -C ../common/libzkp/impl build
+	$(MAKE) -C ../common/libzkp build
 
 clean_libzkp:
-	$(MAKE) -C ../common/libzkp/impl clean
+	$(MAKE) -C ../common/libzkp clean
 
 libzkp: clean_libzkp ../common/libzkp/lib/libzkp.so
 
@@ -33,8 +33,8 @@ coordinator_cron:
 coordinator_tool:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
 
-coordinator_api_skip_libzkp:
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
+#coordinator_api_skip_libzkp:
+#	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 mock_coordinator_api: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_api ./cmd/api

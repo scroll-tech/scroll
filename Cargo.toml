@@ -1,10 +1,9 @@
 [workspace]
 members = [
-  "common/libzkp/impl",
-  "common/libzkp/l2geth",
-  "common/libzkp/interface",
-  "common/libzkp/integration_test",
-  "zkvm-prover",
+  "crates/libzkp",
+  "crates/l2geth",
+  "crates/libzkp_c",
+  "crates/prover-bin",
 ]
 
 resolver = "2"
@@ -53,7 +52,7 @@ snark-verifier-sdk = { version = "0.2.0", default-features = false, features = [
 once_cell = "1.20"
 base64 = "0.22"
 
-#TODO: upgrade when Feyman
+#TODO: upgrade when Feynman
 vm-zstd = { git = "https://github.com/scroll-tech/rust-zstd-decompressor.git", tag = "v0.1.1" }
 
 [patch.crates-io]

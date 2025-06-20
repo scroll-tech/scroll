@@ -1873,14 +1873,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encoder"
-version = "0.1.0"
-source = "git+https://github.com/scroll-tech/da-codec.git?tag=v0.1.2#8c5d2f0cd707153151a5154fef702204f6ca40b3"
-dependencies = [
- "zstd 0.13.0",
-]
-
-[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3319,7 +3311,7 @@ dependencies = [
  "libc",
  "libz-sys",
  "lz4-sys",
- "zstd-sys 2.0.15+zstd.1.5.7",
+ "zstd-sys",
 ]
 
 [[package]]
@@ -6355,7 +6347,7 @@ dependencies = [
  "serde",
  "thiserror 2.0.12",
  "tracing",
- "zstd 1.1.4",
+ "zstd",
 ]
 
 [[package]]
@@ -6683,7 +6675,7 @@ name = "reth-zstd-compressors"
 version = "1.1.5"
 source = "git+https://github.com/scroll-tech/reth?branch=zkvm%2Feuclid-upgrade#6009111704d286ed6c737fe78dca09d613be0352"
 dependencies = [
- "zstd 1.1.4",
+ "zstd",
 ]
 
 [[package]]
@@ -7354,33 +7346,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
-]
-
-[[package]]
-name = "scroll-zkvm-integration"
-version = "4.5.8"
-dependencies = [
- "alloy-primitives",
- "chrono",
- "eyre",
- "ff 0.13.1",
- "glob",
- "halo2curves-axiom",
- "libzkp",
- "metrics-tracing-context",
- "once_cell",
- "revm 19.7.0",
- "sbv-primitives",
- "scroll-zkvm-prover",
- "scroll-zkvm-types",
- "scroll-zkvm-verifier",
- "serde",
- "serde_json",
- "sha2",
- "snark-verifier-sdk",
- "tracing",
- "tracing-subscriber",
- "vm-zstd",
 ]
 
 [[package]]
@@ -8934,7 +8899,6 @@ source = "git+https://github.com/scroll-tech/rust-zstd-decompressor.git?tag=v0.1
 dependencies = [
  "anyhow",
  "bitstream-io",
- "encoder",
  "itertools 0.11.0",
  "serde",
  "strum 0.25.0",
@@ -9667,33 +9631,8 @@ dependencies = [
 
 [[package]]
 name = "zstd"
-version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "zstd-safe",
-]
-
-[[package]]
-name = "zstd"
 version = "1.1.4"
 source = "git+https://github.com/scroll-tech/reth?branch=zkvm%2Feuclid-upgrade#6009111704d286ed6c737fe78dca09d613be0352"
-
-[[package]]
-name = "zstd-safe"
-version = "7.0.0"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "zstd-sys 2.0.9+zstd.1.5.5",
-]
-
-[[package]]
-name = "zstd-sys"
-version = "2.0.9+zstd.1.5.5"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack%2Fmul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "cc",
- "pkg-config",
-]
 
 [[package]]
 name = "zstd-sys"

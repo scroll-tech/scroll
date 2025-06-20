@@ -64,7 +64,8 @@ impl RpcClientCore {
         let rpc = url::Url::parse(&config.rpc_url)?;
         tracing::info!("Using RPC: {}", rpc);
         // note we MUST use multi rt since we have no a main thread for driving
-        // for each call in our method we can acquire a handle of the rt to resolve one or more async tasks
+        // for each call in our method we can acquire a handle of the rt to resolve one or more
+        // async tasks
         let rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(config.workers)
             .max_blocking_threads(config.max_concurrency)

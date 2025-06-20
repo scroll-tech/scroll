@@ -9,7 +9,7 @@ tokio = {version = "1", features = ["rt-multi-thread"]}
 async-trait = "0.1"
 url = ">=2.5.3"
 
-libzkp = { path = "../impl" }
+libzkp = { path = "../libzkp" }
 alloy = { workspace = true, features = ["provider-http", "transport-http", "reqwest", "reqwest-rustls-tls", "json-rpc"] }
 sbv-primitives = { workspace = true, features = ["scroll"] }
 sbv-utils = { workspace = true, features = ["scroll"] }

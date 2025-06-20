@@ -3,11 +3,13 @@ FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.21-rust-nightly-2023-12-03
 WORKDIR app
 
 FROM chef as planner
-COPY ./common/libzkp/impl/ .
+COPY ./crates ./
+COPY ./Cargo.* ./
+COPY ./rust-toolchain ./
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef as zkp-builder
-COPY ./common/libzkp/impl/rust-toolchain ./
+COPY ./rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
 # run scripts to get openvm-gpu
 COPY ./build/dockerfiles/coordinator-api/plonky3-gpu /plonky3-gpu
@@ -17,8 +19,9 @@ COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
 COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
 RUN cargo chef cook --release --recipe-path recipe.json
 
-COPY ./common/libzkp/impl .
-RUN cargo build --release
+COPY ./crates ./
+COPY ./Cargo.* ./
+RUN cargo build --release -p libzkp-c
 
 
 # Download Go dependencies
@@ -37,9 +40,10 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 COPY . .
-RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
-COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
-RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
+#RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
+COPY --from=zkp-builder /app/target/release/libzkp.so ./common/libzkp/lib/
+RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api && mv ./build/bin/coordinator_api /bin/coordinator_api
+RUN mv common/libzkp/lib /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
 FROM nvidia/cuda:11.7.1-runtime-ubuntu22.04
