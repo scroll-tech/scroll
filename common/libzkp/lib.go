@@ -11,6 +11,7 @@ import "C" //nolint:typecheck
 import (
 	"fmt"
 	"os"
+	"scroll-tech/common/types/message"
 	"unsafe"
 )
 
@@ -73,32 +74,29 @@ func VerifyBundleProof(proofData, forkName string) bool {
 	return result != 0
 }
 
+// TaskType enum values matching the Rust enum
+const (
+	TaskTypeChunk  = 0
+	TaskTypeBatch  = 1
+	TaskTypeBundle = 2
+)
+
+func fromMessageTaskType(taskType int) int {
+	switch message.ProofType(taskType) {
+	case message.ProofTypeChunk:
+		return TaskTypeChunk
+	case message.ProofTypeBatch:
+		return TaskTypeBatch
+	case message.ProofTypeBundle:
+		return TaskTypeBundle
+	default:
+		panic(fmt.Sprintf("unsupported proof type: %d", taskType))
+	}
+}
+
 // Generate a universal task
 func GenerateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
-	cTask := goToCString(taskJSON)
-	cForkName := goToCString(forkName)
-	defer freeCString(cTask)
-	defer freeCString(cForkName)
-
-	result := C.gen_universal_task(C.int(taskType), cTask, cForkName)
-	defer C.release_task_result(result)
-
-	// Check if the operation was successful
-	if result.ok == 0 {
-		return false, "", "", nil
-	}
-
-	// Convert C strings to Go strings
-	universalTask := C.GoString(result.universal_task)
-	metadata := C.GoString(result.metadata)
-
-	// Convert C array to Go slice
-	piHash := make([]byte, 32)
-	for i := 0; i < 32; i++ {
-		piHash[i] = byte(result.expected_pi_hash[i])
-	}
-
-	return true, universalTask, metadata, piHash
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, forkName)
 }
 
 // Generate wrapped proof
@@ -109,7 +107,10 @@ func GenerateWrappedProof(proofJSON, metadata string, vkData []byte) string {
 	defer freeCString(cMetadata)
 
 	// Create a C array from Go slice
-	cVkData := (*C.char)(unsafe.Pointer(&vkData[0]))
+	var cVkData *C.char
+	if len(vkData) > 0 {
+		cVkData = (*C.char)(unsafe.Pointer(&vkData[0]))
+	}
 
 	resultPtr := C.gen_wrapped_proof(cProofJSON, cMetadata, cVkData, C.size_t(len(vkData)))
 	if resultPtr == nil {
