@@ -5,6 +5,7 @@ package libzkp
 import (
 	"encoding/json"
 	"fmt"
+
 	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/common"

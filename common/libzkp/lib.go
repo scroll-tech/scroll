@@ -11,8 +11,9 @@ import "C" //nolint:typecheck
 import (
 	"fmt"
 	"os"
-	"scroll-tech/common/types/message"
 	"unsafe"
+
+	"scroll-tech/common/types/message"
 )
 
 // Helper function to convert Go string to C string and handle cleanup
