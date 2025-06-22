@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
@@ -183,6 +184,16 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
+}
+
+func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, []byte, error) {
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
+	if !ok {
+		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
+	}
+
+	schema.TaskData = uTaskData
+	return schema, []byte(metadata), nil
 }
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {

@@ -161,19 +161,31 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		AssignedAt: utils.NowUTC(),
 	}
 
-	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, batchTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		var metadata []byte
+		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
+		if err != nil {
+			bp.recoverActiveAttempts(ctx, batchTask)
+			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch")
+			return nil, ErrCoordinatorInternalFailure
+		}
+		proverTask.Metadata = metadata
+	}
+
+	// Store session info.
+	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
+		bp.recoverActiveAttempts(ctx, batchTask)
+		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
+	// notice uuid is set as a side effect of InsertProverTask
+	taskMsg.UUID = proverTask.UUID.String()
 
 	bp.batchTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.batchTaskGetTaskProver.With(prometheus.Labels{
@@ -233,7 +245,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBatch),
 		TaskData:     string(chunkProofsBytes),

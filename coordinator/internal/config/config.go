@@ -28,10 +28,16 @@ type ProverManager struct {
 	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
 }
 
+// l2geth client configuration items
+type L2Endpoint struct {
+	Url string `json:"endpoint"`
+}
+
 // L2 loads l2geth configuration items.
 type L2 struct {
 	// l2geth chain_id.
-	ChainID uint64 `json:"chain_id"`
+	ChainID  uint64      `json:"chain_id"`
+	Endpoint *L2Endpoint `json:"l2geth"`
 }
 
 // Auth provides the auth coordinator

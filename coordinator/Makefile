@@ -16,11 +16,15 @@ ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-libzkp:
-	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+../common/libzkp/lib/libzkp.so:
+	$(MAKE) -C ../common/libzkp/impl build
 
-coordinator_api: libzkp ## Builds the Coordinator api instance.
+clean_libzkp:
+	$(MAKE) -C ../common/libzkp/impl clean
+
+libzkp: clean_libzkp ../common/libzkp/lib/libzkp.so
+
+coordinator_api: ../common/libzkp/lib/libzkp.so ## Builds the Coordinator api instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 coordinator_cron:
@@ -38,14 +42,14 @@ mock_coordinator_api: ## Builds the mocked Coordinator instance.
 mock_coordinator_cron: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
-test-verifier: libzkp
+test-verifier: ../common/libzkp/lib/libzkp.so
 	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
 
-test-gpu-verifier: libzkp
+test-gpu-verifier: ../common/libzkp/lib/libzkp.so
 	go test -tags="gpu ffi" -timeout 0 -v ./internal/logic/verifier
 
 lint: ## Lint the files - used for CI
-	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+#	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder

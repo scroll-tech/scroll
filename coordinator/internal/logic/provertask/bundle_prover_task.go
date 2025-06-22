@@ -159,19 +159,33 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		AssignedAt: utils.NowUTC(),
 	}
 
-	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		var metadata []byte
+		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
+		if err != nil {
+			bp.recoverActiveAttempts(ctx, bundleTask)
+			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle")
+			return nil, ErrCoordinatorInternalFailure
+		}
+		// bundle proof require snark
+		taskMsg.UseSnark = true
+		proverTask.Metadata = metadata
+	}
+
+	// Store session info.
+	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
+		bp.recoverActiveAttempts(ctx, bundleTask)
+		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
+	// notice uuid is set as a side effect of InsertProverTask
+	taskMsg.UUID = proverTask.UUID.String()
 
 	bp.bundleTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.bundleTaskGetTaskProver.With(prometheus.Labels{
@@ -237,7 +251,6 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBundle),
 		TaskData:     string(batchProofsBytes),

@@ -37,6 +37,7 @@ type ProverTask struct {
 	FailureType   int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
 	Reward        decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(78)"`
 	Proof         []byte          `json:"proof" gorm:"column:proof;default:NULL"`
+	Metadata      []byte          `json:"metadata" gorm:"column:metadata;default:NULL"`
 	AssignedAt    time.Time       `json:"assigned_at" gorm:"assigned_at"`
 
 	// metadata

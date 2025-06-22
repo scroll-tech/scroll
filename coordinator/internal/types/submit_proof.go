@@ -7,6 +7,7 @@ type SubmitProofParameter struct {
 	TaskType    int    `form:"task_type" json:"task_type" binding:"required"`
 	Status      int    `form:"status" json:"status"`
 	Proof       string `form:"proof" json:"proof"`
+	Universal   bool   `form:"universal,omitempty" json:"universal,omitempty"`
 	FailureType int    `form:"failure_type" json:"failure_type"`
 	FailureMsg  string `form:"failure_msg" json:"failure_msg"`
 }

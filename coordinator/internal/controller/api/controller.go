@@ -28,6 +28,17 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 
 	log.Info("verifier created", "openVmVerifier", vf.OpenVMVkMap)
 
+	// TODO: enable this when the libzkp has been updated
+	/*l2cfg := cfg.L2.Endpoint
+	if l2cfg == nil {
+		panic("l2geth is not specified")
+	}
+	l2cfgBytes, err := json.Marshal(l2cfg)
+	if err != nil {
+		panic(err)
+	}
+	libzkp.InitL2geth(string(l2cfgBytes))*/
+
 	Auth = NewAuthController(db, cfg, vf)
 	GetTask = NewGetTaskController(cfg, chainCfg, db, reg)
 	SubmitProof = NewSubmitProofController(cfg, chainCfg, db, vf, reg)

@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 )
@@ -58,25 +58,25 @@ func TestFFI(t *testing.T) {
 	t.Log("Verified batch proof")
 }
 
-func readBatchProof(filePat string, as *assert.Assertions) *types.OpenVMBatchProof {
+func readBatchProof(filePat string, as *assert.Assertions) *message.OpenVMBatchProof {
 	f, err := os.Open(filePat)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
-	proof := &types.OpenVMBatchProof{}
+	proof := &message.OpenVMBatchProof{}
 	as.NoError(json.Unmarshal(byt, proof))
 
 	return proof
 }
 
-func readChunkProof(filePat string, as *assert.Assertions) *types.OpenVMChunkProof {
+func readChunkProof(filePat string, as *assert.Assertions) *message.OpenVMChunkProof {
 	f, err := os.Open(filePat)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
-	proof := &types.OpenVMChunkProof{}
+	proof := &message.OpenVMChunkProof{}
 	as.NoError(json.Unmarshal(byt, proof))
 
 	return proof

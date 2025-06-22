@@ -1,6 +1,5 @@
 use std::{
-    ffi::CStr,
-    os::raw::c_char,
+    ffi::{c_char, CStr},
     panic::{catch_unwind, AssertUnwindSafe},
 };
 
