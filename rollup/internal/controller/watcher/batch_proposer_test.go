@@ -72,9 +72,10 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk: 1,
-				MaxL2GasPerChunk:    20000000,
-				ChunkTimeoutSec:     300,
+				MaxBlockNumPerChunk:           1,
+				MaxL2GasPerChunk:              20000000,
+				ChunkTimeoutSec:               300,
+				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{
 				LondonBlock:    big.NewInt(0),
 				BernoulliBlock: big.NewInt(0),
@@ -88,8 +89,9 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 			cp.TryProposeChunk() // chunk2 contains block2
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-				MaxChunksPerBatch: math.MaxInt32,
-				BatchTimeoutSec:   tt.batchTimeoutSec,
+				MaxChunksPerBatch:             math.MaxInt32,
+				BatchTimeoutSec:               tt.batchTimeoutSec,
+				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{
 				LondonBlock:    big.NewInt(0),
 				BernoulliBlock: big.NewInt(0),
@@ -152,9 +154,10 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk: math.MaxUint64,
-		MaxL2GasPerChunk:    math.MaxUint64,
-		ChunkTimeoutSec:     0,
+		MaxBlockNumPerChunk:           math.MaxUint64,
+		MaxL2GasPerChunk:              math.MaxUint64,
+		ChunkTimeoutSec:               0,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	blockHeight := uint64(0)
@@ -172,8 +175,9 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 	}
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunksPerBatch: math.MaxInt32,
-		BatchTimeoutSec:   math.MaxUint32,
+		MaxChunksPerBatch:             math.MaxInt32,
+		BatchTimeoutSec:               math.MaxUint32,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	for i := 0; i < 2; i++ {
@@ -223,9 +227,10 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk: math.MaxUint64,
-		MaxL2GasPerChunk:    math.MaxUint64,
-		ChunkTimeoutSec:     0,
+		MaxBlockNumPerChunk:           math.MaxUint64,
+		MaxL2GasPerChunk:              math.MaxUint64,
+		ChunkTimeoutSec:               0,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
@@ -238,8 +243,9 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 	}
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunksPerBatch: 45,
-		BatchTimeoutSec:   math.MaxUint32,
+		MaxChunksPerBatch:             45,
+		BatchTimeoutSec:               math.MaxUint32,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 	bp.TryProposeBatch()
 

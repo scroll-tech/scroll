@@ -84,9 +84,10 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk: tt.maxBlockNum,
-				MaxL2GasPerChunk:    tt.maxL2Gas,
-				ChunkTimeoutSec:     tt.chunkTimeoutSec,
+				MaxBlockNumPerChunk:           tt.maxBlockNum,
+				MaxL2GasPerChunk:              tt.maxL2Gas,
+				ChunkTimeoutSec:               tt.chunkTimeoutSec,
+				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}, db, nil)
 			cp.TryProposeChunk()
 
@@ -128,9 +129,10 @@ func testChunkProposerBlobSizeLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk: 255,
-		MaxL2GasPerChunk:    math.MaxUint64,
-		ChunkTimeoutSec:     math.MaxUint32,
+		MaxBlockNumPerChunk:           255,
+		MaxL2GasPerChunk:              math.MaxUint64,
+		ChunkTimeoutSec:               math.MaxUint32,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	for i := 0; i < 2; i++ {
