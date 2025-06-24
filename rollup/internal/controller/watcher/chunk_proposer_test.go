@@ -164,8 +164,8 @@ func testChunkProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 	// Create a block with very large calldata to test uncompressed batch bytes limit
 	block := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 
-	// Create a transaction with large calldata (around 3MB)
-	largeCalldata := make([]byte, 3*1024*1024) // 3MB calldata
+	// Create a transaction with large calldata (around 3KiB)
+	largeCalldata := make([]byte, 3*1024) // 3KiB calldata
 	for i := range largeCalldata {
 		largeCalldata[i] = byte(i % 256)
 	}
@@ -201,13 +201,13 @@ func testChunkProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 		FeynmanTime:    new(uint64),
 	}
 
-	// Set max_uncompressed_batch_bytes_size to 4MB (4 * 1024 * 1024)
-	// One block (~3MB) should fit, but two blocks (~6MB) should exceed the limit
+	// Set max_uncompressed_batch_bytes_size to 4KiB (4 * 1024)
+	// One block (~3KiB) should fit, but two blocks (~6KiB) should exceed the limit
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:           math.MaxUint64,  // No block number limit
-		MaxL2GasPerChunk:              math.MaxUint64,  // No gas limit
-		ChunkTimeoutSec:               math.MaxUint32,  // No timeout limit
-		MaxUncompressedBatchBytesSize: 4 * 1024 * 1024, // 4MB limit
+		MaxBlockNumPerChunk:           math.MaxUint64, // No block number limit
+		MaxL2GasPerChunk:              math.MaxUint64, // No gas limit
+		ChunkTimeoutSec:               math.MaxUint32, // No timeout limit
+		MaxUncompressedBatchBytesSize: 4 * 1024,       // 4KiB limit
 	}, encoding.CodecV8, chainConfig, db, nil)
 
 	// Try to propose chunk

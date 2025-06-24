@@ -287,8 +287,8 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 	// Create blocks with large calldata
 	block := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 
-	// Create large calldata (3MB per block)
-	largeCalldata := make([]byte, 3*1024*1024) // 3MB calldata
+	// Create large calldata (3KiB per block)
+	largeCalldata := make([]byte, 3*1024) // 3KiB calldata
 	for i := range largeCalldata {
 		largeCalldata[i] = byte(i % 256)
 	}
@@ -329,12 +329,12 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 		cp.TryProposeChunk() // Each call creates one chunk with one block
 	}
 
-	// Create batch proposer with 4MB uncompressed batch bytes limit
-	// Each chunk is ~3MB, so 1 chunk (~3MB) should fit, but 2 chunks (~6MB) should exceed limit
+	// Create batch proposer with 4KiB uncompressed batch bytes limit
+	// Each chunk is ~3KiB, so 1 chunk (~3KiB) should fit, but 2 chunks (~6KiB) should exceed limit
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunksPerBatch:             math.MaxInt32,   // No chunk count limit
-		BatchTimeoutSec:               math.MaxUint32,  // No timeout limit
-		MaxUncompressedBatchBytesSize: 4 * 1024 * 1024, // 4MB limit
+		MaxChunksPerBatch:             math.MaxInt32,  // No chunk count limit
+		BatchTimeoutSec:               math.MaxUint32, // No timeout limit
+		MaxUncompressedBatchBytesSize: 4 * 1024,       // 4KiB limit
 	}, encoding.CodecV8, chainConfig, db, nil)
 
 	bp.TryProposeBatch()
