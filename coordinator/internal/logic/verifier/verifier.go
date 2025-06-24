@@ -12,13 +12,14 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/libzkp"
+	"scroll-tech/coordinator/libzkp"
+
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 )
 
-// This struct maps to `CircuitConfig` in common/libzkp/impl/src/verifier.rs
+// This struct maps to `CircuitConfig` in libzkp/impl/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.CircuitConfig` being changed
 type rustCircuitConfig struct {
@@ -33,7 +34,7 @@ func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 	}
 }
 
-// This struct maps to `VerifierConfig` in common/libzkp/impl/src/verifier.rs
+// This struct maps to `VerifierConfig` in coordinator/libzkp/impl/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {

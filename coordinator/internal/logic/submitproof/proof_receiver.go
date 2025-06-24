@@ -15,7 +15,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/libzkp"
+	"scroll-tech/coordinator/libzkp"
+
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 

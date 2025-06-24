@@ -40,10 +40,10 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 COPY . .
-#RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
-COPY --from=zkp-builder /app/target/release/libzkp.so ./common/libzkp/lib/
+#RUN cp -r ./coordinator/libzkp/interface ./coordinator/internal/logic/verifier/lib
+COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/libzkp/lib/
 RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api && mv ./build/bin/coordinator_api /bin/coordinator_api
-RUN mv common/libzkp/lib /bin/
+RUN mv coordinator/libzkp/lib /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
 FROM nvidia/cuda:11.7.1-runtime-ubuntu22.04

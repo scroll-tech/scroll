@@ -2,6 +2,7 @@
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
+LIBZKP_PATH=libzkp/lib/libzkp.so
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -16,15 +17,15 @@ ZK_VERSION=${ZKVM_VERSION}-${OPENVM_VERSION}
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-../common/libzkp/lib/libzkp.so:
-	$(MAKE) -C ../common/libzkp build
+$(LIBZKP_PATH):
+	$(MAKE) -C libzkp build
 
 clean_libzkp:
-	$(MAKE) -C ../common/libzkp clean
+	$(MAKE) -C libzkp clean
 
-libzkp: clean_libzkp ../common/libzkp/lib/libzkp.so
+libzkp: clean_libzkp $(LIBZKP_PATH)
 
-coordinator_api: ../common/libzkp/lib/libzkp.so ## Builds the Coordinator api instance.
+coordinator_api: $(LIBZKP_PATH) ## Builds the Coordinator api instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 coordinator_cron:
@@ -42,14 +43,13 @@ mock_coordinator_api: ## Builds the mocked Coordinator instance.
 mock_coordinator_cron: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
-test-verifier: ../common/libzkp/lib/libzkp.so
+test-verifier: $(LIBZKP_PATH)
 	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
 
-test-gpu-verifier: ../common/libzkp/lib/libzkp.so
+test-gpu-verifier: $(LIBZKP_PATH)
 	go test -tags="gpu ffi" -timeout 0 -v ./internal/logic/verifier
 
 lint: ## Lint the files - used for CI
-#	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder

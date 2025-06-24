@@ -27,8 +27,8 @@ func generateUniversalTask(taskType int, taskJSON, forkName string) (bool, strin
 		}{BatchInfo: &message.OpenVMBatchInfo{}}
 	case TaskTypeBundle:
 		metadata = struct {
-			BundleInfo    *message.OpenVMBundleInfo `json:"bundle_info"`
-			BunndlePIHash common.Hash               `json:"bundle_pi_hash"`
+			BundleInfo   *message.OpenVMBundleInfo `json:"bundle_info"`
+			BundlePIHash common.Hash               `json:"bundle_pi_hash"`
 		}{BundleInfo: &message.OpenVMBundleInfo{}}
 	}
 
