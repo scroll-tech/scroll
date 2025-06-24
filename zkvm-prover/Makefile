@@ -41,7 +41,7 @@ else
 endif
 
 prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cd ../crates/prover-bin && cargo build --release
 
 tests_binary:
 	cargo clean && cargo test --release --no-run

@@ -3,7 +3,6 @@
 package verifier
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
@@ -67,7 +66,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		OpenVMVkMap: make(map[string]struct{}),
 	}
 
-	if err := v.loadOpenVMVks(message.EuclidV2Fork); err != nil {
+	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.AssetsPath); err != nil {
 		return nil, err
 	}
 
@@ -108,27 +107,23 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 	return libzkp.VerifyBundleProof(string(buf), forkName), nil
 }
 
-func (v *Verifier) ReadVK(filePat string) (string, error) {
+// func (v *Verifier) ReadVK(filePat string) (string, error) {
 
-	f, err := os.Open(filepath.Clean(filePat))
-	if err != nil {
-		return "", err
-	}
-	byt, err := io.ReadAll(f)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(byt), nil
-}
+// 	f, err := os.Open(filepath.Clean(filePat))
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	byt, err := io.ReadAll(f)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return base64.StdEncoding.EncodeToString(byt), nil
+// }
 
-func (v *Verifier) loadOpenVMVks(forkName string) error {
-	tempFile := path.Join(os.TempDir(), "openVmVk.json")
-	err := libzkp.DumpVk(forkName, tempFile)
-	if err != nil {
-		return err
-	}
+func (v *Verifier) loadOpenVMVks(assetsPath string) error {
+	vkFile := path.Join(assetsPath, "openVmVk.json")
 
-	f, err := os.Open(filepath.Clean(tempFile))
+	f, err := os.Open(filepath.Clean(vkFile))
 	if err != nil {
 		return err
 	}
@@ -144,5 +139,6 @@ func (v *Verifier) loadOpenVMVks(forkName string) error {
 	v.OpenVMVkMap[dump.Chunk] = struct{}{}
 	v.OpenVMVkMap[dump.Batch] = struct{}{}
 	v.OpenVMVkMap[dump.Bundle] = struct{}{}
+	log.Info("Load vks", "from", assetsPath, "chunk", dump.Chunk, "batch", dump.Batch, "bundle", dump.Bundle)
 	return nil
 }
