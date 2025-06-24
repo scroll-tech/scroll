@@ -11,6 +11,7 @@ import "C" //nolint:typecheck
 import (
 	"fmt"
 	"os"
+	"strings"
 	"unsafe"
 
 	"scroll-tech/common/types/message"
@@ -45,7 +46,7 @@ func InitL2geth(configJSON string) {
 // Verify a chunk proof
 func VerifyChunkProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -56,7 +57,7 @@ func VerifyChunkProof(proofData, forkName string) bool {
 // Verify a batch proof
 func VerifyBatchProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -67,7 +68,7 @@ func VerifyBatchProof(proofData, forkName string) bool {
 // Verify a bundle proof
 func VerifyBundleProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -97,7 +98,7 @@ func fromMessageTaskType(taskType int) int {
 
 // Generate a universal task
 func GenerateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
-	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, forkName)
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName))
 }
 
 // Generate wrapped proof
@@ -127,7 +128,7 @@ func GenerateWrappedProof(proofJSON, metadata string, vkData []byte) string {
 
 // Dumps a verification key to a file
 func DumpVk(forkName, filePath string) error {
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	cFilePath := goToCString(filePath)
 	defer freeCString(cForkName)
 	defer freeCString(cFilePath)
