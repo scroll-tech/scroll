@@ -20,6 +20,7 @@
       ],
       "circuit_version": "v0.13.1"
     },
+    "health_listener_addr": "127.0.0.1:10080",
     "db_path": ".work/db"
   },
   "circuits": {
