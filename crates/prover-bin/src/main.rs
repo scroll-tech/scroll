@@ -75,16 +75,16 @@ async fn main() -> eyre::Result<()> {
     }
 
     let cfg = LocalProverConfig::from_file(args.config_file)?;
-    let default_fork_name = cfg.circuits.keys().nth(0).unwrap().clone();
+    let default_fork_name = cfg.circuits.keys().next().unwrap().clone();
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg.clone());
 
     match args.command {
         Some(Commands::Dump { file_name }) => {
-            let fork_name = args.fork_name.unwrap_or_else(||default_fork_name);
+            let fork_name = args.fork_name.unwrap_or(default_fork_name);
             println!("dump vk for {fork_name}");
             dump_vk(Path::new(&file_name), &local_prover, &fork_name)?;
-        },
+        }
         None => {
             let prover = ProverBuilder::new(sdk_config, local_prover)
                 .build()
@@ -92,7 +92,7 @@ async fn main() -> eyre::Result<()> {
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
 
             prover.run().await;
-        },
+        }
     }
 
     Ok(())

@@ -4,11 +4,11 @@ use eyre::Result;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
-        types::ProofType,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
+        types::ProofType,
         ProvingService,
     },
 };
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
-    sync::{OnceLock, Arc},
+    sync::{Arc, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
@@ -79,12 +79,8 @@ impl ProvingService for LocalProver {
         GetVkResponse { vks, error: None }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        self.set_active_handler(&req.hard_fork_name);
         let handler = self.get_or_init_handler(&req.hard_fork_name);
-        match self
-            .do_prove(req, handler)
-            .await
-        {
+        match self.do_prove(req, handler).await {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
                 status: TaskStatus::Failed,
@@ -137,9 +133,11 @@ impl ProvingService for LocalProver {
 
 impl LocalProver {
     pub fn new(config: LocalProverConfig) -> Self {
-        let handlers = config.circuits.iter()
-                .map(|(k,_)|(k.clone(), OnceLock::new()))
-                .collect();
+        let handlers = config
+            .circuits
+            .keys()
+            .map(|k| (k.clone(), OnceLock::new()))
+            .collect();
         Self {
             config,
             next_task_id: 0,
@@ -175,9 +173,12 @@ impl LocalProver {
         })
     }
 
-    fn get_or_init_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler>{
-        let lk = self.handlers.get(hard_fork_name).expect("coordinator should never sent unexpected forkname");
-        lk.get_or_init(||self.new_handler(hard_fork_name)).clone()
+    fn get_or_init_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+        let lk = self
+            .handlers
+            .get(hard_fork_name)
+            .expect("coordinator should never sent unexpected forkname");
+        lk.get_or_init(|| self.new_handler(hard_fork_name)).clone()
     }
 
     pub fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
@@ -188,9 +189,9 @@ impl LocalProver {
         match hard_fork_name {
             // The new EuclidV2Handler is a universal handler
             // We can add other handler implements if needed
-            _ => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(
-                &config,
-            )))) as Arc<dyn CircuitsHandler>,
+            "some future forkname" => unreachable!(),
+            _ => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(config))))
+                as Arc<dyn CircuitsHandler>,
         }
     }
 }
