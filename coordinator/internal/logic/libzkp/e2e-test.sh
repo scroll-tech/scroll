@@ -20,7 +20,7 @@ function build_test_bins() {
     cd $REPO/coordinator
     make libzkp
     go test -tags="gpu ffi" -timeout 0 -c ./internal/logic/verifier
-    cd $REPO/coordinator/libzkp
+    cd $REPO/coordinator/internal/logic/libzkp
 }
 
 build_test_bins
