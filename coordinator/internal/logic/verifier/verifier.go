@@ -33,7 +33,7 @@ func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 	}
 }
 
-// This struct maps to `VerifierConfig` in coordinator/libzkp/impl/src/verifier.rs
+// This struct maps to `VerifierConfig` in coordinator/internal/logic/libzkp/impl/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
