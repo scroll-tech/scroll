@@ -12,11 +12,10 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/coordinator/libzkp"
-
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/libzkp"
 )
 
 // This struct maps to `CircuitConfig` in libzkp/impl/src/verifier.rs

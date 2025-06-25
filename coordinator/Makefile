@@ -2,7 +2,7 @@
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
-LIBZKP_PATH=libzkp/lib/libzkp.so
+LIBZKP_PATH=./internal/logic/libzkp/lib/libzkp.so
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -18,10 +18,10 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 $(LIBZKP_PATH):
-	$(MAKE) -C libzkp build
+	$(MAKE) -C ./internal/logic/libzkp build
 
 clean_libzkp:
-	$(MAKE) -C libzkp clean
+	$(MAKE) -C ./internal/logic/libzkp clean
 
 libzkp: clean_libzkp $(LIBZKP_PATH)
 
