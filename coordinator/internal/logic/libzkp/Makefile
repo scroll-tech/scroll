@@ -3,7 +3,7 @@
 build:
 	@cargo build --release -p libzkp-c
 	@mkdir -p lib
-	@cp -f ../../target/release/libzkp.so lib/
+	@cp -f ../../../../target/release/libzkp.so lib/
 
 fmt:
 	@cargo fmt --all -- --check
