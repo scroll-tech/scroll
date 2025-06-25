@@ -1,9 +1,9 @@
 .PHONY: prover lint tests_binary
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
+    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ./Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+    PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ../Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 ZKVM_VERSION=$(shell ./print_high_zkvm_version.sh)
@@ -40,7 +40,7 @@ prover:
 
 tests_binary:
 	cargo clean && cargo test --release --no-run
-	ls target/release/deps/prover* | grep -v "\.d" | xargs -I{} ln -sf {} ./prover.test
+	ls ../target/release/deps/prover* | grep -v "\.d" | xargs -I{} ln -sf {} ./prover.test
 
 lint:
 	cargo check --all-features

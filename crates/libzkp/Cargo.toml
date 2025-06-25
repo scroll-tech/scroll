@@ -1,0 +1,23 @@
+[package]
+name = "libzkp"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+scroll-zkvm-types.workspace = true
+scroll-zkvm-verifier-euclid.workspace = true
+
+sbv-primitives.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_derive.workspace = true
+serde_json = { workspace = true, features = ["raw_value"]}
+tracing.workspace = true
+eyre.workspace = true
+
+git-version = "0.3.5"
+serde_stacker = "0.1"
+regex = "1.11"
+c-kzg = { version = "1.0", features = ["serde"] }
+

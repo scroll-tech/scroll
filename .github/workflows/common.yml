@@ -41,7 +41,7 @@ jobs:
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: "common/libzkp/impl -> target"
+        workspaces: ". -> target"
     # - name: Lint
     #   working-directory: 'common'
     #   run: |
