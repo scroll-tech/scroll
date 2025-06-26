@@ -3,6 +3,7 @@
 package verifier
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
@@ -64,9 +65,12 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	v := &Verifier{
 		cfg:         cfg,
 		OpenVMVkMap: make(map[string]struct{}),
+		ChunkVk:     make(map[string][]byte),
+		BatchVk:     make(map[string][]byte),
+		BundleVk:    make(map[string][]byte),
 	}
 
-	if err := v.loadOpenVMVks(cfg.HighVersionCircuit.AssetsPath); err != nil {
+	if err := v.loadOpenVMVks(cfg.HighVersionCircuit); err != nil {
 		return nil, err
 	}
 
@@ -120,8 +124,9 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 // 	return base64.StdEncoding.EncodeToString(byt), nil
 // }
 
-func (v *Verifier) loadOpenVMVks(assetsPath string) error {
-	vkFile := path.Join(assetsPath, "openVmVk.json")
+func (v *Verifier) loadOpenVMVks(cfg *config.CircuitConfig) error {
+
+	vkFile := path.Join(cfg.AssetsPath, "openVmVk.json")
 
 	f, err := os.Open(filepath.Clean(vkFile))
 	if err != nil {
@@ -139,6 +144,23 @@ func (v *Verifier) loadOpenVMVks(assetsPath string) error {
 	v.OpenVMVkMap[dump.Chunk] = struct{}{}
 	v.OpenVMVkMap[dump.Batch] = struct{}{}
 	v.OpenVMVkMap[dump.Bundle] = struct{}{}
-	log.Info("Load vks", "from", assetsPath, "chunk", dump.Chunk, "batch", dump.Batch, "bundle", dump.Bundle)
+	log.Info("Load vks", "from", cfg.AssetsPath, "chunk", dump.Chunk, "batch", dump.Batch, "bundle", dump.Bundle)
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(dump.Chunk)
+	if err != nil {
+		return err
+	}
+	v.ChunkVk[cfg.ForkName] = decodedBytes
+	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Batch)
+	if err != nil {
+		return err
+	}
+	v.BatchVk[cfg.ForkName] = decodedBytes
+	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Bundle)
+	if err != nil {
+		return err
+	}
+	v.BundleVk[cfg.ForkName] = decodedBytes
+
 	return nil
 }
