@@ -26,6 +26,7 @@ pub fn checkout_chunk_task(
 }
 
 /// Generate required staff for proving tasks
+/// return (pi_hash, metadata, task)
 pub fn gen_universal_task(
     task_type: i32,
     task_json: &str,
@@ -106,7 +107,7 @@ pub fn verifier_init(config: &str) -> eyre::Result<()> {
 pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyre::Result<bool> {
     let verifier = verifier::get_verifier(fork_name)?;
 
-    let ret = verifier.verify(task_type, proof)?;
+    let ret = verifier.lock().unwrap().verify(task_type, proof)?;
 
     Ok(ret)
 }
@@ -115,7 +116,7 @@ pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyr
 pub fn dump_vk(fork_name: &str, file: &str) -> eyre::Result<()> {
     let verifier = verifier::get_verifier(fork_name)?;
 
-    verifier.dump_vk(Path::new(file));
+    verifier.lock().unwrap().dump_vk(Path::new(file));
 
     Ok(())
 }

@@ -4,7 +4,7 @@ mod euclidv2;
 use euclidv2::EuclidV2Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::{cell::OnceCell, path::Path, rc::Rc};
+use std::{sync::{OnceLock, Arc, Mutex}, path::Path};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
@@ -48,31 +48,39 @@ pub struct VerifierConfig {
 
 type HardForkName = String;
 
-struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
-static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
+struct VerifierPair(HardForkName, Arc<Mutex<dyn ProofVerifier + Send>>);
+static VERIFIER_HIGH: OnceLock<VerifierPair> = OnceLock::new();
 
 pub fn init(config: VerifierConfig) {
     let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
-    unsafe {
-        VERIFIER_HIGH
-            .set(VerifierPair(
-                config.high_version_circuit.fork_name,
-                Rc::new(Box::new(verifier)),
-            ))
-            .unwrap_unchecked();
-    }
+
+    let ret = VERIFIER_HIGH
+        .set(VerifierPair(
+            config.high_version_circuit.fork_name.to_lowercase(),
+            Arc::new(Mutex::new(verifier)),
+        ))
+        .is_ok();
+
+    assert!(ret);
+    
 }
 
-pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
-    unsafe {
-        if let Some(verifier) = VERIFIER_HIGH.get() {
-            if verifier.0 == fork_name {
-                return Ok(verifier.1.clone());
-            }
+pub fn get_verifier(fork_name: &str) -> Result<Arc<Mutex<dyn ProofVerifier>>> {
+
+    if let Some(verifier) = VERIFIER_HIGH.get() {
+        if verifier.0 == fork_name {
+            return Ok(verifier.1.clone());
         }
+        Err(eyre::eyre!(
+            "failed to get verifier, key not found: {}, expected {}",
+            fork_name, verifier.0,
+        ))
+
+    } else {
+        Err(eyre::eyre!(
+            "failed to get verifier, not inited {}",
+            fork_name
+        ))
     }
-    Err(eyre::eyre!(
-        "failed to get verifier, key not found, {}",
-        fork_name
-    ))
+    
 }
