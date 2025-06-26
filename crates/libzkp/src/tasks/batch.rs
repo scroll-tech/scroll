@@ -5,7 +5,7 @@ use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
         BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchInfo, BatchWitness, EnvelopeV6, EnvelopeV7,
-        PointEvalWitness, ReferenceHeader, N_BLOB_BYTES,
+        PointEvalWitness, ReferenceHeader, ToArchievedWitness, N_BLOB_BYTES,
     },
     public_inputs::ForkName,
     task::ProvingTask,
@@ -104,7 +104,7 @@ impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
         let fork_name = self.fork_name.to_lowercase().as_str().into();
 
-        // calculate point eval needed and compare with task input
+        // sanity check: calculate point eval needed and compare with task input
         let (kzg_commitment, kzg_proof, challenge_digest) = {
             let blob = point_eval::to_blob(&self.blob_bytes);
             let commitment = point_eval::blob_to_kzg_commitment(&blob);
@@ -174,80 +174,39 @@ impl BatchProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BatchInfo> {
+        use scroll_zkvm_types::public_inputs::MultiVersionPublicInputs;
+        use std::panic::{self, AssertUnwindSafe};
+
         let fork_name = ForkName::from(self.fork_name.as_str());
-        let (parent_state_root, state_root, chain_id, withdraw_root) = (
-            self.chunk_proofs
-                .first()
-                .expect("at least one chunk in batch")
-                .metadata
-                .chunk_info
-                .prev_state_root,
-            self.chunk_proofs
-                .last()
-                .expect("at least one chunk in batch")
-                .metadata
-                .chunk_info
-                .post_state_root,
-            self.chunk_proofs
-                .last()
-                .expect("at least one chunk in batch")
-                .metadata
-                .chunk_info
-                .chain_id,
-            self.chunk_proofs
-                .last()
-                .expect("at least one chunk in batch")
-                .metadata
-                .chunk_info
-                .withdraw_root,
-        );
-        let (parent_batch_hash, prev_msg_queue_hash, post_msg_queue_hash) = match self.batch_header
-        {
-            BatchHeaderV::V6(h) => {
-                assert_eq!(
-                    fork_name,
-                    ForkName::EuclidV1,
-                    "hardfork mismatch for da-codec@v6 header: found={fork_name:?}, expected={:?}",
-                    ForkName::EuclidV1,
-                );
-                (h.parent_batch_hash, Default::default(), Default::default())
-            }
-            BatchHeaderV::V7(h) => {
-                assert_eq!(
-                    fork_name,
-                    ForkName::EuclidV2,
-                    "hardfork mismatch for da-codec@v7 header: found={fork_name:?}, expected={:?}",
-                    ForkName::EuclidV2,
-                );
-                (
-                    h.parent_batch_hash,
-                    self.chunk_proofs
-                        .first()
-                        .expect("at least one chunk in batch")
-                        .metadata
-                        .chunk_info
-                        .prev_msg_queue_hash,
-                    self.chunk_proofs
-                        .last()
-                        .expect("at least one chunk in batch")
-                        .metadata
-                        .chunk_info
-                        .post_msg_queue_hash,
-                )
-            }
-        };
+        // for every aggregation task, there are two steps needed to build the metadata:
+        // 1. generate data for metadata from the witness
+        // 2. validate every adjacent proof pair
+        let witness = self.build_guest_input();
+        let archieved = ToArchievedWitness::create(&witness)
+            .map_err(|e| eyre::eyre!("archieve batch witness fail: {e}"))?;
+        let archieved_witness = archieved
+            .access()
+            .map_err(|e| eyre::eyre!("access archieved batch witness fail: {e}"))?;
+        let metadata: BatchInfo = archieved_witness.into();
 
-        let batch_hash = self.batch_header.batch_hash();
+        panic::catch_unwind(AssertUnwindSafe(|| {
+            for w in self.chunk_proofs.windows(2) {
+                w[1].metadata
+                    .chunk_info
+                    .validate(&w[0].metadata.chunk_info, fork_name);
+            }
+        }))
+        .map_err(|e| {
+            let error_msg = if let Some(string) = e.downcast_ref::<String>() {
+                string.clone()
+            } else if let Some(str) = e.downcast_ref::<&str>() {
+                str.to_string()
+            } else {
+                "Unknown validation error occurred".to_string()
+            };
+            eyre::eyre!("Chunk data validation failed: {}", error_msg)
+        })?;
 
-        Ok(BatchInfo {
-            parent_state_root,
-            parent_batch_hash,
-            state_root,
-            batch_hash,
-            chain_id,
-            withdraw_root,
-            prev_msg_queue_hash,
-            post_msg_queue_hash,
-        })
+        Ok(metadata)
     }
 }

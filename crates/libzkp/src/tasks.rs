@@ -10,12 +10,8 @@ pub use chunk_interpreter::ChunkInterpreter;
 pub use scroll_zkvm_types::task::ProvingTask;
 
 use crate::proofs::{BatchProofMetadata, BundleProofMetadata, ChunkProofMetadata};
-use chunk_interpreter::{DummyInterpreter, TryFromWithInterpreter};
 use sbv_primitives::B256;
-use scroll_zkvm_types::{
-    chunk::ChunkInfo,
-    public_inputs::{ForkName, MultiVersionPublicInputs},
-};
+use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
 
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(
@@ -23,11 +19,10 @@ pub fn gen_universal_chunk_task(
     fork_name: ForkName,
     interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
-    let chunk_info = if let Some(interpreter) = interpreter {
-        ChunkInfo::try_from_with_interpret(&mut task, interpreter)
-    } else {
-        ChunkInfo::try_from_with_interpret(&mut task, DummyInterpreter {})
-    }?;
+    if let Some(interpreter) = interpreter {
+        task.prepare_task_via_interpret(interpreter)?;
+    }
+    let chunk_info = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;
     let expected_pi_hash = chunk_info.pi_hash_by_fork(fork_name);
     Ok((
