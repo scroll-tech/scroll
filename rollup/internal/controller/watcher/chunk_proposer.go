@@ -295,17 +295,19 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.recordTimerChunkMetrics(metrics)
 
-		if metrics.L2Gas > p.cfg.MaxL2GasPerChunk || metrics.L1CommitBlobSize > maxBlobSize {
+		if metrics.L2Gas > p.cfg.MaxL2GasPerChunk || metrics.L1CommitBlobSize > maxBlobSize || metrics.L1CommitUncompressedBatchBytesSize > p.cfg.MaxUncompressedBatchBytesSize {
 			if i == 0 {
 				// The first block exceeds hard limits, which indicates a bug in the sequencer, manual fix is needed.
-				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxBlobSize: %v", block.Header.Number, metrics, maxBlobSize)
+				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxBlobSize: %v, maxUncompressedBatchBytesSize: %v", block.Header.Number, metrics, maxBlobSize, p.cfg.MaxUncompressedBatchBytesSize)
 			}
 
 			log.Debug("breaking limit condition in chunking",
 				"l2Gas", metrics.L2Gas,
 				"maxL2Gas", p.cfg.MaxL2GasPerChunk,
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
-				"maxBlobSize", maxBlobSize)
+				"maxBlobSize", maxBlobSize,
+				"L1CommitUncompressedBatchBytesSize", metrics.L1CommitUncompressedBatchBytesSize,
+				"maxUncompressedBatchBytesSize", p.cfg.MaxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 			chunk.PostL1MessageQueueHash = previousPostL1MessageQueueHash

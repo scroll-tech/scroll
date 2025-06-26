@@ -4,11 +4,13 @@
       "chunk_proposer_config": {
         "max_block_num_per_chunk": 100,
         "max_l2_gas_per_chunk": 20000000,
-        "chunk_timeout_sec": 72000000000
+        "chunk_timeout_sec": 72000000000,
+        "max_uncompressed_batch_bytes_size": 4194304
       },
       "batch_proposer_config": {
         "batch_timeout_sec": 72000000000,
-        "max_chunks_per_batch": 45
+        "max_chunks_per_batch": 45,
+        "max_uncompressed_batch_bytes_size": 4194304
       },
       "bundle_proposer_config": {
         "max_batch_num_per_bundle": 45,

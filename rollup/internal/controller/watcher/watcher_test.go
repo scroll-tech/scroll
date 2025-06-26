@@ -103,11 +103,13 @@ func TestFunction(t *testing.T) {
 	// Run chunk proposer test cases.
 	t.Run("TestChunkProposerLimitsCodecV7", testChunkProposerLimitsCodecV7)
 	t.Run("TestChunkProposerBlobSizeLimitCodecV7", testChunkProposerBlobSizeLimitCodecV7)
+	t.Run("TestChunkProposerUncompressedBatchBytesLimitCodecV8", testChunkProposerUncompressedBatchBytesLimitCodecV8)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerLimitsCodecV7", testBatchProposerLimitsCodecV7)
 	t.Run("TestBatchProposerBlobSizeLimitCodecV7", testBatchProposerBlobSizeLimitCodecV7)
 	t.Run("TestBatchProposerMaxChunkNumPerBatchLimitCodecV7", testBatchProposerMaxChunkNumPerBatchLimitCodecV7)
+	t.Run("TestBatchProposerUncompressedBatchBytesLimitCodecV8", testBatchProposerUncompressedBatchBytesLimitCodecV8)
 
 	// Run bundle proposer test cases.
 	t.Run("TestBundleProposerLimitsCodecV7", testBundleProposerLimitsCodecV7)
