@@ -4,7 +4,10 @@ mod euclidv2;
 use euclidv2::EuclidV2Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::{sync::{OnceLock, Arc, Mutex}, path::Path};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex, OnceLock},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
@@ -62,25 +65,22 @@ pub fn init(config: VerifierConfig) {
         .is_ok();
 
     assert!(ret);
-    
 }
 
 pub fn get_verifier(fork_name: &str) -> Result<Arc<Mutex<dyn ProofVerifier>>> {
-
     if let Some(verifier) = VERIFIER_HIGH.get() {
         if verifier.0 == fork_name {
             return Ok(verifier.1.clone());
         }
         Err(eyre::eyre!(
             "failed to get verifier, key not found: {}, expected {}",
-            fork_name, verifier.0,
+            fork_name,
+            verifier.0,
         ))
-
     } else {
         Err(eyre::eyre!(
             "failed to get verifier, not inited {}",
             fork_name
         ))
     }
-    
 }

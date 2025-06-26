@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
@@ -29,7 +30,7 @@ func verify(cCtx *cli.Context) error {
 	fmt.Println("verify proof in: ", proofPath, "type", proofType, "forkName", forkName)
 
 	// Load the content of the proof file
-	data, err := os.ReadFile(proofPath)
+	data, err := os.ReadFile(filepath.Clean(proofPath))
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -51,7 +52,7 @@ func verify(cCtx *cli.Context) error {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
 		if len(proof.Vk) != 0 {
-			if bytes.Compare(proof.Vk, vk) != 0 {
+			if bytes.Equal(proof.Vk, vk) {
 				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
 					base64.StdEncoding.EncodeToString(vk),
 					base64.StdEncoding.EncodeToString(proof.Vk),
@@ -72,7 +73,7 @@ func verify(cCtx *cli.Context) error {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
 		if len(proof.Vk) != 0 {
-			if bytes.Compare(proof.Vk, vk) != 0 {
+			if bytes.Equal(proof.Vk, vk) {
 				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
 					base64.StdEncoding.EncodeToString(vk),
 					base64.StdEncoding.EncodeToString(proof.Vk),
@@ -93,7 +94,7 @@ func verify(cCtx *cli.Context) error {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
 		if len(proof.Vk) != 0 {
-			if bytes.Compare(proof.Vk, vk) != 0 {
+			if bytes.Equal(proof.Vk, vk) {
 				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
 					base64.StdEncoding.EncodeToString(vk),
 					base64.StdEncoding.EncodeToString(proof.Vk),
@@ -101,17 +102,6 @@ func verify(cCtx *cli.Context) error {
 			}
 		} else {
 			proof.Vk = vk
-		}
-
-		if len(proof.Vk) != 0 {
-			if bytes.Compare(proof.Vk, vf.ChunkVk[forkName]) != 0 {
-				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
-					base64.StdEncoding.EncodeToString(vf.ChunkVk[forkName]),
-					base64.StdEncoding.EncodeToString(proof.Vk),
-				)
-			}
-		} else {
-			proof.Vk = vf.ChunkVk[forkName]
 		}
 
 		ret, err = vf.VerifyBundleProof(proof, forkName)

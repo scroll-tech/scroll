@@ -9,8 +9,8 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/libzkp"
 	"scroll-tech/coordinator/internal/logic/verifier"
-	"scroll-tech/coordinator/libzkp"
 )
 
 var (

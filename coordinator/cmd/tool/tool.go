@@ -53,11 +53,6 @@ func init() {
 }
 
 func action(ctx *cli.Context) error {
-	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
-	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
-	}
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)

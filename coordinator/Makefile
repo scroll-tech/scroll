@@ -51,6 +51,7 @@ test-gpu-verifier: $(LIBZKP_PATH)
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
+	cd ../ && cargo fmt --all -- --check && cargo clippy --release -- -D warnings
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

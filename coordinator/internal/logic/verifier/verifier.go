@@ -18,7 +18,7 @@ import (
 	"scroll-tech/coordinator/internal/logic/libzkp"
 )
 
-// This struct maps to `CircuitConfig` in libzkp/impl/src/verifier.rs
+// This struct maps to `CircuitConfig` in libzkp/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.CircuitConfig` being changed
 type rustCircuitConfig struct {
@@ -33,7 +33,7 @@ func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 	}
 }
 
-// This struct maps to `VerifierConfig` in coordinator/internal/logic/libzkp/impl/src/verifier.rs
+// This struct maps to `VerifierConfig` in coordinator/internal/logic/libzkp/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
