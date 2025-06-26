@@ -3,7 +3,6 @@ go 1.22.4
 use (
 	./bridge-history-api
 	./common
-	./common/libzkp
 	./coordinator
 	./database
 	./rollup

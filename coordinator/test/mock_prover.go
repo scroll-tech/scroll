@@ -161,7 +161,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_height": 100, "task_types": []int{int(proofType)}}).
+		SetBody(map[string]interface{}{"universal": true, "prover_height": 100, "task_types": []int{int(proofType)}}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
@@ -191,7 +191,7 @@ func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType)
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType)}).
+		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType), "universal": true}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
@@ -207,32 +207,33 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	}
 
 	var proof []byte
-	switch message.ProofType(proverTaskSchema.TaskType) {
-	case message.ProofTypeChunk:
-		encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{}, MetaData: struct {
-			ChunkInfo *message.ChunkInfo `json:"chunk_info"`
-		}{ChunkInfo: &message.ChunkInfo{}}})
-		assert.NoError(t, err)
-		assert.NotEmpty(t, encodeData)
-		proof = encodeData
-	case message.ProofTypeBatch:
-		encodeData, err := json.Marshal(message.OpenVMBatchProof{VmProof: &message.OpenVMProof{}})
-		assert.NoError(t, err)
-		assert.NotEmpty(t, encodeData)
-		proof = encodeData
-	}
-
-	if proofStatus == verifiedFailed {
-		switch proverTaskSchema.TaskType {
-		case int(message.ProofTypeChunk):
-			encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)}, MetaData: struct {
-				ChunkInfo *message.ChunkInfo `json:"chunk_info"`
-			}{ChunkInfo: &message.ChunkInfo{}}})
+	if proofStatus != verifiedFailed {
+		switch message.ProofType(proverTaskSchema.TaskType) {
+		case message.ProofTypeChunk:
+			fallthrough
+		case message.ProofTypeBatch:
+			encodeData, err := json.Marshal(&message.OpenVMProof{})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
-		case int(message.ProofTypeBatch):
-			encodeData, err := json.Marshal(&message.OpenVMBatchProof{VmProof: &message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)}})
+		case message.ProofTypeBundle:
+			encodeData, err := json.Marshal(&message.OpenVMEvmProof{})
+			assert.NoError(t, err)
+			assert.NotEmpty(t, encodeData)
+			proof = encodeData
+		}
+	} else {
+		// in "verifiedFailed" status, we purpose the mockprover submit proof but not valid
+		switch message.ProofType(proverTaskSchema.TaskType) {
+		case message.ProofTypeChunk:
+			fallthrough
+		case message.ProofTypeBatch:
+			encodeData, err := json.Marshal(&message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)})
+			assert.NoError(t, err)
+			assert.NotEmpty(t, encodeData)
+			proof = encodeData
+		case message.ProofTypeBundle:
+			encodeData, err := json.Marshal(&message.OpenVMEvmProof{Proof: []byte(verifier.InvalidTestProof)})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
@@ -240,11 +241,12 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	}
 
 	submitProof := types.SubmitProofParameter{
-		UUID:     proverTaskSchema.UUID,
-		TaskID:   proverTaskSchema.TaskID,
-		TaskType: proverTaskSchema.TaskType,
-		Status:   int(proofMsgStatus),
-		Proof:    string(proof),
+		UUID:      proverTaskSchema.UUID,
+		TaskID:    proverTaskSchema.TaskID,
+		TaskType:  proverTaskSchema.TaskType,
+		Status:    int(proofMsgStatus),
+		Proof:     string(proof),
+		Universal: true,
 	}
 
 	token, authErrCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(message.ProofType(proverTaskSchema.TaskType))})
