@@ -10,15 +10,15 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.1.3-0.20250226072559-f8a8d3898f54
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950
+	github.com/scroll-tech/da-codec v0.1.3-0.20250626091118-58b899494da6
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20250626101020-47bc86cd961c
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.11.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
 
-replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20250305084331-57148478e950 // It's a hotfix for the header hash incompatibility issue, pls change this with caution
+replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20250626101020-47bc86cd961c // It's a hotfix for the header hash incompatibility issue, pls change this with caution
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
