@@ -35,14 +35,6 @@ func InitVerifier(configJSON string) {
 	C.init_verifier(cConfig)
 }
 
-// Initialize the verifier
-func InitL2geth(configJSON string) {
-	cConfig := goToCString(configJSON)
-	defer freeCString(cConfig)
-
-	C.init_l2geth(cConfig)
-}
-
 // Verify a chunk proof
 func VerifyChunkProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)

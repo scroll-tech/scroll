@@ -8,6 +8,14 @@ package libzkp
 */
 import "C" //nolint:typecheck
 
+// Initialize the handler for universal task
+func InitL2geth(configJSON string) {
+	cConfig := goToCString(configJSON)
+	defer freeCString(cConfig)
+
+	C.init_l2geth(cConfig)
+}
+
 func generateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
 	cTask := goToCString(taskJSON)
 	cForkName := goToCString(forkName)

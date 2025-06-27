@@ -125,7 +125,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
-		if taskCtx.hasAssignedTask != nil {
+		if taskCtx.hasAssignedTask == nil {
 			// Don't dispatch the same failing job to the same prover
 			proverTasks, getFailedTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
 			if getFailedTaskError != nil {

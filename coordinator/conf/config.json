@@ -21,7 +21,10 @@
     "maxIdleNum": 20
   },
   "l2": {
-    "chain_id": 111
+    "chain_id": 111,
+    "l2geth": {
+      "endpoint": "not need to specified for mocking"
+    }
   },
   "auth": {
     "secret": "prover secret key",

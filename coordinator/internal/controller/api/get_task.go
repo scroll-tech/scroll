@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -29,12 +26,7 @@ type GetTaskController struct {
 
 	getTaskAccessCounter *prometheus.CounterVec
 
-	l2gethClient    *ethclient.Client
-	lastBlockNumber struct {
-		sync.RWMutex
-		data uint64
-		t    time.Time
-	}
+	l2syncer *l2Syncer
 }
 
 // NewGetTaskController create a get prover task controller
@@ -55,48 +47,13 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
 	ptc.proverTasks[message.ProofTypeBundle] = bundleProverTask
 
-	if cfg.L2 == nil || cfg.L2.Endpoint == nil {
-		log.Crit("l2 endpoint is not set in config")
+	if syncer, err := createL2Syncer(cfg); err != nil {
+		log.Crit("can not init l2 syncer", "err", err)
 	} else {
-		var err error
-		ptc.l2gethClient, err = ethclient.Dial(cfg.L2.Endpoint.Url)
-		if err != nil {
-			log.Crit("dial l2geth endpoint fail", "err", err)
-		}
+		ptc.l2syncer = syncer
 	}
 
 	return ptc
-}
-
-// getLatestBlockNumber gets the latest block number, using cache if available and not expired
-func (ptc *GetTaskController) getLatestBlockNumber(ctx *gin.Context) (uint64, error) {
-	// First check if we have a cached value that's still valid
-	ptc.lastBlockNumber.RLock()
-	if !ptc.lastBlockNumber.t.IsZero() && time.Since(ptc.lastBlockNumber.t) < time.Second*10 {
-		blockNumber := ptc.lastBlockNumber.data
-		ptc.lastBlockNumber.RUnlock()
-		return blockNumber, nil
-	}
-	ptc.lastBlockNumber.RUnlock()
-
-	// If not cached or expired, fetch from the client
-	if ptc.l2gethClient == nil {
-		return 0, errors.New("L2 geth client not initialized")
-	}
-
-	blockNumber, err := ptc.l2gethClient.BlockNumber(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get latest block number: %w", err)
-	}
-
-	// Update the cache
-	ptc.lastBlockNumber.Lock()
-	ptc.lastBlockNumber.data = blockNumber
-	ptc.lastBlockNumber.t = time.Now()
-	ptc.lastBlockNumber.Unlock()
-
-	log.Debug("updated block height reference", "height", blockNumber)
-	return blockNumber, nil
 }
 
 func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
@@ -132,7 +89,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	if getTaskParameter.ProverHeight == 0 {
 		// help update the prover height with internal l2geth
-		if blk, err := ptc.getLatestBlockNumber(ctx); err == nil {
+		if blk, err := ptc.l2syncer.getLatestBlockNumber(ctx); err == nil {
 			getTaskParameter.ProverHeight = blk
 		} else {
 			nerr := fmt.Errorf("inner l2geth failure, err:%w", err)

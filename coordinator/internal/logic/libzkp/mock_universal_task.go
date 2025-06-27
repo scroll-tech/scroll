@@ -11,6 +11,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
+func InitL2geth(configJSON string) {
+}
+
 func generateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
 
 	fmt.Printf("call mocked generate universal task %d, taskJson %s\n", taskType, taskJSON)

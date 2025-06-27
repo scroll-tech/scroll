@@ -79,7 +79,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	tokenTimeout = 60
 	conf = &config.Config{
 		L2: &config.L2{
-			ChainID: 111,
+			ChainID:  111,
+			Endpoint: &config.L2Endpoint{},
 		},
 		ProverManager: &config.ProverManager{
 			ProversPerSession: proversPerSession,

@@ -130,7 +130,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
-		if taskCtx.hasAssignedTask != nil {
+		if taskCtx.hasAssignedTask == nil {
 			// Don't dispatch the same failing job to the same prover
 			proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
 			if getFailedTaskError != nil {
