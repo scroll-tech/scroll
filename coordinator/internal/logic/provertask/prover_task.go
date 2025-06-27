@@ -57,10 +57,11 @@ type proverTaskContext struct {
 	ProverProviderType uint8
 	HardForkNames      map[string]struct{}
 
-	taskType   message.ProofType
-	chunkTask  *orm.Chunk
-	batchTask  *orm.Batch
-	bundleTask *orm.Bundle
+	taskType        message.ProofType
+	chunkTask       *orm.Chunk
+	batchTask       *orm.Batch
+	bundleTask      *orm.Bundle
+	hasAssignedTask *orm.ProverTask
 }
 
 // hardForkName get the chunk/batch/bundle hard fork name
@@ -175,14 +176,12 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 
-	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
+	assigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
 	}
 
-	if isAssigned {
-		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
-	}
+	ptc.hasAssignedTask = assigned
 	return &ptc, nil
 }
 

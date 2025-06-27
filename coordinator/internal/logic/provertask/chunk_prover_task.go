@@ -79,12 +79,26 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
-		if getTaskError != nil {
-			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
+		if taskCtx.hasAssignedTask != nil {
+			log.Debug("retrived assigned task chunk", "taskID", taskCtx.hasAssignedTask.TaskID, "prover", taskCtx.ProverName)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetChunkByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get chunk has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpChunkTask == nil {
+				// if the assigned chunk dropped, there would be too much issue to assign another
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped chunk. ProverName: %s, ProverVersion: %s",
+					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
 		}
 
+		if tmpChunkTask == nil {
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
+			if getTaskError != nil {
+				log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
+		}
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
@@ -145,19 +159,24 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-	proverTask := orm.ProverTask{
-		TaskID:          chunkTask.Hash,
-		ProverPublicKey: taskCtx.PublicKey,
-		TaskType:        int16(message.ProofTypeChunk),
-		ProverName:      taskCtx.ProverName,
-		ProverVersion:   taskCtx.ProverVersion,
-		ProvingStatus:   int16(types.ProverAssigned),
-		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-		// here why need use UTC time. see scroll/common/database/db.go
-		AssignedAt: utils.NowUTC(),
+	var proverTask *orm.ProverTask
+	if taskCtx.hasAssignedTask == nil {
+		proverTask = &orm.ProverTask{
+			TaskID:          chunkTask.Hash,
+			ProverPublicKey: taskCtx.PublicKey,
+			TaskType:        int16(message.ProofTypeChunk),
+			ProverName:      taskCtx.ProverName,
+			ProverVersion:   taskCtx.ProverVersion,
+			ProvingStatus:   int16(types.ProverAssigned),
+			FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+			// here why need use UTC time. see scroll/common/database/db.go
+			AssignedAt: utils.NowUTC(),
+		}
+	} else {
+		proverTask = taskCtx.hasAssignedTask
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, chunkTask, hardForkName)
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), proverTask, chunkTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
@@ -175,10 +194,12 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		proverTask.Metadata = metadata
 	}
 
-	if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
+	if taskCtx.hasAssignedTask == nil {
+		if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
+			cp.recoverActiveAttempts(ctx, chunkTask)
+			log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+			return nil, ErrCoordinatorInternalFailure
+		}
 	}
 	// notice uuid is set as a side effect of InsertProverTask
 	taskMsg.UUID = proverTask.UUID.String()

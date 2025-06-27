@@ -57,17 +57,17 @@ func (*ProverTask) TableName() string {
 }
 
 // IsProverAssigned checks if a prover with the given public key has been assigned a task.
-func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (bool, error) {
+func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	var task ProverTask
 	err := db.Where("prover_public_key = ? AND proving_status = ?", publicKey, types.ProverAssigned).First(&task).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
+			return nil, nil
 		}
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	return &task, nil
 }
 
 // GetProverTasks get prover tasks
