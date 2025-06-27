@@ -208,11 +208,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
-	} else {
-		if err = bp.proverTaskOrm.UpdateProverTaskAssignedTime(ctx.Copy(), proverTask.UUID, utils.NowUTC()); err != nil {
-			log.Error("update assigned batch prover task fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-			return nil, ErrCoordinatorInternalFailure
-		}
 	}
 	// notice uuid is set as a side effect of InsertProverTask
 	taskMsg.UUID = proverTask.UUID.String()

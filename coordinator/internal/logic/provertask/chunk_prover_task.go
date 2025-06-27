@@ -202,11 +202,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
-	} else {
-		if err = cp.proverTaskOrm.UpdateProverTaskAssignedTime(ctx.Copy(), proverTask.UUID, utils.NowUTC()); err != nil {
-			log.Error("update assigned chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-			return nil, ErrCoordinatorInternalFailure
-		}
 	}
 	// notice uuid is set as a side effect of InsertProverTask
 	taskMsg.UUID = proverTask.UUID.String()

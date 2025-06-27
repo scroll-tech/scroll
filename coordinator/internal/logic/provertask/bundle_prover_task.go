@@ -207,11 +207,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 			log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
-	} else {
-		if err = bp.proverTaskOrm.UpdateProverTaskAssignedTime(ctx.Copy(), proverTask.UUID, utils.NowUTC()); err != nil {
-			log.Error("update assigned bundle prover task fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-			return nil, ErrCoordinatorInternalFailure
-		}
 	}
 	// notice uuid is set as a side effect of InsertProverTask
 	taskMsg.UUID = proverTask.UUID.String()
