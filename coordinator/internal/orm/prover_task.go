@@ -269,6 +269,24 @@ func (o *ProverTask) UpdateProverTaskProvingStatusAndFailureType(ctx context.Con
 	return nil
 }
 
+// UpdateProverTaskProvingStatusAndFailureType updates the proving_status of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskAssignedTime(ctx context.Context, uuid uuid.UUID, t time.Time, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("uuid = ?", uuid)
+
+	updates := make(map[string]interface{})
+	updates["assigned_at"] = t
+	if err := db.Updates(updates).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskAssignedTime error: %w, uuid:%s, status: %v", err, uuid, t)
+	}
+	return nil
+}
+
 // UpdateProverTaskFailureType update the prover task failure type
 func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, uuid uuid.UUID, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db
