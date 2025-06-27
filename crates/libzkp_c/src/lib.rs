@@ -112,7 +112,7 @@ pub unsafe extern "C" fn gen_universal_task(
     let ret =
         libzkp::gen_universal_task(task_type, &task_json, c_char_to_str(fork_name), interpreter);
 
-    if let Ok((pi_hash, task_json, meta_json)) = ret {
+    if let Ok((pi_hash, meta_json, task_json)) = ret {
         let expected_pi_hash = pi_hash.0.map(|byte| byte as c_char);
         HandlingResult {
             ok: true as c_char,
