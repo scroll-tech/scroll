@@ -80,16 +80,18 @@ impl CircuitsHandler for Arc<Mutex<EuclidV2Handler>> {
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String> {
         let u_task: ProvingTask = serde_json::from_str(&prove_request.input)?;
         let handler_self = self.try_lock().unwrap();
-        let expected_vk = handler_self.get_vk_and_cache(prove_request.proof_type);
-        if BASE64_STANDARD.encode(&u_task.vk) != expected_vk {
-            eyre::bail!(
-                "vk is not match!, prove type {:?}, expected {}, get {}",
-                prove_request.proof_type,
-                expected_vk,
-                BASE64_STANDARD.encode(&u_task.vk),
-            );
-        }
-
+        // current coordinator do not send vk and in fact it has been checked while login
+        // checking here is not need unless considering a malicious coordinator
+        /*        let expected_vk = handler_self.get_vk_and_cache(prove_request.proof_type);
+                if BASE64_STANDARD.encode(&u_task.vk) != expected_vk {
+                    eyre::bail!(
+                        "vk is not match!, prove type {:?}, expected {}, get {}",
+                        prove_request.proof_type,
+                        expected_vk,
+                        BASE64_STANDARD.encode(&u_task.vk),
+                    );
+                }
+        */
         let proof = match prove_request.proof_type {
             ProofType::Chunk => handler_self
                 .chunk_prover
