@@ -13,13 +13,14 @@ import (
 
 	"scroll-tech/common/types/message"
 
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 )
 
 func verify(cCtx *cli.Context) error {
 	var forkName, proofType, proofPath string
 	if cCtx.Args().Len() <= 2 {
-		forkName = cfg.ProverManager.Verifier.HighVersionCircuit.ForkName
+		forkName = cfg.ProverManager.Verifier.Verifiers[0].ForkName
 		proofType = cCtx.Args().First()
 		proofPath = cCtx.Args().Get(1)
 	} else {
@@ -27,7 +28,7 @@ func verify(cCtx *cli.Context) error {
 		proofType = cCtx.Args().Get(1)
 		proofPath = cCtx.Args().Get(2)
 	}
-	fmt.Println("verify proof in: ", proofPath, "type", proofType, "forkName", forkName)
+	log.Info("verify proof in: ", proofPath, "type", proofType, "forkName", forkName)
 
 	// Load the content of the proof file
 	data, err := os.ReadFile(filepath.Clean(proofPath))

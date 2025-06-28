@@ -5,6 +5,7 @@ use euclidv2::EuclidV2Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     path::Path,
     sync::{Arc, Mutex, OnceLock},
 };
@@ -46,36 +47,42 @@ pub struct CircuitConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifierConfig {
-    pub high_version_circuit: CircuitConfig,
+    pub circuits: Vec<CircuitConfig>,
 }
 
 type HardForkName = String;
 
-struct VerifierPair(HardForkName, Arc<Mutex<dyn ProofVerifier + Send>>);
-static VERIFIER_HIGH: OnceLock<VerifierPair> = OnceLock::new();
+type VerifierType = Arc<Mutex<dyn ProofVerifier + Send>>;
+static VERIFIERS: OnceLock<HashMap<HardForkName, VerifierType>> = OnceLock::new();
 
 pub fn init(config: VerifierConfig) {
-    let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
+    let mut verifiers: HashMap<HardForkName, VerifierType> = Default::default();
 
-    let ret = VERIFIER_HIGH
-        .set(VerifierPair(
-            config.high_version_circuit.fork_name.to_lowercase(),
-            Arc::new(Mutex::new(verifier)),
-        ))
-        .is_ok();
+    for cfg in &config.circuits {
+        let verifier = EuclidV2Verifier::new(&cfg.assets_path);
+        let ret = verifiers.insert(cfg.fork_name.to_lowercase(), Arc::new(Mutex::new(verifier)));
+        assert!(
+            ret.is_none(),
+            "DO NOT init the same fork {} twice",
+            cfg.fork_name
+        );
+        tracing::info!("load verifier config for fork {}", cfg.fork_name);
+    }
 
+    let ret = VERIFIERS.set(verifiers).is_ok();
     assert!(ret);
 }
 
 pub fn get_verifier(fork_name: &str) -> Result<Arc<Mutex<dyn ProofVerifier>>> {
-    if let Some(verifier) = VERIFIER_HIGH.get() {
-        if verifier.0 == fork_name {
-            return Ok(verifier.1.clone());
+    if let Some(verifiers) = VERIFIERS.get() {
+        if let Some(verifier) = verifiers.get(fork_name) {
+            return Ok(verifier.clone());
         }
+
         Err(eyre::eyre!(
-            "failed to get verifier, key not found: {}, expected {}",
+            "failed to get verifier, key not found: {}, has {:?}",
             fork_name,
-            verifier.0,
+            verifiers.keys().collect::<Vec<_>>(),
         ))
     } else {
         Err(eyre::eyre!(

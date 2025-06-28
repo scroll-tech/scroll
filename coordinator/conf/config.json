@@ -7,11 +7,12 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
-      "high_version_circuit": {
-        "assets_path": "assets",
-        "fork_name": "euclidV2",
-        "min_prover_version": "v4.4.45"
-      }
+      "assets_path": "assets",
+      "min_prover_version": "v4.4.45",
+      "accept_vks": [{
+        "file": "euclidvk.json",
+        "fork_name": "euclidV2"
+      }]
     }
   },
   "db": {

@@ -26,7 +26,7 @@ type rustCircuitConfig struct {
 	AssetsPath string `json:"assets_path"`
 }
 
-func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
+func newRustCircuitConfig(cfg config.AssetConfig) *rustCircuitConfig {
 	return &rustCircuitConfig{
 		ForkName:   cfg.ForkName,
 		AssetsPath: cfg.AssetsPath,
@@ -37,13 +37,17 @@ func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
-	HighVersionCircuit *rustCircuitConfig `json:"high_version_circuit"`
+	Circuits []*rustCircuitConfig `json:"circuits"`
 }
 
 func newRustVerifierConfig(cfg *config.VerifierConfig) *rustVerifierConfig {
-	return &rustVerifierConfig{
-		HighVersionCircuit: newRustCircuitConfig(cfg.HighVersionCircuit),
+
+	out := &rustVerifierConfig{}
+
+	for _, cfg := range cfg.Verifiers {
+		out.Circuits = append(out.Circuits, newRustCircuitConfig(cfg))
 	}
+	return out
 }
 
 type rustVkDump struct {
@@ -70,8 +74,10 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		BundleVk:    make(map[string][]byte),
 	}
 
-	if err := v.loadOpenVMVks(cfg.HighVersionCircuit); err != nil {
-		return nil, err
+	for _, cfg := range cfg.Verifiers {
+		if err := v.loadOpenVMVks(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	return v, nil
@@ -124,9 +130,13 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 // 	return base64.StdEncoding.EncodeToString(byt), nil
 // }
 
-func (v *Verifier) loadOpenVMVks(cfg *config.CircuitConfig) error {
+func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 
-	vkFile := path.Join(cfg.AssetsPath, "openVmVk.json")
+	vkFileName := cfg.Vkfile
+	if vkFileName == "" {
+		vkFileName = "openVmVk.json"
+	}
+	vkFile := path.Join(cfg.AssetsPath, vkFileName)
 
 	f, err := os.Open(filepath.Clean(vkFile))
 	if err != nil {

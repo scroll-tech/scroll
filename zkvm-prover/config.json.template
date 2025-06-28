@@ -26,7 +26,11 @@
   "circuits": {
     "euclidV2": {
       "hard_fork_name": "euclidV2",
-      "workspace_path": ".work"
-    }
+      "workspace_path": ".work/euclid"
+    },
+    "feynman": {
+      "hard_fork_name": "feynman",
+      "workspace_path": ".work/feynman1"
+    },    
   }
 }

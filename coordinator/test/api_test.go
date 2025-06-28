@@ -85,11 +85,11 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		ProverManager: &config.ProverManager{
 			ProversPerSession: proversPerSession,
 			Verifier: &config.VerifierConfig{
-				HighVersionCircuit: &config.CircuitConfig{
-					AssetsPath:       "",
-					ForkName:         "euclidV2",
-					MinProverVersion: "v4.4.89",
-				},
+				MinProverVersion: "v4.4.89",
+				Verifiers: []config.AssetConfig{{
+					AssetsPath: "",
+					ForkName:   "euclidV2",
+				}},
 			},
 			BatchCollectionTimeSec:  10,
 			ChunkCollectionTimeSec:  10,
