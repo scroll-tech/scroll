@@ -13,9 +13,12 @@ use crate::proofs::{self, BatchProofMetadata, BundleProofMetadata, ChunkProofMet
 use sbv_primitives::B256;
 use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
 
-fn check_aggregation_proofs<Metadata>(proofs: &[proofs::WrappedProof<Metadata>], fork_name: ForkName) 
-    -> eyre::Result<()>
-    where Metadata : proofs::ProofMetadata,
+fn check_aggregation_proofs<Metadata>(
+    proofs: &[proofs::WrappedProof<Metadata>],
+    fork_name: ForkName,
+) -> eyre::Result<()>
+where
+    Metadata: proofs::ProofMetadata,
 {
     use std::panic::{self, AssertUnwindSafe};
 
@@ -38,7 +41,6 @@ fn check_aggregation_proofs<Metadata>(proofs: &[proofs::WrappedProof<Metadata>],
     })?;
 
     Ok(())
-
 }
 
 /// Generate required staff for chunk proving

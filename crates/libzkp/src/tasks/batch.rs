@@ -174,7 +174,6 @@ impl BatchProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BatchInfo> {
-
         let fork_name = ForkName::from(self.fork_name.as_str());
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
