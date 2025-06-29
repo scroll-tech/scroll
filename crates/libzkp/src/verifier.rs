@@ -59,8 +59,10 @@ pub fn init(config: VerifierConfig) {
     let mut verifiers: HashMap<HardForkName, VerifierType> = Default::default();
 
     for cfg in &config.circuits {
-        let verifier = EuclidV2Verifier::new(&cfg.assets_path);
-        let ret = verifiers.insert(cfg.fork_name.to_lowercase(), Arc::new(Mutex::new(verifier)));
+        let canonical_fork_name = cfg.fork_name.to_lowercase();
+
+        let verifier = EuclidV2Verifier::new(&cfg.assets_path, canonical_fork_name.as_str().into());
+        let ret = verifiers.insert(canonical_fork_name, Arc::new(Mutex::new(verifier)));
         assert!(
             ret.is_none(),
             "DO NOT init the same fork {} twice",
