@@ -9,9 +9,37 @@ pub use chunk::{ChunkProvingTask, ChunkTask};
 pub use chunk_interpreter::ChunkInterpreter;
 pub use scroll_zkvm_types::task::ProvingTask;
 
-use crate::proofs::{BatchProofMetadata, BundleProofMetadata, ChunkProofMetadata};
+use crate::proofs::{self, BatchProofMetadata, BundleProofMetadata, ChunkProofMetadata};
 use sbv_primitives::B256;
 use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
+
+fn check_aggregation_proofs<Metadata>(proofs: &[proofs::WrappedProof<Metadata>], fork_name: ForkName) 
+    -> eyre::Result<()>
+    where Metadata : proofs::ProofMetadata,
+{
+    use std::panic::{self, AssertUnwindSafe};
+
+    panic::catch_unwind(AssertUnwindSafe(|| {
+        for w in proofs.windows(2) {
+            w[1].metadata
+                .pi_hash_info()
+                .validate(w[0].metadata.pi_hash_info(), fork_name);
+        }
+    }))
+    .map_err(|e| {
+        let error_msg = if let Some(string) = e.downcast_ref::<String>() {
+            string.clone()
+        } else if let Some(str) = e.downcast_ref::<&str>() {
+            str.to_string()
+        } else {
+            "Unknown validation error occurred".to_string()
+        };
+        eyre::eyre!("Chunk data validation failed: {}", error_msg)
+    })?;
+
+    Ok(())
+
+}
 
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(

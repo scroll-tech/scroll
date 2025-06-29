@@ -51,8 +51,6 @@ impl BundleProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BundleInfo> {
-        use scroll_zkvm_types::public_inputs::MultiVersionPublicInputs;
-        use std::panic::{self, AssertUnwindSafe};
 
         let fork_name = ForkName::from(self.fork_name.as_str());
         // for every aggregation task, there are two steps needed to build the metadata:
@@ -66,23 +64,7 @@ impl BundleProvingTask {
             .map_err(|e| eyre::eyre!("access archieved bundle witness fail: {e}"))?;
         let metadata: BundleInfo = archieved_witness.into();
 
-        panic::catch_unwind(AssertUnwindSafe(|| {
-            for w in self.batch_proofs.windows(2) {
-                w[1].metadata
-                    .batch_info
-                    .validate(&w[0].metadata.batch_info, fork_name);
-            }
-        }))
-        .map_err(|e| {
-            let error_msg = if let Some(string) = e.downcast_ref::<String>() {
-                string.clone()
-            } else if let Some(str) = e.downcast_ref::<&str>() {
-                str.to_string()
-            } else {
-                "Unknown validation error occurred".to_string()
-            };
-            eyre::eyre!("Batch data validation failed: {}", error_msg)
-        })?;
+        super::check_aggregation_proofs(self.batch_proofs.as_slice(), fork_name)?;
 
         Ok(metadata)
     }

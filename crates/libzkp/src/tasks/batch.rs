@@ -120,12 +120,12 @@ impl BatchProvingTask {
                     EnvelopeV6::from(self.blob_bytes.as_slice()).challenge_digest(versioned_hash)
                 }
                 BatchHeaderV::V7(_) => {
-                    assert_eq!(
-                        fork_name,
-                        ForkName::EuclidV2,
-                        "hardfork mismatch for da-codec@v7 header: found={fork_name:?}, expected={:?}",
-                        ForkName::EuclidV2,
-                    );
+                    match fork_name {
+                        ForkName::EuclidV2 => (),
+                        _ => unreachable!("hardfork mismatch for da-codec@v6 header: found={fork_name:?}, expected={:?}",
+                                [ForkName::EuclidV2],
+                            ),
+                    }
                     let padded_blob_bytes = {
                         let mut padded_blob_bytes = self.blob_bytes.to_vec();
                         padded_blob_bytes.resize(N_BLOB_BYTES, 0);
@@ -174,8 +174,6 @@ impl BatchProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BatchInfo> {
-        use scroll_zkvm_types::public_inputs::MultiVersionPublicInputs;
-        use std::panic::{self, AssertUnwindSafe};
 
         let fork_name = ForkName::from(self.fork_name.as_str());
         // for every aggregation task, there are two steps needed to build the metadata:
@@ -189,23 +187,7 @@ impl BatchProvingTask {
             .map_err(|e| eyre::eyre!("access archieved batch witness fail: {e}"))?;
         let metadata: BatchInfo = archieved_witness.into();
 
-        panic::catch_unwind(AssertUnwindSafe(|| {
-            for w in self.chunk_proofs.windows(2) {
-                w[1].metadata
-                    .chunk_info
-                    .validate(&w[0].metadata.chunk_info, fork_name);
-            }
-        }))
-        .map_err(|e| {
-            let error_msg = if let Some(string) = e.downcast_ref::<String>() {
-                string.clone()
-            } else if let Some(str) = e.downcast_ref::<&str>() {
-                str.to_string()
-            } else {
-                "Unknown validation error occurred".to_string()
-            };
-            eyre::eyre!("Chunk data validation failed: {}", error_msg)
-        })?;
+        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), fork_name)?;
 
         Ok(metadata)
     }
