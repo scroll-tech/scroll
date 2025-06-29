@@ -79,6 +79,7 @@ type Layer2Relayer struct {
 	commitSender   *sender.Sender
 	finalizeSender *sender.Sender
 	l1RollupABI    *abi.ABI
+	validiumABI    *abi.ABI
 
 	l2GasOracleABI *abi.ABI
 
@@ -172,6 +173,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		commitSender:   commitSender,
 		finalizeSender: finalizeSender,
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
+		validiumABI:    bridgeAbi.ValidiumABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
 		batchStrategy:  strategy,
@@ -259,9 +261,12 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
 		}
 
+		// validium version
+		// ...
+
 		// commit genesis batch on L1
 		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
-		return r.commitGenesisBatch(dbBatch.Hash, dbBatch.BatchHeader, common.HexToHash(dbBatch.StateRoot))
+		return r.commitGenesisBatch(dbBatch.Hash, dbBatch.BatchHeader)
 	})
 
 	if err != nil {
@@ -273,12 +278,14 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	return nil
 }
 
-func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot common.Hash) error {
+func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte) error {
 	// encode "importGenesisBatch" transaction calldata
-	calldata, packErr := r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+	calldata, packErr := r.validiumABI.Pack("importGenesisBatch", batchHeader)
 	if packErr != nil {
-		return fmt.Errorf("failed to pack importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
+		return fmt.Errorf("failed to pack importGenesisBatch with batch header: %v. error: %v", common.Bytes2Hex(batchHeader), packErr)
 	}
+
+	log.Warn("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
 
 	// submit genesis batch to L1 rollup contract
 	txHash, _, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil)
@@ -467,9 +474,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
 	case encoding.CodecV7:
-		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
+		// calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
+		// if err != nil {
+		// 	log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+		// 	return
+		// }
+		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadValidium(batchesToSubmit, firstBatch)
 		if err != nil {
-			log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+			log.Error("failed to construct constructCommitBatchPayloadValidium payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 			return
 		}
 	default:
@@ -694,7 +706,11 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
 	case encoding.CodecV7:
-		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
+		// calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
+		// }
+		calldata, err = r.constructFinalizeBundlePayloadValidium(dbBatch, endChunk, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
 		}
@@ -955,6 +971,19 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
+func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batchesToSubmit []*dbBatchWithChunksAndParent, batch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+	var maxBlockHeight uint64
+	var totalGasUsed uint64
+
+	version := encoding.CodecVersion(batchesToSubmit[0].Batch.CodecVersion)
+	commitment := common.Hash{} // todo
+	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.ParentBatchHash), common.HexToHash(batch.StateRoot), common.HexToHash(batch.WithdrawRoot), commitment[:])
+	if err != nil {
+		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
+	}
+	return calldata, nil, maxBlockHeight, totalGasUsed, nil
+}
+
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
@@ -979,6 +1008,21 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
 		common.HexToHash(dbBatch.StateRoot),
 		common.HexToHash(dbBatch.WithdrawRoot),
+	)
+	if packErr != nil {
+		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
+	}
+	return calldata, nil
+}
+
+func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
+	fmt.Println("packing finalizeBundle", len(dbBatch.BatchHeader), dbBatch.CodecVersion, dbBatch.BatchHeader, new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk), common.HexToHash(dbBatch.StateRoot), common.HexToHash(dbBatch.WithdrawRoot))
+	// finalizeBundle without proof.
+	calldata, packErr := r.validiumABI.Pack(
+		"finalizeBundle",
+		dbBatch.BatchHeader,
+		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
+		[]byte{},
 	)
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)

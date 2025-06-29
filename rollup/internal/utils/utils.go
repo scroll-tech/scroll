@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
@@ -117,6 +119,22 @@ type BatchMetadata struct {
 	ChallengeDigest    common.Hash
 }
 
+func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) []byte {
+	emptyHash := common.Hash{}
+
+	batchBytes := make([]byte, 105+32)                       // todo: commitment
+	batchBytes[0] = uint8(codecVersion)                      // version
+	binary.BigEndian.PutUint64(batchBytes[1:9], b.Index)     // batch index
+	copy(batchBytes[9:41], b.ParentBatchHash[0:32])          // parentBatchHash
+	copy(batchBytes[41:73], b.StateRoot().Bytes()[0:32])     // postStateRoot
+	copy(batchBytes[73:105], b.WithdrawRoot().Bytes()[0:32]) // postWithdrawRoot
+	copy(batchBytes[105:137], emptyHash[0:32])               // data commitment
+	return batchBytes
+}
+
+// // func hashBatchHeaderValidium()
+// return crypto.Keccak256Hash(b.Encode())
+
 // GetBatchMetadata retrieves the metadata of a batch.
 func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
 	codec, err := encoding.CodecFromVersion(codecVersion)
@@ -136,6 +154,12 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		BlobBytes:       daBatch.BlobBytes(),
 		ChallengeDigest: daBatch.ChallengeDigest(),
 	}
+
+	// validium
+	encoded := encodeBatchHeaderValidium(batch, codecVersion)
+	hash := crypto.Keccak256Hash(encoded)
+	batchMeta.BatchBytes = encoded
+	batchMeta.BatchHash = hash
 
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
 	if err != nil {
