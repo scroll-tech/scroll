@@ -111,14 +111,20 @@ pub unsafe extern "C" fn gen_universal_task(
     } else {
         c_char_to_str(task).to_string()
     };
-    
+
     let expected_vk = if expected_vk_len > 0 {
         std::slice::from_raw_parts(expected_vk, expected_vk_len)
     } else {
         &[]
     };
-    
-    let ret = libzkp::gen_universal_task(task_type, &task_json, c_char_to_str(fork_name), expected_vk, interpreter);
+
+    let ret = libzkp::gen_universal_task(
+        task_type,
+        &task_json,
+        c_char_to_str(fork_name),
+        expected_vk,
+        interpreter,
+    );
 
     if let Ok((pi_hash, meta_json, task_json)) = ret {
         let expected_pi_hash = pi_hash.0.map(|byte| byte as c_char);
