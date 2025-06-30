@@ -113,6 +113,6 @@ func verify(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("verified:", ret)
+	log.Info("verified:", "ret", ret)
 	return nil
 }

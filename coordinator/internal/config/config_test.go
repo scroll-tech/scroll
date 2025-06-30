@@ -20,11 +20,11 @@ func TestConfig(t *testing.T) {
 			"batch_collection_time_sec": 180,
 			"chunk_collection_time_sec": 180,
 			"verifier": {
-				"high_version_circuit": {
+				"min_prover_version": "v4.4.45",
+				"verifiers": [{
 					"assets_path": "assets",
-					"fork_name": "euclidV2",
-					"min_prover_version": "v4.4.45"
-				}
+					"fork_name": "euclidV2"
+				}]
 			},
 			"max_verifier_workers": 4
 		},

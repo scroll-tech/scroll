@@ -192,7 +192,7 @@ impl<Metadata: ProofMetadata> WrappedProof<Metadata> {
             .map(|&v| v as u32)
             .collect::<Vec<_>>();
 
-        let ret = expected_pi != proof_pi;
+        let ret = expected_pi == proof_pi;
         if !ret {
             tracing::warn!("pi mismatch: expected={expected_pi:?}, found={proof_pi:?}");
         }
