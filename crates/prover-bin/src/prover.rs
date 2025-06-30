@@ -1,6 +1,5 @@
 use crate::zk_circuits_handler::{euclidV2::EuclidV2Handler, CircuitsHandler};
 use async_trait::async_trait;
-use base64::{prelude::BASE64_STANDARD, Engine};
 use eyre::Result;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
@@ -9,6 +8,7 @@ use scroll_proving_sdk::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
+        types::ProofType,
         ProvingService,
     },
 };
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
-    sync::Arc,
+    sync::{Arc, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
@@ -45,6 +45,9 @@ impl LocalProverConfig {
 pub struct CircuitConfig {
     pub hard_fork_name: String,
     pub workspace_path: String,
+    /// cached vk value to save some initial cost, for debugging only
+    #[serde(default)]
+    pub vks: HashMap<ProofType, String>,
 }
 
 pub struct LocalProver {
@@ -52,7 +55,7 @@ pub struct LocalProver {
     next_task_id: u64,
     current_task: Option<JoinHandle<Result<String>>>,
 
-    active_handler: Option<(String, Arc<dyn CircuitsHandler>)>,
+    handlers: HashMap<String, OnceLock<Arc<dyn CircuitsHandler>>>,
 }
 
 #[async_trait]
@@ -62,13 +65,13 @@ impl ProvingService for LocalProver {
     }
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         let mut vks = vec![];
-        for hard_fork_name in self.config.circuits.keys() {
-            let handler = self.new_handler(hard_fork_name);
+        for (hard_fork_name, cfg) in self.config.circuits.iter() {
             for proof_type in &req.proof_types {
-                let vk = handler.get_vk(*proof_type).await;
-
-                if let Some(vk) = vk {
-                    vks.push(BASE64_STANDARD.encode(vk));
+                if let Some(vk) = cfg.vks.get(proof_type) {
+                    vks.push(vk.clone())
+                } else {
+                    let handler = self.get_or_init_handler(hard_fork_name);
+                    vks.push(handler.get_vk(*proof_type));
                 }
             }
         }
@@ -76,11 +79,8 @@ impl ProvingService for LocalProver {
         GetVkResponse { vks, error: None }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        self.set_active_handler(&req.hard_fork_name);
-        match self
-            .do_prove(req, self.active_handler.as_ref().unwrap().1.clone())
-            .await
-        {
+        let handler = self.get_or_init_handler(&req.hard_fork_name);
+        match self.do_prove(req, handler).await {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
                 status: TaskStatus::Failed,
@@ -133,11 +133,16 @@ impl ProvingService for LocalProver {
 
 impl LocalProver {
     pub fn new(config: LocalProverConfig) -> Self {
+        let handlers = config
+            .circuits
+            .keys()
+            .map(|k| (k.clone(), OnceLock::new()))
+            .collect();
         Self {
             config,
             next_task_id: 0,
             current_task: None,
-            active_handler: None,
+            handlers,
         }
     }
 
@@ -168,25 +173,25 @@ impl LocalProver {
         })
     }
 
-    fn set_active_handler(&mut self, hard_fork_name: &str) {
-        if let Some(handler) = &self.active_handler {
-            if handler.0 == hard_fork_name {
-                return;
-            }
-        }
-        self.active_handler = Some((hard_fork_name.to_string(), self.new_handler(hard_fork_name)));
+    fn get_or_init_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+        let lk = self
+            .handlers
+            .get(hard_fork_name)
+            .expect("coordinator should never sent unexpected forkname");
+        lk.get_or_init(|| self.new_handler(hard_fork_name)).clone()
     }
 
-    fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+    pub fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
         // if we got assigned a task for an unknown hard fork, there is something wrong in the
         // coordinator
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
         match hard_fork_name {
-            "euclidV2" => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(
-                &config.workspace_path,
-            )))) as Arc<dyn CircuitsHandler>,
-            _ => unreachable!(),
+            // The new EuclidV2Handler is a universal handler
+            // We can add other handler implements if needed
+            "some future forkname" => unreachable!(),
+            _ => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(config))))
+                as Arc<dyn CircuitsHandler>,
         }
     }
 }

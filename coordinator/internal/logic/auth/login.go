@@ -31,9 +31,11 @@ type LoginLogic struct {
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
 	proverVersionHardForkMap := make(map[string][]string)
 
-	var highHardForks []string
-	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.HighVersionCircuit.ForkName)
-	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = highHardForks
+	var hardForks []string
+	for _, cfg := range cfg.ProverManager.Verifier.Verifiers {
+		hardForks = append(hardForks, cfg.ForkName)
+	}
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.MinProverVersion] = hardForks
 
 	return &LoginLogic{
 		cfg:                      cfg,
@@ -56,8 +58,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		return errors.New("auth message verify failure")
 	}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
-		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion, login.Message.ProverVersion)
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.MinProverVersion) {
+		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.ProverManager.Verifier.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	vks := make(map[string]struct{})

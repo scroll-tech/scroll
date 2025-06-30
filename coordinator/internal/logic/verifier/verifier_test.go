@@ -29,11 +29,11 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 
 	cfg := &config.VerifierConfig{
-		HighVersionCircuit: &config.CircuitConfig{
-			AssetsPath:       *assetsPathHi,
-			ForkName:         "euclidV2",
-			MinProverVersion: "",
-		},
+		MinProverVersion: "",
+		Verifiers: []config.AssetConfig{{
+			AssetsPath: *assetsPathHi,
+			ForkName:   "euclidV2",
+		}},
 	}
 
 	v, err := NewVerifier(cfg)

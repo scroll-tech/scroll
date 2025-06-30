@@ -11,7 +11,7 @@ use std::path::Path;
 
 #[async_trait]
 pub trait CircuitsHandler: Sync + Send {
-    async fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>>;
+    fn get_vk(&self, task_type: ProofType) -> String;
 
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String>;
 }
@@ -54,14 +54,12 @@ impl Phase {
         let dir_cache = Some(workspace_path.join("cache"));
         let path_app_config = workspace_path.join("bundle/openvm.toml");
         let segment_len = Some((1 << 22) - 100);
-        match self {
-            Phase::EuclidV2 => ProverConfig {
-                dir_cache,
-                path_app_config,
-                segment_len,
-                path_app_exe: workspace_path.join("bundle/app.vmexe"),
-                ..Default::default()
-            },
+        ProverConfig {
+            dir_cache,
+            path_app_config,
+            segment_len,
+            path_app_exe: workspace_path.join("bundle/app.vmexe"),
+            ..Default::default()
         }
     }
 }

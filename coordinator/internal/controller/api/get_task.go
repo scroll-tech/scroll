@@ -17,6 +17,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -25,13 +26,15 @@ type GetTaskController struct {
 	proverTasks map[message.ProofType]provertask.ProverTask
 
 	getTaskAccessCounter *prometheus.CounterVec
+
+	l2syncer *l2Syncer
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, reg)
-	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, reg)
+func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, verifier *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, verifier.ChunkVk, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, verifier.BatchVk, reg)
+	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, verifier.BundleVk, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
@@ -44,6 +47,13 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
 	ptc.proverTasks[message.ProofTypeBundle] = bundleProverTask
+
+	if syncer, err := createL2Syncer(cfg); err != nil {
+		log.Crit("can not init l2 syncer", "err", err)
+	} else {
+		ptc.l2syncer = syncer
+	}
+
 	return ptc
 }
 
@@ -76,6 +86,17 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
+	}
+
+	if getTaskParameter.ProverHeight == 0 {
+		// help update the prover height with internal l2geth
+		if blk, err := ptc.l2syncer.getLatestBlockNumber(ctx); err == nil {
+			getTaskParameter.ProverHeight = blk
+		} else {
+			nerr := fmt.Errorf("inner l2geth failure, err:%w", err)
+			types.RenderFailure(ctx, types.InternalServerError, nerr)
+			return
+		}
 	}
 
 	proofType := ptc.proofType(&getTaskParameter)

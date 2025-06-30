@@ -32,7 +32,13 @@ typedef struct {
 
 // Generate a universal task based on task type and input JSON
 // Returns a struct containing task data, metadata, and expected proof hash
-HandlingResult gen_universal_task(int task_type, char* task, char* fork_name);
+HandlingResult gen_universal_task(
+    int task_type,
+    char* task,
+    char* fork_name,
+    const unsigned char* expected_vk,
+    size_t expected_vk_len
+);
 
 // Release memory allocated for a HandlingResult returned by gen_universal_task
 void release_task_result(HandlingResult result);

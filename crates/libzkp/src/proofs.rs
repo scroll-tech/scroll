@@ -179,7 +179,7 @@ impl<Metadata: ProofMetadata> WrappedProof<Metadata> {
     /// Sanity checks on the wrapped proof:
     ///
     /// - pi_hash computed in host does in fact match pi_hash computed in guest
-    pub fn sanity_check(&self, fork_name: ForkName) {
+    pub fn pi_hash_check(&self, fork_name: ForkName) -> bool {
         let proof_pi = self.proof.public_values();
 
         let expected_pi = self
@@ -192,10 +192,11 @@ impl<Metadata: ProofMetadata> WrappedProof<Metadata> {
             .map(|&v| v as u32)
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            expected_pi, proof_pi,
-            "pi mismatch: expected={expected_pi:?}, found={proof_pi:?}"
-        );
+        let ret = expected_pi == proof_pi;
+        if !ret {
+            tracing::warn!("pi mismatch: expected={expected_pi:?}, found={proof_pi:?}");
+        }
+        ret
     }
 }
 

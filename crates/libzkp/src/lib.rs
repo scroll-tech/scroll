@@ -26,10 +26,12 @@ pub fn checkout_chunk_task(
 }
 
 /// Generate required staff for proving tasks
+/// return (pi_hash, metadata, task)
 pub fn gen_universal_task(
     task_type: i32,
     task_json: &str,
     fork_name: &str,
+    expected_vk: &[u8],
     interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, String, String)> {
     use proofs::*;
@@ -44,7 +46,7 @@ pub fn gen_universal_task(
         Bundle(BundleProofMetadata),
     }
 
-    let (pi_hash, metadata, u_task) = match task_type {
+    let (pi_hash, metadata, mut u_task) = match task_type {
         x if x == TaskType::Chunk as i32 => {
             let task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
             let (pi_hash, metadata, u_task) =
@@ -63,6 +65,8 @@ pub fn gen_universal_task(
         }
         _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),
     };
+
+    u_task.vk = Vec::from(expected_vk);
 
     Ok((
         pi_hash,
@@ -106,7 +110,24 @@ pub fn verifier_init(config: &str) -> eyre::Result<()> {
 pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyre::Result<bool> {
     let verifier = verifier::get_verifier(fork_name)?;
 
-    let ret = verifier.verify(task_type, proof)?;
+    let ret = verifier.lock().unwrap().verify(task_type, &proof)?;
+
+    if let Ok(debug_value) = std::env::var("ZKVM_DEBUG_PROOF") {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        if !ret && debug_value.to_lowercase() == "true" {
+            // Dump req.input to a temporary file
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let filename = format!("/tmp/proof_{}.json", timestamp);
+            if let Err(e) = std::fs::write(&filename, &proof) {
+                eprintln!("Failed to write proof to file {}: {}", filename, e);
+            } else {
+                println!("Dumped failed proof to {}", filename);
+            }
+        }
+    }
 
     Ok(ret)
 }
@@ -115,7 +136,7 @@ pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyr
 pub fn dump_vk(fork_name: &str, file: &str) -> eyre::Result<()> {
     let verifier = verifier::get_verifier(fork_name)?;
 
-    verifier.dump_vk(Path::new(file));
+    verifier.lock().unwrap().dump_vk(Path::new(file));
 
     Ok(())
 }

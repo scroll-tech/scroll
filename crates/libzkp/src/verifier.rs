@@ -4,7 +4,11 @@ mod euclidv2;
 use euclidv2::EuclidV2Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::{cell::OnceCell, path::Path, rc::Rc};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{Arc, Mutex, OnceLock},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
@@ -31,7 +35,7 @@ pub struct VKDump {
 }
 
 pub trait ProofVerifier {
-    fn verify(&self, task_type: TaskType, proof: Vec<u8>) -> Result<bool>;
+    fn verify(&self, task_type: TaskType, proof: &[u8]) -> Result<bool>;
     fn dump_vk(&self, file: &Path);
 }
 
@@ -43,36 +47,49 @@ pub struct CircuitConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifierConfig {
-    pub high_version_circuit: CircuitConfig,
+    pub circuits: Vec<CircuitConfig>,
 }
 
 type HardForkName = String;
 
-struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
-static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
+type VerifierType = Arc<Mutex<dyn ProofVerifier + Send>>;
+static VERIFIERS: OnceLock<HashMap<HardForkName, VerifierType>> = OnceLock::new();
 
 pub fn init(config: VerifierConfig) {
-    let verifier = EuclidV2Verifier::new(&config.high_version_circuit.assets_path);
-    unsafe {
-        VERIFIER_HIGH
-            .set(VerifierPair(
-                config.high_version_circuit.fork_name,
-                Rc::new(Box::new(verifier)),
-            ))
-            .unwrap_unchecked();
+    let mut verifiers: HashMap<HardForkName, VerifierType> = Default::default();
+
+    for cfg in &config.circuits {
+        let canonical_fork_name = cfg.fork_name.to_lowercase();
+
+        let verifier = EuclidV2Verifier::new(&cfg.assets_path, canonical_fork_name.as_str().into());
+        let ret = verifiers.insert(canonical_fork_name, Arc::new(Mutex::new(verifier)));
+        assert!(
+            ret.is_none(),
+            "DO NOT init the same fork {} twice",
+            cfg.fork_name
+        );
+        tracing::info!("load verifier config for fork {}", cfg.fork_name);
     }
+
+    let ret = VERIFIERS.set(verifiers).is_ok();
+    assert!(ret);
 }
 
-pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
-    unsafe {
-        if let Some(verifier) = VERIFIER_HIGH.get() {
-            if verifier.0 == fork_name {
-                return Ok(verifier.1.clone());
-            }
+pub fn get_verifier(fork_name: &str) -> Result<Arc<Mutex<dyn ProofVerifier>>> {
+    if let Some(verifiers) = VERIFIERS.get() {
+        if let Some(verifier) = verifiers.get(fork_name) {
+            return Ok(verifier.clone());
         }
+
+        Err(eyre::eyre!(
+            "failed to get verifier, key not found: {}, has {:?}",
+            fork_name,
+            verifiers.keys().collect::<Vec<_>>(),
+        ))
+    } else {
+        Err(eyre::eyre!(
+            "failed to get verifier, not inited {}",
+            fork_name
+        ))
     }
-    Err(eyre::eyre!(
-        "failed to get verifier, key not found, {}",
-        fork_name
-    ))
 }

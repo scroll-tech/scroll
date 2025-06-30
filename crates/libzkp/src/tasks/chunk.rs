@@ -2,7 +2,7 @@ use super::chunk_interpreter::*;
 use eyre::Result;
 use sbv_primitives::{types::BlockWitness, B256};
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness},
+    chunk::{execute, ChunkInfo, ChunkWitness, ToArchievedWitness},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -129,23 +129,33 @@ impl ChunkProvingTask {
     fn insert_state(&mut self, node: sbv_primitives::Bytes) {
         self.block_witnesses[0].states.push(node);
     }
-}
 
-const MAX_FETCH_NODES_ATTEMPTS: usize = 15;
+    pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
+        let witness = self.build_guest_input();
+        let archieved = ToArchievedWitness::create(&witness)
+            .map_err(|e| eyre::eyre!("archieve chunk witness fail: {e}"))?;
+        let archieved_witness = archieved
+            .access()
+            .map_err(|e| eyre::eyre!("access archieved chunk witness fail: {e}"))?;
 
-impl TryFromWithInterpreter<&mut ChunkProvingTask> for ChunkInfo {
-    fn try_from_with_interpret(
-        value: &mut ChunkProvingTask,
+        let ret = ChunkInfo::try_from(archieved_witness).map_err(|e| eyre::eyre!("{e}"))?;
+        Ok(ret)
+    }
+
+    /// this method check the validate of current task (there may be missing storage node)
+    /// and try fixing it until everything is ok
+    pub fn prepare_task_via_interpret(
+        &mut self,
         interpreter: impl ChunkInterpreter,
-    ) -> eyre::Result<Self> {
+    ) -> eyre::Result<()> {
         use eyre::eyre;
 
         let err_prefix = format!(
             "metadata_with_prechecks for task_id={:?}",
-            value.identifier()
+            self.identifier()
         );
 
-        if value.block_witnesses.is_empty() {
+        if self.block_witnesses.is_empty() {
             return Err(eyre!(
                 "{err_prefix}: chunk should contain at least one block",
             ));
@@ -156,8 +166,15 @@ impl TryFromWithInterpreter<&mut ChunkProvingTask> for ChunkInfo {
         let err_parse_re = regex::Regex::new(pattern)?;
         let mut attempts = 0;
         loop {
-            match execute(&value.build_guest_input()) {
-                Ok(chunk_info) => return Ok(chunk_info),
+            let witness = self.build_guest_input();
+            let archieved = ToArchievedWitness::create(&witness)
+                .map_err(|e| eyre::eyre!("archieve chunk witness fail: {e}"))?;
+            let archieved_witness = archieved
+                .access()
+                .map_err(|e| eyre::eyre!("access archieved chunk witness fail: {e}"))?;
+
+            match execute(archieved_witness) {
+                Ok(_) => return Ok(()),
                 Err(e) => {
                     if let Some(caps) = err_parse_re.captures(&e) {
                         let hash = caps[2].to_string();
@@ -174,7 +191,7 @@ impl TryFromWithInterpreter<&mut ChunkProvingTask> for ChunkInfo {
                             hash.parse::<sbv_primitives::B256>().expect("should be hex");
                         let node = interpreter.try_fetch_storage_node(node_hash)?;
                         tracing::warn!("missing node fetched: {node}");
-                        value.insert_state(node);
+                        self.insert_state(node);
                     } else {
                         return Err(eyre!("{err_prefix}: {e}"));
                     }
@@ -183,3 +200,5 @@ impl TryFromWithInterpreter<&mut ChunkProvingTask> for ChunkInfo {
         }
     }
 }
+
+const MAX_FETCH_NODES_ATTEMPTS: usize = 15;

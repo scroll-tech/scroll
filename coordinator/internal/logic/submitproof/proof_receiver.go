@@ -178,7 +178,20 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		if len(proverTask.Metadata) == 0 {
 			return errors.New("can not re-wrapping proof: no metadata has been recorded in advance")
 		}
-		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), []byte{})
+		var expected_vk []byte
+		switch message.ProofType(proofParameter.TaskType) {
+		case message.ProofTypeChunk:
+			expected_vk = m.verifier.ChunkVk[hardForkName]
+		case message.ProofTypeBatch:
+			expected_vk = m.verifier.BatchVk[hardForkName]
+		case message.ProofTypeBundle:
+			expected_vk = m.verifier.BundleVk[hardForkName]
+		}
+		if len(expected_vk) == 0 {
+			return errors.New("no vk specified match current hard fork, check your config")
+		}
+
+		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), expected_vk)
 		if proofParameter.Proof == "" {
 			return errors.New("can not re-wrapping proof, see coordinator log for reason")
 		}

@@ -11,6 +11,7 @@ import "C" //nolint:typecheck
 import (
 	"fmt"
 	"os"
+	"strings"
 	"unsafe"
 
 	"scroll-tech/common/types/message"
@@ -34,18 +35,10 @@ func InitVerifier(configJSON string) {
 	C.init_verifier(cConfig)
 }
 
-// Initialize the verifier
-func InitL2geth(configJSON string) {
-	cConfig := goToCString(configJSON)
-	defer freeCString(cConfig)
-
-	C.init_l2geth(cConfig)
-}
-
 // Verify a chunk proof
 func VerifyChunkProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -56,7 +49,7 @@ func VerifyChunkProof(proofData, forkName string) bool {
 // Verify a batch proof
 func VerifyBatchProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -67,7 +60,7 @@ func VerifyBatchProof(proofData, forkName string) bool {
 // Verify a bundle proof
 func VerifyBundleProof(proofData, forkName string) bool {
 	cProof := goToCString(proofData)
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	defer freeCString(cProof)
 	defer freeCString(cForkName)
 
@@ -96,8 +89,8 @@ func fromMessageTaskType(taskType int) int {
 }
 
 // Generate a universal task
-func GenerateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
-	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, forkName)
+func GenerateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte) (bool, string, string, []byte) {
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName), expectedVk)
 }
 
 // Generate wrapped proof
@@ -127,7 +120,7 @@ func GenerateWrappedProof(proofJSON, metadata string, vkData []byte) string {
 
 // Dumps a verification key to a file
 func DumpVk(forkName, filePath string) error {
-	cForkName := goToCString(forkName)
+	cForkName := goToCString(strings.ToLower(forkName))
 	cFilePath := goToCString(filePath)
 	defer freeCString(cForkName)
 	defer freeCString(cFilePath)

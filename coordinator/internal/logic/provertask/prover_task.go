@@ -38,9 +38,10 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg      *config.Config
-	chainCfg *params.ChainConfig
-	db       *gorm.DB
+	cfg        *config.Config
+	chainCfg   *params.ChainConfig
+	db         *gorm.DB
+	expectedVk map[string][]byte
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -57,10 +58,11 @@ type proverTaskContext struct {
 	ProverProviderType uint8
 	HardForkNames      map[string]struct{}
 
-	taskType   message.ProofType
-	chunkTask  *orm.Chunk
-	batchTask  *orm.Batch
-	bundleTask *orm.Bundle
+	taskType        message.ProofType
+	chunkTask       *orm.Chunk
+	batchTask       *orm.Batch
+	bundleTask      *orm.Bundle
+	hasAssignedTask *orm.ProverTask
 }
 
 // hardForkName get the chunk/batch/bundle hard fork name
@@ -175,19 +177,22 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 
-	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
+	assigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
 	}
 
-	if isAssigned {
-		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
-	}
+	ptc.hasAssignedTask = assigned
 	return &ptc, nil
 }
 
 func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, []byte, error) {
-	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
+	expectedVk, ok := b.expectedVk[schema.HardForkName]
+	if !ok {
+		return nil, nil, fmt.Errorf("no expectedVk found from hardfork %s", schema.HardForkName)
+	}
+
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk)
 	if !ok {
 		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}

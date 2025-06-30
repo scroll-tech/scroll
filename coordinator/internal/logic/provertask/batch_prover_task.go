@@ -36,12 +36,13 @@ type BatchProverTask struct {
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
 			chainCfg:           chainCfg,
+			expectedVk:         expectedVk,
 			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
@@ -83,10 +84,25 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
-		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
-		if getTaskError != nil {
-			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
+
+		if taskCtx.hasAssignedTask != nil {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get batch has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBatchTask == nil {
+				// if the assigned batch dropped, there would be too much issue to assign another
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped batch. ProverName: %s, ProverVersion: %s",
+					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+		}
+
+		if tmpBatchTask == nil {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+			if getTaskError != nil {
+				log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
 		}
 
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
@@ -114,29 +130,32 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
-		// Don't dispatch the same failing job to the same prover
-		proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
-		if getFailedTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		for i := 0; i < len(proverTasks); i++ {
-			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
-				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
-				return nil, nil
+		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
+		if taskCtx.hasAssignedTask == nil {
+			// Don't dispatch the same failing job to the same prover
+			proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+			if getFailedTaskError != nil {
+				log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
+				return nil, ErrCoordinatorInternalFailure
 			}
-		}
+			for i := 0; i < len(proverTasks); i++ {
+				if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+					taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+					log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
+					return nil, nil
+				}
+			}
 
-		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
-		if updateAttemptsErr != nil {
-			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
-			return nil, ErrCoordinatorInternalFailure
-		}
+			rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
+			if updateAttemptsErr != nil {
+				log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+				return nil, ErrCoordinatorInternalFailure
+			}
 
-		if rowsAffected == 0 {
-			time.Sleep(100 * time.Millisecond)
-			continue
+			if rowsAffected == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
 		}
 
 		batchTask = tmpBatchTask
@@ -149,19 +168,24 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-	proverTask := orm.ProverTask{
-		TaskID:          batchTask.Hash,
-		ProverPublicKey: taskCtx.PublicKey,
-		TaskType:        int16(message.ProofTypeBatch),
-		ProverName:      taskCtx.ProverName,
-		ProverVersion:   taskCtx.ProverVersion,
-		ProvingStatus:   int16(types.ProverAssigned),
-		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-		// here why need use UTC time. see scroll/common/database/db.go
-		AssignedAt: utils.NowUTC(),
+	var proverTask *orm.ProverTask
+	if taskCtx.hasAssignedTask == nil {
+		proverTask = &orm.ProverTask{
+			TaskID:          batchTask.Hash,
+			ProverPublicKey: taskCtx.PublicKey,
+			TaskType:        int16(message.ProofTypeBatch),
+			ProverName:      taskCtx.ProverName,
+			ProverVersion:   taskCtx.ProverVersion,
+			ProvingStatus:   int16(types.ProverAssigned),
+			FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+			// here why need use UTC time. see scroll/common/database/db.go
+			AssignedAt: utils.NowUTC(),
+		}
+	} else {
+		proverTask = taskCtx.hasAssignedTask
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, batchTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, batchTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
@@ -169,6 +193,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 	if getTaskParameter.Universal {
 		var metadata []byte
+
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
 			bp.recoverActiveAttempts(ctx, batchTask)
@@ -179,10 +204,12 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
+	if taskCtx.hasAssignedTask == nil {
+		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
+			bp.recoverActiveAttempts(ctx, batchTask)
+			log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+			return nil, ErrCoordinatorInternalFailure
+		}
 	}
 	// notice uuid is set as a side effect of InsertProverTask
 	taskMsg.UUID = proverTask.UUID.String()
