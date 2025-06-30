@@ -17,6 +17,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -30,10 +31,10 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, reg)
-	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, reg)
+func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, verifier *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, verifier.ChunkVk, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, verifier.BatchVk, reg)
+	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, verifier.BundleVk, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),

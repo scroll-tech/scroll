@@ -43,6 +43,6 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 	libzkp.InitL2geth(string(l2cfgBytes))
 
 	Auth = NewAuthController(db, cfg, vf)
-	GetTask = NewGetTaskController(cfg, chainCfg, db, reg)
+	GetTask = NewGetTaskController(cfg, chainCfg, db, vf, reg)
 	SubmitProof = NewSubmitProofController(cfg, chainCfg, db, vf, reg)
 }

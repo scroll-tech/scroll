@@ -38,9 +38,10 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg      *config.Config
-	chainCfg *params.ChainConfig
-	db       *gorm.DB
+	cfg        *config.Config
+	chainCfg   *params.ChainConfig
+	db         *gorm.DB
+	expectedVk map[string][]byte
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -186,7 +187,12 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 }
 
 func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, []byte, error) {
-	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName)
+	expectedVk, ok := b.expectedVk[schema.HardForkName]
+	if !ok {
+		return nil, nil, fmt.Errorf("no expectedVk found from hardfork %s", schema.HardForkName)
+	}
+
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk)
 	if !ok {
 		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}

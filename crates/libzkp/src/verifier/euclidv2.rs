@@ -30,10 +30,10 @@ impl EuclidV2Verifier {
 }
 
 impl ProofVerifier for EuclidV2Verifier {
-    fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
+    fn verify(&self, task_type: super::TaskType, proof: &[u8]) -> Result<bool> {
         panic_catch(|| match task_type {
             TaskType::Chunk => {
-                let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
+                let proof = serde_json::from_slice::<ChunkProof>(proof).unwrap();
                 if !proof.pi_hash_check(self.fork) {
                     return false;
                 }
@@ -42,7 +42,7 @@ impl ProofVerifier for EuclidV2Verifier {
                     .unwrap()
             }
             TaskType::Batch => {
-                let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
+                let proof = serde_json::from_slice::<BatchProof>(proof).unwrap();
                 if !proof.pi_hash_check(self.fork) {
                     return false;
                 }
@@ -51,7 +51,7 @@ impl ProofVerifier for EuclidV2Verifier {
                     .unwrap()
             }
             TaskType::Bundle => {
-                let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
+                let proof = serde_json::from_slice::<BundleProof>(proof).unwrap();
                 if !proof.pi_hash_check(self.fork) {
                     return false;
                 }

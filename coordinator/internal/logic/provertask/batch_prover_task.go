@@ -36,12 +36,13 @@ type BatchProverTask struct {
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
 			chainCfg:           chainCfg,
+			expectedVk:         expectedVk,
 			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
@@ -192,6 +193,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 	if getTaskParameter.Universal {
 		var metadata []byte
+
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
 			bp.recoverActiveAttempts(ctx, batchTask)

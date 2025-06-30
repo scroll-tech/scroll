@@ -35,7 +35,7 @@ pub struct VKDump {
 }
 
 pub trait ProofVerifier {
-    fn verify(&self, task_type: TaskType, proof: Vec<u8>) -> Result<bool>;
+    fn verify(&self, task_type: TaskType, proof: &[u8]) -> Result<bool>;
     fn dump_vk(&self, file: &Path);
 }
 

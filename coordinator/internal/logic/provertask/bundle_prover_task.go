@@ -33,12 +33,13 @@ type BundleProverTask struct {
 }
 
 // NewBundleProverTask new a bundle collector
-func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BundleProverTask {
+func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BundleProverTask {
 	bp := &BundleProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			chainCfg:           chainCfg,
 			cfg:                cfg,
+			expectedVk:         expectedVk,
 			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),

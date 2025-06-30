@@ -33,12 +33,13 @@ type ChunkProverTask struct {
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
 			chainCfg:           chainCfg,
+			expectedVk:         expectedVk,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),

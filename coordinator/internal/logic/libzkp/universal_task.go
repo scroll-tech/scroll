@@ -7,6 +7,7 @@ package libzkp
 #include "libzkp.h"
 */
 import "C" //nolint:typecheck
+import "unsafe"
 
 // Initialize the handler for universal task
 func InitL2geth(configJSON string) {
@@ -16,13 +17,19 @@ func InitL2geth(configJSON string) {
 	C.init_l2geth(cConfig)
 }
 
-func generateUniversalTask(taskType int, taskJSON, forkName string) (bool, string, string, []byte) {
+func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte) (bool, string, string, []byte) {
 	cTask := goToCString(taskJSON)
 	cForkName := goToCString(forkName)
 	defer freeCString(cTask)
 	defer freeCString(cForkName)
 
-	result := C.gen_universal_task(C.int(taskType), cTask, cForkName)
+	// Create a C array from Go slice
+	var cVk *C.uchar
+	if len(expectedVk) > 0 {
+		cVk = (*C.uchar)(unsafe.Pointer(&expectedVk[0]))
+	}
+
+	result := C.gen_universal_task(C.int(taskType), cTask, cForkName, cVk, C.size_t(len(expectedVk)))
 	defer C.release_task_result(result)
 
 	// Check if the operation was successful
