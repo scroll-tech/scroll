@@ -250,6 +250,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail := message.BundleTaskDetail{
 		BatchProofs: batchProofs,
+		ForkName:    hardForkName,
 	}
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{

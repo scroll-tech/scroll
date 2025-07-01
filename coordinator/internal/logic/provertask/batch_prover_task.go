@@ -293,6 +293,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
+		ForkName:    hardForkName,
 	}
 
 	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)

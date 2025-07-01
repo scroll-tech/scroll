@@ -228,6 +228,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	taskDetail := message.ChunkTaskDetail{
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+		ForkName:         hardForkName,
 	}
 
 	var err error
