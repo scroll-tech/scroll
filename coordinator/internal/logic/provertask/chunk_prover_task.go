@@ -191,7 +191,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
 		if err != nil {
 			cp.recoverActiveAttempts(ctx, chunkTask)
-			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk")
+			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		proverTask.Metadata = metadata

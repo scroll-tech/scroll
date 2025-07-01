@@ -104,6 +104,7 @@ pub unsafe extern "C" fn gen_universal_task(
                 str
             }
             Err(e) => {
+                println!("gen_universal_task failed at pre interpret step, error: {e}");
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");
                 return failed_handling_result();
             }
@@ -135,7 +136,8 @@ pub unsafe extern "C" fn gen_universal_task(
             expected_pi_hash,
         }
     } else {
-        tracing::error!("gen_universal_task failed, error: {:#}", ret.unwrap_err());
+        println!("gen_universal_task, error: {:#}", ret.unwrap_err());
+        //tracing::error!("gen_universal_task failed, error: {:#}", ret.unwrap_err());
         failed_handling_result()
     }
 }

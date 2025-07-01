@@ -131,7 +131,9 @@ impl ChunkProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
-        let witness = self.build_guest_input();
+        use scroll_zkvm_types::public_inputs::ForkName;
+        let mut witness = self.build_guest_input();
+        witness.fork_name = ForkName::Feynman;
         let archieved = ToArchievedWitness::create(&witness)
             .map_err(|e| eyre::eyre!("archieve chunk witness fail: {e}"))?;
         let archieved_witness = archieved

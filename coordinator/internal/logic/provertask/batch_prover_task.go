@@ -197,7 +197,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
 			bp.recoverActiveAttempts(ctx, batchTask)
-			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch")
+			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		proverTask.Metadata = metadata
