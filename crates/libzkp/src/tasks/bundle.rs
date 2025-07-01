@@ -47,6 +47,7 @@ impl BundleProvingTask {
                 .iter()
                 .map(|wrapped_proof| wrapped_proof.metadata.batch_info.clone())
                 .collect(),
+            fork_name: self.fork_name.to_lowercase().as_str().into(),
         }
     }
 

@@ -119,11 +119,11 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        ChunkWitness {
-            blocks: self.block_witnesses.to_vec(),
-            prev_msg_queue_hash: self.prev_msg_queue_hash,
-            fork_name: self.fork_name.to_lowercase().as_str().into(),
-        }
+        ChunkWitness::new(
+            &self.block_witnesses,
+            self.prev_msg_queue_hash,
+            self.fork_name.to_lowercase().as_str().into(),
+        )
     }
 
     fn insert_state(&mut self, node: sbv_primitives::Bytes) {
