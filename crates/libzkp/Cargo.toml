@@ -8,6 +8,7 @@ edition.workspace = true
 scroll-zkvm-types.workspace = true
 scroll-zkvm-verifier-euclid.workspace = true
 
+alloy-primitives.workspace = true #depress the effect of "native-keccak"
 sbv-primitives.workspace = true
 base64.workspace = true
 serde.workspace = true

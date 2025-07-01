@@ -5,8 +5,6 @@ package libzkp
 #cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "libzkp.h"
-
-void native_keccak256(){}
 */
 import "C" //nolint:typecheck
 

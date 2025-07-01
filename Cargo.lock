@@ -3773,6 +3773,7 @@ dependencies = [
 name = "libzkp"
 version = "4.5.8"
 dependencies = [
+ "alloy-primitives",
  "base64 0.22.1",
  "c-kzg",
  "eyre",
