@@ -57,6 +57,12 @@ impl EuclidV2Handler {
         }
     }
 
+    /// get_prover get the inner prover, later we would replace chunk/batch/bundle_prover with
+    /// universal prover, before that, use bundle_prover as the represent one
+    pub fn get_prover(&self) -> &BundleProverEuclidV2 {
+        &self.bundle_prover
+    }
+
     pub fn get_vk_and_cache(&self, task_type: ProofType) -> String {
         match task_type {
             ProofType::Chunk => self.cached_vks[&ProofType::Chunk]
@@ -73,10 +79,8 @@ impl EuclidV2Handler {
 
 #[async_trait]
 impl CircuitsHandler for Arc<Mutex<EuclidV2Handler>> {
-    fn get_vk(&self, task_type: ProofType) -> String {
-        self.try_lock()
-            .expect("get vk is on called before other entry is used")
-            .get_vk_and_cache(task_type)
+    async fn get_vk(&self, task_type: ProofType) -> String {
+        self.lock().await.get_vk_and_cache(task_type)
     }
 
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String> {

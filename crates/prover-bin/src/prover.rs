@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
+    path::Path,
     sync::{Arc, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -71,7 +72,7 @@ impl ProvingService for LocalProver {
                     vks.push(vk.clone())
                 } else {
                     let handler = self.get_or_init_handler(hard_fork_name);
-                    vks.push(handler.get_vk(*proof_type));
+                    vks.push(handler.get_vk(*proof_type).await);
                 }
             }
         }
@@ -193,5 +194,32 @@ impl LocalProver {
             _ => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(config))))
                 as Arc<dyn CircuitsHandler>,
         }
+    }
+
+    pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()>{
+
+        let config = self.config.circuits.get(hard_fork_name).ok_or_else(
+            ||eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
+
+        let universal_prover = EuclidV2Handler::new(config);
+        let _ = universal_prover.get_prover().dump_universal_verifier(Some(out_path))?;
+
+        #[derive(Debug, serde::Serialize)]
+        struct VKDump {
+            pub chunk_vk: String,
+            pub batch_vk: String,
+            pub bundle_vk: String,
+        }
+
+        let dump = VKDump {
+            chunk_vk: universal_prover.get_vk_and_cache(ProofType::Chunk),
+            batch_vk: universal_prover.get_vk_and_cache(ProofType::Batch),
+            bundle_vk: universal_prover.get_vk_and_cache(ProofType::Bundle),
+        };
+
+        let f = File::create(out_path.join("openVmVk.json"))?;
+        serde_json::to_writer(f, &dump)?;
+
+        Ok(())
     }
 }
