@@ -8,10 +8,16 @@
     "chunk_collection_time_sec": 180,
     "verifier": {
       "min_prover_version": "v4.4.45",
-      "verifiers": [{
-        "assets_path": "assets",
-        "fork_name": "euclidV2"
-      }]
+      "verifiers": [
+        {
+          "assets_path": "assets",
+          "fork_name": "euclidV2"
+        },
+        {
+          "assets_path": "assets",
+          "fork_name": "feynman"
+        }
+      ]
     }
   },
   "db": {
