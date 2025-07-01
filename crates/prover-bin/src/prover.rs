@@ -196,13 +196,17 @@ impl LocalProver {
         }
     }
 
-    pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()>{
-
-        let config = self.config.circuits.get(hard_fork_name).ok_or_else(
-            ||eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
+    pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()> {
+        let config = self
+            .config
+            .circuits
+            .get(hard_fork_name)
+            .ok_or_else(|| eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
 
         let universal_prover = EuclidV2Handler::new(config);
-        let _ = universal_prover.get_prover().dump_universal_verifier(Some(out_path))?;
+        let _ = universal_prover
+            .get_prover()
+            .dump_universal_verifier(Some(out_path))?;
 
         #[derive(Debug, serde::Serialize)]
         struct VKDump {
