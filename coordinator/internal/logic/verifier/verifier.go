@@ -117,19 +117,6 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 	return libzkp.VerifyBundleProof(string(buf), forkName), nil
 }
 
-// func (v *Verifier) ReadVK(filePat string) (string, error) {
-
-// 	f, err := os.Open(filepath.Clean(filePat))
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	byt, err := io.ReadAll(f)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return base64.StdEncoding.EncodeToString(byt), nil
-// }
-
 func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 
 	vkFileName := cfg.Vkfile
