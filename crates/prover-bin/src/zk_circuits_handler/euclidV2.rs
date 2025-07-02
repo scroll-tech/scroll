@@ -70,7 +70,7 @@ impl EuclidV2Handler {
             ProofType::Batch => self.cached_vks[&ProofType::Batch]
                 .get_or_init(|| BASE64_STANDARD.encode(self.batch_prover.get_app_vk())),
             ProofType::Bundle => self.cached_vks[&ProofType::Bundle]
-                .get_or_init(|| BASE64_STANDARD.encode(self.bundle_prover.get_evm_vk())),
+                .get_or_init(|| BASE64_STANDARD.encode(self.bundle_prover.get_app_vk())),
             _ => unreachable!("Unsupported proof type {:?}", task_type),
         }
         .clone()

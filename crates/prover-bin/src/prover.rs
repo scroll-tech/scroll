@@ -203,6 +203,7 @@ impl LocalProver {
             .get(hard_fork_name)
             .ok_or_else(|| eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
 
+        let workspace_path = &config.workspace_path;
         let universal_prover = EuclidV2Handler::new(config);
         let _ = universal_prover
             .get_prover()
@@ -223,6 +224,21 @@ impl LocalProver {
 
         let f = File::create(out_path.join("openVmVk.json"))?;
         serde_json::to_writer(f, &dump)?;
+
+        // Copy verifier.bin from workspace bundle directory to output path
+        let bundle_verifier_path = Path::new(workspace_path)
+            .join("bundle")
+            .join("verifier.bin");
+        if bundle_verifier_path.exists() {
+            let dest_path = out_path.join("verifier.bin");
+            std::fs::copy(&bundle_verifier_path, &dest_path)
+                .map_err(|e| eyre::eyre!("Failed to copy verifier.bin: {}", e))?;
+        } else {
+            eprintln!(
+                "Warning: verifier.bin not found at {:?}",
+                bundle_verifier_path
+            );
+        }
 
         Ok(())
     }
