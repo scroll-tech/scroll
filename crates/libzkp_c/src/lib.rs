@@ -5,6 +5,37 @@ use std::ffi::{c_char, CString};
 use libzkp::TaskType;
 use utils::{c_char_to_str, c_char_to_vec};
 
+use std::sync::OnceLock;
+
+static LOG_SETTINGS: OnceLock<Result<(), String>> = OnceLock::new();
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn init_tracing() {
+    use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+
+    LOG_SETTINGS
+        .get_or_init(|| {
+            tracing_subscriber::fmt()
+                .with_env_filter(
+                    EnvFilter::builder()
+                        .with_default_directive(LevelFilter::INFO.into())
+                        .from_env_lossy(),
+                )
+                .with_ansi(false)
+                .with_level(true)
+                .with_target(true)
+                .try_init()
+                .map_err(|e| format!("{e}"))?;
+
+            Ok(())
+        })
+        .clone()
+        .expect("Failed to initialize tracing subscriber");
+
+    tracing::info!("Tracing has been initialized normally");
+}
+
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init_verifier(config: *const c_char) {
@@ -104,6 +135,7 @@ pub unsafe extern "C" fn gen_universal_task(
                 str
             }
             Err(e) => {
+                println!("gen_universal_task failed at pre interpret step, error: {e}");
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");
                 return failed_handling_result();
             }

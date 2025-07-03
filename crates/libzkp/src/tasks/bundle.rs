@@ -4,7 +4,6 @@ use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, ToArchievedWitness},
     public_inputs::ForkName,
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
 };
 
 /// Message indicating a sanity check failure.
@@ -47,6 +46,7 @@ impl BundleProvingTask {
                 .iter()
                 .map(|wrapped_proof| wrapped_proof.metadata.batch_info.clone())
                 .collect(),
+            fork_name: self.fork_name.to_lowercase().as_str().into(),
         }
     }
 
@@ -83,7 +83,7 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
                 .into_iter()
                 .map(|w_proof| w_proof.proof.into_root_proof().expect("expect root proof"))
                 .collect(),
-            serialized_witness: vec![to_rkyv_bytes::<RancorError>(&witness)?.to_vec()],
+            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
             vk: Vec::new(),
         })
     }

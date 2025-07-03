@@ -214,11 +214,7 @@ impl<Metadata: ProofMetadata> PersistableProof for WrappedProof<Metadata> {
 mod tests {
     use base64::{prelude::BASE64_STANDARD, Engine};
     use sbv_primitives::B256;
-    use scroll_zkvm_types::{
-        bundle::{BundleInfo, BundleInfoV1},
-        proof::EvmProof,
-        public_inputs::PublicInputs,
-    };
+    use scroll_zkvm_types::{bundle::BundleInfo, proof::EvmProof, public_inputs::ForkName};
 
     use super::*;
 
@@ -245,7 +241,7 @@ mod tests {
     fn test_dummy_proof() -> eyre::Result<()> {
         // 1. Metadata
         let metadata = {
-            let bundle_info: BundleInfoV1 = BundleInfo {
+            let bundle_info = BundleInfo {
                 chain_id: 12345,
                 num_batches: 12,
                 prev_state_root: B256::repeat_byte(1),
@@ -254,11 +250,10 @@ mod tests {
                 batch_hash: B256::repeat_byte(4),
                 withdraw_root: B256::repeat_byte(5),
                 msg_queue_hash: B256::repeat_byte(6),
-            }
-            .into();
-            let bundle_pi_hash = bundle_info.pi_hash();
+            };
+            let bundle_pi_hash = bundle_info.pi_hash(ForkName::EuclidV1);
             BundleProofMetadata {
-                bundle_info: bundle_info.0,
+                bundle_info,
                 bundle_pi_hash,
             }
         };

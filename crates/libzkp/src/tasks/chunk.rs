@@ -4,7 +4,6 @@ use sbv_primitives::{types::BlockWitness, B256};
 use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, ToArchievedWitness},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
 };
 
 /// The type aligned with coordinator's defination
@@ -72,7 +71,7 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
             identifier: value.identifier(),
             fork_name: value.fork_name,
             aggregated_proofs: Vec::new(),
-            serialized_witness: vec![to_rkyv_bytes::<RancorError>(&witness)?.to_vec()],
+            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
             vk: Vec::new(),
         })
     }
@@ -119,11 +118,11 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        ChunkWitness {
-            blocks: self.block_witnesses.to_vec(),
-            prev_msg_queue_hash: self.prev_msg_queue_hash,
-            fork_name: self.fork_name.to_lowercase().as_str().into(),
-        }
+        ChunkWitness::new(
+            &self.block_witnesses,
+            self.prev_msg_queue_hash,
+            self.fork_name.to_lowercase().as_str().into(),
+        )
     }
 
     fn insert_state(&mut self, node: sbv_primitives::Bytes) {

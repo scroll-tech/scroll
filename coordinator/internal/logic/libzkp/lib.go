@@ -17,6 +17,10 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+func init() {
+	C.init_tracing()
+}
+
 // Helper function to convert Go string to C string and handle cleanup
 func goToCString(s string) *C.char {
 	return C.CString(s)
