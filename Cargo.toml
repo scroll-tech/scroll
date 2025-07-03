@@ -17,9 +17,9 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.5.8"
 
 [workspace.dependencies]
-scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "09e998f", package = "scroll-zkvm-prover" }
-scroll-zkvm-verifier-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "09e998f", package = "scroll-zkvm-verifier" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "09e998f" }
+scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2962428", package = "scroll-zkvm-prover" }
+scroll-zkvm-verifier-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2962428", package = "scroll-zkvm-verifier" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2962428" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade", features = ["scroll"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade" }
@@ -34,7 +34,6 @@ alloy-primitives = { version = "1.2", default-features = false, features = ["tin
 # also use this to trigger "serde" feature for primitives
 alloy-serde = { version = "1", default-features = false }
 
-rkyv = "0.8"
 serde = { version = "1", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0" }
 serde_derive = "1.0"
