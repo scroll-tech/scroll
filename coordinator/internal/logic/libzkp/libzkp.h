@@ -8,6 +8,9 @@
 
 #include <stddef.h> // For size_t
 
+// Init log tracing
+void init_tracing();
+
 // Initialize the verifier with configuration
 void init_verifier(char* config);
 

@@ -193,7 +193,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
 			bp.recoverActiveAttempts(ctx, bundleTask)
-			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle")
+			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		// bundle proof require snark

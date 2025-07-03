@@ -76,7 +76,7 @@ impl RpcClientCore {
         let client = ClientBuilder::default().layer(retry_layer).http(rpc);
 
         Ok(Self {
-            provider: ProviderBuilder::<_, _, Network>::default().on_client(client),
+            provider: ProviderBuilder::<_, _, Network>::default().connect_client(client),
             rt,
         })
     }
@@ -100,13 +100,13 @@ impl ChunkInterpreter for RpcClient<'_> {
             block_hash: sbv_primitives::B256,
             prev_witness: Option<&sbv_primitives::types::BlockWitness>,
         ) -> Result<sbv_primitives::types::BlockWitness> {
-            use alloy::network::primitives::BlockTransactionsKind;
             use sbv_utils::{rpc::ProviderExt, witness::WitnessBuilder};
 
             let chain_id = provider.get_chain_id().await?;
 
             let block = provider
-                .get_block_by_hash(block_hash, BlockTransactionsKind::Full)
+                .get_block_by_hash(block_hash)
+                .full()
                 .await?
                 .ok_or_else(|| eyre::eyre!("Block not found"))?;
 

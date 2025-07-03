@@ -4,8 +4,8 @@ use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
-        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchInfo, BatchWitness, EnvelopeV6, EnvelopeV7,
-        PointEvalWitness, ReferenceHeader, ToArchievedWitness, N_BLOB_BYTES,
+        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchInfo, BatchWitness, Envelope, EnvelopeV6,
+        EnvelopeV7, PointEvalWitness, ReferenceHeader, ToArchievedWitness, N_BLOB_BYTES,
     },
     public_inputs::ForkName,
     task::ProvingTask,
@@ -117,7 +117,8 @@ impl BatchProvingTask {
                         "hardfork mismatch for da-codec@v6 header: found={fork_name:?}, expected={:?}",
                         ForkName::EuclidV1,
                     );
-                    EnvelopeV6::from(self.blob_bytes.as_slice()).challenge_digest(versioned_hash)
+                    EnvelopeV6::from_slice(self.blob_bytes.as_slice())
+                        .challenge_digest(versioned_hash)
                 }
                 BatchHeaderV::V7(_) => {
                     match fork_name {
@@ -131,7 +132,8 @@ impl BatchProvingTask {
                         padded_blob_bytes.resize(N_BLOB_BYTES, 0);
                         padded_blob_bytes
                     };
-                    EnvelopeV7::from(padded_blob_bytes.as_slice()).challenge_digest(versioned_hash)
+                    EnvelopeV7::from_slice(padded_blob_bytes.as_slice())
+                        .challenge_digest(versioned_hash)
                 }
             };
 

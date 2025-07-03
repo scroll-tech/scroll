@@ -28,7 +28,7 @@ func verify(cCtx *cli.Context) error {
 		proofType = cCtx.Args().Get(1)
 		proofPath = cCtx.Args().Get(2)
 	}
-	log.Info("verify proof in: ", proofPath, "type", proofType, "forkName", forkName)
+	log.Info("verify proof", "in", proofPath, "type", proofType, "forkName", forkName)
 
 	// Load the content of the proof file
 	data, err := os.ReadFile(filepath.Clean(proofPath))
@@ -53,7 +53,7 @@ func verify(cCtx *cli.Context) error {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
 		if len(proof.Vk) != 0 {
-			if bytes.Equal(proof.Vk, vk) {
+			if !bytes.Equal(proof.Vk, vk) {
 				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
 					base64.StdEncoding.EncodeToString(vk),
 					base64.StdEncoding.EncodeToString(proof.Vk),
@@ -74,7 +74,7 @@ func verify(cCtx *cli.Context) error {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
 		if len(proof.Vk) != 0 {
-			if bytes.Equal(proof.Vk, vk) {
+			if !bytes.Equal(proof.Vk, vk) {
 				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
 					base64.StdEncoding.EncodeToString(vk),
 					base64.StdEncoding.EncodeToString(proof.Vk),
@@ -94,16 +94,7 @@ func verify(cCtx *cli.Context) error {
 		if !ok {
 			return fmt.Errorf("no vk loaded for fork %s", forkName)
 		}
-		if len(proof.Vk) != 0 {
-			if bytes.Equal(proof.Vk, vk) {
-				return fmt.Errorf("unmatch vk with expected: expected %s, get %s",
-					base64.StdEncoding.EncodeToString(vk),
-					base64.StdEncoding.EncodeToString(proof.Vk),
-				)
-			}
-		} else {
-			proof.Vk = vk
-		}
+		proof.Vk = vk
 
 		ret, err = vf.VerifyBundleProof(proof, forkName)
 	default:

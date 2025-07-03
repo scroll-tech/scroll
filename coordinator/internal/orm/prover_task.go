@@ -269,7 +269,7 @@ func (o *ProverTask) UpdateProverTaskProvingStatusAndFailureType(ctx context.Con
 	return nil
 }
 
-// UpdateProverTaskProvingStatusAndFailureType updates the proving_status of a specific ProverTask record.
+// UpdateProverTaskAssignedTime updates the assigned_at time of a specific ProverTask record.
 func (o *ProverTask) UpdateProverTaskAssignedTime(ctx context.Context, uuid uuid.UUID, t time.Time, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
