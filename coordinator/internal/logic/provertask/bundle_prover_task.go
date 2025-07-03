@@ -250,13 +250,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail := message.BundleTaskDetail{
 		BatchProofs: batchProofs,
-	}
-
-	if hardForkName == message.EuclidV2Fork {
-		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else {
-		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
-		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
+		ForkName:    hardForkName,
 	}
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{

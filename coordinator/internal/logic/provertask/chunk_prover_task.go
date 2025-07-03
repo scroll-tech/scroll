@@ -228,13 +228,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	taskDetail := message.ChunkTaskDetail{
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
-	}
-
-	if hardForkName == message.EuclidV2Fork {
-		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else {
-		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
-		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
+		ForkName:         hardForkName,
 	}
 
 	var err error

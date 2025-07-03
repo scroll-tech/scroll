@@ -93,7 +93,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 			MinProverVersion: "v4.4.89",
 			Verifiers: []coordinatorConfig.AssetConfig{{
 				AssetsPath: "",
-				ForkName:   "euclidV2",
+				ForkName:   "feynman",
 			},
 			}},
 		BatchCollectionTimeSec: 60,

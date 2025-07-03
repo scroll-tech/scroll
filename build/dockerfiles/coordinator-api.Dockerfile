@@ -1,5 +1,5 @@
 # Build libzkp dependency
-FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.21-rust-nightly-2023-12-03 as chef
+FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02-14 as chef
 WORKDIR app
 
 FROM chef as planner
@@ -25,7 +25,7 @@ RUN cargo build --release -p libzkp-c
 
 
 # Download Go dependencies
-FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.21-rust-nightly-2023-12-03 as base
+FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02-14 as base
 WORKDIR /src
 COPY go.work* ./
 COPY ./rollup/go.* ./rollup/
