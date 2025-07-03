@@ -70,7 +70,8 @@ defaults:
 
 jobs:
   build-and-publish-intermediate:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
