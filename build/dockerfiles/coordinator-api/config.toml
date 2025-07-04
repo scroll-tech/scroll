@@ -1,26 +1,29 @@
 # openvm
 # same order and features as zkvm-prover/Cargo.toml.gpu
-[patch."ssh://git@github.com/scroll-tech/openvm-gpu.git"]
-openvm = { path = "/openvm-gpu/crates/toolchain/openvm", default-features = false }
-openvm-algebra-complex-macros = { path = "/openvm-gpu/extensions/algebra/complex-macros", default-features = false }
-openvm-algebra-guest = { path = "/openvm-gpu/extensions/algebra/guest", default-features = false }
-openvm-bigint-guest = { path = "/openvm-gpu/extensions/bigint/guest", default-features = false }
+[patch."https://github.com/openvm-org/openvm.git"]
 openvm-build = { path = "/openvm-gpu/crates/toolchain/build", default-features = false }
 openvm-circuit = { path = "/openvm-gpu/crates/vm", default-features = false }
-openvm-custom-insn = { path = "/openvm-gpu/crates/toolchain/custom_insn", default-features = false }
 openvm-continuations = { path = "/openvm-gpu/crates/continuations", default-features = false }
-openvm-ecc-guest = { path = "/openvm-gpu/extensions/ecc/guest", default-features = false }
 openvm-instructions ={ path = "/openvm-gpu/crates/toolchain/instructions", default-features = false }
-openvm-keccak256-guest = { path = "/openvm-gpu/extensions/keccak256/guest", default-features = false }
 openvm-native-circuit = { path = "/openvm-gpu/extensions/native/circuit", default-features = false }
 openvm-native-compiler = { path = "/openvm-gpu/extensions/native/compiler", default-features = false }
 openvm-native-recursion = { path = "/openvm-gpu/extensions/native/recursion", default-features = false }
 openvm-native-transpiler = { path = "/openvm-gpu/extensions/native/transpiler", default-features = false }
-openvm-pairing-guest = { path = "/openvm-gpu/extensions/pairing/guest", default-features = false }
-openvm-rv32im-guest = { path = "/openvm-gpu/extensions/rv32im/guest", default-features = false }
 openvm-rv32im-transpiler = { path = "/openvm-gpu/extensions/rv32im/transpiler", default-features = false }
 openvm-sdk = { path = "/openvm-gpu/crates/sdk", default-features = false, features = ["parallel", "bench-metrics", "evm-prove"] }
-openvm-sha256-guest = { path = "/openvm-gpu/extensions/sha256/guest", default-features = false }
+openvm-transpiler = { path = "/openvm-gpu/crates/toolchain/transpiler", default-features = false }
+
+[patch."ssh://git@github.com/scroll-tech/openvm-gpu.git"]
+openvm-build = { path = "/openvm-gpu/crates/toolchain/build", default-features = false }
+openvm-circuit = { path = "/openvm-gpu/crates/vm", default-features = false }
+openvm-continuations = { path = "/openvm-gpu/crates/continuations", default-features = false }
+openvm-instructions ={ path = "/openvm-gpu/crates/toolchain/instructions", default-features = false }
+openvm-native-circuit = { path = "/openvm-gpu/extensions/native/circuit", default-features = false }
+openvm-native-compiler = { path = "/openvm-gpu/extensions/native/compiler", default-features = false }
+openvm-native-recursion = { path = "/openvm-gpu/extensions/native/recursion", default-features = false }
+openvm-native-transpiler = { path = "/openvm-gpu/extensions/native/transpiler", default-features = false }
+openvm-rv32im-transpiler = { path = "/openvm-gpu/extensions/rv32im/transpiler", default-features = false }
+openvm-sdk = { path = "/openvm-gpu/crates/sdk", default-features = false, features = ["parallel", "bench-metrics", "evm-prove"] }
 openvm-transpiler = { path = "/openvm-gpu/crates/toolchain/transpiler", default-features = false }
 
 # stark-backend
@@ -38,7 +41,9 @@ p3-air = { path = "/plonky3-gpu/air" }
 p3-field = { path = "/plonky3-gpu/field" }
 p3-commit = { path = "/plonky3-gpu/commit" }
 p3-matrix = { path = "/plonky3-gpu/matrix" }
-p3-baby-bear = { path = "/plonky3-gpu/baby-bear" }
+p3-baby-bear = { path = "/plonky3-gpu/baby-bear", features = [
+    "nightly-features",
+]}
 p3-koala-bear = { path = "/plonky3-gpu/koala-bear" }
 p3-util = { path = "/plonky3-gpu/util" }
 p3-challenger = { path = "/plonky3-gpu/challenger" }
@@ -49,8 +54,8 @@ p3-keccak = { path = "/plonky3-gpu/keccak" }
 p3-keccak-air = { path = "/plonky3-gpu/keccak-air" }
 p3-blake3 = { path = "/plonky3-gpu/blake3" }
 p3-mds = { path = "/plonky3-gpu/mds" }
-p3-monty-31 = { path = "/plonky3-gpu/monty-31" }
 p3-merkle-tree = { path = "/plonky3-gpu/merkle-tree" }
+p3-monty-31 = { path = "/plonky3-gpu/monty-31" }
 p3-poseidon = { path = "/plonky3-gpu/poseidon" }
 p3-poseidon2 = { path = "/plonky3-gpu/poseidon2" }
 p3-poseidon2-air = { path = "/plonky3-gpu/poseidon2-air" }
@@ -61,16 +66,13 @@ p3-bn254-fr = { path = "/plonky3-gpu/bn254-fr" }
 
 # gpu crates
 [patch."ssh://git@github.com/scroll-tech/plonky3-gpu.git"]
-p3-gpu-base = { path = "/plonky3-gpu/gpu-base" }
-p3-gpu-build = { path = "/plonky3-gpu/gpu-build" }
-p3-gpu-field = { path = "/plonky3-gpu/gpu-field" }
-p3-gpu-backend = { path = "/plonky3-gpu/gpu-backend" }
-p3-gpu-module = { path = "/plonky3-gpu/gpu-module" }
 p3-air = { path = "/plonky3-gpu/air" }
 p3-field = { path = "/plonky3-gpu/field" }
 p3-commit = { path = "/plonky3-gpu/commit" }
 p3-matrix = { path = "/plonky3-gpu/matrix" }
-p3-baby-bear = { path = "/plonky3-gpu/baby-bear" }
+p3-baby-bear = { path = "/plonky3-gpu/baby-bear", features = [
+    "nightly-features",
+]}
 p3-koala-bear = { path = "/plonky3-gpu/koala-bear" }
 p3-util = { path = "/plonky3-gpu/util" }
 p3-challenger = { path = "/plonky3-gpu/challenger" }
@@ -81,8 +83,8 @@ p3-keccak = { path = "/plonky3-gpu/keccak" }
 p3-keccak-air = { path = "/plonky3-gpu/keccak-air" }
 p3-blake3 = { path = "/plonky3-gpu/blake3" }
 p3-mds = { path = "/plonky3-gpu/mds" }
-p3-monty-31 = { path = "/plonky3-gpu/monty-31" }
 p3-merkle-tree = { path = "/plonky3-gpu/merkle-tree" }
+p3-monty-31 = { path = "/plonky3-gpu/monty-31" }
 p3-poseidon = { path = "/plonky3-gpu/poseidon" }
 p3-poseidon2 = { path = "/plonky3-gpu/poseidon2" }
 p3-poseidon2-air = { path = "/plonky3-gpu/poseidon2-air" }
@@ -90,3 +92,4 @@ p3-symmetric = { path = "/plonky3-gpu/symmetric" }
 p3-uni-stark = { path = "/plonky3-gpu/uni-stark" }
 p3-maybe-rayon = { path = "/plonky3-gpu/maybe-rayon" }
 p3-bn254-fr = { path = "/plonky3-gpu/bn254-fr" }
+
