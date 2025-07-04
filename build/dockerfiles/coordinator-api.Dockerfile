@@ -3,7 +3,7 @@ FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02
 WORKDIR app
 
 FROM chef as planner
-COPY ./crates ./
+COPY ./crates/ ./crates/
 COPY ./Cargo.* ./
 COPY ./rust-toolchain ./
 RUN cargo chef prepare --recipe-path recipe.json
@@ -19,7 +19,7 @@ COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
 COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
 RUN cargo chef cook --release --recipe-path recipe.json
 
-COPY ./crates ./
+COPY ./crates/ ./crates/
 COPY ./Cargo.* ./
 RUN cargo build --release -p libzkp-c
 
