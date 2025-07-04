@@ -11,16 +11,10 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef as zkp-builder
 COPY ./rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
-# run scripts to get openvm-gpu
-COPY ./build/dockerfiles/coordinator-api/plonky3-gpu /plonky3-gpu
-COPY ./build/dockerfiles/coordinator-api/openvm-stark-gpu /openvm-stark-gpu
-COPY ./build/dockerfiles/coordinator-api/openvm-gpu /openvm-gpu
-COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
-COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
 RUN cargo chef cook --release --recipe-path recipe.json
-
 COPY ./crates/ ./crates/
 COPY ./Cargo.* ./
+COPY .git .git
 RUN cargo build --release -p libzkp-c
 
 
