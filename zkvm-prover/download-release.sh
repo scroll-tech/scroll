@@ -1,10 +1,21 @@
 #!/bin/bash
 
+# Define version mapping
+declare -A VERSION_MAP
+VERSION_MAP["euclid"]="0.4.3"
+VERSION_MAP["feynman"]="0.5.0rc0"
+
 # release version
 if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
-#   before we use version tag for zkvm, we can not acquire the correct version of zkvm from script
-#    SCROLL_ZKVM_VERSION=$($SHELL ./print_high_zkvm_version.sh | cut -d' ' -f1|cut -c2-)
-    SCROLL_ZKVM_VERSION=0.5.0rc0
+    
+    # Check if first argument is provided and matches a known version name
+    if [ -n "$1" ] && [ -n "${VERSION_MAP[$1]}" ]; then
+        SCROLL_ZKVM_VERSION=${VERSION_MAP[$1]}
+        echo "Setting SCROLL_ZKVM_VERSION to ${SCROLL_ZKVM_VERSION} based on '$1' argument"
+    else
+        # Default version if no argument or not recognized
+        SCROLL_ZKVM_VERSION=0.5.0rc0
+    fi
 fi
 
 echo $SCROLL_ZKVM_VERSION
