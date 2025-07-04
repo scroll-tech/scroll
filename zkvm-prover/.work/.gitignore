@@ -1,4 +1,5 @@
 *.vmexe
+openvm.toml
 *.bin
 *.sol
 cache
