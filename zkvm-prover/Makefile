@@ -21,7 +21,7 @@ endif
 ZKVM_COMMIT=$(shell echo ${ZKVM_VERSION} | cut -d " " -f2)
 $(info ZKVM_COMMIT is ${ZKVM_COMMIT})
 
-PLONKY3_GPU_VERSION=$(shell ./print_plonky3gpu_version.sh | sed -n '2p')
+#PLONKY3_GPU_VERSION=$(shell ./print_plonky3gpu_version.sh | sed -n '2p')
 
 GIT_REV=$(shell git rev-parse --short HEAD)
 GO_TAG=$(shell grep "var tag = " ../common/version/version.go | cut -d "\"" -f2)
@@ -32,16 +32,27 @@ else
     $(info GO_TAG is ${GO_TAG})
 endif
 
-ifeq (${PLONKY3_GPU_VERSION},)
-	# use plonky3 with CPU
-    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
-else
-	# use halo2_gpu
-    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION}
-endif
+ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
+#ifeq (${PLONKY3_GPU_VERSION},)
+#	# use plonky3 with CPU
+#    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
+#else
+#	# use gpu
+#    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION}
+#endif
 
-prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cd ../crates/prover-bin && cargo build --release
+prover_gpu:
+	cd ../crates/gpu_override && cargo tree >/dev/null
+	$(eval PLONKY3_GPU_VERSION:=$(shell ./print_plonky3gpu_version.sh | sed -n '2p'))
+	$(eval ZK_VERSION:=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION})
+	@echo "Updated ZK_VERSION to ${ZK_VERSION} after prover_gpu"
+
+prover: prover_gpu
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cd ../crates/gpu_override && cargo build --release -p prover
+
+prover_cpu:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release -p prover
+
 
 tests_binary:
 	cargo clean && cargo test --release --no-run
