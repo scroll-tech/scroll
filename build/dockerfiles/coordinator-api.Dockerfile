@@ -1,5 +1,5 @@
 # Build libzkp dependency
-FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02-14 as chef
+FROM scrolltech/go-1.22.12-rust-nightly-2025-02-14 as chef
 WORKDIR app
 
 FROM chef as planner
@@ -19,7 +19,7 @@ RUN cargo build --release -p libzkp-c
 
 
 # Download Go dependencies
-FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02-14 as base
+FROM scrolltech/go-1.22.12-rust-nightly-2025-02-14 as base
 WORKDIR /src
 COPY go.work* ./
 COPY ./rollup/go.* ./rollup/
@@ -39,7 +39,7 @@ RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_a
 RUN mv coordinator/internal/logic/libzkp/lib /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
-FROM nvidia/cuda:11.7.1-runtime-ubuntu22.04
+FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 # ENV CHAIN_ID=534353
