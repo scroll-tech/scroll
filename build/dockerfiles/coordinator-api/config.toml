@@ -12,6 +12,17 @@ openvm-native-transpiler = { path = "/openvm-gpu/extensions/native/transpiler", 
 openvm-rv32im-transpiler = { path = "/openvm-gpu/extensions/rv32im/transpiler", default-features = false }
 openvm-sdk = { path = "/openvm-gpu/crates/sdk", default-features = false, features = ["parallel", "bench-metrics", "evm-prove"] }
 openvm-transpiler = { path = "/openvm-gpu/crates/toolchain/transpiler", default-features = false }
+# implicit dep
+openvm = { path = "/openvm-gpu/crates/toolchain/openvm", default-features = false }
+openvm-algebra-complex-macros = { path = "/openvm-gpu/extensions/algebra/complex-macros", default-features = false }
+openvm-algebra-guest = { path = "/openvm-gpu/extensions/algebra/guest", default-features = false }
+openvm-bigint-guest = { path = "/openvm-gpu/extensions/bigint/guest", default-features = false }
+openvm-custom-insn = { path = "/openvm-gpu/crates/toolchain/custom_insn", default-features = false }
+openvm-ecc-guest = { path = "/openvm-gpu/extensions/ecc/guest", default-features = false }
+openvm-keccak256-guest = { path = "/openvm-gpu/extensions/keccak256/guest", default-features = false }
+openvm-pairing-guest = { path = "/openvm-gpu/extensions/pairing/guest", default-features = false }
+openvm-rv32im-guest = { path = "/openvm-gpu/extensions/rv32im/guest", default-features = false }
+openvm-sha256-guest = { path = "/openvm-gpu/extensions/sha256/guest", default-features = false }
 
 [patch."ssh://git@github.com/scroll-tech/openvm-gpu.git"]
 openvm-build = { path = "/openvm-gpu/crates/toolchain/build", default-features = false }
@@ -25,6 +36,18 @@ openvm-native-transpiler = { path = "/openvm-gpu/extensions/native/transpiler", 
 openvm-rv32im-transpiler = { path = "/openvm-gpu/extensions/rv32im/transpiler", default-features = false }
 openvm-sdk = { path = "/openvm-gpu/crates/sdk", default-features = false, features = ["parallel", "bench-metrics", "evm-prove"] }
 openvm-transpiler = { path = "/openvm-gpu/crates/toolchain/transpiler", default-features = false }
+# implicit dep
+openvm = { path = "/openvm-gpu/crates/toolchain/openvm", default-features = false }
+openvm-algebra-complex-macros = { path = "/openvm-gpu/extensions/algebra/complex-macros", default-features = false }
+openvm-algebra-guest = { path = "/openvm-gpu/extensions/algebra/guest", default-features = false }
+openvm-bigint-guest = { path = "/openvm-gpu/extensions/bigint/guest", default-features = false }
+openvm-custom-insn = { path = "/openvm-gpu/crates/toolchain/custom_insn", default-features = false }
+openvm-ecc-guest = { path = "/openvm-gpu/extensions/ecc/guest", default-features = false }
+openvm-keccak256-guest = { path = "/openvm-gpu/extensions/keccak256/guest", default-features = false }
+openvm-pairing-guest = { path = "/openvm-gpu/extensions/pairing/guest", default-features = false }
+openvm-rv32im-guest = { path = "/openvm-gpu/extensions/rv32im/guest", default-features = false }
+openvm-sha256-guest = { path = "/openvm-gpu/extensions/sha256/guest", default-features = false }
+
 
 # stark-backend
 [patch."https://github.com/openvm-org/stark-backend.git"]
