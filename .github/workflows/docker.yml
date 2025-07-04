@@ -10,7 +10,8 @@ env:
 
 jobs:
   gas_oracle:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,7 +56,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   rollup_relayer:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -100,7 +102,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   blob_uploader:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -145,7 +148,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   rollup-db-cli:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -190,7 +194,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-fetcher:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -235,7 +240,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-api:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -280,7 +286,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-db-cli:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -325,7 +332,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-api:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -369,7 +377,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-cron:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
