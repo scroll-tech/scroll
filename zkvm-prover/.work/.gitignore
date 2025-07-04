@@ -6,3 +6,4 @@ cache
 db
 *.json
 ?
+root-verifier*
