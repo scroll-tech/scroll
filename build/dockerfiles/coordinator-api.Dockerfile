@@ -1,6 +1,8 @@
 # Build libzkp dependency
 FROM scrolltech/cuda-go-rust-builder:cuda-11.7.1-go-1.22.12-rust-nightly-2025-02-14 as chef
 WORKDIR app
+# Install cargo-chef to support workspace inheritance
+RUN cargo install cargo-chef --locked
 
 FROM chef as planner
 COPY ./crates/ ./crates/
@@ -11,13 +13,18 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef as zkp-builder
 COPY ./rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
-# run scripts to get openvm-gpu
-COPY ./build/dockerfiles/coordinator-api/plonky3-gpu /plonky3-gpu
-COPY ./build/dockerfiles/coordinator-api/openvm-stark-gpu /openvm-stark-gpu
-COPY ./build/dockerfiles/coordinator-api/openvm-gpu /openvm-gpu
+# Install git and setup GPU dependencies
+RUN apt-get update && apt-get install -y git
+# Clone GPU repositories using HTTPS instead of SSH
+RUN git clone https://github.com/scroll-tech/plonky3-gpu.git /plonky3-gpu && \
+    cd /plonky3-gpu && git checkout 261b322
+RUN git clone https://github.com/scroll-tech/openvm-stark-gpu.git /openvm-stark-gpu && \
+    cd /openvm-stark-gpu && git checkout 3082234
+RUN git clone https://github.com/scroll-tech/openvm-gpu.git /openvm-gpu && \
+    cd /openvm-gpu && git checkout 8094b4f
 COPY ./build/dockerfiles/coordinator-api/gitconfig /root/.gitconfig
 COPY ./build/dockerfiles/coordinator-api/config.toml /root/.cargo/config.toml
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN RUST_BACKTRACE=1 cargo chef cook --release --recipe-path recipe.json
 
 COPY ./crates/ ./crates/
 COPY ./Cargo.* ./
