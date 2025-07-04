@@ -63,6 +63,12 @@ p3-symmetric = { path = "/plonky3-gpu/symmetric" }
 p3-uni-stark = { path = "/plonky3-gpu/uni-stark" }
 p3-maybe-rayon = { path = "/plonky3-gpu/maybe-rayon" }
 p3-bn254-fr = { path = "/plonky3-gpu/bn254-fr" }
+# scroll gpu
+p3-gpu-backend = { path = "/plonky3-gpu/gpu-backend" }
+p3-gpu-base = { path = "/plonky3-gpu/gpu-base" }
+p3-gpu-build = { path = "/plonky3-gpu/gpu-build" }
+p3-gpu-field = { path = "/plonky3-gpu/gpu-field" }
+p3-gpu-module = { path = "/plonky3-gpu/gpu-module" }
 
 # gpu crates
 [patch."ssh://git@github.com/scroll-tech/plonky3-gpu.git"]
@@ -92,4 +98,9 @@ p3-symmetric = { path = "/plonky3-gpu/symmetric" }
 p3-uni-stark = { path = "/plonky3-gpu/uni-stark" }
 p3-maybe-rayon = { path = "/plonky3-gpu/maybe-rayon" }
 p3-bn254-fr = { path = "/plonky3-gpu/bn254-fr" }
-
+# scroll gpu
+p3-gpu-backend = { path = "/plonky3-gpu/gpu-backend" }
+p3-gpu-base = { path = "/plonky3-gpu/gpu-base" }
+p3-gpu-build = { path = "/plonky3-gpu/gpu-build" }
+p3-gpu-field = { path = "/plonky3-gpu/gpu-field" }
+p3-gpu-module = { path = "/plonky3-gpu/gpu-module" }
