@@ -48,7 +48,7 @@ prover_gpu:
 	@echo "Updated ZK_VERSION to ${ZK_VERSION} after prover_gpu"
 
 prover: prover_gpu
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cd ../crates/gpu_override && cargo build --release -p prover
+	cd ../crates/gpu_override && GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release -p prover
 
 prover_cpu:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release -p prover
