@@ -28,10 +28,16 @@ type ProverManager struct {
 	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
 }
 
+// l2geth client configuration items
+type L2Endpoint struct {
+	Url string `json:"endpoint"`
+}
+
 // L2 loads l2geth configuration items.
 type L2 struct {
 	// l2geth chain_id.
-	ChainID uint64 `json:"chain_id"`
+	ChainID  uint64      `json:"chain_id"`
+	Endpoint *L2Endpoint `json:"l2geth"`
 }
 
 // Auth provides the auth coordinator
@@ -49,16 +55,17 @@ type Config struct {
 	Auth          *Auth            `json:"auth"`
 }
 
-// CircuitConfig circuit items.
-type CircuitConfig struct {
-	AssetsPath       string `json:"assets_path"`
-	ForkName         string `json:"fork_name"`
-	MinProverVersion string `json:"min_prover_version"`
+// AssetConfig contain assets configurated for each fork, the defaul vkfile name is "OpenVmVk.json".
+type AssetConfig struct {
+	AssetsPath string `json:"assets_path"`
+	ForkName   string `json:"fork_name"`
+	Vkfile     string `json:"vk_file,omitempty"`
 }
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	HighVersionCircuit *CircuitConfig `json:"high_version_circuit"`
+	MinProverVersion string        `json:"min_prover_version"`
+	Verifiers        []AssetConfig `json:"verifiers"`
 }
 
 // NewConfig returns a new instance of Config.

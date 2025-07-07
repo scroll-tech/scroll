@@ -2,25 +2,30 @@
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
+LIBZKP_PATH=./internal/logic/libzkp/lib/libzkp.so
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	OPENVM_VERSION=$(shell grep -m 1 "openvm.git" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	OPENVM_VERSION=$(shell grep -m 1 "openvm.git" ../Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
+ZK_VERSION=${ZKVM_VERSION}-${OPENVM_VERSION}
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-libzkp:
-	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+$(LIBZKP_PATH):
+	$(MAKE) -C ./internal/logic/libzkp build
 
-coordinator_api: libzkp ## Builds the Coordinator api instance.
+clean_libzkp:
+	$(MAKE) -C ./internal/logic/libzkp clean
+
+libzkp: clean_libzkp $(LIBZKP_PATH)
+
+coordinator_api: $(LIBZKP_PATH) ## Builds the Coordinator api instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 coordinator_cron:
@@ -29,8 +34,8 @@ coordinator_cron:
 coordinator_tool:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
 
-coordinator_api_skip_libzkp:
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
+#coordinator_api_skip_libzkp:
+#	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 mock_coordinator_api: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_api ./cmd/api
@@ -38,15 +43,15 @@ mock_coordinator_api: ## Builds the mocked Coordinator instance.
 mock_coordinator_cron: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
-test-verifier: libzkp
+test-verifier: $(LIBZKP_PATH)
 	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
 
-test-gpu-verifier: libzkp
+test-gpu-verifier: $(LIBZKP_PATH)
 	go test -tags="gpu ffi" -timeout 0 -v ./internal/logic/verifier
 
 lint: ## Lint the files - used for CI
-	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
+	cd ../ && cargo fmt --all -- --check && cargo clippy --release -- -D warnings
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

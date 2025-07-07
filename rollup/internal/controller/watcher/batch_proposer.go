@@ -55,7 +55,7 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	log.Info("new batch proposer", "batchTimeoutSec", cfg.BatchTimeoutSec, "maxBlobSize", maxBlobSize)
+	log.Info("new batch proposer", "batchTimeoutSec", cfg.BatchTimeoutSec, "maxBlobSize", maxBlobSize, "maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &BatchProposer{
 		ctx:             ctx,
@@ -301,16 +301,18 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.recordTimerBatchMetrics(metrics)
 
-		if metrics.L1CommitBlobSize > maxBlobSize {
+		if metrics.L1CommitBlobSize > maxBlobSize || metrics.L1CommitUncompressedBatchBytesSize > p.cfg.MaxUncompressedBatchBytesSize {
 			if i == 0 {
 				// The first chunk exceeds hard limits, which indicates a bug in the chunk-proposer, manual fix is needed.
-				return fmt.Errorf("the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxBlobSize: %v",
-					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, maxChunksThisBatch, maxBlobSize)
+				return fmt.Errorf("the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxBlobSize: %v, maxUncompressedBatchBytesSize: %v",
+					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, maxChunksThisBatch, maxBlobSize, p.cfg.MaxUncompressedBatchBytesSize)
 			}
 
 			log.Debug("breaking limit condition in batching",
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
-				"maxBlobSize", maxBlobSize)
+				"maxBlobSize", maxBlobSize,
+				"L1CommitUncompressedBatchBytesSize", metrics.L1CommitUncompressedBatchBytesSize,
+				"maxUncompressedBatchBytesSize", p.cfg.MaxUncompressedBatchBytesSize)
 
 			lastChunk := batch.Chunks[len(batch.Chunks)-1]
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]

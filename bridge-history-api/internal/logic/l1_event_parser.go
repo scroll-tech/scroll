@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -252,6 +253,11 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 	// Key:   commit transaction hash
 	// Value: parent batch hashes (in order) for each processed CommitBatch event in the transaction
 	txBlobIndexMap := make(map[common.Hash][]common.Hash)
+
+	// Cache for the previous transaction to avoid duplicate fetches
+	var lastTxHash common.Hash
+	var lastTx *types.Transaction
+
 	var l1BatchEvents []*orm.BatchEvent
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
@@ -261,11 +267,28 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				log.Error("Failed to unpack CommitBatch event", "err", err)
 				return nil, err
 			}
-			commitTx, isPending, err := client.TransactionByHash(ctx, vlog.TxHash)
-			if err != nil || isPending {
-				log.Error("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
-				return nil, err
+
+			// Get transaction, reuse if it's the same as previous
+			var commitTx *types.Transaction
+			if lastTxHash == vlog.TxHash && lastTx != nil {
+				commitTx = lastTx
+			} else {
+				log.Debug("Fetching commit batch transaction", "txHash", vlog.TxHash.String())
+
+				// Create 10-second timeout context for transaction fetch
+				txCtx, txCancel := context.WithTimeout(ctx, 10*time.Second)
+				fetchedTx, isPending, err := client.TransactionByHash(txCtx, vlog.TxHash)
+				txCancel()
+
+				if err != nil || isPending {
+					log.Error("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
+					return nil, err
+				}
+				commitTx = fetchedTx
+				lastTxHash = vlog.TxHash
+				lastTx = commitTx
 			}
+
 			version, startBlock, endBlock, err := utils.GetBatchVersionAndBlockRangeFromCalldata(commitTx.Data())
 			if err != nil {
 				log.Error("Failed to get batch range from calldata", "hash", commitTx.Hash().String(), "height", vlog.BlockNumber)
@@ -305,7 +328,13 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 					return nil, fmt.Errorf("batch hash mismatch for batch %d, expected: %s, got: %s", event.BatchIndex, event.BatchHash.String(), calculatedBatch.Hash().String())
 				}
 
-				blocks, err := e.getBatchBlockRangeFromBlob(ctx, codec, blobVersionedHash, blockTimestampsMap[vlog.BlockNumber])
+				log.Debug("Processing blob data", "blobVersionedHash", blobVersionedHash.String(), "batchIndex", event.BatchIndex.Uint64(), "currentIndex", currentIndex)
+
+				// Create 20-second timeout context for blob processing
+				blobCtx, blobCancel := context.WithTimeout(ctx, 20*time.Second)
+				blocks, err := e.getBatchBlockRangeFromBlob(blobCtx, codec, blobVersionedHash, blockTimestampsMap[vlog.BlockNumber])
+				blobCancel()
+
 				if err != nil {
 					return nil, fmt.Errorf("failed to process versioned blob, blobVersionedHash: %s, block number: %d, blob index: %d, err: %w",
 						blobVersionedHash.String(), vlog.BlockNumber, currentIndex, err)

@@ -263,44 +263,6 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 	return &batch, nil
 }
 
-// GetFirstUnuploadedBatchByPlatform retrieves the first batch that either hasn't been uploaded to corresponding blob storage service
-// The batch must have a commit_tx_hash (committed).
-func (o *Batch) GetFirstUnuploadedBatchByPlatform(ctx context.Context, startBatch uint64, platform types.BlobStoragePlatform) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&BlobUpload{})
-	db = db.Where("platform = ? AND status = ?", platform, types.BlobUploadStatusUploaded)
-	db = db.Order("batch_index DESC")
-	db = db.Limit(1)
-
-	var blobUpload BlobUpload
-	var batchIndex uint64
-	if err := db.First(&blobUpload).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			batchIndex = startBatch
-		} else {
-			return nil, fmt.Errorf("Batch.GetFirstUnuploadedBatchByPlatform error: %w", err)
-		}
-	} else {
-		batchIndex = blobUpload.BatchIndex + 1
-	}
-
-	batch, err := o.GetBatchByIndex(ctx, batchIndex)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Debug("got batch not proposed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
-			return nil, nil
-		}
-		return nil, fmt.Errorf("Batch.GetFirstUnuploadedBatchByPlatform error: %w", err)
-	}
-
-	if len(batch.CommitTxHash) == 0 {
-		log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
-		return nil, nil
-	}
-
-	return batch, nil
-}
-
 // InsertBatch inserts a new batch into the database.
 func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {

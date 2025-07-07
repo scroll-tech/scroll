@@ -2,30 +2,23 @@
 
 package verifier
 
-/*
-#cgo LDFLAGS: -lzkp -lm -ldl -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#include <stdlib.h>
-#include "./lib/libzkp.h"
-*/
-import "C" //nolint:typecheck
-
 import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
 	"path"
-	"unsafe"
+	"path/filepath"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/libzkp"
 )
 
-// This struct maps to `CircuitConfig` in common/libzkp/impl/src/verifier.rs
+// This struct maps to `CircuitConfig` in libzkp/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.CircuitConfig` being changed
 type rustCircuitConfig struct {
@@ -33,24 +26,28 @@ type rustCircuitConfig struct {
 	AssetsPath string `json:"assets_path"`
 }
 
-func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
+func newRustCircuitConfig(cfg config.AssetConfig) *rustCircuitConfig {
 	return &rustCircuitConfig{
 		ForkName:   cfg.ForkName,
 		AssetsPath: cfg.AssetsPath,
 	}
 }
 
-// This struct maps to `VerifierConfig` in common/libzkp/impl/src/verifier.rs
+// This struct maps to `VerifierConfig` in coordinator/internal/logic/libzkp/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
-	HighVersionCircuit *rustCircuitConfig `json:"high_version_circuit"`
+	Circuits []*rustCircuitConfig `json:"circuits"`
 }
 
 func newRustVerifierConfig(cfg *config.VerifierConfig) *rustVerifierConfig {
-	return &rustVerifierConfig{
-		HighVersionCircuit: newRustCircuitConfig(cfg.HighVersionCircuit),
+
+	out := &rustVerifierConfig{}
+
+	for _, cfg := range cfg.Verifiers {
+		out.Circuits = append(out.Circuits, newRustCircuitConfig(cfg))
 	}
+	return out
 }
 
 type rustVkDump struct {
@@ -67,20 +64,20 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return nil, err
 	}
 
-	configStr := C.CString(string(configBytes))
-	defer func() {
-		C.free(unsafe.Pointer(configStr))
-	}()
-
-	C.init(configStr)
+	libzkp.InitVerifier(string(configBytes))
 
 	v := &Verifier{
 		cfg:         cfg,
 		OpenVMVkMap: make(map[string]struct{}),
+		ChunkVk:     make(map[string][]byte),
+		BatchVk:     make(map[string][]byte),
+		BundleVk:    make(map[string][]byte),
 	}
 
-	if err := v.loadOpenVMVks(message.EuclidV2Fork); err != nil {
-		return nil, err
+	for _, cfg := range cfg.Verifiers {
+		if err := v.loadOpenVMVks(cfg); err != nil {
+			return nil, err
+		}
 	}
 
 	return v, nil
@@ -94,15 +91,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.OpenVMBatchProof, forkName st
 	}
 
 	log.Info("Start to verify batch proof", "forkName", forkName)
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
-
-	verified := C.verify_batch_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyBatchProof(string(buf), forkName), nil
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Verifier.
@@ -113,15 +102,8 @@ func (v *Verifier) VerifyChunkProof(proof *message.OpenVMChunkProof, forkName st
 	}
 
 	log.Info("Start to verify chunk proof", "forkName", forkName)
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
 
-	verified := C.verify_chunk_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyChunkProof(string(buf), forkName), nil
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
@@ -131,46 +113,19 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 		return false, err
 	}
 
-	proofStr := C.CString(string(buf))
-	forkNameStr := C.CString(forkName)
-	defer func() {
-		C.free(unsafe.Pointer(proofStr))
-		C.free(unsafe.Pointer(forkNameStr))
-	}()
-
 	log.Info("Start to verify bundle proof ...")
-	verified := C.verify_bundle_proof(proofStr, forkNameStr)
-	return verified != 0, nil
+	return libzkp.VerifyBundleProof(string(buf), forkName), nil
 }
 
-func (v *Verifier) readVK(filePat string) (string, error) {
-	f, err := os.Open(filePat)
-	if err != nil {
-		return "", err
+func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
+
+	vkFileName := cfg.Vkfile
+	if vkFileName == "" {
+		vkFileName = "openVmVk.json"
 	}
-	byt, err := io.ReadAll(f)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(byt), nil
-}
+	vkFile := path.Join(cfg.AssetsPath, vkFileName)
 
-func (v *Verifier) loadOpenVMVks(forkName string) error {
-	tempFile := path.Join(os.TempDir(), "openVmVk.json")
-	defer func() {
-		if err := os.Remove(tempFile); err != nil {
-			log.Error("failed to remove temp file", "err", err)
-		}
-	}()
-
-	forkNameCStr := C.CString(forkName)
-	defer C.free(unsafe.Pointer(forkNameCStr))
-	tempFileCStr := C.CString(tempFile)
-	defer C.free(unsafe.Pointer(tempFileCStr))
-
-	C.dump_vk(forkNameCStr, tempFileCStr)
-
-	f, err := os.Open(tempFile)
+	f, err := os.Open(filepath.Clean(vkFile))
 	if err != nil {
 		return err
 	}
@@ -186,5 +141,23 @@ func (v *Verifier) loadOpenVMVks(forkName string) error {
 	v.OpenVMVkMap[dump.Chunk] = struct{}{}
 	v.OpenVMVkMap[dump.Batch] = struct{}{}
 	v.OpenVMVkMap[dump.Bundle] = struct{}{}
+	log.Info("Load vks", "from", cfg.AssetsPath, "chunk", dump.Chunk, "batch", dump.Batch, "bundle", dump.Bundle)
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(dump.Chunk)
+	if err != nil {
+		return err
+	}
+	v.ChunkVk[cfg.ForkName] = decodedBytes
+	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Batch)
+	if err != nil {
+		return err
+	}
+	v.BatchVk[cfg.ForkName] = decodedBytes
+	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Bundle)
+	if err != nil {
+		return err
+	}
+	v.BundleVk[cfg.ForkName] = decodedBytes
+
 	return nil
 }

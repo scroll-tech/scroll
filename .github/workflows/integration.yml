@@ -38,6 +38,7 @@ jobs:
         make dev_docker
         make -C rollup mock_abi
         make -C common/bytecode all
+        make -C coordinator/internal/logic/libzkp build
     - name: Run integration tests
       run: |
         go test -v -tags="mock_prover mock_verifier" -p 1 -coverprofile=coverage.txt scroll-tech/integration-test/...

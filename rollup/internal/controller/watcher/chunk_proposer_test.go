@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -84,9 +85,10 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk: tt.maxBlockNum,
-				MaxL2GasPerChunk:    tt.maxL2Gas,
-				ChunkTimeoutSec:     tt.chunkTimeoutSec,
+				MaxBlockNumPerChunk:           tt.maxBlockNum,
+				MaxL2GasPerChunk:              tt.maxL2Gas,
+				ChunkTimeoutSec:               tt.chunkTimeoutSec,
+				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}, db, nil)
 			cp.TryProposeChunk()
 
@@ -128,9 +130,10 @@ func testChunkProposerBlobSizeLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk: 255,
-		MaxL2GasPerChunk:    math.MaxUint64,
-		ChunkTimeoutSec:     math.MaxUint32,
+		MaxBlockNumPerChunk:           255,
+		MaxL2GasPerChunk:              math.MaxUint64,
+		ChunkTimeoutSec:               math.MaxUint32,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	for i := 0; i < 2; i++ {
@@ -152,4 +155,77 @@ func testChunkProposerBlobSizeLimitCodecV7(t *testing.T) {
 		}
 		assert.Equal(t, expected, chunk.EndBlockNumber)
 	}
+}
+
+func testChunkProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	// Create a block with very large calldata to test uncompressed batch bytes limit
+	block := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
+
+	// Create a transaction with large calldata (around 3KiB)
+	largeCalldata := make([]byte, 3*1024) // 3KiB calldata
+	for i := range largeCalldata {
+		largeCalldata[i] = byte(i % 256)
+	}
+
+	// Modify the block to have a transaction with large calldata
+	block.Transactions[0].Data = "0x" + common.Bytes2Hex(largeCalldata)
+
+	// Insert two identical blocks with large calldata
+	l2BlockOrm := orm.NewL2Block(db)
+	for i := uint64(0); i < 2; i++ {
+		blockCopy := *block
+		blockCopy.Header = &gethTypes.Header{}
+		*blockCopy.Header = *block.Header
+		blockCopy.Header.Number = new(big.Int).SetUint64(i + 1)
+		blockCopy.Header.Time = i + 1
+		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{&blockCopy})
+		assert.NoError(t, err)
+	}
+
+	// Add genesis chunk
+	chunkOrm := orm.NewChunk(db)
+	_, err := chunkOrm.InsertChunk(context.Background(), &encoding.Chunk{Blocks: []*encoding.Block{{Header: &gethTypes.Header{Number: big.NewInt(0)}}}}, encoding.CodecV0, utils.ChunkMetrics{})
+	assert.NoError(t, err)
+
+	chainConfig := &params.ChainConfig{
+		LondonBlock:    big.NewInt(0),
+		BernoulliBlock: big.NewInt(0),
+		CurieBlock:     big.NewInt(0),
+		DarwinTime:     new(uint64),
+		DarwinV2Time:   new(uint64),
+		EuclidTime:     new(uint64),
+		EuclidV2Time:   new(uint64),
+		FeynmanTime:    new(uint64),
+	}
+
+	// Set max_uncompressed_batch_bytes_size to 4KiB (4 * 1024)
+	// One block (~3KiB) should fit, but two blocks (~6KiB) should exceed the limit
+	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:           math.MaxUint64, // No block number limit
+		MaxL2GasPerChunk:              math.MaxUint64, // No gas limit
+		ChunkTimeoutSec:               math.MaxUint32, // No timeout limit
+		MaxUncompressedBatchBytesSize: 4 * 1024,       // 4KiB limit
+	}, encoding.CodecV8, chainConfig, db, nil)
+
+	// Try to propose chunk
+	cp.TryProposeChunk()
+
+	// Check that a chunk was created
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 1, 0)
+	assert.NoError(t, err)
+	assert.Len(t, chunks, 1)
+
+	// Verify that the chunk contains only 1 block (not 2) due to uncompressed batch bytes limit
+	chunk := chunks[0]
+	assert.Equal(t, uint64(1), chunk.StartBlockNumber)
+	assert.Equal(t, uint64(1), chunk.EndBlockNumber)
+
+	// Verify that the second block is still available for next chunk
+	blockOrm := orm.NewL2Block(db)
+	blocks, err := blockOrm.GetL2BlocksGEHeight(context.Background(), 2, 0)
+	assert.NoError(t, err)
+	assert.Len(t, blocks, 1) // Second block should still be available
 }

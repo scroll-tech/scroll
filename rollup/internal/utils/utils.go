@@ -17,7 +17,8 @@ type ChunkMetrics struct {
 	L2Gas               uint64
 	FirstBlockTimestamp uint64
 
-	L1CommitBlobSize uint64
+	L1CommitBlobSize                   uint64
+	L1CommitUncompressedBatchBytesSize uint64
 
 	// timing metrics
 	EstimateBlobSizeTime time.Duration
@@ -43,7 +44,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 	}
 
 	metrics.EstimateBlobSizeTime, err = measureTime(func() error {
-		_, metrics.L1CommitBlobSize, err = codec.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 		return err
 	})
 	if err != nil {
@@ -58,7 +59,8 @@ type BatchMetrics struct {
 	NumChunks           uint64
 	FirstBlockTimestamp uint64
 
-	L1CommitBlobSize uint64
+	L1CommitBlobSize                   uint64
+	L1CommitUncompressedBatchBytesSize uint64
 
 	ValidiumMode bool // default false: rollup mode
 
@@ -80,7 +82,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 	}
 
 	metrics.EstimateBlobSizeTime, err = measureTime(func() error {
-		_, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 		return err
 	})
 	if err != nil {

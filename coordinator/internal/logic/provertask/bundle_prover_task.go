@@ -33,12 +33,13 @@ type BundleProverTask struct {
 }
 
 // NewBundleProverTask new a bundle collector
-func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BundleProverTask {
+func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BundleProverTask {
 	bp := &BundleProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			chainCfg:           chainCfg,
 			cfg:                cfg,
+			expectedVk:         expectedVk,
 			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
@@ -81,10 +82,25 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBundleTask *orm.Bundle
-		tmpBundleTask, getTaskError = bp.bundleOrm.GetAssignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
-		if getTaskError != nil {
-			log.Error("failed to get assigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
+
+		if taskCtx.hasAssignedTask != nil {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get bundle has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBundleTask == nil {
+				// if the assigned chunk dropped, there would be too much issue to assign another
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped bundle. ProverName: %s, ProverVersion: %s",
+					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+		}
+
+		if tmpBundleTask == nil {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetAssignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+			if getTaskError != nil {
+				log.Error("failed to get assigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
 		}
 
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
@@ -112,31 +128,33 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 			return nil, nil
 		}
 
-		// Don't dispatch the same failing job to the same prover
-		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
-		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		for i := 0; i < len(proverTasks); i++ {
-			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
-				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-				log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBundleTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
-				return nil, nil
+		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
+		if taskCtx.hasAssignedTask == nil {
+			// Don't dispatch the same failing job to the same prover
+			proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
+			if getTaskError != nil {
+				log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
+			for i := 0; i < len(proverTasks); i++ {
+				if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+					taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+					log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBundleTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
+					return nil, nil
+				}
+			}
+
+			rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)
+			if updateAttemptsErr != nil {
+				log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+				return nil, ErrCoordinatorInternalFailure
+			}
+
+			if rowsAffected == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
 			}
 		}
-
-		rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)
-		if updateAttemptsErr != nil {
-			log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
-			return nil, ErrCoordinatorInternalFailure
-		}
-
-		if rowsAffected == 0 {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
 		bundleTask = tmpBundleTask
 		break
 	}
@@ -147,31 +165,52 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	}
 
 	log.Info("start bundle proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-	proverTask := orm.ProverTask{
-		TaskID:          bundleTask.Hash,
-		ProverPublicKey: taskCtx.PublicKey,
-		TaskType:        int16(message.ProofTypeBundle),
-		ProverName:      taskCtx.ProverName,
-		ProverVersion:   taskCtx.ProverVersion,
-		ProvingStatus:   int16(types.ProverAssigned),
-		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-		// here why need use UTC time. see scroll/common/database/db.go
-		AssignedAt: utils.NowUTC(),
+	var proverTask *orm.ProverTask
+	if taskCtx.hasAssignedTask == nil {
+		proverTask = &orm.ProverTask{
+			TaskID:          bundleTask.Hash,
+			ProverPublicKey: taskCtx.PublicKey,
+			TaskType:        int16(message.ProofTypeBundle),
+			ProverName:      taskCtx.ProverName,
+			ProverVersion:   taskCtx.ProverVersion,
+			ProvingStatus:   int16(types.ProverAssigned),
+			FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+			// here why need use UTC time. see scroll/common/database/db.go
+			AssignedAt: utils.NowUTC(),
+		}
+	} else {
+		proverTask = taskCtx.hasAssignedTask
 	}
 
-	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
+	if getTaskParameter.Universal {
+		var metadata []byte
+		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
+		if err != nil {
+			bp.recoverActiveAttempts(ctx, bundleTask)
+			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle", "err", err)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		// bundle proof require snark
+		taskMsg.UseSnark = true
+		proverTask.Metadata = metadata
+	}
+
+	// Store session info.
+	if taskCtx.hasAssignedTask == nil {
+		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
+			bp.recoverActiveAttempts(ctx, bundleTask)
+			log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+			return nil, ErrCoordinatorInternalFailure
+		}
+	}
+	// notice uuid is set as a side effect of InsertProverTask
+	taskMsg.UUID = proverTask.UUID.String()
 
 	bp.bundleTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.bundleTaskGetTaskProver.With(prometheus.Labels{
@@ -211,13 +250,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail := message.BundleTaskDetail{
 		BatchProofs: batchProofs,
-	}
-
-	if hardForkName == message.EuclidV2Fork {
-		taskDetail.ForkName = message.EuclidV2ForkNameForProver
-	} else {
-		log.Error("unsupported hard fork name", "hard_fork_name", hardForkName)
-		return nil, fmt.Errorf("unsupported hard fork name: %s", hardForkName)
+		ForkName:    hardForkName,
 	}
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
@@ -237,7 +270,6 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBundle),
 		TaskData:     string(batchProofsBytes),
