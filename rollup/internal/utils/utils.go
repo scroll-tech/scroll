@@ -126,19 +126,48 @@ type BatchMetadata struct {
 
 // encodeBatchHeaderValidium encodes batch header for validium mode and returns both encoded bytes and hash
 func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) ([]byte, common.Hash) {
-	batchBytes := make([]byte, 105+32)                       // todo: commitment
-	batchBytes[0] = uint8(codecVersion)                      // version
-	binary.BigEndian.PutUint64(batchBytes[1:9], b.Index)     // batch index
-	copy(batchBytes[9:41], b.ParentBatchHash[0:32])          // parentBatchHash
-	copy(batchBytes[41:73], b.StateRoot().Bytes()[0:32])     // postStateRoot
-	copy(batchBytes[73:105], b.WithdrawRoot().Bytes()[0:32]) // postWithdrawRoot
+	if b == nil {
+		return nil, common.Hash{}
+	}
 
+	// Batch header field sizes
+	const (
+		versionSize      = 1
+		indexSize        = 8
+		parentHashSize   = 32
+		stateRootSize    = 32
+		withdrawRootSize = 32
+		commitmentSize   = 32
+
+		// Total size of validium batch header
+		validiumBatchHeaderSize = versionSize + indexSize + parentHashSize + stateRootSize + withdrawRootSize + commitmentSize
+	)
+
+	batchBytes := make([]byte, validiumBatchHeaderSize)
+
+	// Define offsets for each field
+	var (
+		versionOffset      = 0
+		indexOffset        = versionOffset + versionSize
+		parentHashOffset   = indexOffset + indexSize
+		stateRootOffset    = parentHashOffset + parentHashSize
+		withdrawRootOffset = stateRootOffset + stateRootSize
+		commitmentOffset   = withdrawRootOffset + withdrawRootSize
+	)
+
+	batchBytes[versionOffset] = uint8(codecVersion)                                                          // version
+	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                       // batch index
+	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:32])              // parentBatchHash
+	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:32])             // postStateRoot
+	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:32]) // postWithdrawRoot
+
+	// For validium mode, use the last block hash as commitment to the off-chain data
 	var commitment common.Hash
 	if len(b.Blocks) > 0 {
 		lastBlock := b.Blocks[len(b.Blocks)-1]
 		commitment = lastBlock.Header.Hash()
 	}
-	copy(batchBytes[105:137], commitment[0:32]) // data commitment
+	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:32]) // data commitment
 
 	hash := crypto.Keccak256Hash(batchBytes)
 	return batchBytes, hash

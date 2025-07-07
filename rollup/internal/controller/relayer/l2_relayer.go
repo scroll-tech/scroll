@@ -1057,10 +1057,13 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	return calldata, nil
 }
 
-// TODO: add proof support for validium finalizeBundle
 func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
 	log.Info("Packing validium finalizeBundle", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot)
-	// finalizeBundle without proof.
+
+	if aggProof == nil {
+		return nil, fmt.Errorf("aggProof is required for validium finalizeBundle")
+	}
+
 	calldata, packErr := r.validiumABI.Pack(
 		"finalizeBundle",
 		dbBatch.BatchHeader,
@@ -1068,7 +1071,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batc
 		aggProof.Proof(),
 	)
 	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
+		return nil, fmt.Errorf("failed to pack validium finalizeBundle: %w", packErr)
 	}
 	return calldata, nil
 }
