@@ -1005,7 +1005,15 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batchesToSubmit []*d
 
 	// Get the commitment from the batch data: for validium mode, we use the last L2 block hash as the commitment to the off-chain data
 	// Get the last chunk from the last batch to find the end block hash
+	if len(batchesToSubmit) == 0 {
+		return nil, 0, 0, fmt.Errorf("no batches to submit")
+	}
+
 	lastBatch := batchesToSubmit[len(batchesToSubmit)-1]
+	if len(lastBatch.Chunks) == 0 {
+		return nil, 0, 0, fmt.Errorf("last batch has no chunks")
+	}
+
 	lastChunk := lastBatch.Chunks[len(lastBatch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
 
