@@ -83,11 +83,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		if getTaskParameter.TaskID != "" {
 			tmpChunkTask, getTaskError = cp.chunkOrm.GetChunkByHash(ctx.Copy(), getTaskParameter.TaskID)
 			if getTaskError != nil {
-				log.Error("failed to get expected chunk", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				log.Error("failed to get expected chunk", "taskID", getTaskParameter.TaskID, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
 			} else if tmpChunkTask == nil {
-				return nil, fmt.Errorf("Expected task (%s) is already dropped",
-					taskCtx.hasAssignedTask.TaskID)
+				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
 			}
 		}
 

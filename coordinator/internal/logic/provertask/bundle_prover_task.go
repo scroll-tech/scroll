@@ -85,11 +85,10 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		if getTaskParameter.TaskID != "" {
 			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), getTaskParameter.TaskID)
 			if getTaskError != nil {
-				log.Error("failed to get expected bundle", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				log.Error("failed to get expected bundle", "taskID", getTaskParameter.TaskID, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
 			} else if tmpBundleTask == nil {
-				return nil, fmt.Errorf("Expected task (%s) is already dropped",
-					taskCtx.hasAssignedTask.TaskID)
+				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
 			}
 		}
 

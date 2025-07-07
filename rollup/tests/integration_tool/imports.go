@@ -78,7 +78,7 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	}
 
 	batchSep := randomPickKfromN(chkNum, batchNum, rng)
-	batchSep = append(batchSep, batchNum)
+	batchSep = append(batchSep, chkNum)
 	log.Info("separated batch", "border", batchSep)
 
 	headChk := int(0)
@@ -99,7 +99,7 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	}
 
 	bundleSep := randomPickKfromN(batchNum, bundleNum, rng)
-	bundleSep = append(bundleSep, bundleNum)
+	bundleSep = append(bundleSep, batchNum)
 	log.Info("separated bundle", "border", bundleSep)
 
 	headBatch := int(0)
@@ -141,6 +141,10 @@ func importChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64, prev
 	if err != nil {
 		return nil, nil, err
 	}
+	err = blockOrm.UpdateChunkHashInRange(ctx, beginBlk, endBlk, dbChk.Hash)
+	if err != nil {
+		return nil, nil, err
+	}
 	log.Info("insert chunk", "From", beginBlk, "To", endBlk)
 	return dbChk, theChunk, nil
 }
@@ -173,6 +177,11 @@ func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []
 	if err != nil {
 		return nil, err
 	}
+	err = orm.NewChunk(db).UpdateBatchHashInRange(ctx, chks[0].Index, chks[len(chks)-1].Index, dbBatch.Hash)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Info("insert batch", "index", index)
 	return dbBatch, nil
 }
@@ -184,6 +193,11 @@ func importBundle(ctx context.Context, db *gorm.DB, batches []*orm.Batch) (strin
 	if err != nil {
 		return "", err
 	}
+	err = orm.NewBatch(db).UpdateBundleHashInRange(ctx, batches[0].Index, batches[len(batches)-1].Index, bundle.Hash)
+	if err != nil {
+		return "", err
+	}
+
 	log.Info("insert bundle", "hash", bundle.Hash)
 	return bundle.Hash, nil
 }
