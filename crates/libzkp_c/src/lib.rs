@@ -64,6 +64,7 @@ fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskT
     let fork_name_str = c_char_to_str(fork_name);
     let proof_str = proof;
     let proof = c_char_to_vec(proof);
+    tracing::info!("verify proof for fork {fork_name_str}, type {task_type}");
 
     match libzkp::verify_proof(proof, fork_name_str, task_type) {
         Err(e) => {
@@ -178,10 +179,13 @@ pub unsafe extern "C" fn gen_universal_task(
         &[]
     };
 
+    let fork_name_str = c_char_to_str(fork_name);
+    tracing::info!("generate universtal task for fork {fork_name_str}, type {task_type}");
+
     let ret = libzkp::gen_universal_task(
         task_type,
         &task_json,
-        c_char_to_str(fork_name),
+        fork_name_str,
         expected_vk,
         interpreter,
     );
@@ -202,10 +206,8 @@ pub unsafe extern "C" fn gen_universal_task(
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            let c_str = unsafe { std::ffi::CStr::from_ptr(fork_name) };
-            let filename = format!("/tmp/task_{}_{}.json", c_str.to_str().unwrap(), timestamp);
-            let c_str = unsafe { std::ffi::CStr::from_ptr(task) };
-            if let Err(e) = std::fs::write(&filename, c_str.to_bytes()) {
+            let filename = format!("/tmp/task_{}_{}.json", fork_name_str, timestamp);
+            if let Err(e) = std::fs::write(&filename, task_json.as_bytes()) {
                 eprintln!("Failed to write task to file {}: {}", filename, e);
             } else {
                 println!("Dumped failed task to {}", filename);
