@@ -100,7 +100,7 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 				DarwinV2Time:   new(uint64),
 				EuclidTime:     new(uint64),
 				EuclidV2Time:   new(uint64),
-			}, db, nil)
+			}, db, false /* rollup mode */, nil)
 			bp.TryProposeBatch()
 
 			batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
@@ -178,7 +178,7 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 		MaxChunksPerBatch:             math.MaxInt32,
 		BatchTimeoutSec:               math.MaxUint32,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
-	}, encoding.CodecV7, chainConfig, db, nil)
+	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
 
 	for i := 0; i < 2; i++ {
 		bp.TryProposeBatch()
@@ -246,7 +246,7 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 		MaxChunksPerBatch:             45,
 		BatchTimeoutSec:               math.MaxUint32,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
-	}, encoding.CodecV7, chainConfig, db, nil)
+	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
 	bp.TryProposeBatch()
 
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
@@ -335,7 +335,7 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 		MaxChunksPerBatch:             math.MaxInt32,  // No chunk count limit
 		BatchTimeoutSec:               math.MaxUint32, // No timeout limit
 		MaxUncompressedBatchBytesSize: 4 * 1024,       // 4KiB limit
-	}, encoding.CodecV8, chainConfig, db, nil)
+	}, encoding.CodecV8, chainConfig, db, false /* rollup mode */, nil)
 
 	bp.TryProposeBatch()
 

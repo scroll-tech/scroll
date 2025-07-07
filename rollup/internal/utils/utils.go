@@ -125,10 +125,19 @@ type BatchMetadata struct {
 }
 
 // encodeBatchHeaderValidium encodes batch header for validium mode and returns both encoded bytes and hash
-func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) ([]byte, common.Hash) {
+func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) ([]byte, common.Hash, error) {
 	if b == nil {
-		return nil, common.Hash{}
+		return nil, common.Hash{}, fmt.Errorf("batch is nil, version: %v, index: %v", codecVersion, b.Index)
 	}
+
+	if len(b.Blocks) == 0 {
+		return nil, common.Hash{}, fmt.Errorf("batch contains no blocks, version: %v, index: %v", codecVersion, b.Index)
+	}
+
+	// For validium mode, use the last block hash as commitment to the off-chain data
+	// TODO: This is a temporary solution, we might use a larger commitment in the future
+	lastBlock := b.Blocks[len(b.Blocks)-1]
+	commitment := lastBlock.Header.Hash()
 
 	// Batch header field sizes
 	const (
@@ -137,7 +146,7 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		parentHashSize   = 32
 		stateRootSize    = 32
 		withdrawRootSize = 32
-		commitmentSize   = 32
+		commitmentSize   = 32 // TODO: 32 bytes for now, might use larger commitment in the future
 
 		// Total size of validium batch header
 		validiumBatchHeaderSize = versionSize + indexSize + parentHashSize + stateRootSize + withdrawRootSize + commitmentSize
@@ -160,17 +169,10 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:parentHashSize])                // parentBatchHash
 	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:stateRootSize])                // postStateRoot
 	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:withdrawRootSize]) // postWithdrawRoot
-
-	// For validium mode, use the last block hash as commitment to the off-chain data
-	var commitment common.Hash
-	if len(b.Blocks) > 0 {
-		lastBlock := b.Blocks[len(b.Blocks)-1]
-		commitment = lastBlock.Header.Hash()
-	}
-	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:commitmentSize]) // data commitment
+	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:commitmentSize])                       // data commitment
 
 	hash := crypto.Keccak256Hash(batchBytes)
-	return batchBytes, hash
+	return batchBytes, hash, nil
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
@@ -195,12 +197,15 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion,
 
 	// If this function is used in Validium, we encode the batch header differently.
 	if validiumMode {
-		batchMeta.BatchBytes, batchMeta.BatchHash = encodeBatchHeaderValidium(batch, codecVersion)
+		batchMeta.BatchBytes, batchMeta.BatchHash, err = encodeBatchHeaderValidium(batch, codecVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode batch header for validium, version: %v, index: %v, err: %w", codecVersion, batch.Index, err)
+		}
 	}
 
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob data proof, version: %v, err: %w", codecVersion, err)
+		return nil, fmt.Errorf("failed to get blob data proof, version: %v, index: %v, err: %w", codecVersion, batch.Index, err)
 	}
 
 	numChunks := len(batch.Chunks)

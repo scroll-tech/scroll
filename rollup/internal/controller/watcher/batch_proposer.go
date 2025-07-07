@@ -54,7 +54,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, validiumMode bool, reg prometheus.Registerer) *BatchProposer {
 	log.Info("new batch proposer", "batchTimeoutSec", cfg.BatchTimeoutSec, "maxBlobSize", maxBlobSize, "maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &BatchProposer{
@@ -65,7 +65,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		l2BlockOrm:      orm.NewL2Block(db),
 		cfg:             cfg,
 		replayMode:      false, // default is false, set to true when using proposer tool
-		validiumMode:    false, // default is false, set to true when using validium mode
+		validiumMode:    validiumMode,
 		minCodecVersion: minCodecVersion,
 		chainCfg:        chainCfg,
 
@@ -128,11 +128,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 func (p *BatchProposer) SetReplayDB(replayDB *gorm.DB) {
 	p.l2BlockOrm = orm.NewL2Block(replayDB)
 	p.replayMode = true
-}
-
-// SetValidiumMode sets the validium mode for the BatchProposer.
-func (p *BatchProposer) SetValidiumMode(validiumMode bool) {
-	p.validiumMode = validiumMode
 }
 
 // TryProposeBatch tries to propose a new batches.
