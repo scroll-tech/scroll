@@ -136,13 +136,12 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 		return nil, fmt.Errorf("failed to get chunks in range: %v", err)
 	}
 
-	// temporarily disable this check because the codec_version field for chunk was added later.
 	// check codec version
-	// for _, dbChunk := range dbChunks {
-	// 	if dbBatch.CodecVersion != dbChunk.CodecVersion {
-	// 		return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
-	// 	}
-	// }
+	for _, dbChunk := range dbChunks {
+		if dbBatch.CodecVersion != dbChunk.CodecVersion {
+			return nil, fmt.Errorf("batch codec version is different from chunk codec version, batch index: %d, chunk index: %d, batch codec version: %d, chunk codec version: %d", dbBatch.Index, dbChunk.Index, dbBatch.CodecVersion, dbChunk.CodecVersion)
+		}
+	}
 
 	chunks := make([]*encoding.Chunk, len(dbChunks))
 	var allBlocks []*encoding.Block // collect blocks for CodecV7
@@ -157,18 +156,6 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 
 	var encodingBatch *encoding.Batch
 	codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-
-	// temporarily add this check because the codec_version field for chunk was added later.
-	/* 
-		firstV0BatchIndex: sepolia 69684  mainnet 171172
-		firstV1BatchIndex: sepolia 73224  mainnet 274315
-	*/
-	if codecVersion == encoding.CodecV0 && dbBatch.Index < 274315 {
-		codecVersion = encoding.CodecV1
-	}
-	if codecVersion == encoding.CodecV0 && dbBatch.Index >= 274315 { // for sepolia
-		codecVersion = encoding.CodecV2
-	}
 
 	switch codecVersion {
 	case encoding.CodecV0:
