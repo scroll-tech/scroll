@@ -155,11 +155,11 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		commitmentOffset   = withdrawRootOffset + withdrawRootSize
 	)
 
-	batchBytes[versionOffset] = uint8(codecVersion)                                                          // version
-	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                       // batch index
-	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:32])              // parentBatchHash
-	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:32])             // postStateRoot
-	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:32]) // postWithdrawRoot
+	batchBytes[versionOffset] = uint8(codecVersion)                                                                        // version
+	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                                     // batch index
+	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:parentHashSize])                // parentBatchHash
+	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:stateRootSize])                // postStateRoot
+	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:withdrawRootSize]) // postWithdrawRoot
 
 	// For validium mode, use the last block hash as commitment to the off-chain data
 	var commitment common.Hash
@@ -167,7 +167,7 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		lastBlock := b.Blocks[len(b.Blocks)-1]
 		commitment = lastBlock.Header.Hash()
 	}
-	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:32]) // data commitment
+	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:commitmentSize]) // data commitment
 
 	hash := crypto.Keccak256Hash(batchBytes)
 	return batchBytes, hash
