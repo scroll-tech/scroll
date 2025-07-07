@@ -84,6 +84,16 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
+		if getTaskParameter.TaskID != "" {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), getTaskParameter.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get expected batch", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBatchTask == nil {
+				return nil, fmt.Errorf("Expected task (%s) is already dropped",
+					taskCtx.hasAssignedTask.TaskID)
+			}
+		}
 
 		if taskCtx.hasAssignedTask != nil {
 			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)

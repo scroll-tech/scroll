@@ -80,6 +80,17 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
+		if getTaskParameter.TaskID != "" {
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetChunkByHash(ctx.Copy(), getTaskParameter.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get expected chunk", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpChunkTask == nil {
+				return nil, fmt.Errorf("Expected task (%s) is already dropped",
+					taskCtx.hasAssignedTask.TaskID)
+			}
+		}
+
 		if taskCtx.hasAssignedTask != nil {
 			log.Debug("retrieved assigned task chunk", "taskID", taskCtx.hasAssignedTask.TaskID, "prover", taskCtx.ProverName)
 			tmpChunkTask, getTaskError = cp.chunkOrm.GetChunkByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
@@ -221,7 +232,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
 	if dbErr != nil || len(blockHashes) == 0 {
-		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
+		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%v", task.TaskID, dbErr)
 	}
 
 	var taskDetailBytes []byte
