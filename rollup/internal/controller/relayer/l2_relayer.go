@@ -482,9 +482,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	switch codecVersion {
 	case encoding.CodecV7, encoding.CodecV8:
 		if r.cfg.ValidiumMode {
-			calldata, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadValidium(batchesToSubmit, firstBatch)
+			if len(batchesToSubmit) != 1 {
+				log.Error("validium mode only supports committing one batch at a time", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "batches count", len(batchesToSubmit))
+				return
+			}
+			calldata, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadValidium(batchesToSubmit[0])
 			if err != nil {
-				log.Error("failed to construct validium payload", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+				log.Error("failed to construct validium payload", "codecVersion", codecVersion, "index", batchesToSubmit[0].Batch.Index, "err", err)
 				return
 			}
 		} else {
@@ -981,44 +985,28 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batchesToSubmit []*dbBatchWithChunks, batch *orm.Batch) ([]byte, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithChunks) ([]byte, uint64, uint64, error) {
+	// Calculate metrics
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
-
-	version := encoding.CodecVersion(batchesToSubmit[0].Batch.CodecVersion)
-
-	// Calculate metrics
-	for _, b := range batchesToSubmit {
-		// double check that all batches have the same version
-		batchVersion := encoding.CodecVersion(b.Batch.CodecVersion)
-		if batchVersion != version {
-			return nil, 0, 0, fmt.Errorf("codec version mismatch, expected: %d, got: %d for batches %d and %d", version, batchVersion, batchesToSubmit[0].Batch.Index, b.Batch.Index)
+	for _, c := range batch.Chunks {
+		if c.EndBlockNumber > maxBlockHeight {
+			maxBlockHeight = c.EndBlockNumber
 		}
-
-		for _, c := range b.Chunks {
-			if c.EndBlockNumber > maxBlockHeight {
-				maxBlockHeight = c.EndBlockNumber
-			}
-			totalGasUsed += c.TotalL2TxGas
-		}
+		totalGasUsed += c.TotalL2TxGas
 	}
 
 	// Get the commitment from the batch data: for validium mode, we use the last L2 block hash as the commitment to the off-chain data
-	// Get the last chunk from the last batch to find the end block hash
+	// Get the last chunk from the batch to find the end block hash
 	// TODO: This is a temporary solution, we might use a larger commitment in the future
-	if len(batchesToSubmit) == 0 {
-		return nil, 0, 0, fmt.Errorf("no batches to submit")
-	}
-
-	lastBatch := batchesToSubmit[len(batchesToSubmit)-1]
-	if len(lastBatch.Chunks) == 0 {
+	if len(batch.Chunks) == 0 {
 		return nil, 0, 0, fmt.Errorf("last batch has no chunks")
 	}
 
-	lastChunk := lastBatch.Chunks[len(lastBatch.Chunks)-1]
+	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
-
-	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.ParentBatchHash), common.HexToHash(batch.StateRoot), common.HexToHash(batch.WithdrawRoot), commitment[:])
+	version := encoding.CodecVersion(batch.Batch.CodecVersion)
+	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)
 	}
