@@ -8,6 +8,7 @@ use scroll_proving_sdk::{
     prover::ProverBuilder,
     utils::{get_version, init_tracing},
 };
+use std::{fs::File, path::Path, io::BufReader};
 
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
@@ -38,6 +39,17 @@ enum Commands {
         /// path to save the verifier's asset
         asset_path: String,
     },
+    Handle {
+        /// path to save the verifier's asset
+        task_path: String,
+    },
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct HandleSet {
+    chunks: Vec<String>,
+    batches: Vec<String>,
+    bundles: Vec<String>,
 }
 
 #[tokio::main]
@@ -61,6 +73,25 @@ async fn main() -> eyre::Result<()> {
             let fork_name = args.fork_name.unwrap_or(default_fork_name);
             println!("dump assets for {fork_name} into {asset_path}");
             local_prover.dump_verifier_assets(&fork_name, asset_path.as_ref())?;
+        }
+        Some(Commands::Handle { task_path }) => {
+            let file = File::open(Path::new(&task_path))?;
+            let reader = BufReader::new(file);
+            let handle_set: HandleSet = serde_json::from_reader(reader)?;
+
+            let prover = ProverBuilder::new(sdk_config, local_prover)
+                .build()
+                .await
+                .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
+
+            let prover = std::sync::Arc::new(prover);
+            println!("Handling task set 1: chunks ...");
+            prover.clone().one_shot(&handle_set.chunks).await;
+            println!("Done! Handling task set 2: batches ...");
+            prover.clone().one_shot(&handle_set.batches).await;
+            println!("Done! Handling task set 3: bundles ...");
+            prover.clone().one_shot(&handle_set.bundles).await;
+            println!("All done!");
         }
         None => {
             let prover = ProverBuilder::new(sdk_config, local_prover)
