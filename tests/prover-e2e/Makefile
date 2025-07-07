@@ -32,4 +32,4 @@ test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
 
 import_data: test_tool
-	build/bin/e2e_tool --config ./config.json ${BEGIN_BLOCK} ${END_BLOCK}
+	build/bin/e2e_tool --config ./config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}

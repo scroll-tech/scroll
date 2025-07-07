@@ -145,7 +145,7 @@ func importChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64, prev
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Info("insert chunk", "From", beginBlk, "To", endBlk)
+	log.Info("insert chunk", "From", beginBlk, "To", endBlk, "hash", dbChk.Hash)
 	return dbChk, theChunk, nil
 }
 

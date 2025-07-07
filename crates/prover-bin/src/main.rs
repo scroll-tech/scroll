@@ -5,10 +5,10 @@ mod zk_circuits_handler;
 use clap::{ArgAction, Parser, Subcommand};
 use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
-    prover::{ProverBuilder, types::ProofType},
+    prover::{types::ProofType, ProverBuilder},
     utils::{get_version, init_tracing},
 };
-use std::{fs::File, path::Path, io::BufReader};
+use std::{fs::File, io::BufReader, path::Path};
 
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
@@ -86,11 +86,26 @@ async fn main() -> eyre::Result<()> {
 
             let prover = std::sync::Arc::new(prover);
             println!("Handling task set 1: chunks ...");
-            assert!(prover.clone().one_shot(&handle_set.chunks, ProofType::Chunk).await);
+            assert!(
+                prover
+                    .clone()
+                    .one_shot(&handle_set.chunks, ProofType::Chunk)
+                    .await
+            );
             println!("Done! Handling task set 2: batches ...");
-            assert!(prover.clone().one_shot(&handle_set.batches, ProofType::Batch).await);
+            assert!(
+                prover
+                    .clone()
+                    .one_shot(&handle_set.batches, ProofType::Batch)
+                    .await
+            );
             println!("Done! Handling task set 3: bundles ...");
-            assert!(prover.clone().one_shot(&handle_set.bundles, ProofType::Bundle).await);
+            assert!(
+                prover
+                    .clone()
+                    .one_shot(&handle_set.bundles, ProofType::Bundle)
+                    .await
+            );
             println!("All done!");
         }
         None => {

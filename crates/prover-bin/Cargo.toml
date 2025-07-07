@@ -8,7 +8,8 @@ edition.workspace = true
 [dependencies]
 scroll-zkvm-types.workspace = true
 scroll-zkvm-prover-euclid.workspace = true
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "refactor/scroll" }
+#scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "refactor/scroll" }
+scroll-proving-sdk = { path = "../../../scroll-proving-sdk" }
 serde.workspace = true
 serde_json.workspace = true
 once_cell.workspace =true

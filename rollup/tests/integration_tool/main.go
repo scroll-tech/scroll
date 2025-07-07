@@ -40,13 +40,19 @@ var seedFlag = cli.Int64Flag{
 	Value: 0,
 }
 
-func parseThreeIntegers() (int, int, int, error) {
+var codecFlag = cli.IntFlag{
+	Name:  "codec",
+	Usage: "codec version, valid from 6, default(auto) is 0",
+	Value: 0,
+}
+
+func parseThreeIntegers(value string) (int, int, int, error) {
 	// Split the input string by comma
-	parts := strings.Split(outputNumFlag.Value, ",")
+	parts := strings.Split(value, ",")
 
 	// Check that we have exactly 3 parts
 	if len(parts) != 3 {
-		return 0, 0, 0, fmt.Errorf("input must contain exactly 3 comma-separated integers, got %s", outputNumFlag.Value)
+		return 0, 0, 0, fmt.Errorf("input must contain exactly 3 comma-separated integers, got %s", value)
 	}
 
 	// Parse the three integers
@@ -90,6 +96,7 @@ func init() {
 	app.Name = "integration-test-tool"
 	app.Usage = "The Scroll L2 Integration Test Tool"
 	app.Version = version.Version
+	app.Flags = append(app.Flags, &codecFlag, &seedFlag, &outputNumFlag, &outputPathFlag)
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
 		if err := utils.LogSetup(ctx); err != nil {
@@ -127,6 +134,21 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("specify begin and end block number")
 	}
 
+	codecFl := ctx.Int(codecFlag.Name)
+	if codecFl != 0 {
+		switch codecFl {
+		case 6:
+			codecCfg = encoding.CodecV6
+		case 7:
+			codecCfg = encoding.CodecV7
+		case 8:
+			codecCfg = encoding.CodecV8
+		default:
+			return fmt.Errorf("invalid codec version %d", codecFl)
+		}
+		log.Info("set codec", "version", codecCfg)
+	}
+
 	beginBlk, err := strconv.ParseUint(ctx.Args().First(), 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid begin block number: %w", err)
@@ -136,17 +158,18 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("invalid begin block number: %w", err)
 	}
 
-	chkNum, batchNum, bundleNum, err := parseThreeIntegers()
+	chkNum, batchNum, bundleNum, err := parseThreeIntegers(ctx.String(outputNumFlag.Name))
 	if err != nil {
 		return err
 	}
 
-	seed := seedFlag.Value
+	seed := ctx.Int64(seedFlag.Name)
 	if seed == 0 {
 		seed = rand.Int63()
 	}
 
-	log.Info("output", "Seed", seed, "file", outputPathFlag.Value)
+	outputPath := ctx.String(outputPathFlag.Name)
+	log.Info("output", "Seed", seed, "file", outputPath)
 	ret, err := importData(ctx.Context, beginBlk, endBlk, chkNum, batchNum, bundleNum, seed)
 	if err != nil {
 		return err
@@ -158,9 +181,9 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Write the JSON data to the specified file
-	err = os.WriteFile(outputPathFlag.Value, jsonData, 0644)
+	err = os.WriteFile(outputPath, jsonData, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write result to file %s: %w", outputPathFlag.Value, err)
+		return fmt.Errorf("failed to write result to file %s: %w", outputPath, err)
 	}
 
 	return nil
