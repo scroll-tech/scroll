@@ -37,6 +37,7 @@ type ProverTask struct {
 	FailureType   int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
 	Reward        decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(78)"`
 	Proof         []byte          `json:"proof" gorm:"column:proof;default:NULL"`
+	Metadata      []byte          `json:"metadata" gorm:"column:metadata;default:NULL"`
 	AssignedAt    time.Time       `json:"assigned_at" gorm:"assigned_at"`
 
 	// metadata
@@ -56,17 +57,17 @@ func (*ProverTask) TableName() string {
 }
 
 // IsProverAssigned checks if a prover with the given public key has been assigned a task.
-func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (bool, error) {
+func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	var task ProverTask
 	err := db.Where("prover_public_key = ? AND proving_status = ?", publicKey, types.ProverAssigned).First(&task).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil
+			return nil, nil
 		}
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	return &task, nil
 }
 
 // GetProverTasks get prover tasks
@@ -264,6 +265,24 @@ func (o *ProverTask) UpdateProverTaskProvingStatusAndFailureType(ctx context.Con
 	}
 	if err := db.Updates(updates).Error; err != nil {
 		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, uuid:%s, status: %v", err, uuid, status.String())
+	}
+	return nil
+}
+
+// UpdateProverTaskAssignedTime updates the assigned_at time of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskAssignedTime(ctx context.Context, uuid uuid.UUID, t time.Time, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("uuid = ?", uuid)
+
+	updates := make(map[string]interface{})
+	updates["assigned_at"] = t
+	if err := db.Updates(updates).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskAssignedTime error: %w, uuid:%s, status: %v", err, uuid, t)
 	}
 	return nil
 }

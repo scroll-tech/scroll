@@ -1,4 +1,3 @@
 /build/bin
 .idea
-libzkp/impl/target
-libzkp/interface/*.a
+libzkp

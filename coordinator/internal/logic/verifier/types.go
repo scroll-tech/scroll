@@ -11,4 +11,7 @@ const InvalidTestProof = "this is a invalid proof"
 type Verifier struct {
 	cfg         *config.VerifierConfig
 	OpenVMVkMap map[string]struct{}
+	ChunkVk     map[string][]byte
+	BatchVk     map[string][]byte
+	BundleVk    map[string][]byte
 }

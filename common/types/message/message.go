@@ -10,12 +10,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 )
 
-const (
-	EuclidV2Fork = "euclidV2"
-
-	EuclidV2ForkNameForProver = "euclidv2"
-)
-
 // ProofType represents the type of task.
 type ProofType uint8
 

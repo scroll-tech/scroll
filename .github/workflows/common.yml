@@ -29,7 +29,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2024-12-06
+        toolchain: nightly-2025-02-14
         override: true
         components: rustfmt, clippy
     - name: Install Go
@@ -41,7 +41,7 @@ jobs:
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: "common/libzkp/impl -> target"
+        workspaces: ". -> target"
     # - name: Lint
     #   working-directory: 'common'
     #   run: |

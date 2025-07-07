@@ -19,6 +19,7 @@ import (
 )
 
 var app *cli.App
+var cfg *config.Config
 
 func init() {
 	// Set up coordinator app info.
@@ -29,16 +30,29 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		if err := utils.LogSetup(ctx); err != nil {
+			return err
+		}
+
+		cfgFile := ctx.String(utils.ConfigFileFlag.Name)
+		var err error
+		cfg, err = config.NewConfig(cfgFile)
+		if err != nil {
+			log.Crit("failed to load config file", "config file", cfgFile, "error", err)
+		}
+		return nil
+	}
+	// sub commands
+	app.Commands = []*cli.Command{
+		{
+			Name:   "verify",
+			Usage:  "verify an proof, specified by [forkname] <type> <proof path>",
+			Action: verify,
+		},
 	}
 }
 
 func action(ctx *cli.Context) error {
-	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
-	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
-	}
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)

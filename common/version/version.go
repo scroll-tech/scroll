@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-var tag = "v4.5.24"
+var tag = "v4.5.28"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -23,7 +23,7 @@ var commit = func() string {
 	return "000000"
 }()
 
-// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, contacted by a "-"
+// ZkVersion is commit-id of cargo.lock/zkvm-prover and openvm, contacted by a "-"
 // The default `000000-000000` is set for integration test, and will be overwritten by coordinator's & prover's actual compilations (see their Makefiles).
 var ZkVersion = "000000-000000"
 

@@ -33,7 +33,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2023-12-03
+        toolchain: nightly-2025-02-14
         override: true
         components: rustfmt, clippy
     - name: Install Go
@@ -112,7 +112,7 @@ jobs:
     - name: Test coordinator packages
       working-directory: 'coordinator'
       run: |
-        # go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=coverage.txt -covermode=atomic ./...
+        make libzkp
         go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic -tags mock_verifier ./...
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3

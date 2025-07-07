@@ -18,6 +18,6 @@ RUN cd /src/zkvm-prover && make prover
 
 FROM ubuntu:24.04 AS runtime
 
-COPY --from=builder /src/zkvm-prover/target/release/prover /usr/local/bin/
+COPY --from=builder /src/target/release/prover /usr/local/bin/
 
 ENTRYPOINT ["prover"]

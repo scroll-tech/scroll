@@ -1,0 +1,34 @@
+[package]
+name = "prover"
+version.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+scroll-zkvm-types.workspace = true
+scroll-zkvm-prover-euclid.workspace = true
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", branch = "refactor/scroll" }
+serde.workspace = true
+serde_json.workspace = true
+once_cell.workspace =true
+base64.workspace = true
+tiny-keccak = { workspace = true, features = ["sha3", "keccak"] }
+eyre.workspace = true
+
+futures = "0.3.30"
+
+reqwest = { version = "0.12.4", features = ["gzip"] }
+reqwest-middleware = "0.3"
+reqwest-retry = "0.5"
+hex = "0.4.3"
+
+rand = "0.8.5"
+tokio = "1.37.0"
+async-trait = "0.1"
+sled = "0.34.7"
+http = "1.1.0"
+clap = { version = "4.5", features = ["derive"] }
+ctor = "0.2.8"
+url = "2.5.4"
+serde_bytes = "0.11.15"
