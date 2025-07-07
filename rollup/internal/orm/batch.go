@@ -323,7 +323,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion, metrics.ValidiumMode)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)

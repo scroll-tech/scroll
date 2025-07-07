@@ -32,6 +32,7 @@ type BatchProposer struct {
 	cfg *config.BatchProposerConfig
 
 	replayMode      bool
+	validiumMode    bool
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -63,7 +64,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		chunkOrm:        orm.NewChunk(db),
 		l2BlockOrm:      orm.NewL2Block(db),
 		cfg:             cfg,
-		replayMode:      false,
+		replayMode:      false, // default is false, set to true when using proposer tool
+		validiumMode:    false, // default is false, set to true when using validium mode
 		minCodecVersion: minCodecVersion,
 		chainCfg:        chainCfg,
 
@@ -128,6 +130,11 @@ func (p *BatchProposer) SetReplayDB(replayDB *gorm.DB) {
 	p.replayMode = true
 }
 
+// SetValidiumMode sets the validium mode for the BatchProposer.
+func (p *BatchProposer) SetValidiumMode(validiumMode bool) {
+	p.validiumMode = validiumMode
+}
+
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
 	p.batchProposerCircleTotal.Inc()
@@ -171,7 +178,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 		// recalculate batch metrics after truncation
 		var calcErr error
-		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion, p.validiumMode)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
 		}
@@ -287,7 +294,7 @@ func (p *BatchProposer) proposeBatch() error {
 		batch.Blocks = append(batch.Blocks, chunk.Blocks...)
 		batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i].PostL1MessageQueueHash)
 
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version(), p.validiumMode)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -310,7 +317,7 @@ func (p *BatchProposer) proposeBatch() error {
 			batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i-1].PostL1MessageQueueHash)
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-len(lastChunk.Blocks)]
 
-			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version())
+			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version(), p.validiumMode)
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
@@ -320,7 +327,7 @@ func (p *BatchProposer) proposeBatch() error {
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version(), p.validiumMode)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}

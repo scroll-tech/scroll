@@ -60,15 +60,18 @@ type BatchMetrics struct {
 
 	L1CommitBlobSize uint64
 
+	ValidiumMode bool // default false: rollup mode
+
 	// timing metrics
 	EstimateBlobSizeTime time.Duration
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, validiumMode bool) (*BatchMetrics, error) {
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
 		FirstBlockTimestamp: batch.Chunks[0].Blocks[0].Header.Time,
+		ValidiumMode:        validiumMode,
 	}
 
 	codec, err := encoding.CodecFromVersion(codecVersion)
@@ -119,24 +122,28 @@ type BatchMetadata struct {
 	ChallengeDigest    common.Hash
 }
 
-func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) []byte {
-	emptyHash := common.Hash{}
-
+// encodeBatchHeaderValidium encodes batch header for validium mode and returns both encoded bytes and hash
+func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) ([]byte, common.Hash) {
 	batchBytes := make([]byte, 105+32)                       // todo: commitment
 	batchBytes[0] = uint8(codecVersion)                      // version
 	binary.BigEndian.PutUint64(batchBytes[1:9], b.Index)     // batch index
 	copy(batchBytes[9:41], b.ParentBatchHash[0:32])          // parentBatchHash
 	copy(batchBytes[41:73], b.StateRoot().Bytes()[0:32])     // postStateRoot
 	copy(batchBytes[73:105], b.WithdrawRoot().Bytes()[0:32]) // postWithdrawRoot
-	copy(batchBytes[105:137], emptyHash[0:32])               // data commitment
-	return batchBytes
+
+	var commitment common.Hash
+	if len(b.Blocks) > 0 {
+		lastBlock := b.Blocks[len(b.Blocks)-1]
+		commitment = lastBlock.Header.Hash()
+	}
+	copy(batchBytes[105:137], commitment[0:32]) // data commitment
+
+	hash := crypto.Keccak256Hash(batchBytes)
+	return batchBytes, hash
 }
 
-// // func hashBatchHeaderValidium()
-// return crypto.Keccak256Hash(b.Encode())
-
 // GetBatchMetadata retrieves the metadata of a batch.
-func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, validiumMode bool) (*BatchMetadata, error) {
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
@@ -155,11 +162,10 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		ChallengeDigest: daBatch.ChallengeDigest(),
 	}
 
-	// validium
-	encoded := encodeBatchHeaderValidium(batch, codecVersion)
-	hash := crypto.Keccak256Hash(encoded)
-	batchMeta.BatchBytes = encoded
-	batchMeta.BatchHash = hash
+	// If this function is used in Validium, we encode the batch header differently.
+	if validiumMode {
+		batchMeta.BatchBytes, batchMeta.BatchHash = encodeBatchHeaderValidium(batch, codecVersion)
+	}
 
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
 	if err != nil {
