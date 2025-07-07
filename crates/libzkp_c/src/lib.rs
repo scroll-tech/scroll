@@ -9,6 +9,16 @@ use std::sync::OnceLock;
 
 static LOG_SETTINGS: OnceLock<Result<(), String>> = OnceLock::new();
 
+fn enable_dump() -> bool {
+    static ZKVM_DEBUG_DUMP: OnceLock<bool> = OnceLock::new();
+    *ZKVM_DEBUG_DUMP.get_or_init(|| {
+        std::env::var("ZKVM_DEBUG")
+            .or_else(|_| std::env::var("ZKVM_DEBUG_PROOF"))
+            .map(|s| s.to_lowercase() == "true")
+            .unwrap_or(false)
+    })
+}
+
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init_tracing() {
@@ -52,6 +62,7 @@ pub unsafe extern "C" fn init_l2geth(config: *const c_char) {
 
 fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
     let fork_name_str = c_char_to_str(fork_name);
+    let proof_str = proof;
     let proof = c_char_to_vec(proof);
 
     match libzkp::verify_proof(proof, fork_name_str, task_type) {
@@ -59,7 +70,24 @@ fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskT
             tracing::error!("{:?} verify failed, error: {:#}", task_type, e);
             false as c_char
         }
-        Ok(result) => result as c_char,
+        Ok(result) => {
+            if !result && enable_dump() {
+                use std::time::{SystemTime, UNIX_EPOCH};
+                // Dump req.input to a temporary file
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let filename = format!("/tmp/proof_{}.json", timestamp);
+                let cstr = unsafe { std::ffi::CStr::from_ptr(proof_str) };
+                if let Err(e) = std::fs::write(&filename, cstr.to_bytes()) {
+                    eprintln!("Failed to write proof to file {}: {}", filename, e);
+                } else {
+                    println!("Dumped failed proof to {}", filename);
+                }
+            }
+            result as c_char
+        }
     }
 }
 
@@ -167,6 +195,23 @@ pub unsafe extern "C" fn gen_universal_task(
             expected_pi_hash,
         }
     } else {
+        if enable_dump() {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            // Dump req.input to a temporary file
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let c_str = unsafe { std::ffi::CStr::from_ptr(fork_name) };
+            let filename = format!("/tmp/task_{}_{}.json", c_str.to_str().unwrap(), timestamp);
+            let c_str = unsafe { std::ffi::CStr::from_ptr(task) };
+            if let Err(e) = std::fs::write(&filename, c_str.to_bytes()) {
+                eprintln!("Failed to write task to file {}: {}", filename, e);
+            } else {
+                println!("Dumped failed task to {}", filename);
+            }
+        }
+
         tracing::error!("gen_universal_task failed, error: {:#}", ret.unwrap_err());
         failed_handling_result()
     }
