@@ -5040,6 +5040,7 @@ version = "1.3.0-rc.1"
 source = "git+https://github.com/openvm-org/openvm.git?rev=3c800070d363237832a66dbe5501d3c365f3c549#3c800070d363237832a66dbe5501d3c365f3c549"
 dependencies = [
  "group 0.13.0",
+ "halo2curves-axiom",
  "hex-literal",
  "itertools 0.14.0",
  "num-bigint 0.4.6",
@@ -8174,7 +8175,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -8212,7 +8213,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -8232,7 +8233,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-base"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 1.0.16",
@@ -8247,7 +8248,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-batch"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "alloy-primitives",
  "halo2curves-axiom",
@@ -8267,7 +8268,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-bundle"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "alloy-primitives",
  "itertools 0.14.0",
@@ -8280,7 +8281,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-chunk"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "alloy-primitives",
  "itertools 0.14.0",
@@ -8300,7 +8301,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.4.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0dd7b19#0dd7b19590b1b17c5ec5a97fc1b4f638dfd0ce8f"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=0498edb#0498edbec9134bab95f179e190a9ba586669580e"
 dependencies = [
  "bincode",
  "eyre",
