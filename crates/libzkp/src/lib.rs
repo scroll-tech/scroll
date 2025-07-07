@@ -120,24 +120,6 @@ pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyr
     let verifier = verifier::get_verifier(fork_name)?;
 
     let ret = verifier.lock().unwrap().verify(task_type, &proof)?;
-
-    if let Ok(debug_value) = std::env::var("ZKVM_DEBUG_PROOF") {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        if !ret && debug_value.to_lowercase() == "true" {
-            // Dump req.input to a temporary file
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let filename = format!("/tmp/proof_{}.json", timestamp);
-            if let Err(e) = std::fs::write(&filename, &proof) {
-                eprintln!("Failed to write proof to file {}: {}", filename, e);
-            } else {
-                println!("Dumped failed proof to {}", filename);
-            }
-        }
-    }
-
     Ok(ret)
 }
 
