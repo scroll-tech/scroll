@@ -5,7 +5,7 @@ pub use verifier::{TaskType, VerifierConfig};
 mod utils;
 
 use sbv_primitives::B256;
-use scroll_zkvm_types::util::vec_as_base64;
+use scroll_zkvm_types::{public_inputs::ForkName, util::vec_as_base64};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::path::Path;
@@ -30,7 +30,7 @@ pub fn checkout_chunk_task(
 pub fn gen_universal_task(
     task_type: i32,
     task_json: &str,
-    fork_name: &str,
+    fork_name_str: &str,
     expected_vk: &[u8],
     interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, String, String)> {
@@ -48,19 +48,28 @@ pub fn gen_universal_task(
 
     let (pi_hash, metadata, mut u_task) = match task_type {
         x if x == TaskType::Chunk as i32 => {
-            let task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
+            let mut task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
+            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
+            task.fork_name = fork_name.to_string();
+            assert_eq!(fork_name_str, task.fork_name.as_str());
             let (pi_hash, metadata, u_task) =
-                gen_universal_chunk_task(task, fork_name.into(), interpreter)?;
+                gen_universal_chunk_task(task, fork_name, interpreter)?;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {
-            let task = serde_json::from_str::<BatchProvingTask>(task_json)?;
-            let (pi_hash, metadata, u_task) = gen_universal_batch_task(task, fork_name.into())?;
+            let mut task = serde_json::from_str::<BatchProvingTask>(task_json)?;
+            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
+            task.fork_name = fork_name.to_string();
+            assert_eq!(fork_name_str, task.fork_name.as_str());
+            let (pi_hash, metadata, u_task) = gen_universal_batch_task(task, fork_name)?;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
         x if x == TaskType::Bundle as i32 => {
-            let task = serde_json::from_str::<BundleProvingTask>(task_json)?;
-            let (pi_hash, metadata, u_task) = gen_universal_bundle_task(task, fork_name.into())?;
+            let mut task = serde_json::from_str::<BundleProvingTask>(task_json)?;
+            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
+            task.fork_name = fork_name.to_string();
+            assert_eq!(fork_name_str, task.fork_name.as_str());
+            let (pi_hash, metadata, u_task) = gen_universal_bundle_task(task, fork_name)?;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
         _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),
