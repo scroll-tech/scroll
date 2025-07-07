@@ -287,7 +287,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		}
 		log.Info("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
 	} else {
-		// normal rollup mode: pass batchHeader and stateRoot
+		// rollup mode: pass batchHeader and stateRoot
 		calldata, packErr = r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
 		if packErr != nil {
 			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
