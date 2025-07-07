@@ -1,0 +1,36 @@
+{
+  "sdk_config": {
+    "prover_name_prefix": "test-prover",
+    "keys_dir": ".work",
+    "coordinator": {
+      "base_url": "<the url of coordinator>",
+      "retry_count": 10,
+      "retry_wait_time_sec": 10,
+      "connection_timeout_sec": 1800
+    },
+    "l2geth": {
+      "endpoint": "<the url of rpc endpoint>"
+    },
+    "prover": {
+      "circuit_type": 2,
+      "supported_proof_types": [
+        1,
+        2,
+        3
+      ],
+      "circuit_version": "v0.13.1"
+    },
+    "health_listener_addr": "127.0.0.1:10080",
+    "db_path": ".work/db"
+  },
+  "circuits": {
+    "euclidV2": {
+      "hard_fork_name": "euclidV2",
+      "workspace_path": ".work/euclid"
+    },
+    "feynman": {
+      "hard_fork_name": "feynman",
+      "workspace_path": ".work/feynman1"
+    },    
+  }
+}

@@ -19,6 +19,8 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/libzkp"
+	"scroll-tech/coordinator/internal/logic/provertask"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
@@ -69,6 +71,10 @@ type ProofReceiverLogic struct {
 	validateFailureProverTaskStatusNotOk  prometheus.Counter
 	validateFailureProverTaskTimeout      prometheus.Counter
 	validateFailureProverTaskHaveVerifier prometheus.Counter
+
+	ChunkTask  provertask.ProverTask
+	BundleTask provertask.ProverTask
+	BatchTask  provertask.ProverTask
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
@@ -167,6 +173,28 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 	hardForkName, getHardForkErr := m.hardForkName(ctx, proofParameter.TaskID, proofParameter.TaskType)
 	if getHardForkErr != nil {
 		return ErrGetHardForkNameFailed
+	}
+	if proofParameter.Universal {
+		if len(proverTask.Metadata) == 0 {
+			return errors.New("can not re-wrapping proof: no metadata has been recorded in advance")
+		}
+		var expected_vk []byte
+		switch message.ProofType(proofParameter.TaskType) {
+		case message.ProofTypeChunk:
+			expected_vk = m.verifier.ChunkVk[hardForkName]
+		case message.ProofTypeBatch:
+			expected_vk = m.verifier.BatchVk[hardForkName]
+		case message.ProofTypeBundle:
+			expected_vk = m.verifier.BundleVk[hardForkName]
+		}
+		if len(expected_vk) == 0 {
+			return errors.New("no vk specified match current hard fork, check your config")
+		}
+
+		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), expected_vk)
+		if proofParameter.Proof == "" {
+			return errors.New("can not re-wrapping proof, see coordinator log for reason")
+		}
 	}
 
 	switch message.ProofType(proofParameter.TaskType) {
