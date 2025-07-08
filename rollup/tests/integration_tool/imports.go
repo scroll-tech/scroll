@@ -49,6 +49,7 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	ret := &importRecord{}
 	// Create a new random source with the provided seed
 	source := rand.NewSource(seed)
+	//nolint:all
 	rng := rand.New(source)
 
 	chkSepIdx := randomPickKfromN(int(endBlk-beginBlk)+1, chkNum, rng)

@@ -164,6 +164,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	seed := ctx.Int64(seedFlag.Name)
+	//nolint:all
 	if seed == 0 {
 		seed = rand.Int63()
 	}
@@ -181,7 +182,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Write the JSON data to the specified file
-	err = os.WriteFile(outputPath, jsonData, 0644)
+	err = os.WriteFile(outputPath, jsonData, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write result to file %s: %w", outputPath, err)
 	}
