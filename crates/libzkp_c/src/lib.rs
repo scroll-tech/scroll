@@ -204,8 +204,7 @@ pub unsafe extern "C" fn gen_universal_task(
                 .as_secs();
             let c_str = unsafe { std::ffi::CStr::from_ptr(fork_name) };
             let filename = format!("/tmp/task_{}_{}.json", c_str.to_str().unwrap(), timestamp);
-            let c_str = unsafe { std::ffi::CStr::from_ptr(task) };
-            if let Err(e) = std::fs::write(&filename, c_str.to_bytes()) {
+            if let Err(e) = std::fs::write(&filename, task_json.as_bytes()) {
                 eprintln!("Failed to write task to file {}: {}", filename, e);
             } else {
                 println!("Dumped failed task to {}", filename);

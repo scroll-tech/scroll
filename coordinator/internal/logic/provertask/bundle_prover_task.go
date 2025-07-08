@@ -243,9 +243,14 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
-	parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
+	var prevStateRoot common.Hash
+	// this would be common in test cases: the first batch has empty parent
+	if batches[0].Index > 1 {
+		parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
+		}
+		prevStateRoot = common.HexToHash(parentBatch.StateRoot)
 	}
 
 	var batchProofs []*message.OpenVMBatchProof
@@ -264,7 +269,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
 		ChainID:       bp.cfg.L2.ChainID,
-		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
+		PrevStateRoot: prevStateRoot,
 		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
 		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
 		NumBatches:    uint32(len(batches)),
