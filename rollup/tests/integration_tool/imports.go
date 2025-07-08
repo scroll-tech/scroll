@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/database"
+
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
 )
