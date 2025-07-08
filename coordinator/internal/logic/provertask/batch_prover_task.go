@@ -84,17 +84,12 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
-		if getTaskParameter.TaskID != "" {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), getTaskParameter.TaskID)
-			if getTaskError != nil {
-				log.Error("failed to get expected batch", "taskID", getTaskParameter.TaskID, "err", getTaskError)
-				return nil, ErrCoordinatorInternalFailure
-			} else if tmpBatchTask == nil {
-				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
-			}
-		}
 
 		if taskCtx.hasAssignedTask != nil {
+			if taskCtx.hasAssignedTask.TaskType != int16(message.ProofTypeBatch) {
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+
 			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
 			if getTaskError != nil {
 				log.Error("failed to get batch has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
@@ -103,6 +98,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				// if the assigned batch dropped, there would be too much issue to assign another
 				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped batch. ProverName: %s, ProverVersion: %s",
 					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+		} else if getTaskParameter.TaskID != "" {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetBatchByHash(ctx.Copy(), getTaskParameter.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get expected batch", "taskID", getTaskParameter.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBatchTask == nil {
+				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
 			}
 		}
 

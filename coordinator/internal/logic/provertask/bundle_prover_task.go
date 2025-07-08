@@ -82,17 +82,12 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBundleTask *orm.Bundle
-		if getTaskParameter.TaskID != "" {
-			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), getTaskParameter.TaskID)
-			if getTaskError != nil {
-				log.Error("failed to get expected bundle", "taskID", getTaskParameter.TaskID, "err", getTaskError)
-				return nil, ErrCoordinatorInternalFailure
-			} else if tmpBundleTask == nil {
-				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
-			}
-		}
 
 		if taskCtx.hasAssignedTask != nil {
+			if taskCtx.hasAssignedTask.TaskType != int16(message.ProofTypeBundle) {
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+
 			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
 			if getTaskError != nil {
 				log.Error("failed to get bundle has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
@@ -101,6 +96,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 				// if the assigned chunk dropped, there would be too much issue to assign another
 				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped bundle. ProverName: %s, ProverVersion: %s",
 					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+		} else if getTaskParameter.TaskID != "" {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), getTaskParameter.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get expected bundle", "taskID", getTaskParameter.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBundleTask == nil {
+				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
 			}
 		}
 
