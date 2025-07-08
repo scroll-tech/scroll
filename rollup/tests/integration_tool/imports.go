@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"sort"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -54,7 +55,7 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	for i, ind := range chkSepIdx {
 		chkSep[i] = beginBlk + uint64(ind)
 	}
-	chkSep = append(chkSep, endBlk)
+	chkSep = append(chkSep, endBlk+1)
 
 	log.Info("separated chunk", "border", chkSep)
 	head := beginBlk
@@ -152,6 +153,15 @@ func importChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64, prev
 func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []*encoding.Chunk, last *orm.Batch) (*orm.Batch, error) {
 
 	batchOrm := orm.NewBatch(db)
+	if last == nil {
+		var err error
+		last, err = batchOrm.GetLatestBatch(ctx)
+		if err != nil && !strings.Contains(err.Error(), "record not found") {
+			return nil, err
+		} else if last != nil {
+			log.Info("start from last batch", "index", last.Index)
+		}
+	}
 
 	var index uint64
 	var parentHash common.Hash
