@@ -241,6 +241,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk},
+			Blocks:                     chunk.Blocks,
 		}
 
 		var dbBatch *orm.Batch
