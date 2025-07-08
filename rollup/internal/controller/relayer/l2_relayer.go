@@ -1050,15 +1050,16 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
 	log.Info("Packing validium finalizeBundle", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot)
 
-	if aggProof == nil {
-		return nil, fmt.Errorf("aggProof is required for validium finalizeBundle")
+	var proof []byte
+	if aggProof != nil {
+		proof = aggProof.Proof()
 	}
 
 	calldata, packErr := r.validiumABI.Pack(
 		"finalizeBundle",
 		dbBatch.BatchHeader,
 		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
-		aggProof.Proof(),
+		proof,
 	)
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack validium finalizeBundle: %w", packErr)
