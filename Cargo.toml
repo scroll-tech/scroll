@@ -17,13 +17,9 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.5.8"
 
 [workspace.dependencies]
-#scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19", package = "scroll-zkvm-prover" }
-#scroll-zkvm-verifier-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19", package = "scroll-zkvm-verifier" }
-#scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19" }
-scroll-zkvm-prover-euclid = { path = "../zkvm-prover/crates/prover", package = "scroll-zkvm-prover" }
-scroll-zkvm-verifier-euclid = { path = "../zkvm-prover/crates/verifier", package = "scroll-zkvm-verifier" }
-scroll-zkvm-types = { path = "../zkvm-prover/crates/types" }
-
+scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0f62338", package = "scroll-zkvm-prover" }
+scroll-zkvm-verifier-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0f62338", package = "scroll-zkvm-verifier" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0f62338" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade", features = ["scroll"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade" }
