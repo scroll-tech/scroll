@@ -55,7 +55,7 @@ type Config struct {
 	Auth          *Auth            `json:"auth"`
 }
 
-// AssetConfig contain assets configurated for each fork, the defaul vkfile name is "OpenVmVk.json".
+// AssetConfig contain assets configured for each fork, the default vkfile name is "OpenVmVk.json".
 type AssetConfig struct {
 	AssetsPath string `json:"assets_path"`
 	ForkName   string `json:"fork_name"`
