@@ -1,13 +1,19 @@
-.PHONY: clean setup_db test_tool all
+.PHONY: clean setup_db test_tool all check_vars
 
 GOOSE_CMD?=goose
-BEGIN_BLOCK?=10405848
-END_BLOCK?=10405858
+
 
 all: setup_db test_tool import_data
 
 clean:
 	docker compose down
+
+check_vars:
+	@if [ -z "$(BEGIN_BLOCK)" ] || [ -z "$(END_BLOCK)" ]; then \
+        echo "Error: BEGIN_BLOCK and END_BLOCK must be defined"; \
+        echo "Usage: make import_data BEGIN_BLOCK=<start_block> END_BLOCK=<end_block>"; \
+        exit 1; \
+    fi
 
 setup_db: clean
 	docker compose up --detach
@@ -31,5 +37,10 @@ setup_db: clean
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
 
-import_data: test_tool
+build/bin/e2e_tool: test_tool
+
+import_data_euclid: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config ./config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
+
+import_data: build/bin/e2e_tool check_vars
+	build/bin/e2e_tool --config ./config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}    
