@@ -5,7 +5,7 @@ pub use verifier::{TaskType, VerifierConfig};
 mod utils;
 
 use sbv_primitives::B256;
-use scroll_zkvm_types::{public_inputs::ForkName, util::vec_as_base64};
+use scroll_zkvm_types::util::vec_as_base64;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::path::Path;
@@ -49,27 +49,39 @@ pub fn gen_universal_task(
     let (pi_hash, metadata, mut u_task) = match task_type {
         x if x == TaskType::Chunk as i32 => {
             let mut task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
-            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
-            task.fork_name = fork_name.to_string();
-            assert_eq!(fork_name_str, task.fork_name.as_str());
-            let (pi_hash, metadata, u_task) =
-                gen_universal_chunk_task(task, fork_name, interpreter)?;
+            // normailze fork name field in task
+            task.fork_name = task.fork_name.to_lowercase();
+            // always respect the fork_name_str (which has been normalized) being passed
+            // if the fork_name wrapped in task is not match, consider it a malformed task
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) = utils::panic_catch(move || {
+                gen_universal_chunk_task(task, fork_name_str.into(), interpreter)
+            })
+            .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {
             let mut task = serde_json::from_str::<BatchProvingTask>(task_json)?;
-            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
-            task.fork_name = fork_name.to_string();
-            assert_eq!(fork_name_str, task.fork_name.as_str());
-            let (pi_hash, metadata, u_task) = gen_universal_batch_task(task, fork_name)?;
+            task.fork_name = task.fork_name.to_lowercase();
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in batch task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) =
+                utils::panic_catch(move || gen_universal_batch_task(task, fork_name_str.into()))
+                    .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
         x if x == TaskType::Bundle as i32 => {
             let mut task = serde_json::from_str::<BundleProvingTask>(task_json)?;
-            let fork_name = ForkName::from(task.fork_name.to_lowercase().as_str());
-            task.fork_name = fork_name.to_string();
-            assert_eq!(fork_name_str, task.fork_name.as_str());
-            let (pi_hash, metadata, u_task) = gen_universal_bundle_task(task, fork_name)?;
+            task.fork_name = task.fork_name.to_lowercase();
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in bundle task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) =
+                utils::panic_catch(move || gen_universal_bundle_task(task, fork_name_str.into()))
+                    .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
         _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),

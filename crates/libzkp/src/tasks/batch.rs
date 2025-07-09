@@ -4,8 +4,9 @@ use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
-        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchInfo, BatchWitness, Envelope, EnvelopeV6,
-        EnvelopeV7, PointEvalWitness, ReferenceHeader, ToArchievedWitness, N_BLOB_BYTES,
+        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8, BatchInfo, BatchWitness,
+        Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, PointEvalWitness, ReferenceHeader,
+        ToArchievedWitness, N_BLOB_BYTES,
     },
     public_inputs::ForkName,
     task::ProvingTask,
@@ -24,6 +25,7 @@ use utils::{base64, point_eval};
 pub enum BatchHeaderV {
     V6(BatchHeaderV6),
     V7(BatchHeaderV7),
+    V8(BatchHeaderV8),
 }
 
 impl From<BatchHeaderV> for ReferenceHeader {
@@ -31,6 +33,7 @@ impl From<BatchHeaderV> for ReferenceHeader {
         match value {
             BatchHeaderV::V6(h) => ReferenceHeader::V6(h),
             BatchHeaderV::V7(h) => ReferenceHeader::V7(h),
+            BatchHeaderV::V8(h) => ReferenceHeader::V8(h),
         }
     }
 }
@@ -40,20 +43,28 @@ impl BatchHeaderV {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
             BatchHeaderV::V7(h) => h.batch_hash(),
+            BatchHeaderV::V8(h) => h.batch_hash(),
         }
     }
 
     pub fn must_v6_header(&self) -> &BatchHeaderV6 {
         match self {
             BatchHeaderV::V6(h) => h,
-            BatchHeaderV::V7(_) => panic!("try to pick v7 header"),
+            _ => panic!("try to pick v7 header"),
         }
     }
 
     pub fn must_v7_header(&self) -> &BatchHeaderV7 {
         match self {
             BatchHeaderV::V7(h) => h,
-            BatchHeaderV::V6(_) => panic!("try to pick v6 header"),
+            _ => panic!("try to pick v6 header"),
+        }
+    }
+
+    pub fn must_v8_header(&self) -> &BatchHeaderV8 {
+        match self {
+            BatchHeaderV::V8(h) => h,
+            _ => panic!("try to pick v8 header"),
         }
     }
 }
@@ -121,18 +132,33 @@ impl BatchProvingTask {
                         .challenge_digest(versioned_hash)
                 }
                 BatchHeaderV::V7(_) => {
-                    match fork_name {
-                        ForkName::EuclidV2 => (),
-                        _ => unreachable!("hardfork mismatch for da-codec@v6 header: found={fork_name:?}, expected={:?}",
-                                [ForkName::EuclidV2],
-                            ),
-                    }
+                    assert_eq!(
+                        fork_name,
+                        ForkName::EuclidV2,
+                        "hardfork mismatch for da-codec@v7 header: found={fork_name:?}, expected={:?}",
+                        ForkName::EuclidV2,
+                    );
                     let padded_blob_bytes = {
                         let mut padded_blob_bytes = self.blob_bytes.to_vec();
                         padded_blob_bytes.resize(N_BLOB_BYTES, 0);
                         padded_blob_bytes
                     };
-                    EnvelopeV7::from_slice(padded_blob_bytes.as_slice())
+                    <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                        .challenge_digest(versioned_hash)
+                }
+                BatchHeaderV::V8(_) => {
+                    assert_eq!(
+                        fork_name,
+                        ForkName::Feynman,
+                        "hardfork mismatch for da-codec@v8 header: found={fork_name:?}, expected={:?}",
+                        ForkName::Feynman,
+                    );
+                    let padded_blob_bytes = {
+                        let mut padded_blob_bytes = self.blob_bytes.to_vec();
+                        padded_blob_bytes.resize(N_BLOB_BYTES, 0);
+                        padded_blob_bytes
+                    };
+                    <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
                         .challenge_digest(versioned_hash)
                 }
             };

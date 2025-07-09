@@ -1,4 +1,4 @@
-.PHONY: clean setup_db test_tool
+.PHONY: clean setup_db test_tool all
 
 GOOSE_CMD?=goose
 BEGIN_BLOCK?=10405848
