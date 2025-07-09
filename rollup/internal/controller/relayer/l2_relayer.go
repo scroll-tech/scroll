@@ -338,7 +338,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
 // - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
-	// Get effective batch limits based on validium mode
+	// Get effective batch limits based on whether validium mode is enabled.
 	minBatches, maxBatches := r.getEffectiveBatchLimits()
 
 	// get pending batches from database in ascending order by their index.
@@ -553,7 +553,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-// getEffectiveBatchLimits returns the effective min and max batch limits based on validium mode
+// getEffectiveBatchLimits returns the effective min and max batch limits based on whether validium mode is enabled.
 func (r *Layer2Relayer) getEffectiveBatchLimits() (int, int) {
 	if r.cfg.ValidiumMode {
 		return 1, 1 // minBatches=1, maxBatches=1
