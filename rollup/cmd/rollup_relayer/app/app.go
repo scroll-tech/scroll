@@ -96,13 +96,6 @@ func action(ctx *cli.Context) error {
 		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
 	}
 
-	if cfg.L2Config.RelayerConfig.ValidiumMode {
-		// Force single batch submission for validium mode, this looks a bit hacky but it avoids more changes in the relayer code.
-		cfg.L2Config.RelayerConfig.BatchSubmission.MinBatches = 1
-		cfg.L2Config.RelayerConfig.BatchSubmission.MaxBatches = 1
-		log.Info("Validium mode detected, forcing single batch submission", "minBatches", 1, "maxBatches", 1)
-	}
-
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)

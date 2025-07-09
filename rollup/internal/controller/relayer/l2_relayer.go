@@ -333,13 +333,16 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
-// Pending batchess are submitted if one of the following conditions is met:
+// Pending batches are submitted if one of the following conditions is met:
 // - the first batch is too old -> forceSubmit
 // - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
 // - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
+	// Get effective batch limits based on validium mode
+	minBatches, maxBatches := r.getEffectiveBatchLimits()
+
 	// get pending batches from database in ascending order by their index.
-	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
+	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, maxBatches)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -448,21 +451,21 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			break
 		}
 
-		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
+		if batchesToSubmitLen < maxBatches {
 			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunks{
 				Batch:  dbBatch,
 				Chunks: dbChunks,
 			})
 		}
 
-		if len(batchesToSubmit) >= r.cfg.BatchSubmission.MaxBatches {
+		if len(batchesToSubmit) >= maxBatches {
 			break
 		}
 	}
 
 	// we only submit batches if we have a timeout or if we have enough batches to submit
-	if !forceSubmit && len(batchesToSubmit) < r.cfg.BatchSubmission.MinBatches {
-		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.BatchSubmission.MinBatches, "maxBatches", r.cfg.BatchSubmission.MaxBatches)
+	if !forceSubmit && len(batchesToSubmit) < minBatches {
+		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", minBatches, "maxBatches", maxBatches)
 		return
 	}
 
@@ -548,6 +551,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerCommitPrice.Set(float64(blobBaseFee))
 
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
+}
+
+// getEffectiveBatchLimits returns the effective min and max batch limits based on validium mode
+func (r *Layer2Relayer) getEffectiveBatchLimits() (int, int) {
+	if r.cfg.ValidiumMode {
+		return 1, 1 // minBatches=1, maxBatches=1
+	}
+	return r.cfg.BatchSubmission.MinBatches, r.cfg.BatchSubmission.MaxBatches
 }
 
 func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunks) string {
