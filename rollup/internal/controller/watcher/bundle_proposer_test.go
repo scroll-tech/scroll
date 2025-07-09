@@ -103,7 +103,7 @@ func testBundleProposerLimitsCodecV7(t *testing.T) {
 				MaxChunksPerBatch:             math.MaxInt32,
 				BatchTimeoutSec:               0,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
-			}, encoding.CodecV7, chainConfig, db, nil)
+			}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
 
 			cp.TryProposeChunk()  // chunk1 contains block1
 			bap.TryProposeBatch() // batch1 contains chunk1
