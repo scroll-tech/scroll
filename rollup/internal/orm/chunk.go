@@ -314,7 +314,7 @@ func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, cod
 	db = db.Model(&Chunk{})
 
 	if err := db.Create(newChunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w, chunk hash: %v", err, newChunk.Hash)
+		return nil, fmt.Errorf("Chunk. InsertPermissionlessChunk error: %w, chunk hash: %v", err, newChunk.Hash)
 	}
 
 	return newChunk, nil

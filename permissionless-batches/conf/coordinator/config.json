@@ -6,13 +6,6 @@
     "batch_collection_time_sec": 2700,
     "bundle_collection_time_sec": 2700,
     "verifier": {
-      "mock_mode": false,
-      "low_version_circuit" : {
-        "fork_name": "darwinV2",
-        "params_path": "/verifier/params",
-        "assets_path": "/verifier/assets",
-        "min_prover_version": "v4.4.56"
-      },
       "high_version_circuit" : {
         "fork_name": "euclid",
         "assets_path": "/verifier/openvm/verifier",

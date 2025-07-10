@@ -34,7 +34,7 @@ services:
       - "5432:5432"
 
   coordinator-api:
-    image: scrolltech/coordinator-api:v4.5.7
+    image: scrolltech/coordinator-api:v4.5.19
     volumes:
       - ./conf/coordinator/config.json:/coordinator/config.json:ro
       - ./conf/genesis.json:/coordinator/genesis.json:ro
@@ -74,13 +74,11 @@ services:
         condition: service_healthy
 
   local-prover:
-    image: scrolltech/cuda-prover:v4.5.7-a18fe064-fcc09d1-9174aff
+    image: scrolltech/cuda-prover:v4.5.12-97de9882-6ad5d8c-261b322
     network_mode: host
     platform: linux/amd64
     runtime: nvidia
     entrypoint: /bin/prover_run.sh
-    profiles:
-      - local-prover
     environment:
       - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
       - LD_LIBRARY_PATH=/prover:/usr/local/cuda/lib64
@@ -88,25 +86,10 @@ services:
       - RUST_BACKTRACE=1
       - RUST_LOG=info
     volumes:
-      - ./conf/proving-service/local-prover/config.json:/prover/conf/config.json:ro
-      - ./conf/proving-service/local-prover/prover_run.sh:/bin/prover_run.sh
-      - ./conf/proving-service/local-prover/db:/db
-      - ./conf/proving-service/local-prover/keys:/keys
-    depends_on:
-      coordinator-api:
-        condition: service_healthy
-
-  cloud-prover:
-    image: scrolltech/sdk-cloud-prover:sindri-v0.0.5
-    platform: linux/amd64
-    command: "--config /app/config.json"
-    profiles:
-      - cloud-prover
-    environment:
-      -  N_WORKERS=1
-    volumes:
-      - ./conf/proving-service/chunk/:/app/
-      - ./conf/proving-service/config.json:/app/config.json
+      - ./conf/proving-service/config.json:/prover/conf/config.json:ro
+      - ./conf/proving-service/prover_run.sh:/bin/prover_run.sh
+      - ./conf/proving-service/db:/db
+      - ./conf/proving-service/keys:/keys
     depends_on:
       coordinator-api:
         condition: service_healthy
