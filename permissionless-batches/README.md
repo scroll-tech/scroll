@@ -19,7 +19,7 @@ The batch production toolkit is a set of tools that allow anyone to submit a bat
 - Docker
 - [l2geth](https://github.com/scroll-tech/go-ethereum/) or [Docker image](https://hub.docker.com/r/scrolltech/l2geth) of corresponding version [TODO link list with versions](#batch-production-toolkit).
 - access to an Ethereum L1 RPC node (beacon node and execution client)
-- ability to run a prover or access to a proving service (e.g. Sindri)
+- ability to run a prover
 - L1 account with funds to pay for the batch submission
 
 ### 1. l2geth state recovery from L1
@@ -74,7 +74,6 @@ Running l2geth in block production mode requires following configuration:
 --da.sync=true --da.recovery --da.recovery.produceblocks \
 --miner.gaslimit 1 --miner.gasprice 1 --miner.maxaccountsnum 100 --rpc.gascap 0 --gpo.ignoreprice 1 \
 --miner.etherbase '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' --mine \
---ccc \
 --verbosity 3
 ```
 
@@ -99,8 +98,8 @@ To prove the chunk, batch and bundle you just generated you need to run the `loc
 
 Local Proving:
 
-1. Hardware spec for local prover: CPU: 36+ core, 128G memory GPU: 24G memory (eg. Rtx 3090/3090Ti/4090/A10/L4)
-2. Make sure `verifier` `low_version_circuit` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
+1. Hardware spec for local prover: CPU: 36+ core, 128G memory GPU: 24G memory (e.g. Rtx 3090/3090Ti/4090/A10/L4)
+2. Make sure `verifier` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
 2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
 4. Fill in the required fields in `conf/proving-service/local-prover/config.json`
 
