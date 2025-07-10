@@ -372,22 +372,6 @@ func (o *Batch) InsertPermissionlessBatch(ctx context.Context, batchIndex *big.I
 	return newBatch, nil
 }
 
-// UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
-func (o *Batch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
-	updateFields := make(map[string]interface{})
-	updateFields["oracle_status"] = int(status)
-	updateFields["oracle_tx_hash"] = txHash
-
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateL2GasOracleStatusAndOracleTxHash error: %w, batch hash: %v, status: %v, txHash: %v", err, hash, status.String(), txHash)
-	}
-	return nil
-}
-
 // UpdateProvingStatus updates the proving status of a batch.
 func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})

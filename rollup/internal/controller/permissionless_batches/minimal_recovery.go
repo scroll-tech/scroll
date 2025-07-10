@@ -450,16 +450,8 @@ func (r *MinimalRecovery) resetDB() error {
 		return fmt.Errorf("failed to get db connection: %w", err)
 	}
 
-	// reset and init DB
-	var v int64
-	err = migrate.Rollback(sqlDB, &v)
-	if err != nil {
-		return fmt.Errorf("failed to rollback db: %w", err)
-	}
-
-	err = migrate.Migrate(sqlDB)
-	if err != nil {
-		return fmt.Errorf("failed to migrate db: %w", err)
+	if err = migrate.ResetDB(sqlDB); err != nil {
+		return fmt.Errorf("failed to reset db: %w", err)
 	}
 
 	return nil
