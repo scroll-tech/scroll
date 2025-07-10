@@ -265,12 +265,12 @@ func (f *FullRecovery) processFinalizedBatches(batches []*batchEvents) error {
 	for _, b := range batches {
 		args, err := f.l1Reader.FetchCommitTxData(b.commit)
 		if err != nil {
-			return fmt.Errorf("failed to fetch commit tx data of batch %d, tx hash: %v, err: %w", firstBatch.commit.BatchIndex().Uint64(), firstBatch.commit.TxHash().Hex(), err)
+			return fmt.Errorf("failed to fetch commit tx data of batch %d, tx hash: %v, err: %w", b.commit.BatchIndex().Uint64(), b.commit.TxHash().Hex(), err)
 		}
 
 		// all batches we process here will be > CodecV7 since that is the minimum codec version for permissionless batches
 		if args.Version < 7 {
-			return fmt.Errorf("unsupported codec version: %v, batch index: %v, tx hash: %s", args.Version, firstBatch.commit.BatchIndex().Uint64(), firstBatch.commit.TxHash().Hex())
+			return fmt.Errorf("unsupported codec version: %v, batch index: %v, tx hash: %s", args.Version, b.commit.BatchIndex().Uint64(), b.commit.TxHash().Hex())
 		}
 
 		codec, err := encoding.CodecFromVersion(encoding.CodecVersion(args.Version))
@@ -388,7 +388,7 @@ func (f *FullRecovery) insertBatchIntoDB(batch *batchEvents, codec encoding.Code
 
 	// 5.4 Reproduce batch.
 	dbParentBatch, err := f.batchORM.GetLatestBatch(f.ctx)
-	if err != nil {
+	if err != nil || dbParentBatch == nil {
 		return fmt.Errorf("failed to get latest batch from DB: %w", err)
 	}
 
