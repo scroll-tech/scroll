@@ -401,7 +401,7 @@ func (f *FullRecovery) insertBatchIntoDB(batch *batchEvents, codec encoding.Code
 	encBatch.Chunks = []*encoding.Chunk{&chunk}
 	encBatch.Blocks = blocks
 
-	batchMetrics, err := butils.CalculateBatchMetrics(&encBatch, codec.Version())
+	batchMetrics, err := butils.CalculateBatchMetrics(&encBatch, codec.Version(), false)
 	if err != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", err)
 	}

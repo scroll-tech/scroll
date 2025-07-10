@@ -109,16 +109,14 @@ func (s *Submitter) Submit(withProof bool) error {
 		return fmt.Errorf("failed to get end chunk with index %d of batch: %w", batch.EndChunkIndex, err)
 	}
 
-	var aggProof message.BundleProof
+	var aggProof *message.OpenVMBundleProof
 	if withProof {
 		firstChunk, err := s.chunkOrm.GetChunkByIndex(s.ctx, batch.StartChunkIndex)
 		if err != nil || firstChunk == nil {
 			return fmt.Errorf("failed to get first chunk %d of batch: %w", batch.StartChunkIndex, err)
 		}
 
-		hardForkName := encoding.GetHardforkName(s.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
-
-		aggProof, err = s.bundleOrm.GetVerifiedProofByHash(s.ctx, bundle.Hash, hardForkName)
+		aggProof, err = s.bundleOrm.GetVerifiedProofByHash(s.ctx, bundle.Hash)
 		if err != nil {
 			return fmt.Errorf("failed to get verified proof by bundle index: %d, err: %w", bundle.Index, err)
 		}
@@ -139,11 +137,9 @@ func (s *Submitter) Submit(withProof bool) error {
 	default:
 		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
 	}
-	//
-	fmt.Println(len(blob))
-	txHash, err := s.finalizeSender.SendTransaction("commitAndFinalize-"+bundle.Hash, &s.cfg.RollupContractAddress, calldata, []*kzg4844.Blob{blob}, 0)
+
+	txHash, _, err := s.finalizeSender.SendTransaction("commitAndFinalize-"+bundle.Hash, &s.cfg.RollupContractAddress, calldata, []*kzg4844.Blob{blob})
 	if err != nil {
-		//fmt.Println("blob", common.Bytes2Hex(blob[:]))
 		log.Error("commitAndFinalize in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"batch index", bundle.StartBatchIndex,
 			"RollupContractAddress", s.cfg.RollupContractAddress, "err", err, "calldata", common.Bytes2Hex(calldata))
@@ -206,7 +202,7 @@ func (s *Submitter) Submit(withProof bool) error {
 	return nil
 }
 
-func (s *Submitter) constructCommitAndFinalizeCalldataAndBlob(batch *orm.Batch, endChunk *orm.Chunk, aggProof message.BundleProof) ([]byte, *kzg4844.Blob, error) {
+func (s *Submitter) constructCommitAndFinalizeCalldataAndBlob(batch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, *kzg4844.Blob, error) {
 	// Create the FinalizeStruct tuple as an abi-compatible struct
 	finalizeStruct := struct {
 		BatchHeader                  []byte
