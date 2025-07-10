@@ -94,16 +94,16 @@ This will produce chunks, a batch and bundle which will be proven in the next st
 `Success! You're ready to generate proofs!` indicates that everything is working correctly and the batch is ready to be proven.
 
 #### Proving a batch
-To prove the chunk, batch and bundle you just generated you need to run the `local-prover` or `cloud-prover` profile in `docker-compose.yml`.
+To prove the chunk, batch and bundle you just generated you need to run the `prover` profile in `docker-compose.yml`.
 
 Local Proving:
 
 1. Hardware spec for local prover: CPU: 36+ core, 128G memory GPU: 24G memory (e.g. Rtx 3090/3090Ti/4090/A10/L4)
 2. Make sure `verifier` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
 2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
-4. Fill in the required fields in `conf/proving-service/local-prover/config.json`
+4. Fill in the required fields in `conf/proving-service/config.json`
 
-Run with `make local_prover`.
+Run with `make launch_prover`.
 
 
 #### Batch submission

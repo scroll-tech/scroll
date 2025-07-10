@@ -1,16 +1,13 @@
-.PHONY: batch-production-submission launch_local_prover launch_cloud_prover psql check_proving_status
+.PHONY: batch_production_submission launch_prover psql check_proving_status
 
-export SCROLL_ZKVM_VERSION=0.3.0
+export SCROLL_ZKVM_VERSION=0.4.2
 PG_URL=postgres://postgres@localhost:5432/scroll
 
 batch_production_submission:
 	docker compose --profile batch-production-submission up
 
-local_prover:
-	docker compose --profile local-prover up -d
-
-cloud_prover:
-	docker compose --profile cloud-prover up
+launch_prover:
+	docker compose up -d
 
 psql:
 	psql 'postgres://postgres@localhost:5432/scroll'
