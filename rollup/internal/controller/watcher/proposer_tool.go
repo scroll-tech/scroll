@@ -14,9 +14,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
-	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -124,7 +125,7 @@ func NewProposerTool(ctx context.Context, cancel context.CancelFunc, cfg *config
 
 	chunkProposer := NewChunkProposer(ctx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, chainCfg, db, nil)
 	chunkProposer.SetReplayDB(dbForReplay)
-	batchProposer := NewBatchProposer(ctx, cfg.L2Config.BatchProposerConfig, minCodecVersion, chainCfg, db, nil)
+	batchProposer := NewBatchProposer(ctx, cfg.L2Config.BatchProposerConfig, minCodecVersion, chainCfg, db, false /* rollup mode */, nil)
 	batchProposer.SetReplayDB(dbForReplay)
 	bundleProposer := NewBundleProposer(ctx, cfg.L2Config.BundleProposerConfig, minCodecVersion, chainCfg, db, nil)
 

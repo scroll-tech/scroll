@@ -80,6 +80,7 @@ type Layer2Relayer struct {
 	commitSender   *sender.Sender
 	finalizeSender *sender.Sender
 	l1RollupABI    *abi.ABI
+	validiumABI    *abi.ABI
 
 	l2GasOracleABI *abi.ABI
 
@@ -173,6 +174,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		commitSender:   commitSender,
 		finalizeSender: finalizeSender,
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
+		validiumABI:    bridgeAbi.ValidiumABI,
 
 		l2GasOracleABI: bridgeAbi.L2GasPriceOracleABI,
 		batchStrategy:  strategy,
@@ -240,10 +242,11 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk},
+			Blocks:                     chunk.Blocks,
 		}
 
 		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{}, dbTX)
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{ValidiumMode: r.cfg.ValidiumMode}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -275,10 +278,23 @@ func (r *Layer2Relayer) initializeGenesis() error {
 }
 
 func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot common.Hash) error {
-	// encode "importGenesisBatch" transaction calldata
-	calldata, packErr := r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
-	if packErr != nil {
-		return fmt.Errorf("failed to pack importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
+	var calldata []byte
+	var packErr error
+
+	if r.cfg.ValidiumMode {
+		// validium mode: only pass batchHeader
+		calldata, packErr = r.validiumABI.Pack("importGenesisBatch", batchHeader)
+		if packErr != nil {
+			return fmt.Errorf("failed to pack validium importGenesisBatch with batch header: %v. error: %v", common.Bytes2Hex(batchHeader), packErr)
+		}
+		log.Info("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
+	} else {
+		// rollup mode: pass batchHeader and stateRoot
+		calldata, packErr = r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+		if packErr != nil {
+			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
+		}
+		log.Info("Rollup importGenesis", "calldata", common.Bytes2Hex(calldata), "stateRoot", stateRoot)
 	}
 
 	// submit genesis batch to L1 rollup contract
@@ -286,7 +302,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
-	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
+	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash, "validium", r.cfg.ValidiumMode)
 
 	// wait for confirmation
 	// we assume that no other transactions are sent before initializeGenesis completes
@@ -311,20 +327,23 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			if !confirmation.IsSuccessful {
 				return errors.New("import genesis batch tx failed")
 			}
-			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String())
+			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String(), "validium", r.cfg.ValidiumMode)
 			return nil
 		}
 	}
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
-// Pending batchess are submitted if one of the following conditions is met:
+// Pending batches are submitted if one of the following conditions is met:
 // - the first batch is too old -> forceSubmit
 // - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
 // - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
+	// Get effective batch limits based on whether validium mode is enabled.
+	minBatches, maxBatches := r.getEffectiveBatchLimits()
+
 	// get pending batches from database in ascending order by their index.
-	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.BatchSubmission.MaxBatches)
+	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, maxBatches)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -378,7 +397,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 	}
 
-	var batchesToSubmit []*dbBatchWithChunksAndParent
+	var batchesToSubmit []*dbBatchWithChunks
 	for i, dbBatch := range dbBatches {
 		var dbChunks []*orm.Chunk
 		var dbParentBatch *orm.Batch
@@ -433,22 +452,21 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			break
 		}
 
-		if batchesToSubmitLen < r.cfg.BatchSubmission.MaxBatches {
-			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunksAndParent{
-				Batch:       dbBatch,
-				Chunks:      dbChunks,
-				ParentBatch: dbParentBatch,
+		if batchesToSubmitLen < maxBatches {
+			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunks{
+				Batch:  dbBatch,
+				Chunks: dbChunks,
 			})
 		}
 
-		if len(batchesToSubmit) >= r.cfg.BatchSubmission.MaxBatches {
+		if len(batchesToSubmit) >= maxBatches {
 			break
 		}
 	}
 
 	// we only submit batches if we have a timeout or if we have enough batches to submit
-	if !forceSubmit && len(batchesToSubmit) < r.cfg.BatchSubmission.MinBatches {
-		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.BatchSubmission.MinBatches, "maxBatches", r.cfg.BatchSubmission.MaxBatches)
+	if !forceSubmit && len(batchesToSubmit) < minBatches {
+		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", minBatches, "maxBatches", maxBatches)
 		return
 	}
 
@@ -467,18 +485,30 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV7:
-		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
-		if err != nil {
-			log.Error("failed to construct constructCommitBatchPayloadCodecV7 payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
-			return
+	case encoding.CodecV7, encoding.CodecV8:
+		if r.cfg.ValidiumMode {
+			if len(batchesToSubmit) != 1 {
+				log.Error("validium mode only supports committing one batch at a time", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "batches count", len(batchesToSubmit))
+				return
+			}
+			calldata, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadValidium(batchesToSubmit[0])
+			if err != nil {
+				log.Error("failed to construct validium payload", "codecVersion", codecVersion, "index", batchesToSubmit[0].Batch.Index, "err", err)
+				return
+			}
+		} else {
+			calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
+			if err != nil {
+				log.Error("failed to construct normal payload", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+				return
+			}
 		}
 	default:
 		log.Error("unsupported codec version in ProcessPendingBatches", "codecVersion", codecVersion, "start index", firstBatch, "end index", lastBatch.Index)
 		return
 	}
 
-	txHash, blobBaseFee, err := r.commitSender.SendTransaction(r.contextIDFromBatches(batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
+	txHash, blobBaseFee, err := r.commitSender.SendTransaction(r.contextIDFromBatches(codecVersion, batchesToSubmit), &r.cfg.RollupContractAddress, calldata, blobs)
 	if err != nil {
 		if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
 			r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
@@ -524,28 +554,33 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunksAndParent) string {
-	contextIDs := []string{"v7"}
+// getEffectiveBatchLimits returns the effective min and max batch limits based on whether validium mode is enabled.
+func (r *Layer2Relayer) getEffectiveBatchLimits() (int, int) {
+	if r.cfg.ValidiumMode {
+		return 1, 1 // minBatches=1, maxBatches=1
+	}
+	return r.cfg.BatchSubmission.MinBatches, r.cfg.BatchSubmission.MaxBatches
+}
 
+func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunks) string {
+	contextIDs := []string{fmt.Sprintf("v%d", codecVersion)}
 	for _, batch := range batches {
 		contextIDs = append(contextIDs, batch.Batch.Hash)
 	}
-
 	return strings.Join(contextIDs, "-")
 }
 
 func (r *Layer2Relayer) batchHashesFromContextID(contextID string) []string {
-	if strings.HasPrefix(contextID, "v7-") {
-		return strings.Split(contextID, "-")[1:]
+	parts := strings.SplitN(contextID, "-", 2)
+	if len(parts) == 2 && strings.HasPrefix(parts[0], "v") {
+		return strings.Split(parts[1], "-")
 	}
-
 	return []string{contextID}
 }
 
-type dbBatchWithChunksAndParent struct {
-	Batch       *orm.Batch
-	Chunks      []*orm.Chunk
-	ParentBatch *orm.Batch
+type dbBatchWithChunks struct {
+	Batch  *orm.Batch
+	Chunks []*orm.Chunk
 }
 
 // ProcessPendingBundles submits proof to layer 1 rollup contract
@@ -694,10 +729,17 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV7:
-		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
-		if err != nil {
-			return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
+	case encoding.CodecV7, encoding.CodecV8:
+		if r.cfg.ValidiumMode {
+			calldata, err = r.constructFinalizeBundlePayloadValidium(dbBatch, endChunk, aggProof)
+			if err != nil {
+				return fmt.Errorf("failed to construct validium finalizeBundle payload, codec version: %v, bundle index: %v, last batch index: %v, err: %w", dbBatch.CodecVersion, bundle.Index, dbBatch.Index, err)
+			}
+		} else {
+			calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, endChunk, aggProof)
+			if err != nil {
+				return fmt.Errorf("failed to construct normal finalizeBundle payload, codec version: %v, bundle index: %v, last batch index: %v, err: %w", dbBatch.CodecVersion, bundle.Index, dbBatch.Index, err)
+			}
 		}
 	default:
 		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
@@ -899,7 +941,7 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunks, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
@@ -930,7 +972,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 
 		encodingBatch := &encoding.Batch{
 			Index:                  b.Batch.Index,
-			ParentBatchHash:        common.HexToHash(b.ParentBatch.Hash),
+			ParentBatchHash:        common.HexToHash(b.Batch.ParentBatchHash),
 			PrevL1MessageQueueHash: common.HexToHash(b.Batch.PrevL1MessageQueueHash),
 			PostL1MessageQueueHash: common.HexToHash(b.Batch.PostL1MessageQueueHash),
 			Blocks:                 batchBlocks,
@@ -956,6 +998,35 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
+func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithChunks) ([]byte, uint64, uint64, error) {
+	// Calculate metrics
+	var maxBlockHeight uint64
+	var totalGasUsed uint64
+	for _, c := range batch.Chunks {
+		if c.EndBlockNumber > maxBlockHeight {
+			maxBlockHeight = c.EndBlockNumber
+		}
+		totalGasUsed += c.TotalL2TxGas
+	}
+
+	// Get the commitment from the batch data: for validium mode, we use the last L2 block hash as the commitment to the off-chain data
+	// Get the last chunk from the batch to find the end block hash
+	// TODO: This is a temporary solution, we might use a larger commitment in the future
+	if len(batch.Chunks) == 0 {
+		return nil, 0, 0, fmt.Errorf("last batch has no chunks")
+	}
+
+	lastChunk := batch.Chunks[len(batch.Chunks)-1]
+	commitment := common.HexToHash(lastChunk.EndBlockHash)
+	version := encoding.CodecVersion(batch.Batch.CodecVersion)
+	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)
+	}
+	log.Info("Validium commitBatch", "maxBlockHeight", maxBlockHeight, "commitment", commitment.Hex())
+	return calldata, maxBlockHeight, totalGasUsed, nil
+}
+
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
@@ -972,7 +1043,8 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		return calldata, nil
 	}
 
-	fmt.Println("packing finalizeBundlePostEuclidV2NoProof", len(dbBatch.BatchHeader), dbBatch.CodecVersion, dbBatch.BatchHeader, new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk), common.HexToHash(dbBatch.StateRoot), common.HexToHash(dbBatch.WithdrawRoot))
+	log.Info("Packing finalizeBundlePostEuclidV2NoProof", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot)
+
 	// finalizeBundle without proof.
 	calldata, packErr := r.l1RollupABI.Pack(
 		"finalizeBundlePostEuclidV2NoProof",
@@ -983,6 +1055,26 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	)
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
+	}
+	return calldata, nil
+}
+
+func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
+	log.Info("Packing validium finalizeBundle", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot, "withProof", aggProof != nil)
+
+	var proof []byte
+	if aggProof != nil {
+		proof = aggProof.Proof()
+	}
+
+	calldata, packErr := r.validiumABI.Pack(
+		"finalizeBundle",
+		dbBatch.BatchHeader,
+		new(big.Int).SetUint64(endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk),
+		proof,
+	)
+	if packErr != nil {
+		return nil, fmt.Errorf("failed to pack validium finalizeBundle: %w", packErr)
 	}
 	return calldata, nil
 }

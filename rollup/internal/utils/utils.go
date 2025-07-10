@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
@@ -15,7 +17,8 @@ type ChunkMetrics struct {
 	L2Gas               uint64
 	FirstBlockTimestamp uint64
 
-	L1CommitBlobSize uint64
+	L1CommitBlobSize                   uint64
+	L1CommitUncompressedBatchBytesSize uint64
 
 	// timing metrics
 	EstimateBlobSizeTime time.Duration
@@ -41,7 +44,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 	}
 
 	metrics.EstimateBlobSizeTime, err = measureTime(func() error {
-		_, metrics.L1CommitBlobSize, err = codec.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 		return err
 	})
 	if err != nil {
@@ -56,17 +59,21 @@ type BatchMetrics struct {
 	NumChunks           uint64
 	FirstBlockTimestamp uint64
 
-	L1CommitBlobSize uint64
+	L1CommitBlobSize                   uint64
+	L1CommitUncompressedBatchBytesSize uint64
+
+	ValidiumMode bool // default false: rollup mode
 
 	// timing metrics
 	EstimateBlobSizeTime time.Duration
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, validiumMode bool) (*BatchMetrics, error) {
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
 		FirstBlockTimestamp: batch.Chunks[0].Blocks[0].Header.Time,
+		ValidiumMode:        validiumMode,
 	}
 
 	codec, err := encoding.CodecFromVersion(codecVersion)
@@ -75,7 +82,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 	}
 
 	metrics.EstimateBlobSizeTime, err = measureTime(func() error {
-		_, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 		return err
 	})
 	if err != nil {
@@ -117,8 +124,59 @@ type BatchMetadata struct {
 	ChallengeDigest    common.Hash
 }
 
+// encodeBatchHeaderValidium encodes batch header for validium mode and returns both encoded bytes and hash
+func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVersion) ([]byte, common.Hash, error) {
+	if b == nil {
+		return nil, common.Hash{}, fmt.Errorf("batch is nil, version: %v, index: %v", codecVersion, b.Index)
+	}
+
+	if len(b.Blocks) == 0 {
+		return nil, common.Hash{}, fmt.Errorf("batch contains no blocks, version: %v, index: %v", codecVersion, b.Index)
+	}
+
+	// For validium mode, use the last block hash as commitment to the off-chain data
+	// TODO: This is a temporary solution, we might use a larger commitment in the future
+	lastBlock := b.Blocks[len(b.Blocks)-1]
+	commitment := lastBlock.Header.Hash()
+
+	// Batch header field sizes
+	const (
+		versionSize      = 1
+		indexSize        = 8
+		parentHashSize   = 32
+		stateRootSize    = 32
+		withdrawRootSize = 32
+		commitmentSize   = 32 // TODO: 32 bytes for now, might use larger commitment in the future
+
+		// Total size of validium batch header
+		validiumBatchHeaderSize = versionSize + indexSize + parentHashSize + stateRootSize + withdrawRootSize + commitmentSize
+	)
+
+	batchBytes := make([]byte, validiumBatchHeaderSize)
+
+	// Define offsets for each field
+	var (
+		versionOffset      = 0
+		indexOffset        = versionOffset + versionSize
+		parentHashOffset   = indexOffset + indexSize
+		stateRootOffset    = parentHashOffset + parentHashSize
+		withdrawRootOffset = stateRootOffset + stateRootSize
+		commitmentOffset   = withdrawRootOffset + withdrawRootSize
+	)
+
+	batchBytes[versionOffset] = uint8(codecVersion)                                                                        // version
+	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                                     // batch index
+	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:parentHashSize])                // parentBatchHash
+	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:stateRootSize])                // postStateRoot
+	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:withdrawRootSize]) // postWithdrawRoot
+	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:commitmentSize])                       // data commitment
+
+	hash := crypto.Keccak256Hash(batchBytes)
+	return batchBytes, hash, nil
+}
+
 // GetBatchMetadata retrieves the metadata of a batch.
-func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, validiumMode bool) (*BatchMetadata, error) {
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
@@ -137,9 +195,17 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		ChallengeDigest: daBatch.ChallengeDigest(),
 	}
 
+	// If this function is used in Validium, we encode the batch header differently.
+	if validiumMode {
+		batchMeta.BatchBytes, batchMeta.BatchHash, err = encodeBatchHeaderValidium(batch, codecVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode batch header for validium, version: %v, index: %v, err: %w", codecVersion, batch.Index, err)
+		}
+	}
+
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob data proof, version: %v, err: %w", codecVersion, err)
+		return nil, fmt.Errorf("failed to get blob data proof, version: %v, index: %v, err: %w", codecVersion, batch.Index, err)
 	}
 
 	numChunks := len(batch.Chunks)

@@ -1,0 +1,68 @@
+[workspace]
+members = [
+  "crates/libzkp",
+  "crates/l2geth",
+  "crates/libzkp_c",
+  "crates/prover-bin",
+]
+
+resolver = "2"
+
+[workspace.package]
+authors = ["Scroll developers"]
+edition = "2021"
+homepage = "https://scroll.io"
+readme = "README.md"
+repository = "https://github.com/scroll-tech/scroll"
+version = "4.5.8"
+
+[workspace.dependencies]
+scroll-zkvm-prover-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19", package = "scroll-zkvm-prover" }
+scroll-zkvm-verifier-euclid = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19", package = "scroll-zkvm-verifier" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "0dd7b19" }
+
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade", features = ["scroll"] }
+sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/upgrade" }
+
+metrics = "0.23.0"
+metrics-util = "0.17"
+metrics-tracing-context = "0.16.0"
+
+anyhow = "1.0"
+alloy = { version = "1", default-features = false }
+alloy-primitives = { version = "1.2", default-features = false, features = ["tiny-keccak"] }
+# also use this to trigger "serde" feature for primitives
+alloy-serde = { version = "1", default-features = false }
+
+serde = { version = "1", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0" }
+serde_derive = "1.0"
+serde_with = "3.11.0"
+itertools = "0.14"
+tiny-keccak = "2.0"
+tracing = "0.1"
+eyre = "0.6"
+once_cell = "1.20"
+base64 = "0.22"
+
+[patch.crates-io]
+revm = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-bytecode = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-context = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-context-interface = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-database = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-database-interface = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-handler = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-inspector = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+revm-state = { git = "https://github.com/scroll-tech/revm", branch = "feat/reth-v74" }
+
+ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.15.0" }
+alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v1.2.0" }
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1

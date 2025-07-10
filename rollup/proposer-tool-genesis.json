@@ -6,7 +6,8 @@
         "darwinTime": 0,
         "darwinV2Time": 0,
         "euclidTime": 0,
-        "euclidV2Time": 0
+        "euclidV2Time": 0,
+        "feynmanTime": 0
     },
     "nonce": "0x0000000000000033",
     "timestamp": "0x0",

@@ -10,7 +10,13 @@ import (
 
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	return &Verifier{cfg: cfg, OpenVMVkMap: map[string]struct{}{"mock_vk": {}}}, nil
+	return &Verifier{
+		cfg:         cfg,
+		OpenVMVkMap: map[string]struct{}{"mock_vk": {}},
+		ChunkVk:     map[string][]byte{"euclidV2": []byte("mock_vk")},
+		BatchVk:     map[string][]byte{"euclidV2": []byte("mock_vk")},
+		BundleVk:    map[string][]byte{},
+	}, nil
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.

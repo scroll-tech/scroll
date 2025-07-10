@@ -28,7 +28,7 @@ We welcome community contributions to this repository. Before you submit any iss
 
 ## Prerequisites
 + Go 1.21
-+ Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
++ Rust (for version, see [rust-toolchain](./rust-toolchain))
 + Hardhat / Foundry
 + Docker
 

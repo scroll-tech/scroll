@@ -1,3 +1,4 @@
 /build/bin
 .idea
 internal/logic/verifier/lib
+internal/libzkp/lib/libzkp.so

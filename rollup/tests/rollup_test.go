@@ -118,15 +118,17 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	}
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk: 100,
-		MaxL2GasPerChunk:    math.MaxUint64,
-		ChunkTimeoutSec:     300,
+		MaxBlockNumPerChunk:           100,
+		MaxL2GasPerChunk:              math.MaxUint64,
+		ChunkTimeoutSec:               300,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunksPerBatch: math.MaxInt32,
-		BatchTimeoutSec:   300,
-	}, encoding.CodecV7, chainConfig, db, nil)
+		MaxChunksPerBatch:             math.MaxInt32,
+		BatchTimeoutSec:               300,
+		MaxUncompressedBatchBytesSize: math.MaxUint64,
+	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
 
 	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
 		MaxBatchNumPerBundle: 2,

@@ -10,7 +10,8 @@ env:
 
 jobs:
   gas_oracle:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,7 +56,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   rollup_relayer:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -99,8 +101,55 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
+  blob_uploader:
+    runs-on:
+        group: scroll-reth-runner-group
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: blob-uploader
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: blob-uploader
+          IMAGE_TAG: ${{ github.ref_name }}
+        with:
+          context: .
+          file: ./build/dockerfiles/blob_uploader.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   rollup-db-cli:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -145,7 +194,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-fetcher:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -190,7 +240,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-api:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -235,7 +286,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-db-cli:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -280,7 +332,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-api:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -307,48 +360,6 @@ jobs:
           REPOSITORY: coordinator-api
         run: |
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
-      - name: Setup SSH for repositories and clone them
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-
-          # Setup for plonky3-gpu
-          echo "${{ secrets.PLONKY3_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/plonky3_gpu_key
-          chmod 600 ~/.ssh/plonky3_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/plonky3_gpu_key 2>/dev/null
-          ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
-          echo "Loaded plonky3-gpu key"
-
-          # Clone plonky3-gpu repository
-          ./build/dockerfiles/coordinator-api/clone_plonky3_gpu.sh
-
-          # Setup for openvm-stark-gpu
-          echo "${{ secrets.OPENVM_STARK_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_stark_gpu_key
-          chmod 600 ~/.ssh/openvm_stark_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/openvm_stark_gpu_key 2>/dev/null
-          echo "Loaded openvm-stark-gpu key"
-
-          # Clone openvm-stark-gpu repository
-          ./build/dockerfiles/coordinator-api/clone_openvm_stark_gpu.sh
-
-          # Setup for openvm-gpu
-          echo "${{ secrets.OPENVM_GPU_SSH_PRIVATE_KEY }}" > ~/.ssh/openvm_gpu_key
-          chmod 600 ~/.ssh/openvm_gpu_key
-          eval "$(ssh-agent -s)" > /dev/null
-          ssh-add ~/.ssh/openvm_gpu_key 2>/dev/null
-          echo "Loaded openvm-gpu key"
-
-          # Clone openvm-gpu repository
-          ./build/dockerfiles/coordinator-api/clone_openvm_gpu.sh
-
-          # Show number of loaded keys
-          echo "Number of loaded keys: $(ssh-add -l | wc -l)"
-
-      - name: Checkout specific commits
-        run: |
-          ./build/dockerfiles/coordinator-api/checkout_all.sh
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -366,7 +377,8 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-cron:
-    runs-on: ubuntu-latest
+    runs-on:
+        group: scroll-reth-runner-group
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
