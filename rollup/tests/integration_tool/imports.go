@@ -165,7 +165,7 @@ func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []
 		}
 	}
 
-	var index uint64
+	index := uint64(1)
 	var parentHash common.Hash
 	if last != nil {
 		index = last.Index + 1
