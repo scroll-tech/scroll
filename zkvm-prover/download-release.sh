@@ -3,7 +3,7 @@
 # Define version mapping
 declare -A VERSION_MAP
 VERSION_MAP["euclid"]="0.4.3"
-VERSION_MAP["feynman"]="0.5.0rc0"
+VERSION_MAP["feynman"]="0.5.0rc1"
 
 # release version
 if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
