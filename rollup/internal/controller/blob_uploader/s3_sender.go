@@ -25,8 +25,6 @@ type S3Uploader struct {
 func NewS3Uploader(cfg *config.AWSS3Config) (*S3Uploader, error) {
 	// load AWS config
 	var opts []func(*awsconfig.LoadOptions) error
-	opts = append(opts, awsconfig.WithRegion(cfg.Region))
-
 	// if AccessKey && SecretKey provided, use it
 	if cfg.AccessKey != "" && cfg.SecretKey != "" {
 		opts = append(opts, awsconfig.WithCredentialsProvider(
@@ -36,6 +34,10 @@ func NewS3Uploader(cfg *config.AWSS3Config) (*S3Uploader, error) {
 				"",
 			)),
 		)
+	}
+
+	if cfg.Region != "" {
+		opts = append(opts, awsconfig.WithRegion(cfg.Region))
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(), opts...)

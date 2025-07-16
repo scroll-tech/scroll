@@ -115,7 +115,8 @@ func (o *BlobUpload) InsertOrUpdateBlobUpload(ctx context.Context, batchIndex ui
 		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload query error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
 
-	if err := db.Model(&existing).Update("status", int16(status)).Error; err != nil {
+	if err := db.Model(&existing).Where("batch_index = ? AND batch_hash = ? AND platform = ? AND deleted_at IS NULL",
+		batchIndex, batchHash, int16(platform)).Update("status", int16(status)).Error; err != nil {
 		return fmt.Errorf("BlobUpload.InsertOrUpdateBlobUpload update error: %w, batch index: %v, batch_hash: %v, platform: %v", err, batchIndex, batchHash, platform)
 	}
 
