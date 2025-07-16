@@ -128,7 +128,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		MaxChunksPerBatch:             math.MaxInt32,
 		BatchTimeoutSec:               300,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
-	}, encoding.CodecV7, chainConfig, db, nil)
+	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
 
 	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
 		MaxBatchNumPerBundle: 2,

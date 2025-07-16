@@ -36,6 +36,7 @@
     "endpoint": "https://rpc.scroll.io",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
+      "validium_mode": false,
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
