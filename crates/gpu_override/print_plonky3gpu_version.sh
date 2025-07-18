@@ -1,6 +1,6 @@
 #!/bin/bash
 
-config_file=~/.cargo/config.toml
+config_file=.cargo/config.toml
 plonky3_gpu_path=$(grep 'path.*plonky3-gpu' "$config_file" | cut -d'"' -f2 | head -n 1)
 plonky3_gpu_path=$(dirname "$plonky3_gpu_path")
 

@@ -9,7 +9,7 @@ scroll-zkvm-types.workspace = true
 scroll-zkvm-verifier-euclid.workspace = true
 
 alloy-primitives.workspace = true #depress the effect of "native-keccak"
-sbv-primitives.workspace = true
+sbv-primitives = {workspace = true, features = ["scroll-compress-ratio", "scroll"]}
 base64.workspace = true
 serde.workspace = true
 serde_derive.workspace = true

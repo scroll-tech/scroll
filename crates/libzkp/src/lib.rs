@@ -30,7 +30,7 @@ pub fn checkout_chunk_task(
 pub fn gen_universal_task(
     task_type: i32,
     task_json: &str,
-    fork_name: &str,
+    fork_name_str: &str,
     expected_vk: &[u8],
     interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, String, String)> {
@@ -48,19 +48,40 @@ pub fn gen_universal_task(
 
     let (pi_hash, metadata, mut u_task) = match task_type {
         x if x == TaskType::Chunk as i32 => {
-            let task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
-            let (pi_hash, metadata, u_task) =
-                gen_universal_chunk_task(task, fork_name.into(), interpreter)?;
+            let mut task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
+            // normailze fork name field in task
+            task.fork_name = task.fork_name.to_lowercase();
+            // always respect the fork_name_str (which has been normalized) being passed
+            // if the fork_name wrapped in task is not match, consider it a malformed task
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) = utils::panic_catch(move || {
+                gen_universal_chunk_task(task, fork_name_str.into(), interpreter)
+            })
+            .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {
-            let task = serde_json::from_str::<BatchProvingTask>(task_json)?;
-            let (pi_hash, metadata, u_task) = gen_universal_batch_task(task, fork_name.into())?;
+            let mut task = serde_json::from_str::<BatchProvingTask>(task_json)?;
+            task.fork_name = task.fork_name.to_lowercase();
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in batch task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) =
+                utils::panic_catch(move || gen_universal_batch_task(task, fork_name_str.into()))
+                    .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
         x if x == TaskType::Bundle as i32 => {
-            let task = serde_json::from_str::<BundleProvingTask>(task_json)?;
-            let (pi_hash, metadata, u_task) = gen_universal_bundle_task(task, fork_name.into())?;
+            let mut task = serde_json::from_str::<BundleProvingTask>(task_json)?;
+            task.fork_name = task.fork_name.to_lowercase();
+            if fork_name_str != task.fork_name.as_str() {
+                eyre::bail!("fork name in bundle task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+            }
+            let (pi_hash, metadata, u_task) =
+                utils::panic_catch(move || gen_universal_bundle_task(task, fork_name_str.into()))
+                    .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
         _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),
@@ -111,24 +132,6 @@ pub fn verify_proof(proof: Vec<u8>, fork_name: &str, task_type: TaskType) -> eyr
     let verifier = verifier::get_verifier(fork_name)?;
 
     let ret = verifier.lock().unwrap().verify(task_type, &proof)?;
-
-    if let Ok(debug_value) = std::env::var("ZKVM_DEBUG_PROOF") {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        if !ret && debug_value.to_lowercase() == "true" {
-            // Dump req.input to a temporary file
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-            let filename = format!("/tmp/proof_{}.json", timestamp);
-            if let Err(e) = std::fs::write(&filename, &proof) {
-                eprintln!("Failed to write proof to file {}: {}", filename, e);
-            } else {
-                println!("Dumped failed proof to {}", filename);
-            }
-        }
-    }
-
     Ok(ret)
 }
 

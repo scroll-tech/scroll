@@ -84,6 +84,10 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		var tmpBundleTask *orm.Bundle
 
 		if taskCtx.hasAssignedTask != nil {
+			if taskCtx.hasAssignedTask.TaskType != int16(message.ProofTypeBundle) {
+				return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+
 			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), taskCtx.hasAssignedTask.TaskID)
 			if getTaskError != nil {
 				log.Error("failed to get bundle has assigned to prover", "taskID", taskCtx.hasAssignedTask.TaskID, "err", getTaskError)
@@ -92,6 +96,14 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 				// if the assigned chunk dropped, there would be too much issue to assign another
 				return nil, fmt.Errorf("prover with publicKey %s is already assigned a dropped bundle. ProverName: %s, ProverVersion: %s",
 					taskCtx.PublicKey, taskCtx.ProverName, taskCtx.ProverVersion)
+			}
+		} else if getTaskParameter.TaskID != "" {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetBundleByHash(ctx.Copy(), getTaskParameter.TaskID)
+			if getTaskError != nil {
+				log.Error("failed to get expected bundle", "taskID", getTaskParameter.TaskID, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			} else if tmpBundleTask == nil {
+				return nil, fmt.Errorf("Expected task (%s) is already dropped", getTaskParameter.TaskID)
 			}
 		}
 
@@ -234,9 +246,14 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
-	parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
+	var prevStateRoot common.Hash
+	// this would be common in test cases: the first batch has empty parent
+	if batches[0].Index > 1 {
+		parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batches[0].ParentBatchHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get parent batch for batch task id:%s err:%w", task.TaskID, err)
+		}
+		prevStateRoot = common.HexToHash(parentBatch.StateRoot)
 	}
 
 	var batchProofs []*message.OpenVMBatchProof
@@ -255,7 +272,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	taskDetail.BundleInfo = &message.OpenVMBundleInfo{
 		ChainID:       bp.cfg.L2.ChainID,
-		PrevStateRoot: common.HexToHash(parentBatch.StateRoot),
+		PrevStateRoot: prevStateRoot,
 		PostStateRoot: common.HexToHash(batches[len(batches)-1].StateRoot),
 		WithdrawRoot:  common.HexToHash(batches[len(batches)-1].WithdrawRoot),
 		NumBatches:    uint32(len(batches)),

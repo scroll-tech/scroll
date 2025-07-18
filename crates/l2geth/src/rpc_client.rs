@@ -108,7 +108,7 @@ impl ChunkInterpreter for RpcClient<'_> {
                 .get_block_by_hash(block_hash)
                 .full()
                 .await?
-                .ok_or_else(|| eyre::eyre!("Block not found"))?;
+                .ok_or_else(|| eyre::eyre!("Block {block_hash} not found"))?;
 
             let number = block.header.number;
             if number == 0 {
