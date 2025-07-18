@@ -59,7 +59,7 @@ pub fn gen_universal_task(
             let (pi_hash, metadata, u_task) = utils::panic_catch(move || {
                 gen_universal_chunk_task(task, fork_name_str.into(), interpreter)
             })
-            .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
+            .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {
@@ -70,7 +70,7 @@ pub fn gen_universal_task(
             }
             let (pi_hash, metadata, u_task) =
                 utils::panic_catch(move || gen_universal_batch_task(task, fork_name_str.into()))
-                    .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
+                    .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
         x if x == TaskType::Bundle as i32 => {
@@ -81,7 +81,7 @@ pub fn gen_universal_task(
             }
             let (pi_hash, metadata, u_task) =
                 utils::panic_catch(move || gen_universal_bundle_task(task, fork_name_str.into()))
-                    .map_err(|e| eyre::eyre!("catched panic in chunk task{e}"))??;
+                    .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
         _ => return Err(eyre::eyre!("unrecognized task type {task_type}")),
