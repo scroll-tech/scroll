@@ -5,10 +5,12 @@ package verifier
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -117,6 +119,16 @@ func (v *Verifier) VerifyBundleProof(proof *message.OpenVMBundleProof, forkName 
 	return libzkp.VerifyBundleProof(string(buf), forkName), nil
 }
 
+/*
+add vk of imcompatilbe circuit app here to avoid we had used them unexpectedly
+25/07/15: 0.5.0rc0 is no longer compatible since a breaking change
+*/
+const blocked_vks = `
+	rSJNNBpsxBdKlstbIIU/aYc7bHau98Qb2yjZMc5PmDhmGOolp5kYRbvF/VcWcO5HN5ujGs6S00W8pZcCoNQRLQ==,
+	2Lo7Cebm6SFtcsYXipkcMxIBmVY7UpoMXik/Msm7t2nyvi9EaNGsSnDnaCurscYEF+IcdjPUtVtY9EcD7IKwWg==,
+	D6YFHwTLZF/U2zpYJPQ3LwJZRm85yA5Vq2iFBqd3Mk4iwOUpS8sbOp3vg2+NDxhhKphgYpuUlykpdsoRhEt+cw==,
+`
+
 func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 
 	vkFileName := cfg.Vkfile
@@ -138,6 +150,16 @@ func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 	if err := json.Unmarshal(byt, &dump); err != nil {
 		return err
 	}
+	if strings.Contains(blocked_vks, dump.Chunk) {
+		return fmt.Errorf("loaded blocked chunk vk %s", dump.Chunk)
+	}
+	if strings.Contains(blocked_vks, dump.Batch) {
+		return fmt.Errorf("loaded blocked batch vk %s", dump.Batch)
+	}
+	if strings.Contains(blocked_vks, dump.Bundle) {
+		return fmt.Errorf("loaded blocked bundle vk %s", dump.Bundle)
+	}
+
 	v.OpenVMVkMap[dump.Chunk] = struct{}{}
 	v.OpenVMVkMap[dump.Batch] = struct{}{}
 	v.OpenVMVkMap[dump.Bundle] = struct{}{}
