@@ -268,13 +268,8 @@ func (p *ChunkProposer) proposeChunk() error {
 		return fmt.Errorf("failed to get parent chunk: %w", err)
 	}
 
+	// In EuclidV2 transition, empty PostL1MessageQueueHash will be naturally initialized to the first chunk's PrevL1MessageQueueHash.
 	chunk.PrevL1MessageQueueHash = common.HexToHash(parentChunk.PostL1MessageQueueHash)
-
-	// previous chunk is before CodecV7, this means this is the first chunk of the fork.
-	if encoding.CodecVersion(parentChunk.CodecVersion) == encoding.CodecV6 && codecVersion == encoding.CodecV7 {
-		chunk.PrevL1MessageQueueHash = common.Hash{}
-	}
-
 	chunk.PostL1MessageQueueHash = chunk.PrevL1MessageQueueHash
 
 	var previousPostL1MessageQueueHash common.Hash
