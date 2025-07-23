@@ -115,7 +115,12 @@ impl ChunkInterpreter for RpcClient<'_> {
                 eyre::bail!("no number in header or use block 0");
             }
 
-            let prev_state_root = if let Some(witness) = prev_witness {
+            let mut witness_builder = WitnessBuilder::new()
+                .block(block)
+                .chain_id(chain_id)
+                .execution_witness(provider.debug_execution_witness(number.into()).await?);
+
+            if let Some(witness) = prev_witness {
                 if witness.header.number != number - 1 {
                     eyre::bail!(
                         "the ref witness is not the previous block, expected {} get {}",
@@ -123,23 +128,10 @@ impl ChunkInterpreter for RpcClient<'_> {
                         witness.header.number,
                     );
                 }
-                witness.header.state_root
-            } else {
-                provider
-                    .scroll_disk_root((number - 1).into())
-                    .await?
-                    .disk_root
-            };
+                witness_builder = witness_builder.prev_state_root(witness.header.state_root);
+            }
 
-            let witness = WitnessBuilder::new()
-                .block(block)
-                .chain_id(chain_id)
-                .execution_witness(provider.debug_execution_witness(number.into()).await?)
-                .state_root(provider.scroll_disk_root(number.into()).await?.disk_root)?
-                .prev_state_root(prev_state_root)
-                .build()?;
-
-            Ok(witness)
+            Ok(witness_builder.build()?)
         }
 
         tracing::debug!("fetch witness for {block_hash}");
