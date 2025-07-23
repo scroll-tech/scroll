@@ -270,8 +270,8 @@ func (p *ChunkProposer) proposeChunk() error {
 
 	chunk.PrevL1MessageQueueHash = common.HexToHash(parentChunk.PostL1MessageQueueHash)
 
-	// previous chunk is not CodecV7, this means this is the first chunk of the fork.
-	if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
+	// previous chunk is before CodecV7, this means this is the first chunk of the fork.
+	if encoding.CodecVersion(parentChunk.CodecVersion) < encoding.CodecV7 && encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
 		chunk.PrevL1MessageQueueHash = common.Hash{}
 	}
 
