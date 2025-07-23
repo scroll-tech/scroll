@@ -111,6 +111,7 @@ impl ChunkInterpreter for RpcClient<'_> {
                 .ok_or_else(|| eyre::eyre!("Block {block_hash} not found"))?;
 
             let number = block.header.number;
+            let parent_hash = block.header.parent_hash;
             if number == 0 {
                 eyre::bail!("no number in header or use block 0");
             }
@@ -120,16 +121,27 @@ impl ChunkInterpreter for RpcClient<'_> {
                 .chain_id(chain_id)
                 .execution_witness(provider.debug_execution_witness(number.into()).await?);
 
-            if let Some(witness) = prev_witness {
-                if witness.header.number != number - 1 {
-                    eyre::bail!(
-                        "the ref witness is not the previous block, expected {} get {}",
-                        number - 1,
-                        witness.header.number,
-                    );
+            let prev_state_root = match prev_witness {
+                Some(witness) => {
+                    if witness.header.number != number - 1 {
+                        eyre::bail!(
+                            "the ref witness is not the previous block, expected {} get {}",
+                            number - 1,
+                            witness.header.number,
+                        );
+                    }
+                    witness.header.state_root
                 }
-                witness_builder = witness_builder.prev_state_root(witness.header.state_root);
-            }
+                None => {
+                    let parent_block = provider
+                        .get_block_by_hash(parent_hash)
+                        .await?
+                        .expect("parent block should exist");
+
+                    parent_block.header.state_root
+                }
+            };
+            witness_builder = witness_builder.prev_state_root(prev_state_root);
 
             Ok(witness_builder.build()?)
         }
