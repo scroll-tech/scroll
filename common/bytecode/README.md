@@ -1,5 +1,5 @@
 ## How to pre deploy contracts?
-* Please reference to https://github.com/scroll-tech/genesis-creator.
+* Please reference to https://github.com/scroll-tech/scroll-contract-deploy-demo.
 1. Setup env
 ```bash
    git clone git@github.com:scroll-tech/genesis-creator.git
