@@ -211,14 +211,16 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 // GetMaxNonceBySenderAddress retrieves the maximum nonce for a specific sender address.
 // Returns 0 if no transactions are found for the given address.
 func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, senderAddress string) (uint64, error) {
-	var maxNonce uint64
 	db := o.db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
 	db = db.Where("sender_address = ?", senderAddress)
-
-	if err := db.Pluck("COALESCE(MAX(nonce), 0)", &maxNonce).Error; err != nil {
+	var maxNonce uint64
+	row := db.Model(&PendingTransaction{}).
+		Select("COALESCE(MAX(nonce), 0)").
+		Where("sender_address = ?", senderAddress).
+		Row()
+	if err := row.Scan(&maxNonce); err != nil {
 		return 0, fmt.Errorf("failed to get max nonce by sender address, address: %s, err: %w", senderAddress, err)
 	}
-
 	return maxNonce, nil
 }
