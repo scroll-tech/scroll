@@ -648,10 +648,19 @@ func (s *Sender) checkPendingTransaction() {
 			if err := s.client.SendTransaction(s.ctx, newSignedTx); err != nil {
 				if strings.Contains(err.Error(), "nonce too low") {
 					// When we receive a 'nonce too low' error but cannot find the transaction receipt, it indicates another transaction with this nonce has already been processed, so this transaction will never be mined and should be marked as failed.
-					log.Warn("nonce too low detected, marking all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().Hex(), "txHash", originalTx.Hash().Hex(), "err", err)
+					log.Warn("nonce too low detected, marking all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().Hex(), "txHash", originalTx.Hash().Hex(), "newTxHash", newSignedTx.Hash().Hex(), "err", err)
 
-					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmedFailed); updateErr != nil {
-						log.Error("failed to update status of original transaction to confirmed failed", "txHash", originalTx.Hash().Hex(), "nonce", originalTx.Nonce(), "from", s.transactionSigner.GetAddr().Hex(), "err", updateErr)
+					// Handle both original and replacement transactions in a database transaction
+					if dbErr := s.db.Transaction(func(dbTX *gorm.DB) error {
+						if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmedFailed, dbTX); updateErr != nil {
+							return fmt.Errorf("failed to update original transaction status, hash: %s, err: %w", originalTx.Hash().Hex(), updateErr)
+						}
+						if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, newSignedTx.Hash(), dbTX); updateErr != nil {
+							return fmt.Errorf("failed to delete replacement transaction, hash: %s, err: %w", newSignedTx.Hash().Hex(), updateErr)
+						}
+						return nil
+					}); dbErr != nil {
+						log.Error("failed to handle nonce too low scenario in database", "err", dbErr)
 						return
 					}
 					return
