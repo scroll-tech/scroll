@@ -3,6 +3,7 @@ package orm
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -209,18 +210,23 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 }
 
 // GetMaxNonceBySenderAddress retrieves the maximum nonce for a specific sender address.
-// Returns 0 if no transactions are found for the given address.
-func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, senderAddress string) (uint64, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&PendingTransaction{})
-	db = db.Where("sender_address = ?", senderAddress)
-	var maxNonce uint64
-	row := db.Model(&PendingTransaction{}).
-		Select("COALESCE(MAX(nonce), 0)").
+// Returns -1 if no transactions are found for the given address.
+func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, senderAddress string) (int64, error) {
+	var maxNonce sql.NullInt64
+
+	row := o.db.WithContext(ctx).
+		Model(&PendingTransaction{}).
+		Select("MAX(nonce)").
 		Where("sender_address = ?", senderAddress).
 		Row()
+
 	if err := row.Scan(&maxNonce); err != nil {
-		return 0, fmt.Errorf("failed to get max nonce by sender address, address: %s, err: %w", senderAddress, err)
+		return -1, fmt.Errorf("failed to get max nonce by sender address, address: %s, err: %w", senderAddress, err)
 	}
-	return maxNonce, nil
+
+	if !maxNonce.Valid {
+		return -1, nil
+	}
+
+	return maxNonce.Int64, nil
 }

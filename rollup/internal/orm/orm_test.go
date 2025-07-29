@@ -603,10 +603,10 @@ func TestPendingTransaction_GetMaxNonceBySenderAddress(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	// When there are no transactions for this sender address, should return 0
+	// When there are no transactions for this sender address, should return -1
 	maxNonce, err := pendingTransactionOrm.GetMaxNonceBySenderAddress(context.Background(), "0xdeadbeef")
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), maxNonce)
+	assert.Equal(t, int64(-1), maxNonce)
 
 	// Insert two transactions with different nonces for the same sender address
 	senderMeta := &SenderMeta{
@@ -653,5 +653,5 @@ func TestPendingTransaction_GetMaxNonceBySenderAddress(t *testing.T) {
 	// Now the max nonce for this sender should be 3
 	maxNonce, err = pendingTransactionOrm.GetMaxNonceBySenderAddress(context.Background(), senderMeta.Address.String())
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(3), maxNonce)
+	assert.Equal(t, int64(3), maxNonce)
 }

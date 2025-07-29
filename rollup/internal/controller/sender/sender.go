@@ -63,7 +63,7 @@ type FeeData struct {
 	gasLimit uint64
 }
 
-// Sender Transaction sender to send transaction to l1/l2 geth
+// Sender Transaction sender to send transaction to l1/l2
 type Sender struct {
 	config            *config.SenderConfig
 	gethClient        *gethclient.Client
@@ -105,30 +105,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 		return nil, fmt.Errorf("failed to create transaction signer, err: %w", err)
 	}
 
-	// Get maximum nonce from database
-	dbNonce, err := orm.NewPendingTransaction(db).GetMaxNonceBySenderAddress(ctx, transactionSigner.GetAddr().Hex())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get max nonce from database for address %s, err: %w", transactionSigner.GetAddr().Hex(), err)
-	}
-
-	// Get pending nonce from the client
-	pendingNonce, err := client.PendingNonceAt(ctx, transactionSigner.GetAddr())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pending nonce for address %s, err: %w", transactionSigner.GetAddr().Hex(), err)
-	}
-
-	// Take the maximum of both values
-	var finalNonce uint64
-	if pendingNonce > dbNonce {
-		finalNonce = pendingNonce
-	} else {
-		finalNonce = dbNonce
-	}
-
-	log.Info("nonce initialization", "address", transactionSigner.GetAddr().Hex(), "pendingNonce", pendingNonce, "dbNonce", dbNonce, "finalNonce", finalNonce)
-
-	transactionSigner.SetNonce(finalNonce)
-
+	// Create sender instance first and then initialize nonce
 	sender := &Sender{
 		ctx:                   ctx,
 		config:                config,
@@ -144,8 +121,13 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 		service:               service,
 		senderType:            senderType,
 	}
-	sender.metrics = initSenderMetrics(reg)
 
+	// Initialize nonce using the new method
+	if err := sender.resetNonce(); err != nil {
+		return nil, fmt.Errorf("failed to reset nonce: %w", err)
+	}
+
+	sender.metrics = initSenderMetrics(reg)
 	go sender.loop(ctx)
 
 	return sender, nil
@@ -259,7 +241,10 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce too low") {
-			s.resetNonce(context.Background())
+			if err := s.resetNonce(); err != nil {
+				log.Warn("failed to reset nonce after failed send transaction", "address", s.transactionSigner.GetAddr().String(), "err", err)
+				return common.Hash{}, 0, fmt.Errorf("failed to reset nonce after failed send transaction, err: %w", err)
+			}
 		}
 		return common.Hash{}, 0, fmt.Errorf("failed to send transaction, err: %w", err)
 	}
@@ -344,14 +329,46 @@ func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte,
 	return signedTx, nil
 }
 
-// resetNonce reset nonce if send signed tx failed.
-func (s *Sender) resetNonce(ctx context.Context) {
-	nonce, err := s.client.PendingNonceAt(ctx, s.transactionSigner.GetAddr())
+// initializeNonce initializes the nonce by taking the maximum of database nonce and pending nonce.
+func (s *Sender) initializeNonce() (uint64, error) {
+	// Get maximum nonce from database
+	dbNonce, err := s.pendingTransactionOrm.GetMaxNonceBySenderAddress(s.ctx, s.transactionSigner.GetAddr().Hex())
 	if err != nil {
-		log.Warn("failed to reset nonce", "address", s.transactionSigner.GetAddr().String(), "err", err)
-		return
+		return 0, fmt.Errorf("failed to get max nonce from database for address %s, err: %w", s.transactionSigner.GetAddr().Hex(), err)
 	}
+
+	// Get pending nonce from the client
+	pendingNonce, err := s.client.PendingNonceAt(s.ctx, s.transactionSigner.GetAddr())
+	if err != nil {
+		return 0, fmt.Errorf("failed to get pending nonce for address %s, err: %w", s.transactionSigner.GetAddr().Hex(), err)
+	}
+
+	// Take the maximum of pending nonce and (db nonce + 1)
+	// Database stores the used nonce, so the next available nonce should be dbNonce + 1
+	// When dbNonce is -1 (no records), dbNonce + 1 = 0, which is correct
+	nextDbNonce := uint64(dbNonce + 1)
+	var finalNonce uint64
+	if pendingNonce > nextDbNonce {
+		finalNonce = pendingNonce
+	} else {
+		finalNonce = nextDbNonce
+	}
+
+	log.Info("nonce initialization", "address", s.transactionSigner.GetAddr().Hex(), "maxDbNonce", dbNonce, "nextDbNonce", nextDbNonce, "pendingNonce", pendingNonce, "finalNonce", finalNonce)
+
+	return finalNonce, nil
+}
+
+// resetNonce reset nonce if send signed tx failed.
+func (s *Sender) resetNonce() error {
+	nonce, err := s.initializeNonce()
+	if err != nil {
+		log.Error("failed to reset nonce", "address", s.transactionSigner.GetAddr().String(), "err", err)
+		return fmt.Errorf("failed to reset nonce, err: %w", err)
+	}
+	log.Info("reset nonce", "address", s.transactionSigner.GetAddr().String(), "nonce", nonce)
 	s.transactionSigner.SetNonce(nonce)
+	return nil
 }
 
 func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, blobBaseFee uint64) (*gethTypes.Transaction, error) {
