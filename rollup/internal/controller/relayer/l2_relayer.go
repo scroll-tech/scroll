@@ -473,6 +473,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "first block created at", oldestBlockTimestamp)
 	}
 
+	// Sanity checks before constructing the transaction
+	if err := r.sanityChecksBeforeConstructingTransaction(batchesToSubmit); err != nil {
+		log.Error("Sanity checks failed before constructing transaction", "batches count", len(batchesToSubmit), "first batch index", batchesToSubmit[0].Batch.Index, "last batch index", batchesToSubmit[len(batchesToSubmit)-1].Batch.Index, "err", err)
+		return
+	}
+
 	// We have at least 1 batch to commit
 	firstBatch := batchesToSubmit[0].Batch
 	lastBatch := batchesToSubmit[len(batchesToSubmit)-1].Batch
@@ -941,6 +947,25 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 }
 
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunks, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+	// Basic sanity checks
+	if len(batchesToSubmit) == 0 {
+		return nil, nil, 0, 0, fmt.Errorf("no batches to submit")
+	}
+	if firstBatch == nil {
+		return nil, nil, 0, 0, fmt.Errorf("first batch is nil")
+	}
+	if lastBatch == nil {
+		return nil, nil, 0, 0, fmt.Errorf("last batch is nil")
+	}
+
+	// Check firstBatch and lastBatch match batchesToSubmit
+	if firstBatch.Index != batchesToSubmit[0].Batch.Index {
+		return nil, nil, 0, 0, fmt.Errorf("first batch index mismatch: expected %d, got %d", batchesToSubmit[0].Batch.Index, firstBatch.Index)
+	}
+	if lastBatch.Index != batchesToSubmit[len(batchesToSubmit)-1].Batch.Index {
+		return nil, nil, 0, 0, fmt.Errorf("last batch index mismatch: expected %d, got %d", batchesToSubmit[len(batchesToSubmit)-1].Batch.Index, lastBatch.Index)
+	}
+
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
@@ -961,6 +986,16 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 				return nil, nil, 0, 0, fmt.Errorf("failed to get blocks in range for batch %d: %w", b.Batch.Index, err)
 			}
 
+			if len(blocks) == 0 {
+				return nil, nil, 0, 0, fmt.Errorf("batch %d chunk %d has no blocks in range [%d, %d]", b.Batch.Index, c.Index, c.StartBlockNumber, c.EndBlockNumber)
+			}
+
+			// Check that we got the expected number of blocks
+			expectedBlockCount := c.EndBlockNumber - c.StartBlockNumber + 1
+			if uint64(len(blocks)) != expectedBlockCount {
+				return nil, nil, 0, 0, fmt.Errorf("batch %d chunk %d expected %d blocks but got %d", b.Batch.Index, c.Index, expectedBlockCount, len(blocks))
+			}
+
 			batchBlocks = append(batchBlocks, blocks...)
 
 			if c.EndBlockNumber > maxBlockHeight {
@@ -977,6 +1012,37 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 			Blocks:                 batchBlocks,
 		}
 
+		// Check encoding batch fields are not zero hashes
+		if encodingBatch.ParentBatchHash == (common.Hash{}) {
+			return nil, nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", b.Batch.Index)
+		}
+
+		// Check L1 message queue hash consistency
+		var totalL1MessagesInBatch uint64
+		for _, c := range b.Chunks {
+			totalL1MessagesInBatch += c.TotalL1MessagesPoppedInChunk
+		}
+
+		// Check L1 message queue hash consistency
+		firstChunk := b.Chunks[0]
+		lastChunk := b.Chunks[len(b.Chunks)-1]
+
+		// If there were L1 messages processed before this batch, prev hash should not be zero
+		if firstChunk.TotalL1MessagesPoppedBefore > 0 && encodingBatch.PrevL1MessageQueueHash == (common.Hash{}) {
+			return nil, nil, 0, 0, fmt.Errorf("batch %d prev L1 message queue hash is zero but %d L1 messages were processed before", b.Batch.Index, firstChunk.TotalL1MessagesPoppedBefore)
+		}
+
+		// If there are any L1 messages processed up to this batch, post hash should not be zero
+		totalL1MessagesProcessed := lastChunk.TotalL1MessagesPoppedBefore + lastChunk.TotalL1MessagesPoppedInChunk
+		if totalL1MessagesProcessed > 0 && encodingBatch.PostL1MessageQueueHash == (common.Hash{}) {
+			return nil, nil, 0, 0, fmt.Errorf("batch %d post L1 message queue hash is zero but %d L1 messages were processed in total", b.Batch.Index, totalL1MessagesProcessed)
+		}
+
+		// If L1 messages were processed in this batch, prev and post hashes should be different
+		if totalL1MessagesInBatch > 0 && encodingBatch.PrevL1MessageQueueHash == encodingBatch.PostL1MessageQueueHash {
+			return nil, nil, 0, 0, fmt.Errorf("batch %d has same prev and post L1 message queue hashes but processed %d L1 messages in this batch", b.Batch.Index, totalL1MessagesInBatch)
+		}
+
 		codec, err := encoding.CodecFromVersion(version)
 		if err != nil {
 			return nil, nil, 0, 0, fmt.Errorf("failed to get codec from version %d, err: %w", b.Batch.CodecVersion, err)
@@ -987,17 +1053,36 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 			return nil, nil, 0, 0, fmt.Errorf("failed to create DA batch: %w", err)
 		}
 
-		blobs = append(blobs, daBatch.Blob())
+		blob := daBatch.Blob()
+		if blob == nil {
+			return nil, nil, 0, 0, fmt.Errorf("batch %d generated nil blob", b.Batch.Index)
+		}
+
+		blobs = append(blobs, blob)
 	}
 
 	calldata, err := r.l1RollupABI.Pack("commitBatches", version, common.HexToHash(firstBatch.ParentBatchHash), common.HexToHash(lastBatch.Hash))
 	if err != nil {
 		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
+
+	if len(calldata) == 0 {
+		return nil, nil, 0, 0, fmt.Errorf("generated calldata is empty")
+	}
+
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
 func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithChunks) ([]byte, uint64, uint64, error) {
+	// Basic sanity checks
+	if batch == nil || batch.Batch == nil {
+		return nil, 0, 0, fmt.Errorf("batch is nil")
+	}
+
+	if len(batch.Chunks) == 0 {
+		return nil, 0, 0, fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
+	}
+
 	// Calculate metrics
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
@@ -1017,16 +1102,50 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
+
+	if commitment == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d last chunk end block hash is zero, cannot create commitment", batch.Batch.Index)
+	}
+
+	// Check parent batch hash is not zero
+	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
+	if parentBatchHash == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
+	}
+
 	version := encoding.CodecVersion(batch.Batch.CodecVersion)
 	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)
 	}
+
+	if len(calldata) == 0 {
+		return nil, 0, 0, fmt.Errorf("generated calldata is empty for batch %d", batch.Batch.Index)
+	}
+
 	log.Info("Validium commitBatch", "maxBlockHeight", maxBlockHeight, "commitment", commitment.Hex())
 	return calldata, maxBlockHeight, totalGasUsed, nil
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
+	// Basic sanity checks
+	if dbBatch == nil {
+		return nil, fmt.Errorf("batch is nil")
+	}
+	if endChunk == nil {
+		return nil, fmt.Errorf("end chunk is nil")
+	}
+
+	// Check batch header
+	if len(dbBatch.BatchHeader) == 0 {
+		return nil, fmt.Errorf("batch %d header is empty", dbBatch.Index)
+	}
+
+	// Check proof if present
+	if aggProof != nil && len(aggProof.Proof()) == 0 {
+		return nil, fmt.Errorf("aggregate proof is empty")
+	}
+
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundlePostEuclidV2",
@@ -1039,6 +1158,11 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		if packErr != nil {
 			return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2 with proof: %w", packErr)
 		}
+
+		if len(calldata) == 0 {
+			return nil, fmt.Errorf("generated calldata with proof is empty")
+		}
+
 		return calldata, nil
 	}
 
@@ -1055,10 +1179,33 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
 	}
+
+	if len(calldata) == 0 {
+		return nil, fmt.Errorf("generated calldata without proof is empty")
+	}
+
 	return calldata, nil
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
+	// Basic sanity checks
+	if dbBatch == nil {
+		return nil, fmt.Errorf("batch is nil")
+	}
+	if endChunk == nil {
+		return nil, fmt.Errorf("end chunk is nil")
+	}
+
+	// Check batch header is not empty
+	if len(dbBatch.BatchHeader) == 0 {
+		return nil, fmt.Errorf("batch %d header is empty", dbBatch.Index)
+	}
+
+	// Check proof if present
+	if aggProof != nil && len(aggProof.Proof()) == 0 {
+		return nil, fmt.Errorf("aggregate proof is empty")
+	}
+
 	log.Info("Packing validium finalizeBundle", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot, "withProof", aggProof != nil)
 
 	var proof []byte
@@ -1075,6 +1222,11 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batc
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack validium finalizeBundle: %w", packErr)
 	}
+
+	if len(calldata) == 0 {
+		return nil, fmt.Errorf("generated calldata is empty for batch %d", dbBatch.Index)
+	}
+
 	return calldata, nil
 }
 
@@ -1241,4 +1393,259 @@ func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
 	default:
 		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
+}
+
+// sanityChecksBeforeConstructingTransaction performs sanity checks before constructing a transaction.
+func (r *Layer2Relayer) sanityChecksBeforeConstructingTransaction(batchesToSubmit []*dbBatchWithChunks) error {
+	if len(batchesToSubmit) == 0 {
+		return fmt.Errorf("no batches to submit")
+	}
+
+	// Basic validation
+	if err := r.validateBatchesBasic(batchesToSubmit); err != nil {
+		return err
+	}
+
+	// Codec version validation
+	if err := r.validateCodecVersions(batchesToSubmit); err != nil {
+		return err
+	}
+
+	// Get previous chunk for continuity check
+	prevChunk, err := r.getPreviousChunkForContinuity(batchesToSubmit[0])
+	if err != nil {
+		return err
+	}
+
+	// Validate each batch in detail
+	if err := r.validateBatchesDetailed(batchesToSubmit, prevChunk); err != nil {
+		return err
+	}
+
+	log.Info("Sanity check passed before constructing transaction", "batches count", len(batchesToSubmit))
+	return nil
+}
+
+// validateBatchesBasic performs basic validation on all batches
+func (r *Layer2Relayer) validateBatchesBasic(batchesToSubmit []*dbBatchWithChunks) error {
+	for i, batch := range batchesToSubmit {
+		if batch == nil || batch.Batch == nil {
+			return fmt.Errorf("batch %d is nil", i)
+		}
+
+		if len(batch.Chunks) == 0 {
+			return fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
+		}
+	}
+	return nil
+}
+
+// validateCodecVersions checks all batches have the same codec version
+func (r *Layer2Relayer) validateCodecVersions(batchesToSubmit []*dbBatchWithChunks) error {
+	firstBatchCodecVersion := batchesToSubmit[0].Batch.CodecVersion
+	for _, batch := range batchesToSubmit {
+		if batch.Batch.CodecVersion != firstBatchCodecVersion {
+			return fmt.Errorf("batch %d has different codec version %d, expected %d", batch.Batch.Index, batch.Batch.CodecVersion, firstBatchCodecVersion)
+		}
+	}
+	return nil
+}
+
+// getPreviousChunkForContinuity gets the previous chunk for block continuity check
+func (r *Layer2Relayer) getPreviousChunkForContinuity(firstBatch *dbBatchWithChunks) (*orm.Chunk, error) {
+	firstChunk := firstBatch.Chunks[0]
+	if firstChunk.Index == 0 {
+		return nil, fmt.Errorf("genesis chunk should not be in normal batch submission flow, chunk index: %d", firstChunk.Index)
+	}
+
+	prevChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstChunk.Index-1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get previous chunk %d for continuity check: %w", firstChunk.Index-1, err)
+	}
+
+	return prevChunk, nil
+}
+
+// validateBatchesDetailed performs detailed validation on each batch
+func (r *Layer2Relayer) validateBatchesDetailed(batchesToSubmit []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+	for i, batch := range batchesToSubmit {
+		if err := r.validateSingleBatch(batch, i, batchesToSubmit, prevChunkFromPrevBatch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateSingleBatch validates a single batch and its chunks
+func (r *Layer2Relayer) validateSingleBatch(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+	// Validate batch fields
+	if err := r.validateBatchFields(batch, i, allBatches); err != nil {
+		return err
+	}
+
+	// Validate message queue consistency
+	if err := r.validateMessageQueueConsistency(batch); err != nil {
+		return err
+	}
+
+	// Validate chunks
+	if err := r.validateBatchChunks(batch, i, allBatches, prevChunkFromPrevBatch); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateBatchFields validates essential batch fields
+func (r *Layer2Relayer) validateBatchFields(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks) error {
+	// Check essential batch fields are not zero values
+	batchHash := common.HexToHash(batch.Batch.Hash)
+	if batchHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d hash is zero", batch.Batch.Index)
+	}
+
+	if batch.Batch.Index == 0 {
+		return fmt.Errorf("batch %d has zero index (only genesis batch should have index 0)", i)
+	}
+
+	// Check batch index is sequential
+	if i > 0 {
+		prevBatch := allBatches[i-1]
+		if batch.Batch.Index != prevBatch.Batch.Index+1 {
+			return fmt.Errorf("batch index is not sequential: prev batch index %d, current batch index %d", prevBatch.Batch.Index, batch.Batch.Index)
+		}
+	} else {
+		// For the first batch, check continuity with the parent batch from database
+		parentBatch, err := r.batchOrm.GetBatchByHash(r.ctx, batch.Batch.ParentBatchHash)
+		if err != nil {
+			return fmt.Errorf("failed to get parent batch %s for batch %d: %w", batch.Batch.ParentBatchHash, batch.Batch.Index, err)
+		}
+		if batch.Batch.Index != parentBatch.Index+1 {
+			return fmt.Errorf("first batch index is not sequential with parent: parent batch index %d, current batch index %d", parentBatch.Index, batch.Batch.Index)
+		}
+	}
+
+	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
+	if parentBatchHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
+	}
+
+	return nil
+}
+
+// validateMessageQueueConsistency validates L1 message queue hash consistency
+func (r *Layer2Relayer) validateMessageQueueConsistency(batch *dbBatchWithChunks) error {
+	if batch.Batch.Index == 0 {
+		return nil
+	}
+
+	firstChunk := batch.Chunks[0]
+	lastChunk := batch.Chunks[len(batch.Chunks)-1]
+
+	prevL1MsgQueueHash := common.HexToHash(batch.Batch.PrevL1MessageQueueHash)
+	postL1MsgQueueHash := common.HexToHash(batch.Batch.PostL1MessageQueueHash)
+
+	// Calculate total L1 messages in this batch
+	var batchTotalL1MessagesInBatch uint64
+	for _, chunk := range batch.Chunks {
+		batchTotalL1MessagesInBatch += chunk.TotalL1MessagesPoppedInChunk
+	}
+
+	// If there were L1 messages processed before this batch, prev hash should not be zero
+	if firstChunk.TotalL1MessagesPoppedBefore > 0 && prevL1MsgQueueHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d prev L1 message queue hash is zero but %d L1 messages were processed before", batch.Batch.Index, firstChunk.TotalL1MessagesPoppedBefore)
+	}
+
+	// If there are any L1 messages processed up to this batch, post hash should not be zero
+	totalL1MessagesProcessed := lastChunk.TotalL1MessagesPoppedBefore + lastChunk.TotalL1MessagesPoppedInChunk
+	if totalL1MessagesProcessed > 0 && postL1MsgQueueHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d post L1 message queue hash is zero but %d L1 messages were processed in total", batch.Batch.Index, totalL1MessagesProcessed)
+	}
+
+	// Prev and post queue hashes should be different if L1 messages were processed in this batch
+	if batchTotalL1MessagesInBatch > 0 && prevL1MsgQueueHash == postL1MsgQueueHash {
+		return fmt.Errorf("batch %d has same prev and post L1 message queue hashes but processed %d L1 messages in this batch", batch.Batch.Index, batchTotalL1MessagesInBatch)
+	}
+
+	return nil
+}
+
+// validateBatchChunks validates all chunks in a batch
+func (r *Layer2Relayer) validateBatchChunks(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+	// Check all chunks in this batch have the same codec version as the batch
+	for _, chunk := range batch.Chunks {
+		if chunk.CodecVersion != batch.Batch.CodecVersion {
+			return fmt.Errorf("batch %d chunk %d has different codec version %d, expected %d", batch.Batch.Index, chunk.Index, chunk.CodecVersion, batch.Batch.CodecVersion)
+		}
+	}
+
+	for j, chunk := range batch.Chunks {
+		if err := r.validateSingleChunk(chunk, j, batch, i, allBatches, prevChunkFromPrevBatch); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateSingleChunk validates a single chunk
+func (r *Layer2Relayer) validateSingleChunk(chunk *orm.Chunk, chunkIndex int, batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+	if chunk == nil {
+		return fmt.Errorf("batch %d chunk %d is nil", batch.Batch.Index, chunkIndex)
+	}
+
+	chunkHash := common.HexToHash(chunk.Hash)
+	if chunkHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d chunk %d hash is zero", batch.Batch.Index, chunk.Index)
+	}
+
+	// Get previous chunk for continuity check
+	var prevChunk *orm.Chunk
+	if chunkIndex > 0 {
+		prevChunk = batch.Chunks[chunkIndex-1]
+	} else if i == 0 {
+		prevChunk = prevChunkFromPrevBatch
+	} else if i > 0 {
+		// Use the last chunk from the previous batch
+		prevBatch := allBatches[i-1]
+		prevChunk = prevBatch.Chunks[len(prevBatch.Chunks)-1]
+	}
+
+	// Check chunk index is sequential
+	if chunk.Index != prevChunk.Index+1 {
+		return fmt.Errorf("batch %d chunk %d index is not sequential: prev chunk index %d, current chunk index %d", batch.Batch.Index, chunkIndex, prevChunk.Index, chunk.Index)
+	}
+
+	// Check L1 messages popped continuity
+	expectedPoppedBefore := prevChunk.TotalL1MessagesPoppedBefore + prevChunk.TotalL1MessagesPoppedInChunk
+	if chunk.TotalL1MessagesPoppedBefore != expectedPoppedBefore {
+		return fmt.Errorf("batch %d chunk %d L1 messages popped before is incorrect: expected %d, got %d",
+			batch.Batch.Index, chunk.Index, expectedPoppedBefore, chunk.TotalL1MessagesPoppedBefore)
+	}
+
+	if chunk.StartBlockNumber == 0 && chunk.EndBlockNumber == 0 {
+		return fmt.Errorf("batch %d chunk %d has zero block range", batch.Batch.Index, chunk.Index)
+	}
+
+	if chunk.StartBlockNumber > chunk.EndBlockNumber {
+		return fmt.Errorf("batch %d chunk %d has invalid block range: start %d > end %d", batch.Batch.Index, chunk.Index, chunk.StartBlockNumber, chunk.EndBlockNumber)
+	}
+
+	// Check chunk hash fields
+	startBlockHash := common.HexToHash(chunk.StartBlockHash)
+	if startBlockHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d chunk %d start block hash is zero", batch.Batch.Index, chunk.Index)
+	}
+
+	endBlockHash := common.HexToHash(chunk.EndBlockHash)
+	if endBlockHash == (common.Hash{}) {
+		return fmt.Errorf("batch %d chunk %d end block hash is zero", batch.Batch.Index, chunk.Index)
+	}
+
+	// Check chunk continuity: previous chunk's end block number + 1 should equal current chunk's start block number
+	if prevChunk.EndBlockNumber+1 != chunk.StartBlockNumber {
+		return fmt.Errorf("batch %d chunk %d is not continuous with previous chunk: prev chunk %d end %d, current chunk start %d", batch.Batch.Index, chunk.Index, prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
+	}
+
+	return nil
 }
