@@ -105,12 +105,29 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 		return nil, fmt.Errorf("failed to create transaction signer, err: %w", err)
 	}
 
-	// Set pending nonce
-	nonce, err := client.PendingNonceAt(ctx, transactionSigner.GetAddr())
+	// Get maximum nonce from database
+	dbNonce, err := orm.NewPendingTransaction(db).GetMaxNonceBySenderAddress(ctx, transactionSigner.GetAddr().Hex())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pending nonce for address %s, err: %w", transactionSigner.GetAddr(), err)
+		return nil, fmt.Errorf("failed to get max nonce from database for address %s, err: %w", transactionSigner.GetAddr().Hex(), err)
 	}
-	transactionSigner.SetNonce(nonce)
+
+	// Get pending nonce from the client
+	pendingNonce, err := client.PendingNonceAt(ctx, transactionSigner.GetAddr())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending nonce for address %s, err: %w", transactionSigner.GetAddr().Hex(), err)
+	}
+
+	// Take the maximum of both values
+	var finalNonce uint64
+	if pendingNonce > dbNonce {
+		finalNonce = pendingNonce
+	} else {
+		finalNonce = dbNonce
+	}
+
+	log.Info("nonce initialization", "address", transactionSigner.GetAddr().Hex(), "pendingNonce", pendingNonce, "dbNonce", dbNonce, "finalNonce", finalNonce)
+
+	transactionSigner.SetNonce(finalNonce)
 
 	sender := &Sender{
 		ctx:                   ctx,
@@ -612,19 +629,14 @@ func (s *Sender) checkPendingTransaction() {
 			}
 
 			if err := s.client.SendTransaction(s.ctx, newSignedTx); err != nil {
-				// Check if it's a nonce too low error
 				if strings.Contains(err.Error(), "nonce too low") {
-					// nonce too low means a transaction with this nonce has already been mined
-					// Mark all non-confirmed transactions with the same nonce as failed
-					if updateErr := s.pendingTransactionOrm.UpdateNonConfirmedTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, originalTx.Nonce()); updateErr != nil {
-						log.Error("failed to update transactions as failed by nonce", "nonce", originalTx.Nonce(), "senderAddress", txnToCheck.SenderAddress, "err", updateErr)
+					// When we receive a 'nonce too low' error but cannot find the transaction receipt, it indicates another transaction with this nonce has already been processed, so this transaction will never be mined and should be marked as failed.
+					log.Warn("nonce too low detected, marking all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().Hex(), "txHash", originalTx.Hash().Hex(), "err", err)
+
+					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmedFailed); updateErr != nil {
+						log.Error("failed to update status of original transaction to confirmed failed", "txHash", originalTx.Hash().Hex(), "nonce", originalTx.Nonce(), "from", s.transactionSigner.GetAddr().Hex(), "err", updateErr)
 						return
 					}
-
-					// Reset nonce
-					s.resetNonce(context.Background())
-
-					log.Info("nonce too low detected, marked all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().String())
 					return
 				}
 				// SendTransaction failed, need to rollback the previous database changes
