@@ -612,6 +612,21 @@ func (s *Sender) checkPendingTransaction() {
 			}
 
 			if err := s.client.SendTransaction(s.ctx, newSignedTx); err != nil {
+				// Check if it's a nonce too low error
+				if strings.Contains(err.Error(), "nonce too low") {
+					// nonce too low means a transaction with this nonce has already been mined
+					// Mark all non-confirmed transactions with the same nonce as failed
+					if updateErr := s.pendingTransactionOrm.UpdateNonConfirmedTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, originalTx.Nonce()); updateErr != nil {
+						log.Error("failed to update transactions as failed by nonce", "nonce", originalTx.Nonce(), "senderAddress", txnToCheck.SenderAddress, "err", updateErr)
+						return
+					}
+
+					// Reset nonce
+					s.resetNonce(context.Background())
+
+					log.Info("nonce too low detected, marked all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().String())
+					return
+				}
 				// SendTransaction failed, need to rollback the previous database changes
 				if rollbackErr := s.db.Transaction(func(tx *gorm.DB) error {
 					// Restore original transaction status back to pending

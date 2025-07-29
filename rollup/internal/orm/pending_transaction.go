@@ -207,3 +207,21 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 	}
 	return nil
 }
+
+// UpdateNonConfirmedTransactionsAsFailedByNonce updates the status of all non-confirmed transactions to TxStatusConfirmedFailed
+// for a specific nonce and sender address.
+func (o *PendingTransaction) UpdateNonConfirmedTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("sender_address = ?", senderAddress)
+	db = db.Where("nonce = ?", nonce)
+	db = db.Where("status != ?", types.TxStatusConfirmed) // Don't update confirmed transactions
+	if err := db.Update("status", types.TxStatusConfirmedFailed).Error; err != nil {
+		return fmt.Errorf("failed to update non-confirmed transactions as failed by nonce, senderAddress: %s, nonce: %d, error: %w", senderAddress, nonce, err)
+	}
+	return nil
+}
