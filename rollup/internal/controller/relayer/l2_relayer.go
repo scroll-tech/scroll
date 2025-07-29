@@ -1678,7 +1678,7 @@ func (r *Layer2Relayer) validateSingleChunk(chunk *orm.Chunk, chunkIndex int, ba
 
 	// Check chunk continuity: previous chunk's end block number + 1 should equal current chunk's start block number
 	if prevChunk.EndBlockNumber+1 != chunk.StartBlockNumber {
-		return fmt.Errorf("batch %d chunk %d is not continuous with previous chunk: prev chunk %d end %d, current chunk start %d", batch.Batch.Index, chunk.Index, prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
+		return fmt.Errorf("batch %d chunk %d is not continuous with previous chunk: prev chunk %d end block %d, current chunk start block %d", batch.Batch.Index, chunk.Index, prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
 	}
 
 	return nil
