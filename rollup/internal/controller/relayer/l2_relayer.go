@@ -277,6 +277,19 @@ func (r *Layer2Relayer) initializeGenesis() error {
 }
 
 func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot common.Hash) error {
+	// Basic sanity checks
+	if batchHash == "" {
+		return fmt.Errorf("batch hash is empty")
+	}
+
+	if len(batchHeader) == 0 {
+		return fmt.Errorf("batch header is empty")
+	}
+
+	if stateRoot == (common.Hash{}) {
+		return fmt.Errorf("state root is zero")
+	}
+
 	var calldata []byte
 	var packErr error
 
@@ -294,6 +307,11 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
 		}
 		log.Info("Rollup importGenesis", "calldata", common.Bytes2Hex(calldata), "stateRoot", stateRoot)
+	}
+
+	// Check generated calldata is not empty
+	if len(calldata) == 0 {
+		return fmt.Errorf("generated calldata is empty")
 	}
 
 	// submit genesis batch to L1 rollup contract
@@ -1083,6 +1101,12 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 		return nil, 0, 0, fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
 	}
 
+	// Check state root is not zero
+	stateRoot := common.HexToHash(batch.Batch.StateRoot)
+	if stateRoot == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d state root is zero", batch.Batch.Index)
+	}
+
 	// Calculate metrics
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
@@ -1102,7 +1126,6 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
-
 	if commitment == (common.Hash{}) {
 		return nil, 0, 0, fmt.Errorf("batch %d last chunk end block hash is zero, cannot create commitment", batch.Batch.Index)
 	}
@@ -1139,6 +1162,12 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	// Check batch header
 	if len(dbBatch.BatchHeader) == 0 {
 		return nil, fmt.Errorf("batch %d header is empty", dbBatch.Index)
+	}
+
+	// Check state root is not zero
+	stateRoot := common.HexToHash(dbBatch.StateRoot)
+	if stateRoot == (common.Hash{}) {
+		return nil, fmt.Errorf("batch %d state root is zero", dbBatch.Index)
 	}
 
 	// Check proof if present
@@ -1528,6 +1557,11 @@ func (r *Layer2Relayer) validateBatchFields(batch *dbBatchWithChunks, i int, all
 	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
 	if parentBatchHash == (common.Hash{}) {
 		return fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
+	}
+
+	stateRoot := common.HexToHash(batch.Batch.StateRoot)
+	if stateRoot == (common.Hash{}) {
+		return fmt.Errorf("batch %d state root is zero", batch.Batch.Index)
 	}
 
 	return nil

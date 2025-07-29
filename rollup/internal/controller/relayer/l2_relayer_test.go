@@ -70,15 +70,18 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV7, rutils.ChunkMetrics{})
 	assert.NoError(t, err)
 
+	batchOrm := orm.NewBatch(db)
+	genesisBatch, err := batchOrm.GetBatchByIndex(context.Background(), 0)
+	assert.NoError(t, err)
+
 	batch := &encoding.Batch{
 		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            common.HexToHash(genesisBatch.Hash),
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		Blocks:                     []*encoding.Block{block1, block2},
 	}
 
-	batchOrm := orm.NewBatch(db)
 	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV7, rutils.BatchMetrics{})
 	assert.NoError(t, err)
 
