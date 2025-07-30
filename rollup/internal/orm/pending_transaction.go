@@ -3,7 +3,7 @@ package orm
 import (
 	"bytes"
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -212,21 +212,23 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 // GetMaxNonceBySenderAddress retrieves the maximum nonce for a specific sender address.
 // Returns -1 if no transactions are found for the given address.
 func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, senderAddress string) (int64, error) {
-	var maxNonce sql.NullInt64
+	var result struct {
+		Nonce int64 `gorm:"column:nonce"`
+	}
 
-	row := o.db.WithContext(ctx).
+	err := o.db.WithContext(ctx).
 		Model(&PendingTransaction{}).
-		Select("MAX(nonce)").
+		Select("nonce").
 		Where("sender_address = ?", senderAddress).
-		Row()
+		Order("nonce DESC").
+		First(&result).Error
 
-	if err := row.Scan(&maxNonce); err != nil {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return -1, nil
+		}
 		return -1, fmt.Errorf("failed to get max nonce by sender address, address: %s, err: %w", senderAddress, err)
 	}
 
-	if !maxNonce.Valid {
-		return -1, nil
-	}
-
-	return maxNonce.Int64, nil
+	return result.Nonce, nil
 }
