@@ -655,8 +655,9 @@ func (s *Sender) checkPendingTransaction() {
 						if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmedFailed, dbTX); updateErr != nil {
 							return fmt.Errorf("failed to update original transaction status, hash: %s, err: %w", originalTx.Hash().Hex(), updateErr)
 						}
-						if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, newSignedTx.Hash(), dbTX); updateErr != nil {
-							return fmt.Errorf("failed to delete replacement transaction, hash: %s, err: %w", newSignedTx.Hash().Hex(), updateErr)
+						// Mark the replacement transaction as failed
+						if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, newSignedTx.Hash(), types.TxStatusConfirmedFailed, dbTX); updateErr != nil {
+							return fmt.Errorf("failed to update replacement transaction status, hash: %s, err: %w", newSignedTx.Hash().Hex(), updateErr)
 						}
 						return nil
 					}); dbErr != nil {
