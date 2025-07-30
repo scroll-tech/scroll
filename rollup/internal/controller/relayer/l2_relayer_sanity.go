@@ -10,37 +10,38 @@ import (
 )
 
 // validateMessageQueueConsistency validates L1 message queue hash consistency
-func (r *Layer2Relayer) validateMessageQueueConsistency(batch *dbBatchWithChunks) error {
-	if batch.Batch.Index == 0 {
+func (r *Layer2Relayer) validateMessageQueueConsistency(batchIndex uint64, chunks []*orm.Chunk, prevL1MsgQueueHash common.Hash, postL1MsgQueueHash common.Hash) error {
+	if batchIndex == 0 {
 		return nil
 	}
 
-	firstChunk := batch.Chunks[0]
-	lastChunk := batch.Chunks[len(batch.Chunks)-1]
+	if len(chunks) == 0 {
+		return fmt.Errorf("batch %d has no chunks for message queue validation", batchIndex)
+	}
 
-	prevL1MsgQueueHash := common.HexToHash(batch.Batch.PrevL1MessageQueueHash)
-	postL1MsgQueueHash := common.HexToHash(batch.Batch.PostL1MessageQueueHash)
+	firstChunk := chunks[0]
+	lastChunk := chunks[len(chunks)-1]
 
 	// Calculate total L1 messages in this batch
-	var batchTotalL1MessagesInBatch uint64
-	for _, chunk := range batch.Chunks {
-		batchTotalL1MessagesInBatch += chunk.TotalL1MessagesPoppedInChunk
+	var totalL1MessagesInBatch uint64
+	for _, chunk := range chunks {
+		totalL1MessagesInBatch += chunk.TotalL1MessagesPoppedInChunk
 	}
 
 	// If there were L1 messages processed before this batch, prev hash should not be zero
 	if firstChunk.TotalL1MessagesPoppedBefore > 0 && prevL1MsgQueueHash == (common.Hash{}) {
-		return fmt.Errorf("batch %d prev L1 message queue hash is zero but %d L1 messages were processed before", batch.Batch.Index, firstChunk.TotalL1MessagesPoppedBefore)
+		return fmt.Errorf("batch %d prev L1 message queue hash is zero but %d L1 messages were processed before", batchIndex, firstChunk.TotalL1MessagesPoppedBefore)
 	}
 
 	// If there are any L1 messages processed up to this batch, post hash should not be zero
 	totalL1MessagesProcessed := lastChunk.TotalL1MessagesPoppedBefore + lastChunk.TotalL1MessagesPoppedInChunk
 	if totalL1MessagesProcessed > 0 && postL1MsgQueueHash == (common.Hash{}) {
-		return fmt.Errorf("batch %d post L1 message queue hash is zero but %d L1 messages were processed in total", batch.Batch.Index, totalL1MessagesProcessed)
+		return fmt.Errorf("batch %d post L1 message queue hash is zero but %d L1 messages were processed in total", batchIndex, totalL1MessagesProcessed)
 	}
 
 	// Prev and post queue hashes should be different if L1 messages were processed in this batch
-	if batchTotalL1MessagesInBatch > 0 && prevL1MsgQueueHash == postL1MsgQueueHash {
-		return fmt.Errorf("batch %d has same prev and post L1 message queue hashes but processed %d L1 messages in this batch", batch.Batch.Index, batchTotalL1MessagesInBatch)
+	if totalL1MessagesInBatch > 0 && prevL1MsgQueueHash == postL1MsgQueueHash {
+		return fmt.Errorf("batch %d has same prev and post L1 message queue hashes but processed %d L1 messages in this batch", batchIndex, totalL1MessagesInBatch)
 	}
 
 	return nil
@@ -135,7 +136,7 @@ func (r *Layer2Relayer) validateSingleBatch(batch *dbBatchWithChunks, i int, all
 	}
 
 	// Validate message queue consistency
-	if err := r.validateMessageQueueConsistency(batch); err != nil {
+	if err := r.validateMessageQueueConsistency(batch.Batch.Index, batch.Chunks, common.HexToHash(batch.Batch.PrevL1MessageQueueHash), common.HexToHash(batch.Batch.PostL1MessageQueueHash)); err != nil {
 		return err
 	}
 

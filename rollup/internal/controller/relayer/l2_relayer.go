@@ -1036,29 +1036,8 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		}
 
 		// Check L1 message queue hash consistency
-		var totalL1MessagesInBatch uint64
-		for _, c := range b.Chunks {
-			totalL1MessagesInBatch += c.TotalL1MessagesPoppedInChunk
-		}
-
-		// Check L1 message queue hash consistency
-		firstChunk := b.Chunks[0]
-		lastChunk := b.Chunks[len(b.Chunks)-1]
-
-		// If there were L1 messages processed before this batch, prev hash should not be zero
-		if firstChunk.TotalL1MessagesPoppedBefore > 0 && encodingBatch.PrevL1MessageQueueHash == (common.Hash{}) {
-			return nil, nil, 0, 0, fmt.Errorf("batch %d prev L1 message queue hash is zero but %d L1 messages were processed before", b.Batch.Index, firstChunk.TotalL1MessagesPoppedBefore)
-		}
-
-		// If there are any L1 messages processed up to this batch, post hash should not be zero
-		totalL1MessagesProcessed := lastChunk.TotalL1MessagesPoppedBefore + lastChunk.TotalL1MessagesPoppedInChunk
-		if totalL1MessagesProcessed > 0 && encodingBatch.PostL1MessageQueueHash == (common.Hash{}) {
-			return nil, nil, 0, 0, fmt.Errorf("batch %d post L1 message queue hash is zero but %d L1 messages were processed in total", b.Batch.Index, totalL1MessagesProcessed)
-		}
-
-		// If L1 messages were processed in this batch, prev and post hashes should be different
-		if totalL1MessagesInBatch > 0 && encodingBatch.PrevL1MessageQueueHash == encodingBatch.PostL1MessageQueueHash {
-			return nil, nil, 0, 0, fmt.Errorf("batch %d has same prev and post L1 message queue hashes but processed %d L1 messages in this batch", b.Batch.Index, totalL1MessagesInBatch)
+		if err := r.validateMessageQueueConsistency(encodingBatch.Index, b.Chunks, encodingBatch.PrevL1MessageQueueHash, encodingBatch.PostL1MessageQueueHash); err != nil {
+			return nil, nil, 0, 0, err
 		}
 
 		codec, err := encoding.CodecFromVersion(version)
