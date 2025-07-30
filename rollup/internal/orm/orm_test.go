@@ -597,3 +597,61 @@ func TestPendingTransactionOrm(t *testing.T) {
 	err = pendingTransactionOrm.DeleteTransactionByTxHash(context.Background(), common.HexToHash("0x123"))
 	assert.Error(t, err) // Should return error for non-existent transaction
 }
+
+func TestPendingTransaction_GetMaxNonceBySenderAddress(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	// When there are no transactions for this sender address, should return -1
+	maxNonce, err := pendingTransactionOrm.GetMaxNonceBySenderAddress(context.Background(), "0xdeadbeef")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(-1), maxNonce)
+
+	// Insert two transactions with different nonces for the same sender address
+	senderMeta := &SenderMeta{
+		Name:    "testName",
+		Service: "testService",
+		Address: common.HexToAddress("0xdeadbeef"),
+		Type:    types.SenderTypeCommitBatch,
+	}
+
+	tx0 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      1,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        21000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(0),
+		GasFeeCap:  big.NewInt(1),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      3,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        22000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(1),
+		GasFeeCap:  big.NewInt(2),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx0, 0)
+	assert.NoError(t, err)
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx1, 0)
+	assert.NoError(t, err)
+
+	// Now the max nonce for this sender should be 3
+	maxNonce, err = pendingTransactionOrm.GetMaxNonceBySenderAddress(context.Background(), senderMeta.Address.String())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), maxNonce)
+}
