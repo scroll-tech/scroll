@@ -3,6 +3,7 @@ package orm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -191,6 +192,25 @@ func (o *PendingTransaction) UpdateTransactionStatusByTxHash(ctx context.Context
 	return nil
 }
 
+// UpdateTransactionStatusByTxHashes updates the status of multiple transactions by their hashes in one SQL statement
+func (o *PendingTransaction) UpdateTransactionStatusByTxHashes(ctx context.Context, txHashes []string, status types.TxStatus, dbTX ...*gorm.DB) error {
+	if len(txHashes) == 0 {
+		return nil
+	}
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("hash IN ?", txHashes)
+	if err := db.Update("status", status).Error; err != nil {
+		return fmt.Errorf("failed to update transaction status for hashes %v to status %d: %w", txHashes, status, err)
+	}
+
+	return nil
+}
+
 // UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusConfirmedFailed for a specific nonce and sender address, excluding a specified transaction hash.
 func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, hash common.Hash, dbTX ...*gorm.DB) error {
 	db := o.db
@@ -206,4 +226,28 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 		return fmt.Errorf("failed to update other transactions as failed by nonce, senderAddress: %s, nonce: %d, txHash: %s, error: %w", senderAddress, nonce, hash, err)
 	}
 	return nil
+}
+
+// GetMaxNonceBySenderAddress retrieves the maximum nonce for a specific sender address.
+// Returns -1 if no transactions are found for the given address.
+func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, senderAddress string) (int64, error) {
+	var result struct {
+		Nonce int64 `gorm:"column:nonce"`
+	}
+
+	err := o.db.WithContext(ctx).
+		Model(&PendingTransaction{}).
+		Select("nonce").
+		Where("sender_address = ?", senderAddress).
+		Order("nonce DESC").
+		First(&result).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return -1, nil
+		}
+		return -1, fmt.Errorf("failed to get max nonce by sender address, address: %s, err: %w", senderAddress, err)
+	}
+
+	return result.Nonce, nil
 }
