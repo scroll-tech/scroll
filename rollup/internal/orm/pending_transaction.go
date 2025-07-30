@@ -192,6 +192,25 @@ func (o *PendingTransaction) UpdateTransactionStatusByTxHash(ctx context.Context
 	return nil
 }
 
+// UpdateTransactionStatusByTxHashes updates the status of multiple transactions by their hashes in one SQL statement
+func (o *PendingTransaction) UpdateTransactionStatusByTxHashes(ctx context.Context, txHashes []string, status types.TxStatus, dbTX ...*gorm.DB) error {
+	if len(txHashes) == 0 {
+		return nil
+	}
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("hash IN ?", txHashes)
+	if err := db.Update("status", status).Error; err != nil {
+		return fmt.Errorf("failed to update transaction status for hashes %v to status %d: %w", txHashes, status, err)
+	}
+
+	return nil
+}
+
 // UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusConfirmedFailed for a specific nonce and sender address, excluding a specified transaction hash.
 func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, hash common.Hash, dbTX ...*gorm.DB) error {
 	db := o.db

@@ -649,19 +649,9 @@ func (s *Sender) checkPendingTransaction() {
 				if strings.Contains(err.Error(), "nonce too low") {
 					// When we receive a 'nonce too low' error but cannot find the transaction receipt, it indicates another transaction with this nonce has already been processed, so this transaction will never be mined and should be marked as failed.
 					log.Warn("nonce too low detected, marking all non-confirmed transactions with same nonce as failed", "nonce", originalTx.Nonce(), "address", s.transactionSigner.GetAddr().Hex(), "txHash", originalTx.Hash().Hex(), "newTxHash", newSignedTx.Hash().Hex(), "err", err)
-
-					// Handle both original and replacement transactions in a database transaction
-					if dbErr := s.db.Transaction(func(dbTX *gorm.DB) error {
-						if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmedFailed, dbTX); updateErr != nil {
-							return fmt.Errorf("failed to update original transaction status, hash: %s, err: %w", originalTx.Hash().Hex(), updateErr)
-						}
-						// Mark the replacement transaction as failed
-						if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, newSignedTx.Hash(), types.TxStatusConfirmedFailed, dbTX); updateErr != nil {
-							return fmt.Errorf("failed to update replacement transaction status, hash: %s, err: %w", newSignedTx.Hash().Hex(), updateErr)
-						}
-						return nil
-					}); dbErr != nil {
-						log.Error("failed to handle nonce too low scenario in database", "err", dbErr)
+					txHashes := []string{originalTx.Hash().Hex(), newSignedTx.Hash().Hex()}
+					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHashes(s.ctx, txHashes, types.TxStatusConfirmedFailed); updateErr != nil {
+						log.Error("failed to update transaction status", "hashes", txHashes, "err", updateErr)
 						return
 					}
 					return
