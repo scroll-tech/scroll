@@ -38,6 +38,7 @@ type FetcherConfig struct {
 	BeaconNodeAPIEndpoint  string `json:"BeaconNodeAPIEndpoint"`
 	BlobScanAPIEndpoint    string `json:"BlobScanAPIEndpoint"`
 	BlockNativeAPIEndpoint string `json:"BlockNativeAPIEndpoint"`
+	AwsS3Endpoint          string `json:"AwsS3Endpoint"`
 }
 
 // RedisConfig redis config

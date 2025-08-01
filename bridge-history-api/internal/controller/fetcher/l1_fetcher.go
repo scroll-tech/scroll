@@ -39,6 +39,9 @@ type L1MessageFetcher struct {
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
 func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) (*L1MessageFetcher, error) {
 	blobClient := blob_client.NewBlobClients()
+	if cfg.AwsS3Endpoint != "" {
+		blobClient.AddBlobClient(blob_client.NewAwsS3Client(cfg.AwsS3Endpoint))
+	}
 	if cfg.BeaconNodeAPIEndpoint != "" {
 		beaconNodeClient, err := blob_client.NewBeaconNodeClient(cfg.BeaconNodeAPIEndpoint)
 		if err != nil {
