@@ -22,7 +22,7 @@ SELECT 'INSERT INTO l2_block (number, hash, parent_hash, header, withdraw_root,
        quote_literal(transactions) ||
        ');'
 FROM l2_block 
-WHERE number >= 16523677 and number <= 16523700
+WHERE number >= 10973700 and number <= 10973730
 ORDER BY number ASC;
 \t off
 \a
