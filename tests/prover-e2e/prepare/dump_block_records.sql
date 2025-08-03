@@ -1,6 +1,4 @@
 -- Create a file with INSERT statements for the specific records
--- We noticed that transactions is not used within coordinator so simply
--- replace it with empty record
 \o block_export.sql
 \t on
 \a
