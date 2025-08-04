@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rollup/l1"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
@@ -112,6 +113,32 @@ func action(ctx *cli.Context) error {
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
 
+	if cfg.RecoveryConfig != nil && cfg.RecoveryConfig.Enable {
+		log.Info("Starting rollup-relayer in recovery mode", "version", version.Version)
+
+		l1Client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to connect to L1 client: %w", err)
+		}
+		reader, err := l1.NewReader(context.Background(), l1.Config{
+			ScrollChainAddress:    genesis.Config.Scroll.L1Config.ScrollChainAddress,
+			L1MessageQueueAddress: genesis.Config.Scroll.L1Config.L1MessageQueueAddress,
+		}, l1Client)
+		if err != nil {
+			return fmt.Errorf("failed to create L1 reader: %w", err)
+		}
+
+		fullRecovery, err := relayer.NewFullRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2watcher, l1Client, reader)
+		if err != nil {
+			return fmt.Errorf("failed to create full recovery: %w", err)
+		}
+		if err = fullRecovery.RestoreFullPreviousState(); err != nil {
+			log.Crit("failed to restore full previous state", "error", err)
+		}
+
+		return nil
+	}
+
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
 		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
@@ -119,7 +146,8 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
-		l2watcher.TryFetchRunningMissingBlocks(number)
+		// errors are logged in the try method as well
+		_ = l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
 	go utils.Loop(subCtx, time.Duration(cfg.L2Config.ChunkProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, chunkProposer.TryProposeChunk)

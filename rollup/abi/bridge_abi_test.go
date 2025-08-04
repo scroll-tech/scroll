@@ -1,13 +1,12 @@
 package bridgeabi
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/scroll-tech/go-ethereum/common"
 )
 
 func TestPackCommitBatches(t *testing.T) {
@@ -91,21 +90,4 @@ func TestPackSetL2BaseFee(t *testing.T) {
 	baseFee := big.NewInt(2333)
 	_, err = l2GasOracleABI.Pack("setL2BaseFee", baseFee)
 	assert.NoError(err)
-}
-
-func TestPrintABISignatures(t *testing.T) {
-	// print all error signatures of ABI
-	abi, err := ScrollChainMetaData.GetAbi()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, method := range abi.Methods {
-		fmt.Println(hexutil.Encode(method.ID[:4]), method.Sig, method.Name)
-	}
-
-	fmt.Println("------------------------------")
-	for _, errors := range abi.Errors {
-		fmt.Println(hexutil.Encode(errors.ID[:4]), errors.Sig, errors.Name)
-	}
 }
