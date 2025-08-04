@@ -278,19 +278,6 @@ func (r *Layer2Relayer) initializeGenesis() error {
 }
 
 func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot common.Hash) error {
-	// Basic sanity checks
-	if batchHash == "" {
-		return fmt.Errorf("batch hash is empty")
-	}
-
-	if len(batchHeader) == 0 {
-		return fmt.Errorf("batch header is empty")
-	}
-
-	if stateRoot == (common.Hash{}) {
-		return fmt.Errorf("state root is zero")
-	}
-
 	var calldata []byte
 	var packErr error
 
@@ -303,16 +290,17 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		log.Info("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
 	} else {
 		// rollup mode: pass batchHeader and stateRoot
+
+		// Check state root is not zero
+		if stateRoot == (common.Hash{}) {
+			return fmt.Errorf("state root is zero")
+		}
+
 		calldata, packErr = r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
 		if packErr != nil {
 			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
 		}
 		log.Info("Rollup importGenesis", "calldata", common.Bytes2Hex(calldata), "stateRoot", stateRoot)
-	}
-
-	// Check generated calldata is not empty
-	if len(calldata) == 0 {
-		return fmt.Errorf("generated calldata is empty")
 	}
 
 	// submit genesis batch to L1 rollup contract
@@ -492,12 +480,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		log.Info("Forcing submission of batches due to timeout", "batch index", batchesToSubmit[0].Batch.Index, "first block created at", oldestBlockTimestamp)
 	}
 
-	// Sanity checks before constructing the transaction
-	if err := r.sanityChecksBeforeConstructingTransaction(batchesToSubmit); err != nil {
-		log.Error("Sanity checks failed before constructing transaction", "batches count", len(batchesToSubmit), "first batch index", batchesToSubmit[0].Batch.Index, "last batch index", batchesToSubmit[len(batchesToSubmit)-1].Batch.Index, "err", err)
-		return
-	}
-
 	// We have at least 1 batch to commit
 	firstBatch := batchesToSubmit[0].Batch
 	lastBatch := batchesToSubmit[len(batchesToSubmit)-1].Batch
@@ -527,9 +509,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				return
 			}
 
-			err = r.sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata, blobs, batchesToSubmit, firstBatch, lastBatch)
-			if err != nil {
-				log.Error("Sanity check failed for calldata and blobs", "err", err)
+			if err = r.sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata, blobs); err != nil {
+				log.Error("Sanity check failed for calldata and blobs", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 				return
 			}
 		}
@@ -972,25 +953,6 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 }
 
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunks, firstBatch, lastBatch *orm.Batch) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
-	// Basic sanity checks
-	if len(batchesToSubmit) == 0 {
-		return nil, nil, 0, 0, fmt.Errorf("no batches to submit")
-	}
-	if firstBatch == nil {
-		return nil, nil, 0, 0, fmt.Errorf("first batch is nil")
-	}
-	if lastBatch == nil {
-		return nil, nil, 0, 0, fmt.Errorf("last batch is nil")
-	}
-
-	// Check firstBatch and lastBatch match batchesToSubmit
-	if firstBatch.Index != batchesToSubmit[0].Batch.Index {
-		return nil, nil, 0, 0, fmt.Errorf("first batch index mismatch: expected %d, got %d", batchesToSubmit[0].Batch.Index, firstBatch.Index)
-	}
-	if lastBatch.Index != batchesToSubmit[len(batchesToSubmit)-1].Batch.Index {
-		return nil, nil, 0, 0, fmt.Errorf("last batch index mismatch: expected %d, got %d", batchesToSubmit[len(batchesToSubmit)-1].Batch.Index, lastBatch.Index)
-	}
-
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, 0, len(batchesToSubmit))
@@ -1011,16 +973,6 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 				return nil, nil, 0, 0, fmt.Errorf("failed to get blocks in range for batch %d: %w", b.Batch.Index, err)
 			}
 
-			if len(blocks) == 0 {
-				return nil, nil, 0, 0, fmt.Errorf("batch %d chunk %d has no blocks in range [%d, %d]", b.Batch.Index, c.Index, c.StartBlockNumber, c.EndBlockNumber)
-			}
-
-			// Check that we got the expected number of blocks
-			expectedBlockCount := c.EndBlockNumber - c.StartBlockNumber + 1
-			if uint64(len(blocks)) != expectedBlockCount {
-				return nil, nil, 0, 0, fmt.Errorf("batch %d chunk %d expected %d blocks but got %d", b.Batch.Index, c.Index, expectedBlockCount, len(blocks))
-			}
-
 			batchBlocks = append(batchBlocks, blocks...)
 
 			if c.EndBlockNumber > maxBlockHeight {
@@ -1037,16 +989,6 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 			Blocks:                 batchBlocks,
 		}
 
-		// Check encoding batch fields are not zero hashes
-		if encodingBatch.ParentBatchHash == (common.Hash{}) {
-			return nil, nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", b.Batch.Index)
-		}
-
-		// Check L1 message queue hash consistency
-		if err := r.validateMessageQueueConsistency(encodingBatch.Index, b.Chunks, encodingBatch.PrevL1MessageQueueHash, encodingBatch.PostL1MessageQueueHash); err != nil {
-			return nil, nil, 0, 0, err
-		}
-
 		codec, err := encoding.CodecFromVersion(version)
 		if err != nil {
 			return nil, nil, 0, 0, fmt.Errorf("failed to get codec from version %d, err: %w", b.Batch.CodecVersion, err)
@@ -1057,40 +999,27 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 			return nil, nil, 0, 0, fmt.Errorf("failed to create DA batch: %w", err)
 		}
 
-		blob := daBatch.Blob()
-		if blob == nil {
-			return nil, nil, 0, 0, fmt.Errorf("batch %d generated nil blob", b.Batch.Index)
-		}
-
-		blobs = append(blobs, blob)
+		blobs = append(blobs, daBatch.Blob())
 	}
 
 	calldata, err := r.l1RollupABI.Pack("commitBatches", version, common.HexToHash(firstBatch.ParentBatchHash), common.HexToHash(lastBatch.Hash))
 	if err != nil {
 		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
-
-	if len(calldata) == 0 {
-		return nil, nil, 0, 0, fmt.Errorf("generated calldata is empty")
-	}
-
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }
 
 func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithChunks) ([]byte, uint64, uint64, error) {
-	// Basic sanity checks
-	if batch == nil || batch.Batch == nil {
-		return nil, 0, 0, fmt.Errorf("batch is nil")
-	}
-
-	if len(batch.Chunks) == 0 {
-		return nil, 0, 0, fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
-	}
-
 	// Check state root is not zero
 	stateRoot := common.HexToHash(batch.Batch.StateRoot)
 	if stateRoot == (common.Hash{}) {
 		return nil, 0, 0, fmt.Errorf("batch %d state root is zero", batch.Batch.Index)
+	}
+
+	// Check parent batch hash is not zero
+	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
+	if parentBatchHash == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
 	}
 
 	// Calculate metrics
@@ -1112,44 +1041,17 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
-	if commitment == (common.Hash{}) {
-		return nil, 0, 0, fmt.Errorf("batch %d last chunk end block hash is zero, cannot create commitment", batch.Batch.Index)
-	}
-
-	// Check parent batch hash is not zero
-	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
-	if parentBatchHash == (common.Hash{}) {
-		return nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
-	}
 
 	version := encoding.CodecVersion(batch.Batch.CodecVersion)
 	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)
 	}
-
-	if len(calldata) == 0 {
-		return nil, 0, 0, fmt.Errorf("generated calldata is empty for batch %d", batch.Batch.Index)
-	}
-
 	log.Info("Validium commitBatch", "maxBlockHeight", maxBlockHeight, "commitment", commitment.Hex())
 	return calldata, maxBlockHeight, totalGasUsed, nil
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
-	// Basic sanity checks
-	if dbBatch == nil {
-		return nil, fmt.Errorf("batch is nil")
-	}
-	if endChunk == nil {
-		return nil, fmt.Errorf("end chunk is nil")
-	}
-
-	// Check batch header
-	if len(dbBatch.BatchHeader) == 0 {
-		return nil, fmt.Errorf("batch %d header is empty", dbBatch.Index)
-	}
-
 	// Check state root is not zero
 	stateRoot := common.HexToHash(dbBatch.StateRoot)
 	if stateRoot == (common.Hash{}) {
@@ -1173,11 +1075,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		if packErr != nil {
 			return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2 with proof: %w", packErr)
 		}
-
-		if len(calldata) == 0 {
-			return nil, fmt.Errorf("generated calldata with proof is empty")
-		}
-
 		return calldata, nil
 	}
 
@@ -1194,28 +1091,10 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack finalizeBundlePostEuclidV2NoProof: %w", packErr)
 	}
-
-	if len(calldata) == 0 {
-		return nil, fmt.Errorf("generated calldata without proof is empty")
-	}
-
 	return calldata, nil
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
-	// Basic sanity checks
-	if dbBatch == nil {
-		return nil, fmt.Errorf("batch is nil")
-	}
-	if endChunk == nil {
-		return nil, fmt.Errorf("end chunk is nil")
-	}
-
-	// Check batch header is not empty
-	if len(dbBatch.BatchHeader) == 0 {
-		return nil, fmt.Errorf("batch %d header is empty", dbBatch.Index)
-	}
-
 	// Check proof if present
 	if aggProof != nil && len(aggProof.Proof()) == 0 {
 		return nil, fmt.Errorf("aggregate proof is empty")
@@ -1237,11 +1116,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batc
 	if packErr != nil {
 		return nil, fmt.Errorf("failed to pack validium finalizeBundle: %w", packErr)
 	}
-
-	if len(calldata) == 0 {
-		return nil, fmt.Errorf("generated calldata is empty for batch %d", dbBatch.Index)
-	}
-
 	return calldata, nil
 }
 
