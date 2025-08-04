@@ -3,7 +3,9 @@ package relayer
 import (
 	"fmt"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/rollup/internal/orm"
@@ -243,5 +245,106 @@ func (r *Layer2Relayer) validateSingleChunk(chunk *orm.Chunk, prevChunk *orm.Chu
 		return fmt.Errorf("chunk is not continuous with previous chunk %d: prev end block %d, current start block %d", prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
 	}
 
+	return nil
+}
+
+func (r *Layer2Relayer) sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata []byte, blobs []*kzg4844.Blob, batchesToSubmit []*dbBatchWithChunks, firstBatch, lastBatch *orm.Batch,
+) error {
+	// Check blob count matches batch count
+	if len(blobs) != len(batchesToSubmit) {
+		return fmt.Errorf("blob count mismatch: got %d, want %d", len(blobs), len(batchesToSubmit))
+	}
+
+	// Parse calldata (after first 4 bytes: method selector)
+	method := r.l1RollupABI.Methods["commitBatches"]
+	if len(calldata) < 4 {
+		return fmt.Errorf("calldata too short to contain method selector")
+	}
+	decoded, err := method.Inputs.Unpack(calldata[4:])
+	if err != nil {
+		return fmt.Errorf("failed to unpack commitBatches calldata: %w", err)
+	}
+
+	if len(decoded) != 3 {
+		return fmt.Errorf("unexpected number of decoded parameters: got %d, want 3", len(decoded))
+	}
+
+	version, ok := decoded[0].(uint8)
+	if !ok {
+		return fmt.Errorf("failed to type assert version to uint8")
+	}
+	parentBatchHashB, ok := decoded[1].([32]uint8)
+	if !ok {
+		return fmt.Errorf("failed to type assert parentBatchHash to [32]uint8")
+	}
+	parentBatchHash := common.BytesToHash(parentBatchHashB[:])
+	lastBatchHashB, ok := decoded[2].([32]uint8)
+	if !ok {
+		return fmt.Errorf("failed to type assert lastBatchHash to [32]uint8")
+	}
+	lastBatchHash := common.BytesToHash(lastBatchHashB[:])
+
+	// Check version and batch hashes
+	if version != uint8(firstBatch.CodecVersion) {
+		return fmt.Errorf("sanity check failed: version mismatch: calldata=%d, db=%d", version, firstBatch.CodecVersion)
+	}
+	if parentBatchHash != common.HexToHash(firstBatch.ParentBatchHash) {
+		return fmt.Errorf("sanity check failed: parentBatchHash mismatch: calldata=%s, db=%s", parentBatchHash.Hex(), firstBatch.ParentBatchHash)
+	}
+	if lastBatchHash != common.HexToHash(lastBatch.Hash) {
+		return fmt.Errorf("sanity check failed: lastBatchHash mismatch: calldata=%s, db=%s", lastBatchHash.Hex(), lastBatch.Hash)
+	}
+
+	// Get codec for blob decoding
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(firstBatch.CodecVersion))
+	if err != nil {
+		return fmt.Errorf("failed to get codec: %w", err)
+	}
+
+	// Loop through each batch and blob, decode and compare
+	for i, blob := range blobs {
+		dbBatch := batchesToSubmit[i].Batch
+		dbChunks := batchesToSubmit[i].Chunks
+
+		// Collect all blocks for the batch
+		var batchBlocks []*encoding.Block
+		for _, c := range dbChunks {
+			blocks, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			if err != nil {
+				return fmt.Errorf("failed to get blocks for batch %d chunk %d: %w", dbBatch.Index, c.Index, err)
+			}
+			batchBlocks = append(batchBlocks, blocks...)
+		}
+
+		// Decode blob payload
+		payload, err := codec.DecodeBlob(blob)
+		if err != nil {
+			return fmt.Errorf("failed to decode blob for batch %d: %w", dbBatch.Index, err)
+		}
+
+		// Check L1 message queue hashes
+		if payload.PrevL1MessageQueueHash() != common.HexToHash(dbBatch.PrevL1MessageQueueHash) {
+			return fmt.Errorf("sanity check failed: prevL1MessageQueueHash mismatch for batch %d: decoded=%s, db=%s",
+				dbBatch.Index, payload.PrevL1MessageQueueHash().Hex(), dbBatch.PrevL1MessageQueueHash)
+		}
+		if payload.PostL1MessageQueueHash() != common.HexToHash(dbBatch.PostL1MessageQueueHash) {
+			return fmt.Errorf("sanity check failed: postL1MessageQueueHash mismatch for batch %d: decoded=%s, db=%s",
+				dbBatch.Index, payload.PostL1MessageQueueHash().Hex(), dbBatch.PostL1MessageQueueHash)
+		}
+
+		// Compare block count and block numbers
+		decodedBlocks := payload.Blocks()
+		if len(decodedBlocks) != len(batchBlocks) {
+			return fmt.Errorf("sanity check failed: block count mismatch in batch %d: decoded=%d, db=%d", dbBatch.Index, len(decodedBlocks), len(batchBlocks))
+		}
+		for j, b := range batchBlocks {
+			if decodedBlocks[j].Number() != b.Header.Number.Uint64() {
+				return fmt.Errorf("sanity check failed: block number mismatch in batch %d block %d: decoded=%d, db=%d",
+					dbBatch.Index, j, decodedBlocks[j].Number(), b.Header.Number.Uint64())
+			}
+		}
+	}
+
+	// All checks passed
 	return nil
 }

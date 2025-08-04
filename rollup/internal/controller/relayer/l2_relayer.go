@@ -526,6 +526,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("failed to construct normal payload", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 				return
 			}
+
+			err = r.sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata, blobs, batchesToSubmit, firstBatch, lastBatch)
+			if err != nil {
+				log.Error("Sanity check failed for calldata and blobs", "err", err)
+				return
+			}
 		}
 	default:
 		log.Error("unsupported codec version in ProcessPendingBatches", "codecVersion", codecVersion, "start index", firstBatch, "end index", lastBatch.Index)
