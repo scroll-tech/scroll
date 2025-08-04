@@ -53,53 +53,18 @@ func (r *Layer2Relayer) sanityChecksBeforeConstructingTransaction(batchesToSubmi
 		return fmt.Errorf("no batches to submit")
 	}
 
-	// Basic validation
-	if err := r.validateBatchesBasic(batchesToSubmit); err != nil {
-		return err
-	}
-
-	// Codec version validation
-	if err := r.validateCodecVersions(batchesToSubmit); err != nil {
-		return err
-	}
-
 	// Get previous chunk for continuity check
 	prevChunk, err := r.getPreviousChunkForContinuity(batchesToSubmit[0])
 	if err != nil {
 		return err
 	}
 
-	// Validate each batch in detail
-	if err := r.validateBatchesDetailed(batchesToSubmit, prevChunk); err != nil {
+	// Validate batches (including basic, codec versions, and detailed checks)
+	if err := r.validateBatches(batchesToSubmit, prevChunk); err != nil {
 		return err
 	}
 
 	log.Info("Sanity check passed before constructing transaction", "batches count", len(batchesToSubmit))
-	return nil
-}
-
-// validateBatchesBasic performs basic validation on all batches
-func (r *Layer2Relayer) validateBatchesBasic(batchesToSubmit []*dbBatchWithChunks) error {
-	for i, batch := range batchesToSubmit {
-		if batch == nil || batch.Batch == nil {
-			return fmt.Errorf("batch %d is nil", i)
-		}
-
-		if len(batch.Chunks) == 0 {
-			return fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
-		}
-	}
-	return nil
-}
-
-// validateCodecVersions checks all batches have the same codec version
-func (r *Layer2Relayer) validateCodecVersions(batchesToSubmit []*dbBatchWithChunks) error {
-	firstBatchCodecVersion := batchesToSubmit[0].Batch.CodecVersion
-	for _, batch := range batchesToSubmit {
-		if batch.Batch.CodecVersion != firstBatchCodecVersion {
-			return fmt.Errorf("batch %d has different codec version %d, expected %d", batch.Batch.Index, batch.Batch.CodecVersion, firstBatchCodecVersion)
-		}
-	}
 	return nil
 }
 
@@ -118,18 +83,40 @@ func (r *Layer2Relayer) getPreviousChunkForContinuity(firstBatch *dbBatchWithChu
 	return prevChunk, nil
 }
 
-// validateBatchesDetailed performs detailed validation on each batch
-func (r *Layer2Relayer) validateBatchesDetailed(batchesToSubmit []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+// validateBatches performs validation on all batches including basic checks, codec version consistency, and detailed checks.
+func (r *Layer2Relayer) validateBatches(batchesToSubmit []*dbBatchWithChunks, initialPrevChunk *orm.Chunk) error {
+	// Basic validation: ensure each batch and its chunks are non-empty.
 	for i, batch := range batchesToSubmit {
-		if err := r.validateSingleBatch(batch, i, batchesToSubmit, prevChunkFromPrevBatch); err != nil {
+		if batch == nil || batch.Batch == nil {
+			return fmt.Errorf("batch %d is nil", i)
+		}
+		if len(batch.Chunks) == 0 {
+			return fmt.Errorf("batch %d has no chunks", batch.Batch.Index)
+		}
+	}
+
+	// Check that all batches have the same codec version.
+	firstBatchCodecVersion := batchesToSubmit[0].Batch.CodecVersion
+	for _, batch := range batchesToSubmit {
+		if batch.Batch.CodecVersion != firstBatchCodecVersion {
+			return fmt.Errorf("batch %d has different codec version %d, expected %d", batch.Batch.Index, batch.Batch.CodecVersion, firstBatchCodecVersion)
+		}
+	}
+
+	// Validate each batch in detail, updating the previous chunk as we go.
+	currentPrevChunk := initialPrevChunk
+	for i, batch := range batchesToSubmit {
+		if err := r.validateSingleBatch(batch, i, batchesToSubmit, currentPrevChunk); err != nil {
 			return err
 		}
+		// Update the previous chunk to the last chunk of this batch for the next batch.
+		currentPrevChunk = batch.Chunks[len(batch.Chunks)-1]
 	}
 	return nil
 }
 
 // validateSingleBatch validates a single batch and its chunks
-func (r *Layer2Relayer) validateSingleBatch(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+func (r *Layer2Relayer) validateSingleBatch(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunk *orm.Chunk) error {
 	// Validate batch fields
 	if err := r.validateBatchFields(batch, i, allBatches); err != nil {
 		return err
@@ -141,7 +128,7 @@ func (r *Layer2Relayer) validateSingleBatch(batch *dbBatchWithChunks, i int, all
 	}
 
 	// Validate chunks
-	if err := r.validateBatchChunks(batch, i, allBatches, prevChunkFromPrevBatch); err != nil {
+	if err := r.validateBatchChunks(batch, prevChunk); err != nil {
 		return err
 	}
 
@@ -191,8 +178,8 @@ func (r *Layer2Relayer) validateBatchFields(batch *dbBatchWithChunks, i int, all
 }
 
 // validateBatchChunks validates all chunks in a batch
-func (r *Layer2Relayer) validateBatchChunks(batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
-	// Check all chunks in this batch have the same codec version as the batch
+func (r *Layer2Relayer) validateBatchChunks(batch *dbBatchWithChunks, prevChunk *orm.Chunk) error {
+	// Check codec version consistency.
 	for _, chunk := range batch.Chunks {
 		if chunk.CodecVersion != batch.Batch.CodecVersion {
 			return fmt.Errorf("batch %d chunk %d has different codec version %d, expected %d", batch.Batch.Index, chunk.Index, chunk.CodecVersion, batch.Batch.CodecVersion)
@@ -200,71 +187,60 @@ func (r *Layer2Relayer) validateBatchChunks(batch *dbBatchWithChunks, i int, all
 	}
 
 	for j, chunk := range batch.Chunks {
-		if err := r.validateSingleChunk(chunk, j, batch, i, allBatches, prevChunkFromPrevBatch); err != nil {
-			return err
+		if err := r.validateSingleChunk(chunk, prevChunk); err != nil {
+			return fmt.Errorf("batch %d chunk %d: %w", batch.Batch.Index, j, err)
 		}
+		// Update the previous chunk to the current one for the next chunk.
+		prevChunk = chunk
 	}
 
 	return nil
 }
 
 // validateSingleChunk validates a single chunk
-func (r *Layer2Relayer) validateSingleChunk(chunk *orm.Chunk, chunkIndex int, batch *dbBatchWithChunks, i int, allBatches []*dbBatchWithChunks, prevChunkFromPrevBatch *orm.Chunk) error {
+func (r *Layer2Relayer) validateSingleChunk(chunk *orm.Chunk, prevChunk *orm.Chunk) error {
 	if chunk == nil {
-		return fmt.Errorf("batch %d chunk %d is nil", batch.Batch.Index, chunkIndex)
+		return fmt.Errorf("chunk is nil")
 	}
 
 	chunkHash := common.HexToHash(chunk.Hash)
 	if chunkHash == (common.Hash{}) {
-		return fmt.Errorf("batch %d chunk %d hash is zero", batch.Batch.Index, chunk.Index)
-	}
-
-	// Get previous chunk for continuity check
-	var prevChunk *orm.Chunk
-	if chunkIndex > 0 {
-		prevChunk = batch.Chunks[chunkIndex-1]
-	} else if i == 0 {
-		prevChunk = prevChunkFromPrevBatch
-	} else if i > 0 {
-		// Use the last chunk from the previous batch
-		prevBatch := allBatches[i-1]
-		prevChunk = prevBatch.Chunks[len(prevBatch.Chunks)-1]
+		return fmt.Errorf("chunk %d hash is zero", chunk.Index)
 	}
 
 	// Check chunk index is sequential
 	if chunk.Index != prevChunk.Index+1 {
-		return fmt.Errorf("batch %d chunk %d index is not sequential: prev chunk index %d, current chunk index %d", batch.Batch.Index, chunkIndex, prevChunk.Index, chunk.Index)
+		return fmt.Errorf("chunk index is not sequential: prev chunk index %d, current chunk index %d", prevChunk.Index, chunk.Index)
 	}
 
 	// Check L1 messages popped continuity
 	expectedPoppedBefore := prevChunk.TotalL1MessagesPoppedBefore + prevChunk.TotalL1MessagesPoppedInChunk
 	if chunk.TotalL1MessagesPoppedBefore != expectedPoppedBefore {
-		return fmt.Errorf("batch %d chunk %d L1 messages popped before is incorrect: expected %d, got %d",
-			batch.Batch.Index, chunk.Index, expectedPoppedBefore, chunk.TotalL1MessagesPoppedBefore)
+		return fmt.Errorf("L1 messages popped before is incorrect: expected %d, got %d", expectedPoppedBefore, chunk.TotalL1MessagesPoppedBefore)
 	}
 
 	if chunk.StartBlockNumber == 0 && chunk.EndBlockNumber == 0 {
-		return fmt.Errorf("batch %d chunk %d has zero block range", batch.Batch.Index, chunk.Index)
+		return fmt.Errorf("chunk %d has zero block range", chunk.Index)
 	}
 
 	if chunk.StartBlockNumber > chunk.EndBlockNumber {
-		return fmt.Errorf("batch %d chunk %d has invalid block range: start %d > end %d", batch.Batch.Index, chunk.Index, chunk.StartBlockNumber, chunk.EndBlockNumber)
+		return fmt.Errorf("chunk %d has invalid block range: start %d > end %d", chunk.Index, chunk.StartBlockNumber, chunk.EndBlockNumber)
 	}
 
 	// Check chunk hash fields
 	startBlockHash := common.HexToHash(chunk.StartBlockHash)
 	if startBlockHash == (common.Hash{}) {
-		return fmt.Errorf("batch %d chunk %d start block hash is zero", batch.Batch.Index, chunk.Index)
+		return fmt.Errorf("chunk %d start block hash is zero", chunk.Index)
 	}
 
 	endBlockHash := common.HexToHash(chunk.EndBlockHash)
 	if endBlockHash == (common.Hash{}) {
-		return fmt.Errorf("batch %d chunk %d end block hash is zero", batch.Batch.Index, chunk.Index)
+		return fmt.Errorf("chunk %d end block hash is zero", chunk.Index)
 	}
 
 	// Check chunk continuity: previous chunk's end block number + 1 should equal current chunk's start block number
 	if prevChunk.EndBlockNumber+1 != chunk.StartBlockNumber {
-		return fmt.Errorf("batch %d chunk %d is not continuous with previous chunk: prev chunk %d end block %d, current chunk start block %d", batch.Batch.Index, chunk.Index, prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
+		return fmt.Errorf("chunk is not continuous with previous chunk %d: prev end block %d, current start block %d", prevChunk.Index, prevChunk.EndBlockNumber, chunk.StartBlockNumber)
 	}
 
 	return nil
