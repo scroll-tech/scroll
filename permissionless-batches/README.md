@@ -17,14 +17,13 @@ The batch production toolkit is a set of tools that allow anyone to submit a bat
 ### Prerequisites
 - Unix-like OS, 32GB RAM
 - Docker
-- [l2geth](https://github.com/scroll-tech/go-ethereum/) or [Docker image](https://hub.docker.com/r/scrolltech/l2geth) of corresponding version [TODO link list with versions](#batch-production-toolkit).
+- [l2geth](https://github.com/scroll-tech/go-ethereum/) or [Docker image](https://hub.docker.com/r/scrolltech/l2geth) of corresponding [version](https://docs.scroll.io/en/technology/overview/scroll-upgrades/).
 - access to an Ethereum L1 RPC node (beacon node and execution client)
 - ability to run a prover
 - L1 account with funds to pay for the batch submission
 
 ### 1. l2geth state recovery from L1
 Once permissionless mode is activated there's no blocks being produced and propagated on L2. The first step is to recover the latest state of the L2 chain from L1. This is done by running l2geth in recovery mode. 
-More information about l2geth recovery (aka L1 follower mode) can be found [here TODO: put correct link once released](https://github.com/scroll-tech/scroll-documentation/pull/374).
 
 Running l2geth in recovery mode requires following configuration:
 - `--scroll` or `--scroll-sepolia` - enables Scroll Mainnet or Sepolia mode
@@ -84,7 +83,7 @@ After the blocks are produced, the next step is to produce a batch, prove it and
 #### Producing a batch
 To produce a batch you need to run the `batch-production-submission` profile in `docker-compose.yml`.
 
-1. Fill `conf/genesis.json` with the latest genesis state from the L2 chain. The genesis for the current fork can be found here: [TODO link list with versions](#batch-production-toolkit)
+1. Fill `conf/genesis.json` with the latest genesis state from the L2 chain. The genesis for the current fork can be found [here](https://docs.scroll.io/en/technology/overview/scroll-upgrades/).
 2. Make sure that `l2geth` with your locally produced blocks is running and reachable from the Docker network (e.g. `http://host.docker.internal:8545`)
 3. Fill in required fields in `conf/relayer/config.json`
 
@@ -99,8 +98,8 @@ To prove the chunk, batch and bundle you just generated you need to run the `pro
 Local Proving:
 
 1. Hardware spec for local prover: CPU: 36+ core, 128G memory GPU: 24G memory (e.g. Rtx 3090/3090Ti/4090/A10/L4)
-2. Make sure `verifier` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the latest fork: [TODO link list with versions](#batch-production-toolkit)
-2. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct version. [TODO link list with versions](#batch-production-toolkit)
+2. Make sure `verifier` and `high_version_circuit` in `conf/coordinator/config.json` are correct for the [latest fork](https://docs.scroll.io/en/technology/overview/scroll-upgrades/)
+3. Set the `SCROLL_ZKVM_VERSION` environment variable on `Makefile` to the correct [version](https://docs.scroll.io/en/technology/overview/scroll-upgrades/).
 4. Fill in the required fields in `conf/proving-service/config.json`
 
 Run with `make launch_prover`.
