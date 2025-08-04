@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -351,6 +354,37 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	return &newBatch, nil
 }
 
+func (o *Batch) InsertPermissionlessBatch(ctx context.Context, batchIndex *big.Int, batchHash common.Hash, codecVersion encoding.CodecVersion, chunk *Chunk) (*Batch, error) {
+	now := time.Now()
+	newBatch := &Batch{
+		Index:                  batchIndex.Uint64(),
+		Hash:                   batchHash.Hex(),
+		StartChunkIndex:        chunk.Index,
+		StartChunkHash:         chunk.Hash,
+		EndChunkIndex:          chunk.Index,
+		EndChunkHash:           chunk.Hash,
+		StateRoot:              chunk.StateRoot,
+		PrevL1MessageQueueHash: chunk.PrevL1MessageQueueHash,
+		PostL1MessageQueueHash: chunk.PostL1MessageQueueHash,
+		BatchHeader:            []byte{1, 2, 3},
+		CodecVersion:           int16(codecVersion),
+		EnableCompress:         false,
+		ProvingStatus:          int16(types.ProvingTaskVerified),
+		ProvedAt:               &now,
+		RollupStatus:           int16(types.RollupFinalized),
+		FinalizedAt:            &now,
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+
+	if err := db.Create(newBatch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.InsertPermissionlessBatch error: %w", err)
+	}
+
+	return newBatch, nil
+}
+
 // UpdateProvingStatus updates the proving status of a batch.
 func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
@@ -375,6 +409,29 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
+func (o *Batch) UpdateRollupStatusCommitAndFinalizeTxHash(ctx context.Context, hash string, status types.RollupStatus, commitTxHash string, finalizeTxHash string, dbTX ...*gorm.DB) error {
+	updateFields := make(map[string]interface{})
+	updateFields["commit_tx_hash"] = commitTxHash
+	updateFields["committed_at"] = utils.NowUTC()
+	updateFields["finalize_tx_hash"] = finalizeTxHash
+	updateFields["finalized_at"] = utils.NowUTC()
+
+	updateFields["rollup_status"] = int(status)
+
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateRollupStatusCommitAndFinalizeTxHash error: %w, batch hash: %v, status: %v, commitTxHash: %v, finalizeTxHash: %v", err, hash, status.String(), commitTxHash, finalizeTxHash)
 	}
 	return nil
 }

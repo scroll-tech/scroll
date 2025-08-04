@@ -18,9 +18,10 @@ import (
 
 // Config load configuration items.
 type Config struct {
-	L1Config *L1Config        `json:"l1_config"`
-	L2Config *L2Config        `json:"l2_config"`
-	DBConfig *database.Config `json:"db_config"`
+	L1Config       *L1Config        `json:"l1_config"`
+	L2Config       *L2Config        `json:"l2_config"`
+	DBConfig       *database.Config `json:"db_config"`
+	RecoveryConfig *RecoveryConfig  `json:"recovery_config"`
 }
 
 type ConfigForReplay struct {

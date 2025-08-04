@@ -142,7 +142,7 @@ func (p *ChunkProposer) SetReplayDB(replayDB *gorm.DB) {
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
 	p.chunkProposerCircleTotal.Inc()
-	if err := p.proposeChunk(); err != nil {
+	if err := p.ProposeChunk(); err != nil {
 		p.proposeChunkFailureTotal.Inc()
 		log.Error("propose new chunk failed", "err", err)
 		return
@@ -225,7 +225,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 	return nil
 }
 
-func (p *ChunkProposer) proposeChunk() error {
+func (p *ChunkProposer) ProposeChunk() error {
 	// unchunkedBlockHeight >= 1, assuming genesis batch with chunk 0, block 0 is committed.
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
