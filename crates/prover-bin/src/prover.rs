@@ -203,6 +203,10 @@ impl LocalProver {
             .get(hard_fork_name)
             .ok_or_else(|| eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
 
+        if !config.vks.is_empty() {
+            eyre::bail!("clean vks cache first or we will have wrong dumped vk");
+        }
+
         let workspace_path = &config.workspace_path;
         let universal_prover = EuclidV2Handler::new(config);
         let _ = universal_prover

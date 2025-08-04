@@ -108,38 +108,42 @@ impl ChunkInterpreter for RpcClient<'_> {
                 .get_block_by_hash(block_hash)
                 .full()
                 .await?
-                .ok_or_else(|| eyre::eyre!("Block not found"))?;
+                .ok_or_else(|| eyre::eyre!("Block {block_hash} not found"))?;
 
             let number = block.header.number;
+            let parent_hash = block.header.parent_hash;
             if number == 0 {
                 eyre::bail!("no number in header or use block 0");
             }
 
-            let prev_state_root = if let Some(witness) = prev_witness {
-                if witness.header.number != number - 1 {
-                    eyre::bail!(
-                        "the ref witness is not the previous block, expected {} get {}",
-                        number - 1,
-                        witness.header.number,
-                    );
-                }
-                witness.header.state_root
-            } else {
-                provider
-                    .scroll_disk_root((number - 1).into())
-                    .await?
-                    .disk_root
-            };
-
-            let witness = WitnessBuilder::new()
+            let mut witness_builder = WitnessBuilder::new()
                 .block(block)
                 .chain_id(chain_id)
-                .execution_witness(provider.debug_execution_witness(number.into()).await?)
-                .state_root(provider.scroll_disk_root(number.into()).await?.disk_root)?
-                .prev_state_root(prev_state_root)
-                .build()?;
+                .execution_witness(provider.debug_execution_witness(number.into()).await?);
 
-            Ok(witness)
+            let prev_state_root = match prev_witness {
+                Some(witness) => {
+                    if witness.header.number != number - 1 {
+                        eyre::bail!(
+                            "the ref witness is not the previous block, expected {} get {}",
+                            number - 1,
+                            witness.header.number,
+                        );
+                    }
+                    witness.header.state_root
+                }
+                None => {
+                    let parent_block = provider
+                        .get_block_by_hash(parent_hash)
+                        .await?
+                        .expect("parent block should exist");
+
+                    parent_block.header.state_root
+                }
+            };
+            witness_builder = witness_builder.prev_state_root(prev_state_root);
+
+            Ok(witness_builder.build()?)
         }
 
         tracing::debug!("fetch witness for {block_hash}");

@@ -268,13 +268,9 @@ func (p *ChunkProposer) ProposeChunk() error {
 		return fmt.Errorf("failed to get parent chunk: %w", err)
 	}
 
+	// Currently rollup-relayer only supports >= v7 codec version, it checks the minimum codec version after start.
+	// In EuclidV2 transition, empty PostL1MessageQueueHash will be naturally initialized to the first chunk's PrevL1MessageQueueHash.
 	chunk.PrevL1MessageQueueHash = common.HexToHash(parentChunk.PostL1MessageQueueHash)
-
-	// previous chunk is not CodecV7, this means this is the first chunk of the fork.
-	if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
-		chunk.PrevL1MessageQueueHash = common.Hash{}
-	}
-
 	chunk.PostL1MessageQueueHash = chunk.PrevL1MessageQueueHash
 
 	var previousPostL1MessageQueueHash common.Hash

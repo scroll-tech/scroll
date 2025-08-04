@@ -1,4 +1,4 @@
-.PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator
+.PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator libzkp
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..

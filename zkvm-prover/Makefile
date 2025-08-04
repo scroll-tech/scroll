@@ -3,7 +3,7 @@
 RUST_MIN_STACK ?= 16777216
 export RUST_MIN_STACK
 
-CIRCUIT_STUFF = .work/chunk/app.vmexe .work/batch/app.vmexe .work/bundle/app.vmexe
+CIRCUIT_STUFF = .work/euclid/chunk/app.vmexe .work/feynman/chunk/app.vmexe
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
     PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -21,7 +21,7 @@ endif
 ZKVM_COMMIT=$(shell echo ${ZKVM_VERSION} | cut -d " " -f2)
 $(info ZKVM_COMMIT is ${ZKVM_COMMIT})
 
-#PLONKY3_GPU_VERSION=$(shell ./print_plonky3gpu_version.sh | sed -n '2p')
+$(info PLONKY3_VERSION is ${PLONKY3_VERSION})
 
 GIT_REV=$(shell git rev-parse --short HEAD)
 GO_TAG=$(shell grep "var tag = " ../common/version/version.go | cut -d "\"" -f2)
@@ -33,25 +33,15 @@ else
 endif
 
 ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
-#ifeq (${PLONKY3_GPU_VERSION},)
-#	# use plonky3 with CPU
-#    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
-#else
-#	# use gpu
-#    ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION}
-#endif
 
-prover_gpu:
-	cd ../crates/gpu_override && cargo tree >/dev/null
-	$(eval PLONKY3_GPU_VERSION:=$(shell ./print_plonky3gpu_version.sh | sed -n '2p'))
-	$(eval ZK_VERSION:=${ZKVM_COMMIT}-${PLONKY3_GPU_VERSION})
-	@echo "Updated ZK_VERSION to ${ZK_VERSION} after prover_gpu"
+E2E_HANDLE_SET = ../tests/prover-e2e/testset.json
+DUMP_DIR = .work
 
-prover: prover_gpu
-	cd ../crates/gpu_override && GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release -p prover
+prover:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override build
 
 prover_cpu:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release -p prover
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
 
 
 tests_binary:
@@ -64,7 +54,15 @@ lint:
 	cargo fmt --all
 
 $(CIRCUIT_STUFF):
-	bash .work/download-release.sh
+	@echo "Download stuff with download-release.sh, and put them into correct directory";
+	@exit 1;
 
 test_run: $(CIRCUIT_STUFF)
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json
+
+test_e2e_run: $(CIRCUIT_STUFF) ${E2E_HANDLE_SET}
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json handle ${E2E_HANDLE_SET}
+
+gen_verifier_stuff:
+	mkdir -p ${DUMP_DIR}
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json --forkname feynman dump ${DUMP_DIR}

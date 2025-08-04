@@ -90,9 +90,9 @@ func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64
 	var blocks []*encoding.Block
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
-		block, err := w.GetBlockByNumberOrHash(ctx, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(number)))
+		block, err := w.BlockByNumber(ctx, new(big.Int).SetUint64(number))
 		if err != nil {
-			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
+			return fmt.Errorf("failed to BlockByNumber: %v. number: %v", err, number)
 		}
 
 		var count int

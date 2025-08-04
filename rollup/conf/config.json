@@ -3,7 +3,7 @@
     "endpoint": "https://rpc.ankr.com/eth",
     "start_height": 0,
     "relayer_config": {
-      "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
+      "gas_price_oracle_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.scroll.io",
         "escalate_blocks": 1,
@@ -38,7 +38,6 @@
     "relayer_config": {
       "validium_mode": false,
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
-      "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.ankr.com/eth",
         "escalate_blocks": 1,
