@@ -175,9 +175,9 @@ func (r *Layer2Relayer) validateDatabaseConsistency(batchesToValidate []*dbBatch
 		return fmt.Errorf("failed to get previous chunk %d for continuity check: %w", firstChunk.Index-1, err)
 	}
 
-	// Validate codec version consistency across all batches
 	firstBatchCodecVersion := batchesToValidate[0].Batch.CodecVersion
 	for i, batch := range batchesToValidate {
+		// Validate codec version consistency
 		if batch.Batch.CodecVersion != firstBatchCodecVersion {
 			return fmt.Errorf("batch %d has different codec version %d, expected %d", batch.Batch.Index, batch.Batch.CodecVersion, firstBatchCodecVersion)
 		}
