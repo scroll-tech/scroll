@@ -427,9 +427,9 @@ func assembleDABatchFromPayload(calldataInfo *CalldataInfo, payload encoding.DAB
 
 func assembleBlocksFromPayload(payload encoding.DABlobPayload) ([]*encoding.Block, error) {
 	daBlocks := payload.Blocks()
-	txss := payload.Transactions()
-	if len(daBlocks) != len(txss) {
-		return nil, fmt.Errorf("mismatched number of blocks and transactions: %d blocks, %d transactions", len(daBlocks), len(txss))
+	txns := payload.Transactions()
+	if len(daBlocks) != len(txns) {
+		return nil, fmt.Errorf("mismatched number of blocks and transactions: %d blocks, %d transactions", len(daBlocks), len(txns))
 	}
 	blocks := make([]*encoding.Block, len(daBlocks))
 	for i := range daBlocks {
@@ -440,7 +440,7 @@ func assembleBlocksFromPayload(payload encoding.DABlobPayload) ([]*encoding.Bloc
 				BaseFee:  daBlocks[i].BaseFee(),
 				GasLimit: daBlocks[i].GasLimit(),
 			},
-			Transactions: encoding.TxsToTxsData(txss[i]),
+			Transactions: encoding.TxsToTxsData(txns[i]),
 		}
 	}
 	return blocks, nil
