@@ -59,8 +59,8 @@ func (*Bundle) TableName() string {
 	return "bundle"
 }
 
-// getLatestBundle retrieves the latest bundle from the database.
-func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
+// GetLatestBundle retrieves the latest bundle from the database.
+func (o *Bundle) GetLatestBundle(ctx context.Context) (*Bundle, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Order("index desc")
@@ -70,7 +70,7 @@ func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("getLatestBundle error: %w", err)
+		return nil, fmt.Errorf("GetLatestBundle error: %w", err)
 	}
 	return &latestBundle, nil
 }
@@ -106,7 +106,7 @@ func (o *Bundle) GetBundles(ctx context.Context, fields map[string]interface{}, 
 // GetFirstUnbundledBatchIndex retrieves the first unbundled batch index.
 func (o *Bundle) GetFirstUnbundledBatchIndex(ctx context.Context) (uint64, error) {
 	// Get the latest bundle
-	latestBundle, err := o.getLatestBundle(ctx)
+	latestBundle, err := o.GetLatestBundle(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Bundle.GetFirstUnbundledBatchIndex error: %w", err)
 	}
@@ -237,14 +237,18 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 
 // UpdateRollupStatus updates the rollup status for a bundle.
 // only used in unit tests.
-func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error {
+func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
 		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Where("hash", hash)
 

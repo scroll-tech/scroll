@@ -4,3 +4,5 @@ docs/
 l2geth/
 rpc-gateway/
 *target/*
+
+permissionless-batches/conf/

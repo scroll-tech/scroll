@@ -59,12 +59,12 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 const blocksFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
-func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
+func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) error {
 	w.metrics.fetchRunningMissingBlocksTotal.Inc()
 	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
-		return
+		return fmt.Errorf("failed to GetL2BlocksLatestHeight: %w", err)
 	}
 
 	// Fetch and store block traces for missing blocks
@@ -75,16 +75,18 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			to = blockHeight
 		}
 
-		if err = w.getAndStoreBlocks(w.ctx, from, to); err != nil {
+		if err = w.GetAndStoreBlocks(w.ctx, from, to); err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
-			return
+			return fmt.Errorf("fail to getAndStoreBlockTraces: %w", err)
 		}
 		w.metrics.fetchRunningMissingBlocksHeight.Set(float64(to))
 		w.metrics.rollupL2BlocksFetchedGap.Set(float64(blockHeight - to))
 	}
+
+	return nil
 }
 
-func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64) error {
+func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64) error {
 	var blocks []*encoding.Block
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)

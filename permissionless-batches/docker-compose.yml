@@ -1,0 +1,98 @@
+name: permissionless-batches
+
+services:
+  relayer-batch-production:
+    build:
+      context: ../
+      dockerfile: build/dockerfiles/recovery_permissionless_batches.Dockerfile
+    network_mode: host
+    container_name: permissionless-batches-relayer
+    volumes:
+      - ./conf/relayer/config.json:/app/conf/config.json
+      - ./conf/genesis.json:/app/conf/genesis.json
+    command: "--config /app/conf/config.json --min-codec-version 0"
+    profiles:
+      - batch-production-submission
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.0
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: postgres
+      POSTGRES_DB: scroll
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  coordinator-api:
+    image: scrolltech/coordinator-api:v4.5.19
+    volumes:
+      - ./conf/coordinator/config.json:/coordinator/config.json:ro
+      - ./conf/genesis.json:/coordinator/genesis.json:ro
+      - ./conf/coordinator/coordinator_run.sh:/bin/coordinator_run.sh
+    entrypoint: /bin/coordinator_run.sh
+    profiles:
+      - local-prover
+      - cloud-prover
+    ports: [8556:8555]
+    environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
+      - SCROLL_PROVER_ASSETS_DIR=/verifier/assets/
+      - HTTP_PORT=8555
+      - METRICS_PORT=8390
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8555/coordinator/v1/challenge"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+      start_period: 5m
+
+  coordinator-cron:
+    build:
+      context: ../
+      dockerfile: build/dockerfiles/coordinator-cron.Dockerfile
+    volumes:
+      - ./conf/coordinator/config.json:/app/conf/config.json
+    command: "--config /app/conf/config.json --verbosity 3"
+    profiles:
+      - local-prover
+      - cloud-prover
+    depends_on:
+      db:
+        condition: service_healthy
+
+  local-prover:
+    image: scrolltech/cuda-prover:v4.5.12-97de9882-6ad5d8c-261b322
+    network_mode: host
+    platform: linux/amd64
+    runtime: nvidia
+    entrypoint: /bin/prover_run.sh
+    environment:
+      - SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION}
+      - LD_LIBRARY_PATH=/prover:/usr/local/cuda/lib64
+      - RUST_MIN_STACK=16777216
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+    volumes:
+      - ./conf/proving-service/config.json:/prover/conf/config.json:ro
+      - ./conf/proving-service/prover_run.sh:/bin/prover_run.sh
+      - ./conf/proving-service/db:/db
+      - ./conf/proving-service/keys:/keys
+    depends_on:
+      coordinator-api:
+        condition: service_healthy
+
+volumes:
+    db_data:
