@@ -205,6 +205,9 @@ func (r *Layer2Relayer) validateSingleBatchConsistency(batch *dbBatchWithChunks,
 		if batch.Batch.Index != prevBatch.Batch.Index+1 {
 			return fmt.Errorf("batch index is not sequential: prev batch index %d, current batch index %d", prevBatch.Batch.Index, batch.Batch.Index)
 		}
+		if parentBatchHash != common.HexToHash(prevBatch.Batch.Hash) {
+			return fmt.Errorf("parent batch hash does not match previous batch hash: expected %s, got %s", prevBatch.Batch.Hash, batch.Batch.ParentBatchHash)
+		}
 	} else {
 		// For the first batch, verify continuity with parent batch from database
 		parentBatch, err := r.batchOrm.GetBatchByHash(r.ctx, batch.Batch.ParentBatchHash)
@@ -335,7 +338,7 @@ func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *Ca
 	// Validate each blob against its corresponding batch
 	for i, blob := range blobs {
 		dbBatch := batchesToValidate[i].Batch
-		if err := r.validateSingleBlobAgainstBatch(calldataInfo, blob, dbBatch, codec); err != nil {
+		if err := r.validateSingleBlobAgainstBatch(blob, dbBatch, codec); err != nil {
 			return fmt.Errorf("blob validation failed for batch %d: %w", dbBatch.Index, err)
 		}
 	}
@@ -344,7 +347,7 @@ func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *Ca
 }
 
 // validateSingleBlobAgainstBatch validates a single blob against its batch data
-func (r *Layer2Relayer) validateSingleBlobAgainstBatch(calldataInfo *CalldataInfo, blob *kzg4844.Blob, dbBatch *orm.Batch, codec encoding.Codec) error {
+func (r *Layer2Relayer) validateSingleBlobAgainstBatch(blob *kzg4844.Blob, dbBatch *orm.Batch, codec encoding.Codec) error {
 	// Decode blob payload
 	payload, err := codec.DecodeBlob(blob)
 	if err != nil {
@@ -352,7 +355,7 @@ func (r *Layer2Relayer) validateSingleBlobAgainstBatch(calldataInfo *CalldataInf
 	}
 
 	// Validate batch hash
-	daBatch, err := assembleDABatchFromPayload(calldataInfo, payload, dbBatch, codec)
+	daBatch, err := assembleDABatchFromPayload(payload, dbBatch, codec)
 	if err != nil {
 		return fmt.Errorf("failed to assemble batch from payload: %w", err)
 	}
@@ -398,15 +401,14 @@ func (r *Layer2Relayer) validateMessageQueueConsistency(batchIndex uint64, chunk
 	return nil
 }
 
-func assembleDABatchFromPayload(calldataInfo *CalldataInfo, payload encoding.DABlobPayload, dbBatch *orm.Batch, codec encoding.Codec) (encoding.DABatch, error) {
+func assembleDABatchFromPayload(payload encoding.DABlobPayload, dbBatch *orm.Batch, codec encoding.Codec) (encoding.DABatch, error) {
 	blocks, err := assembleBlocksFromPayload(payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to assemble blocks from payload batch_index=%d codec_version=%d parent_batch_hash=%s: %w", dbBatch.Index, dbBatch.CodecVersion, calldataInfo.ParentBatchHash.Hex(), err)
+		return nil, fmt.Errorf("failed to assemble blocks from payload batch_index=%d codec_version=%d parent_batch_hash=%s: %w", dbBatch.Index, dbBatch.CodecVersion, dbBatch.ParentBatchHash, err)
 	}
-	parentBatchHash := calldataInfo.ParentBatchHash
 	batch := &encoding.Batch{
-		Index:                  dbBatch.Index, // The database provides only batch index, other fields are derived from blob payload
-		ParentBatchHash:        parentBatchHash,
+		Index:                  dbBatch.Index,                             // The database provides only batch index, other fields are derived from blob payload
+		ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash), // The first batch's parent hash is verified with calldata, subsequent batches are linked via dbBatch.ParentBatchHash and verified in database consistency checks
 		PrevL1MessageQueueHash: payload.PrevL1MessageQueueHash(),
 		PostL1MessageQueueHash: payload.PostL1MessageQueueHash(),
 		Blocks:                 blocks,
@@ -420,7 +422,7 @@ func assembleDABatchFromPayload(calldataInfo *CalldataInfo, payload encoding.DAB
 	}
 	daBatch, err := codec.NewDABatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build DABatch batch_index=%d codec_version=%d parent_batch_hash=%s: %w", dbBatch.Index, dbBatch.CodecVersion, calldataInfo.ParentBatchHash.Hex(), err)
+		return nil, fmt.Errorf("failed to build DABatch batch_index=%d codec_version=%d parent_batch_hash=%s: %w", dbBatch.Index, dbBatch.CodecVersion, dbBatch.ParentBatchHash, err)
 	}
 	return daBatch, nil
 }
