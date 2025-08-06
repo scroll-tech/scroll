@@ -1,4 +1,4 @@
-use crate::zk_circuits_handler::{euclidV2::EuclidV2Handler, CircuitsHandler};
+use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
@@ -188,10 +188,10 @@ impl LocalProver {
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
         match hard_fork_name {
-            // The new EuclidV2Handler is a universal handler
+            // The new Handler is a universal handler
             // We can add other handler implements if needed
             "some future forkname" => unreachable!(),
-            _ => Arc::new(Arc::new(Mutex::new(EuclidV2Handler::new(config))))
+            _ => Arc::new(Arc::new(Mutex::new(UniversalHandler::new(config))))
                 as Arc<dyn CircuitsHandler>,
         }
     }
@@ -208,7 +208,7 @@ impl LocalProver {
         }
 
         let workspace_path = &config.workspace_path;
-        let universal_prover = EuclidV2Handler::new(config);
+        let universal_prover = UniversalHandler::new(config);
         let _ = universal_prover
             .get_prover()
             .dump_universal_verifier(Some(out_path))?;

@@ -7,15 +7,15 @@ use crate::{
     utils::panic_catch,
 };
 use scroll_zkvm_types::public_inputs::ForkName;
-use scroll_zkvm_verifier_euclid::verifier::UniversalVerifier;
+use scroll_zkvm_verifier::verifier::UniversalVerifier;
 use std::path::Path;
 
-pub struct EuclidV2Verifier {
+pub struct Verifier {
     verifier: UniversalVerifier,
     fork: ForkName,
 }
 
-impl EuclidV2Verifier {
+impl Verifier {
     pub fn new(assets_dir: &str, fork: ForkName) -> Self {
         let verifier_bin = Path::new(assets_dir).join("verifier.bin");
         let config = Path::new(assets_dir).join("root-verifier-vm-config");
@@ -29,7 +29,7 @@ impl EuclidV2Verifier {
     }
 }
 
-impl ProofVerifier for EuclidV2Verifier {
+impl ProofVerifier for Verifier {
     fn verify(&self, task_type: super::TaskType, proof: &[u8]) -> Result<bool> {
         panic_catch(|| match task_type {
             TaskType::Chunk => {

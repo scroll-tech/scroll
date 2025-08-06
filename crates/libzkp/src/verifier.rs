@@ -1,7 +1,7 @@
 #![allow(static_mut_refs)]
 
-mod euclidv2;
-use euclidv2::EuclidV2Verifier;
+mod universal;
+use universal::Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -61,7 +61,7 @@ pub fn init(config: VerifierConfig) {
     for cfg in &config.circuits {
         let canonical_fork_name = cfg.fork_name.to_lowercase();
 
-        let verifier = EuclidV2Verifier::new(&cfg.assets_path, canonical_fork_name.as_str().into());
+        let verifier = Verifier::new(&cfg.assets_path, canonical_fork_name.as_str().into());
         let ret = verifiers.insert(canonical_fork_name, Arc::new(Mutex::new(verifier)));
         assert!(
             ret.is_none(),

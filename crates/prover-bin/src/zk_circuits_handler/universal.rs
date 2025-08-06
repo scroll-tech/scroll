@@ -10,19 +10,19 @@ use async_trait::async_trait;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use eyre::Result;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
-use scroll_zkvm_prover_euclid::{BatchProver, BundleProverEuclidV2, ChunkProver};
+use scroll_zkvm_prover::{BatchProver, BundleProverEuclidV2, ChunkProver};
 use scroll_zkvm_types::ProvingTask;
 use tokio::sync::Mutex;
-pub struct EuclidV2Handler {
+pub struct UniversalHandler {
     chunk_prover: ChunkProver,
     batch_prover: BatchProver,
     bundle_prover: BundleProverEuclidV2,
     cached_vks: HashMap<ProofType, OnceLock<String>>,
 }
 
-unsafe impl Send for EuclidV2Handler {}
+unsafe impl Send for UniversalHandler {}
 
-impl EuclidV2Handler {
+impl UniversalHandler {
     pub fn new(cfg: &CircuitConfig) -> Self {
         let workspace_path = &cfg.workspace_path;
         let p = Phase::EuclidV2;
@@ -78,7 +78,7 @@ impl EuclidV2Handler {
 }
 
 #[async_trait]
-impl CircuitsHandler for Arc<Mutex<EuclidV2Handler>> {
+impl CircuitsHandler for Arc<Mutex<UniversalHandler>> {
     async fn get_vk(&self, task_type: ProofType) -> String {
         self.lock().await.get_vk_and_cache(task_type)
     }

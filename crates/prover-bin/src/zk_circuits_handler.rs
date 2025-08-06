@@ -1,12 +1,12 @@
 //pub mod euclid;
 
 #[allow(non_snake_case)]
-pub mod euclidV2;
+pub mod universal;
 
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
-use scroll_zkvm_prover_euclid::ProverConfig;
+use scroll_zkvm_prover::ProverConfig;
 use std::path::Path;
 
 #[async_trait]
