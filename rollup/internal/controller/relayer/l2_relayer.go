@@ -1058,11 +1058,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		return nil, fmt.Errorf("batch %d state root is zero", dbBatch.Index)
 	}
 
-	// Check proof if present
-	if aggProof != nil && len(aggProof.Proof()) == 0 {
-		return nil, fmt.Errorf("aggregate proof is empty")
-	}
-
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundlePostEuclidV2",
@@ -1095,11 +1090,6 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadValidium(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
-	// Check proof if present
-	if aggProof != nil && len(aggProof.Proof()) == 0 {
-		return nil, fmt.Errorf("aggregate proof is empty")
-	}
-
 	log.Info("Packing validium finalizeBundle", "batchHeaderLength", len(dbBatch.BatchHeader), "codecVersion", dbBatch.CodecVersion, "totalL1Messages", endChunk.TotalL1MessagesPoppedBefore+endChunk.TotalL1MessagesPoppedInChunk, "stateRoot", dbBatch.StateRoot, "withdrawRoot", dbBatch.WithdrawRoot, "withProof", aggProof != nil)
 
 	var proof []byte
