@@ -3,6 +3,7 @@ use eyre::Result;
 use sbv_primitives::{types::BlockWitness, B256};
 use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, ToArchievedWitness},
+    public_inputs::ForkName,
     task::ProvingTask,
 };
 
@@ -71,7 +72,7 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
             identifier: value.identifier(),
             fork_name: value.fork_name,
             aggregated_proofs: Vec::new(),
-            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
+            serialized_witness: vec![witness.rkyv_serialize(Some(ForkName::Feynman))?.to_vec()],
             vk: Vec::new(),
         })
     }
