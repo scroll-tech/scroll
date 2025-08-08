@@ -1,4 +1,4 @@
-use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
+use crate::zk_circuits_handler::{universal::UniversalHandler, assets::AssetsHandler, CircuitsHandler};
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
@@ -16,11 +16,99 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AssetsLocationData {
+    /// the base url to form a general downloading url for an asset, MUST HAVE A TRAILING SLASH
+    pub base_url: url::Url,
+    /// a altered url for specififed vk
+    pub asset_detours: HashMap<String, url::Url>,
+}
+
+impl AssetsLocationData {
+
+    fn gen_asset_url(&self, vk: &str, proof_type: ProofType) -> Result<url::Url> {
+        if let Some(url) = self.asset_detours.get(vk) {
+            Ok(url.clone())
+        } else {
+            Ok(self.base_url
+            .join(match proof_type {
+                ProofType::Chunk => format!("chunk/{vk}/"),
+                ProofType::Batch => format!("batch/{vk}/"),
+                ProofType::Bundle => format!("bundle/{vk}/"),
+                _ => unreachable!("unreconginzed type"),
+            }.as_str())?)
+        }
+    }
+
+    pub fn validate(self) -> Result<Self> {
+        if !self.base_url.path().ends_with('/') {
+            eyre::bail!("base_url must have a trailing slash, got: {}", self.base_url);
+        }
+        Ok(self)
+    }
+
+    pub async fn get_asset(&self, vk: &str, proof_type: ProofType, base_path: impl AsRef<Path>) -> Result<PathBuf> {
+        let download_files = ["app.vmexe", "openvm.toml"];
+        
+        // Step 1: Create a local path for storage
+        let storage_path = base_path.as_ref().join(vk);
+        std::fs::create_dir_all(&storage_path)?;
+        
+        // Step 2 & 3: Download each file if needed
+        let url_base = self.gen_asset_url(vk, proof_type)?;
+        let client = reqwest::Client::new();
+        
+        for filename in download_files.iter() {
+            let local_file_path = storage_path.join(filename);
+            let download_url = url_base.join(filename)?;
+
+            // Check if file already exists
+            if local_file_path.exists() {
+                // Get file metadata to check size
+                if let Ok(metadata) = std::fs::metadata(&local_file_path) {
+                    // Make a HEAD request to get remote file size
+                    
+                    if let Ok(head_resp) = client.head(download_url.clone()).send().await {
+                        if let Some(content_length) = head_resp.headers().get("content-length") {
+                            if let Ok(remote_size) = content_length.to_str().unwrap_or("0").parse::<u64>() {
+                                // If sizes match, skip download
+                                if metadata.len() == remote_size {
+                                    println!("File {} already exists with matching size, skipping download", filename);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            println!("Downloading {} from {}", filename, download_url);
+            
+            let response = client.get(download_url).send().await?;
+            if !response.status().is_success() {
+                eyre::bail!("Failed to download {}: HTTP status {}", filename, response.status());
+            }
+            
+            // Stream the content directly to file instead of loading into memory
+            let mut file = std::fs::File::create(&local_file_path)?;
+            let mut stream = response.bytes_stream();
+            
+            use futures_util::StreamExt;
+            while let Some(chunk) = stream.next().await {
+                std::io::Write::write_all(&mut file, &chunk?)?;
+            }
+        }
+        
+        // Step 4: Return the storage path
+        Ok(storage_path)
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LocalProverConfig {
@@ -45,6 +133,7 @@ impl LocalProverConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub hard_fork_name: String,
+    /// The path to save assets for a specified hard fork phase
     pub workspace_path: String,
     /// cached vk value to save some initial cost, for debugging only
     #[serde(default)]
@@ -64,23 +153,12 @@ impl ProvingService for LocalProver {
     fn is_local(&self) -> bool {
         true
     }
-    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
-        let mut vks = vec![];
-        for (hard_fork_name, cfg) in self.config.circuits.iter() {
-            for proof_type in &req.proof_types {
-                if let Some(vk) = cfg.vks.get(proof_type) {
-                    vks.push(vk.clone())
-                } else {
-                    let handler = self.get_or_init_handler(hard_fork_name);
-                    vks.push(handler.get_vk(*proof_type).await);
-                }
-            }
-        }
-
-        GetVkResponse { vks, error: None }
+    async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
+        // get vk has been deprecated in new prover with dynamic asset loading scheme
+        GetVkResponse { vks: vec![], error: None }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        let handler = self.get_or_init_handler(&req.hard_fork_name);
+        let handler = self.get_or_init_handler(&req.hard_fork_name, req.proof_type);
         match self.do_prove(req, handler).await {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
@@ -174,26 +252,19 @@ impl LocalProver {
         })
     }
 
-    fn get_or_init_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
+    fn get_or_init_handler(&self, hard_fork_name: &str, proof_type: ProofType) -> Arc<dyn CircuitsHandler> {
         let lk = self
             .handlers
             .get(hard_fork_name)
             .expect("coordinator should never sent unexpected forkname");
-        lk.get_or_init(|| self.new_handler(hard_fork_name)).clone()
-    }
 
-    pub fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
-        // if we got assigned a task for an unknown hard fork, there is something wrong in the
-        // coordinator
-        let config = self.config.circuits.get(hard_fork_name).unwrap();
-
-        match hard_fork_name {
-            // The new Handler is a universal handler
-            // We can add other handler implements if needed
-            "some future forkname" => unreachable!(),
-            _ => Arc::new(Arc::new(Mutex::new(UniversalHandler::new(config))))
-                as Arc<dyn CircuitsHandler>,
-        }
+        lk.get_or_init(||{
+            // if we got assigned a task for an unknown hard fork, there is something wrong in the
+            // coordinator
+            let config = self.config.circuits.get(hard_fork_name).unwrap();
+            let circuits_handler = Mutex::new(UniversalHandler::new(config, proof_type).unwrap());
+            Arc::new(circuits_handler)
+        }).clone()
     }
 
     pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()> {
@@ -208,9 +279,9 @@ impl LocalProver {
         }
 
         let workspace_path = &config.workspace_path;
-        let universal_prover = UniversalHandler::new(config);
+        let universal_prover = AssetsHandler::new(config);
         let _ = universal_prover
-            .get_prover()
+            .get_evm_prover()
             .dump_universal_verifier(Some(out_path))?;
 
         #[derive(Debug, serde::Serialize)]

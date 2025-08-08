@@ -2,6 +2,8 @@
 
 #[allow(non_snake_case)]
 pub mod universal;
+// keep an old handler for utilities on assets
+pub mod assets;
 
 use async_trait::async_trait;
 use eyre::Result;
@@ -11,7 +13,7 @@ use std::path::Path;
 
 #[async_trait]
 pub trait CircuitsHandler: Sync + Send {
-    async fn get_vk(&self, task_type: ProofType) -> String;
+    async fn get_vk(&self) -> String;
 
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String>;
 }

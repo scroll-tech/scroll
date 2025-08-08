@@ -17,8 +17,9 @@ tiny-keccak = { workspace = true, features = ["sha3", "keccak"] }
 eyre.workspace = true
 
 futures = "0.3.30"
+futures-util = "0.3"
 
-reqwest = { version = "0.12.4", features = ["gzip"] }
+reqwest = { version = "0.12.4", features = ["gzip", "stream"] }
 reqwest-middleware = "0.3"
 reqwest-retry = "0.5"
 hex = "0.4.3"
@@ -30,5 +31,5 @@ sled = "0.34.7"
 http = "1.1.0"
 clap = { version = "4.5", features = ["derive"] }
 ctor = "0.2.8"
-url = "2.5.4"
+url = { version = "2.5.4", features = ["serde",] }
 serde_bytes = "0.11.15"
