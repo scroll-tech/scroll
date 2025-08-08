@@ -31,9 +31,7 @@ impl UniversalHandler {
         let use_evm = proof_type == ProofType::Bundle;
 
         let prover = Prover::setup(config, use_evm, None)?;
-        Ok(Self {
-            prover,
-        })
+        Ok(Self { prover })
     }
 
     /// get_prover get the inner prover, later we would replace chunk/batch/bundle_prover with
@@ -45,7 +43,6 @@ impl UniversalHandler {
     pub fn get_task_from_input(input: &str) -> Result<ProvingTask> {
         Ok(serde_json::from_str(input)?)
     }
-
 }
 
 #[async_trait]
@@ -67,12 +64,16 @@ impl CircuitsHandler for Mutex<UniversalHandler> {
         //     );
         // }
         if need_snark && handler_self.prover.evm_prover.is_none() {
-            eyre::bail!("do not init prover for evm (vk: {})", 
-            BASE64_STANDARD.encode(handler_self.get_prover().get_app_vk()))
+            eyre::bail!(
+                "do not init prover for evm (vk: {})",
+                BASE64_STANDARD.encode(handler_self.get_prover().get_app_vk())
+            )
         }
 
         // let use_evm = prove_request.proof_type == ProofType::Bundle;
-        let proof = handler_self.get_prover().gen_proof_universal(u_task, need_snark)?;
+        let proof = handler_self
+            .get_prover()
+            .gen_proof_universal(u_task, need_snark)?;
 
         //TODO: check expected PI
         Ok(serde_json::to_string(&proof)?)

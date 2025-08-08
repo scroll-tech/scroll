@@ -7,8 +7,8 @@ pub mod assets;
 
 use async_trait::async_trait;
 use eyre::Result;
-use scroll_zkvm_types::ProvingTask;
 use scroll_zkvm_prover::ProverConfig;
+use scroll_zkvm_types::ProvingTask;
 use std::path::Path;
 
 #[async_trait]

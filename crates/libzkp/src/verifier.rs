@@ -1,7 +1,6 @@
 #![allow(static_mut_refs)]
 
 mod universal;
-use universal::Verifier;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,6 +8,7 @@ use std::{
     path::Path,
     sync::{Arc, Mutex, OnceLock},
 };
+use universal::Verifier;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
