@@ -17,7 +17,7 @@ use std::{
     collections::HashMap,
     fs::File,
     path::{Path, PathBuf},
-    sync::{Arc, OnceLock},
+    sync::{Arc, LazyLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
@@ -26,6 +26,7 @@ use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 pub struct AssetsLocationData {
     /// the base url to form a general downloading url for an asset, MUST HAVE A TRAILING SLASH
     pub base_url: url::Url,
+    #[serde(default)]
     /// a altered url for specififed vk
     pub asset_detours: HashMap<String, url::Url>,
 }
@@ -46,11 +47,11 @@ impl AssetsLocationData {
         }
     }
 
-    pub fn validate(self) -> Result<Self> {
+    pub fn validate(&self) -> Result<()> {
         if !self.base_url.path().ends_with('/') {
             eyre::bail!("base_url must have a trailing slash, got: {}", self.base_url);
         }
-        Ok(self)
+        Ok(())
     }
 
     pub async fn get_asset(&self, vk: &str, proof_type: ProofType, base_path: impl AsRef<Path>) -> Result<PathBuf> {
@@ -135,9 +136,13 @@ pub struct CircuitConfig {
     pub hard_fork_name: String,
     /// The path to save assets for a specified hard fork phase
     pub workspace_path: String,
+    #[serde(flatten)]
+    /// The location data for dynamic loading
+    pub location_data: AssetsLocationData,
     /// cached vk value to save some initial cost, for debugging only
     #[serde(default)]
     pub vks: HashMap<ProofType, String>,
+    
 }
 
 pub struct LocalProver {
@@ -145,7 +150,7 @@ pub struct LocalProver {
     next_task_id: u64,
     current_task: Option<JoinHandle<Result<String>>>,
 
-    handlers: HashMap<String, OnceLock<Arc<dyn CircuitsHandler>>>,
+    handlers: HashMap<String, Arc<dyn CircuitsHandler>>,
 }
 
 #[async_trait]
@@ -158,8 +163,7 @@ impl ProvingService for LocalProver {
         GetVkResponse { vks: vec![], error: None }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        let handler = self.get_or_init_handler(&req.hard_fork_name, req.proof_type);
-        match self.do_prove(req, handler).await {
+        match self.do_prove(req).await {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
                 status: TaskStatus::Failed,
@@ -210,34 +214,68 @@ impl ProvingService for LocalProver {
     }
 }
 
+static GLOBAL_ASSET_URLS_FEYNMAN: LazyLock<HashMap<String, url::Url>> = LazyLock::new(|| {
+    HashMap::from(
+        [
+            ("".to_string(), url::Url::parse("https://assets.example.com/chunk/default/").unwrap()),
+        ],
+    )
+});
+
 impl LocalProver {
-    pub fn new(config: LocalProverConfig) -> Self {
-        let handlers = config
-            .circuits
-            .keys()
-            .map(|k| (k.clone(), OnceLock::new()))
-            .collect();
+    pub fn new(mut config: LocalProverConfig) -> Self {
+
+        for (fork_name, circuit_config) in config.circuits.iter_mut() {
+            // validate each base url
+            circuit_config.location_data.validate().unwrap();
+            let mut template_url_mapping = match fork_name.to_lowercase().as_str() {
+                "feynman" => GLOBAL_ASSET_URLS_FEYNMAN.clone(),
+                _ => HashMap::new(),
+            };
+
+            // apply default settings in template
+            for (key, url) in circuit_config.location_data.asset_detours.drain() {
+                template_url_mapping.insert(key, url);
+            }         
+            circuit_config.location_data.asset_detours = template_url_mapping;   
+        }
+
         Self {
             config,
             next_task_id: 0,
             current_task: None,
-            handlers,
+            handlers: HashMap::new(),
         }
     }
 
     async fn do_prove(
         &mut self,
         req: ProveRequest,
-        handler: Arc<dyn CircuitsHandler>,
     ) -> Result<ProveResponse> {
+        use base64::{prelude::BASE64_STANDARD, Engine};
+
         self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
-        let req_clone = req.clone();
+        let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
+        let vk = BASE64_STANDARD.encode(&prover_task.vk);
+        let handler = if let Some(handler) = self.handlers.get(&vk){
+            handler.clone()
+        } else {
+            let base_config = self.config.circuits
+                .get(&req.hard_fork_name)
+                .ok_or_else(||eyre::eyre!("coordinator sent unexpected forkname {}", req.hard_fork_name))?;
+            let asset_path = base_config.location_data.get_asset(&vk, req.proof_type, &base_config.workspace_path).await?;
+            let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(&asset_path, req.proof_type)?));
+            self.handlers.insert(vk, circuits_handler.clone());
+            circuits_handler
+        };
+
         let handle = Handle::current();
+        let is_evm = req.proof_type == ProofType::Bundle;
         let task_handle =
-            tokio::task::spawn_blocking(move || handle.block_on(handler.get_proof_data(req_clone)));
+            tokio::task::spawn_blocking(move || handle.block_on(handler.get_proof_data(&prover_task, is_evm)));
         self.current_task = Some(task_handle);
 
         Ok(ProveResponse {
@@ -250,21 +288,6 @@ impl LocalProver {
             input: Some(req.input),
             ..Default::default()
         })
-    }
-
-    fn get_or_init_handler(&self, hard_fork_name: &str, proof_type: ProofType) -> Arc<dyn CircuitsHandler> {
-        let lk = self
-            .handlers
-            .get(hard_fork_name)
-            .expect("coordinator should never sent unexpected forkname");
-
-        lk.get_or_init(||{
-            // if we got assigned a task for an unknown hard fork, there is something wrong in the
-            // coordinator
-            let config = self.config.circuits.get(hard_fork_name).unwrap();
-            let circuits_handler = Mutex::new(UniversalHandler::new(config, proof_type).unwrap());
-            Arc::new(circuits_handler)
-        }).clone()
     }
 
     pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()> {

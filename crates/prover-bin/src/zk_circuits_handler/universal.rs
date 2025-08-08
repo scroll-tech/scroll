@@ -1,14 +1,10 @@
-use std::{
-    path::Path,
-    sync::Arc,
-};
+use std::path::Path;
 
 use super::CircuitsHandler;
-use crate::prover::CircuitConfig;
 use async_trait::async_trait;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use eyre::Result;
-use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
+use scroll_proving_sdk::prover::ProofType;
 use scroll_zkvm_prover::{Prover, ProverConfig};
 use scroll_zkvm_types::ProvingTask;
 use tokio::sync::Mutex;
@@ -19,11 +15,10 @@ pub struct UniversalHandler {
 unsafe impl Send for UniversalHandler {}
 
 impl UniversalHandler {
-    pub fn new(cfg: &CircuitConfig, proof_type: ProofType) -> Result<Self> {
-        let workspace_path = Path::new(&cfg.workspace_path);
-        let dir_cache = Some(workspace_path.join("cache"));
-        let path_app_exe = workspace_path.join("app.vmexe");
-        let path_app_config = workspace_path.join("openvm.toml");
+    pub fn new(workspace_path: impl AsRef<Path>, proof_type: ProofType) -> Result<Self> {
+        let dir_cache = Some(workspace_path.as_ref().join("cache"));
+        let path_app_exe = workspace_path.as_ref().join("app.vmexe");
+        let path_app_config = workspace_path.as_ref().join("openvm.toml");
         let segment_len = Some((1 << 22) - 100);
         let config = ProverConfig {
             dir_cache,
@@ -47,6 +42,10 @@ impl UniversalHandler {
         &self.prover
     }
 
+    pub fn get_task_from_input(input: &str) -> Result<ProvingTask> {
+        Ok(serde_json::from_str(input)?)
+    }
+
 }
 
 #[async_trait]
@@ -55,21 +54,25 @@ impl CircuitsHandler for Mutex<UniversalHandler> {
         BASE64_STANDARD.encode(self.lock().await.get_prover().get_app_vk())
     }
 
-    async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String> {
+    async fn get_proof_data(&self, u_task: &ProvingTask, need_snark: bool) -> Result<String> {
         let handler_self = self.lock().await;
-        let u_task: ProvingTask = serde_json::from_str(&prove_request.input)?;
-        let expected_vk = handler_self.get_prover().get_app_vk();
-        if u_task.vk != expected_vk {
-            eyre::bail!(
-                "vk is not match!, prove type {:?}, expected {}, get {}",
-                prove_request.proof_type,
-                BASE64_STANDARD.encode(expected_vk),
-                BASE64_STANDARD.encode(u_task.vk),
-            );
+        // let u_task: ProvingTask = serde_json::from_str(&prove_request.input)?;
+        // let expected_vk = handler_self.get_prover().get_app_vk();
+        // if u_task.vk != expected_vk {
+        //     eyre::bail!(
+        //         "vk is not match!, prove type {:?}, expected {}, get {}",
+        //         prove_request.proof_type,
+        //         BASE64_STANDARD.encode(expected_vk),
+        //         BASE64_STANDARD.encode(u_task.vk),
+        //     );
+        // }
+        if need_snark && handler_self.prover.evm_prover.is_none() {
+            eyre::bail!("do not init prover for evm (vk: {})", 
+            BASE64_STANDARD.encode(handler_self.get_prover().get_app_vk()))
         }
 
-        let use_evm = prove_request.proof_type == ProofType::Bundle;
-        let proof = handler_self.get_prover().gen_proof_universal(&u_task, use_evm)?;
+        // let use_evm = prove_request.proof_type == ProofType::Bundle;
+        let proof = handler_self.get_prover().gen_proof_universal(u_task, need_snark)?;
 
         //TODO: check expected PI
         Ok(serde_json::to_string(&proof)?)
