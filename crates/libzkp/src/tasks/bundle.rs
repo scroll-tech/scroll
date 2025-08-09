@@ -83,7 +83,7 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
                 .into_iter()
                 .map(|w_proof| w_proof.proof.into_root_proof().expect("expect root proof"))
                 .collect(),
-            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
+            serialized_witness: vec![witness.rkyv_serialize(Some(ForkName::Feynman))?.to_vec()],
             vk: Vec::new(),
         })
     }
