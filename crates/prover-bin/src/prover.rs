@@ -34,20 +34,16 @@ pub struct AssetsLocationData {
 }
 
 impl AssetsLocationData {
-    fn gen_asset_url(&self, vk: &str, proof_type: ProofType) -> Result<url::Url> {
-        if let Some(url) = self.asset_detours.get(vk) {
-            Ok(url.clone())
-        } else {
-            Ok(self.base_url.join(
-                match proof_type {
-                    ProofType::Chunk => format!("chunk/{vk}/"),
-                    ProofType::Batch => format!("batch/{vk}/"),
-                    ProofType::Bundle => format!("bundle/{vk}/"),
-                    _ => unreachable!("unreconginzed type"),
-                }
-                .as_str(),
-            )?)
-        }
+    pub fn gen_asset_url(&self, vk_as_path: &str, proof_type: ProofType) -> Result<url::Url> {
+        Ok(self.base_url.join(
+            match proof_type {
+                ProofType::Chunk => format!("chunk/{vk_as_path}/"),
+                ProofType::Batch => format!("batch/{vk_as_path}/"),
+                ProofType::Bundle => format!("bundle/{vk_as_path}/"),
+                _ => unreachable!("unreconginzed type"),
+            }
+            .as_str(),
+        )?)
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -63,7 +59,7 @@ impl AssetsLocationData {
     pub async fn get_asset(
         &self,
         vk: &str,
-        proof_type: ProofType,
+        url_base: &url::Url,
         base_path: impl AsRef<Path>,
     ) -> Result<PathBuf> {
         let download_files = ["app.vmexe", "openvm.toml"];
@@ -73,7 +69,6 @@ impl AssetsLocationData {
         std::fs::create_dir_all(&storage_path)?;
 
         // Step 2 & 3: Download each file if needed
-        let url_base = self.gen_asset_url(vk, proof_type)?;
         let client = reqwest::Client::new();
 
         for filename in download_files.iter() {
@@ -234,10 +229,20 @@ impl ProvingService for LocalProver {
 }
 
 static GLOBAL_ASSET_URLS_FEYNMAN: LazyLock<HashMap<String, url::Url>> = LazyLock::new(|| {
-    HashMap::from([(
-        "".to_string(),
-        url::Url::parse("https://assets.example.com/chunk/default/").unwrap(),
-    )])
+    HashMap::from([
+        (
+            "to/cPyilzgBigJgN9wzTRH5WkT5bymBUYDuoXweUwjpmGOolp5kYRbvF/VcWcO5HN5ujGs6S00W8pZcCoNQRLQ==".to_string(),
+            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/chunk/").unwrap(),
+        ),
+        (
+            "mj9mNw8R4zA/GhJIkhAlEE6DJT7+pDpw0iHPThX8FFvyvi9EaNGsSnDnaCurscYEF+IcdjPUtVtY9EcD7IKwWg==".to_string(),
+            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/batch/").unwrap(),
+        ),
+        (
+            "H4YnJ34cH24cxwwD5v3gaSnl6ifKWx1W4jsjXf7aKC4iwOUpS8sbOp3vg2+NDxhhKphgYpuUlykpdsoRhEt+cw==".to_string(),
+            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/bundle/").unwrap(),
+        ),
+    ])
 });
 
 impl LocalProver {
@@ -266,7 +271,10 @@ impl LocalProver {
     }
 
     async fn do_prove(&mut self, req: ProveRequest) -> Result<ProveResponse> {
-        use base64::{prelude::BASE64_STANDARD, Engine};
+        use base64::{
+            prelude::{BASE64_STANDARD, BASE64_URL_SAFE},
+            Engine,
+        };
 
         self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -287,9 +295,17 @@ impl LocalProver {
                         req.hard_fork_name
                     )
                 })?;
+            let vk_as_path = BASE64_URL_SAFE.encode(&prover_task.vk);
+            let url_base = if let Some(url) = base_config.location_data.asset_detours.get(&vk) {
+                url.clone()
+            } else {
+                base_config
+                    .location_data
+                    .gen_asset_url(&vk_as_path, req.proof_type)?
+            };
             let asset_path = base_config
                 .location_data
-                .get_asset(&vk, req.proof_type, &base_config.workspace_path)
+                .get_asset(&vk_as_path, &url_base, &base_config.workspace_path)
                 .await?;
             let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(
                 &asset_path,
