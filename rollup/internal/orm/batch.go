@@ -266,6 +266,19 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 	return &batch, nil
 }
 
+// GetBatchByHash retrieves the batch by the given hash.
+func (o *Batch) GetBatchByHash(ctx context.Context, hash string) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", hash)
+
+	var batch Batch
+	if err := db.First(&batch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchByHash error: %w, batch hash: %v", err, hash)
+	}
+	return &batch, nil
+}
+
 // InsertBatch inserts a new batch into the database.
 func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
