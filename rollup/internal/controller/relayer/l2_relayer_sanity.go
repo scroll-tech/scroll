@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
@@ -16,17 +17,17 @@ import (
 // transaction data (calldata and blobs) by parsing them and comparing against database records.
 // This ensures the constructed transaction data is correct and consistent with the database state.
 func (r *Layer2Relayer) sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata []byte, blobs []*kzg4844.Blob) error {
-	calldataInfo, err := r.parseCommitBatchesCalldata(calldata)
+	calldataInfo, err := parseCommitBatchesCalldata(r.l1RollupABI, calldata)
 	if err != nil {
 		return fmt.Errorf("failed to parse calldata: %w", err)
 	}
 
-	batchesToValidate, err := r.getBatchesFromCalldata(calldataInfo)
+	batchesToValidate, l1MessagesWithBlockNumbers, err := r.getBatchesFromCalldata(calldataInfo)
 	if err != nil {
 		return fmt.Errorf("failed to get batches from database: %w", err)
 	}
 
-	if err := r.validateCalldataAndBlobsAgainstDatabase(calldataInfo, blobs, batchesToValidate); err != nil {
+	if err := r.validateCalldataAndBlobsAgainstDatabase(calldataInfo, blobs, batchesToValidate, l1MessagesWithBlockNumbers); err != nil {
 		return fmt.Errorf("calldata and blobs validation failed: %w", err)
 	}
 
@@ -45,8 +46,8 @@ type CalldataInfo struct {
 }
 
 // parseCommitBatchesCalldata parses the commitBatches calldata and extracts key information
-func (r *Layer2Relayer) parseCommitBatchesCalldata(calldata []byte) (*CalldataInfo, error) {
-	method := r.l1RollupABI.Methods["commitBatches"]
+func parseCommitBatchesCalldata(abi *abi.ABI, calldata []byte) (*CalldataInfo, error) {
+	method := abi.Methods["commitBatches"]
 	decoded, err := method.Inputs.Unpack(calldata[4:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to unpack commitBatches calldata: %w", err)
@@ -81,17 +82,17 @@ func (r *Layer2Relayer) parseCommitBatchesCalldata(calldata []byte) (*CalldataIn
 }
 
 // getBatchesFromCalldata retrieves the relevant batches from database based on calldata information
-func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWithChunks, error) {
+func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWithChunks, map[uint64][]*types.TransactionData, error) {
 	// Get the parent batch to determine the starting point
 	parentBatch, err := r.batchOrm.GetBatchByHash(r.ctx, info.ParentBatchHash.Hex())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get parent batch by hash %s: %w", info.ParentBatchHash.Hex(), err)
+		return nil, nil, fmt.Errorf("failed to get parent batch by hash %s: %w", info.ParentBatchHash.Hex(), err)
 	}
 
 	// Get the last batch to determine the ending point
 	lastBatch, err := r.batchOrm.GetBatchByHash(r.ctx, info.LastBatchHash.Hex())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get last batch by hash %s: %w", info.LastBatchHash.Hex(), err)
+		return nil, nil, fmt.Errorf("failed to get last batch by hash %s: %w", info.LastBatchHash.Hex(), err)
 	}
 
 	// Get all batches in the range (parent+1 to last)
@@ -100,29 +101,46 @@ func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWi
 
 	// Check if the range is valid
 	if firstBatchIndex > lastBatchIndex {
-		return nil, fmt.Errorf("no batches found in range: first index %d, last index %d", firstBatchIndex, lastBatchIndex)
+		return nil, nil, fmt.Errorf("no batches found in range: first index %d, last index %d", firstBatchIndex, lastBatchIndex)
 	}
 
 	var batchesToValidate []*dbBatchWithChunks
+	l1MessagesWithBlockNumbers := make(map[uint64][]*types.TransactionData)
 	for batchIndex := firstBatchIndex; batchIndex <= lastBatchIndex; batchIndex++ {
 		dbBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get batch by index %d: %w", batchIndex, err)
+			return nil, nil, fmt.Errorf("failed to get batch by index %d: %w", batchIndex, err)
 		}
 
 		// Get chunks for this batch
 		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get chunks for batch %d: %w", batchIndex, err)
+			return nil, nil, fmt.Errorf("failed to get chunks for batch %d: %w", batchIndex, err)
 		}
 
 		batchesToValidate = append(batchesToValidate, &dbBatchWithChunks{
 			Batch:  dbBatch,
 			Chunks: dbChunks,
 		})
-	}
 
-	return batchesToValidate, nil
+		// If there are L1 messages in this batch, retrieve L1 messages with block numbers
+		for _, chunk := range dbChunks {
+			if chunk.TotalL1MessagesPoppedInChunk > 0 {
+				blockWithL1Messages, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, chunk.StartBlockNumber, chunk.EndBlockNumber)
+				if err != nil {
+					return nil, nil, fmt.Errorf("failed to get L2 blocks for chunk %d: %w", chunk.Index, err)
+				}
+				for _, block := range blockWithL1Messages {
+					for _, tx := range block.Transactions {
+						if tx.Type == types.L1MessageTxType {
+							l1MessagesWithBlockNumbers[block.Header.Number.Uint64()] = append(l1MessagesWithBlockNumbers[block.Header.Number.Uint64()], tx)
+						}
+					}
+				}
+			}
+		}
+	}
+	return batchesToValidate, l1MessagesWithBlockNumbers, nil
 }
 
 // validateDatabaseConsistency performs comprehensive validation of database records
@@ -299,7 +317,7 @@ func (r *Layer2Relayer) validateSingleChunkConsistency(chunk *orm.Chunk, prevChu
 }
 
 // validateCalldataAndBlobsAgainstDatabase validates calldata and blobs against database records
-func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *CalldataInfo, blobs []*kzg4844.Blob, batchesToValidate []*dbBatchWithChunks) error {
+func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *CalldataInfo, blobs []*kzg4844.Blob, batchesToValidate []*dbBatchWithChunks, l1MessagesWithBlockNumbers map[uint64][]*types.TransactionData) error {
 	// Validate blobs
 	if len(blobs) == 0 {
 		return fmt.Errorf("no blobs provided")
@@ -338,7 +356,7 @@ func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *Ca
 	// Validate each blob against its corresponding batch
 	for i, blob := range blobs {
 		dbBatch := batchesToValidate[i].Batch
-		if err := r.validateSingleBlobAgainstBatch(blob, dbBatch, codec); err != nil {
+		if err := r.validateSingleBlobAgainstBatch(blob, dbBatch, codec, l1MessagesWithBlockNumbers); err != nil {
 			return fmt.Errorf("blob validation failed for batch %d: %w", dbBatch.Index, err)
 		}
 	}
@@ -347,7 +365,7 @@ func (r *Layer2Relayer) validateCalldataAndBlobsAgainstDatabase(calldataInfo *Ca
 }
 
 // validateSingleBlobAgainstBatch validates a single blob against its batch data
-func (r *Layer2Relayer) validateSingleBlobAgainstBatch(blob *kzg4844.Blob, dbBatch *orm.Batch, codec encoding.Codec) error {
+func (r *Layer2Relayer) validateSingleBlobAgainstBatch(blob *kzg4844.Blob, dbBatch *orm.Batch, codec encoding.Codec, l1MessagesWithBlockNumbers map[uint64][]*types.TransactionData) error {
 	// Decode blob payload
 	payload, err := codec.DecodeBlob(blob)
 	if err != nil {
@@ -355,7 +373,7 @@ func (r *Layer2Relayer) validateSingleBlobAgainstBatch(blob *kzg4844.Blob, dbBat
 	}
 
 	// Validate batch hash
-	daBatch, err := assembleDABatchFromPayload(payload, dbBatch, codec)
+	daBatch, err := assembleDABatchFromPayload(payload, dbBatch, codec, l1MessagesWithBlockNumbers)
 	if err != nil {
 		return fmt.Errorf("failed to assemble batch from payload: %w", err)
 	}
@@ -401,8 +419,8 @@ func (r *Layer2Relayer) validateMessageQueueConsistency(batchIndex uint64, chunk
 	return nil
 }
 
-func assembleDABatchFromPayload(payload encoding.DABlobPayload, dbBatch *orm.Batch, codec encoding.Codec) (encoding.DABatch, error) {
-	blocks, err := assembleBlocksFromPayload(payload)
+func assembleDABatchFromPayload(payload encoding.DABlobPayload, dbBatch *orm.Batch, codec encoding.Codec, l1MessagesWithBlockNumbers map[uint64][]*types.TransactionData) (encoding.DABatch, error) {
+	blocks, err := assembleBlocksFromPayload(payload, l1MessagesWithBlockNumbers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble blocks from payload batch_index=%d codec_version=%d parent_batch_hash=%s: %w", dbBatch.Index, dbBatch.CodecVersion, dbBatch.ParentBatchHash, err)
 	}
@@ -427,7 +445,7 @@ func assembleDABatchFromPayload(payload encoding.DABlobPayload, dbBatch *orm.Bat
 	return daBatch, nil
 }
 
-func assembleBlocksFromPayload(payload encoding.DABlobPayload) ([]*encoding.Block, error) {
+func assembleBlocksFromPayload(payload encoding.DABlobPayload, l1MessagesWithBlockNumbers map[uint64][]*types.TransactionData) ([]*encoding.Block, error) {
 	daBlocks := payload.Blocks()
 	txns := payload.Transactions()
 	if len(daBlocks) != len(txns) {
@@ -442,8 +460,11 @@ func assembleBlocksFromPayload(payload encoding.DABlobPayload) ([]*encoding.Bloc
 				BaseFee:  daBlocks[i].BaseFee(),
 				GasLimit: daBlocks[i].GasLimit(),
 			},
-			Transactions: encoding.TxsToTxsData(txns[i]),
 		}
+		if l1Messages, ok := l1MessagesWithBlockNumbers[daBlocks[i].Number()]; ok {
+			blocks[i].Transactions = l1Messages
+		}
+		blocks[i].Transactions = append(blocks[i].Transactions, encoding.TxsToTxsData(txns[i])...)
 	}
 	return blocks, nil
 }
