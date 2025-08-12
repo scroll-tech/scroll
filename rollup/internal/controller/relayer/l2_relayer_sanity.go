@@ -133,6 +133,7 @@ func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWi
 				if err != nil {
 					return nil, nil, fmt.Errorf("failed to get L2 blocks for chunk %d: %w", chunk.Index, err)
 				}
+				var l1MessagesCount uint64
 				for _, block := range blockWithL1Messages {
 					bn := block.Header.Number.Uint64()
 					seenL2 := false
@@ -143,10 +144,14 @@ func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWi
 								return nil, nil, fmt.Errorf("L1 message after L2 transaction in block %d", bn)
 							}
 							l1MessagesWithBlockNumbers[bn] = append(l1MessagesWithBlockNumbers[bn], tx)
+							l1MessagesCount++
 						} else {
 							seenL2 = true
 						}
 					}
+				}
+				if chunk.TotalL1MessagesPoppedInChunk != l1MessagesCount {
+					return nil, nil, fmt.Errorf("chunk %d has inconsistent L1 messages count: expected %d, got %d", chunk.Index, chunk.TotalL1MessagesPoppedInChunk, l1MessagesCount)
 				}
 			}
 		}
