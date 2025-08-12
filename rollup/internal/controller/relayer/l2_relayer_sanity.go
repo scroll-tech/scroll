@@ -136,8 +136,8 @@ func (r *Layer2Relayer) getBatchesFromCalldata(info *CalldataInfo) ([]*dbBatchWi
 					for _, tx := range block.Transactions {
 						if tx.Type == types.L1MessageTxType {
 							if seenL2 {
-								// Invariant violated: found an L1 after an L2 in the same block.
-								return nil, nil, fmt.Errorf("L1 message after L2 tx in block %d", bn)
+								// Invariant violated: found an L1 message after an L2 transaction in the same block.
+								return nil, nil, fmt.Errorf("L1 message after L2 transaction in block %d", bn)
 							}
 							l1MessagesWithBlockNumbers[bn] = append(l1MessagesWithBlockNumbers[bn], tx)
 						} else {
@@ -469,6 +469,7 @@ func assembleBlocksFromPayload(payload encoding.DABlobPayload, l1MessagesWithBlo
 				GasLimit: daBlocks[i].GasLimit(),
 			},
 		}
+		// Ensure per-block ordering: [L1 messages][L2 transactions]. Prepend L1s (if any), then append L2 txs.
 		if l1Messages, ok := l1MessagesWithBlockNumbers[daBlocks[i].Number()]; ok {
 			blocks[i].Transactions = l1Messages
 		}
