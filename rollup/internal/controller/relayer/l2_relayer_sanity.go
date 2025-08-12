@@ -472,7 +472,7 @@ func assembleBlocksFromPayload(payload encoding.DABlobPayload, l1MessagesWithBlo
 				GasLimit: daBlocks[i].GasLimit(),
 			},
 		}
-		// Ensure per-block ordering: [L1 messages][L2 transactions]. Prepend L1s (if any), then append L2 txs.
+		// Ensure per-block ordering: [L1 messages][L2 transactions]. Prepend L1 messages (if any), then append L2 transactions.
 		if l1Messages, ok := l1MessagesWithBlockNumbers[daBlocks[i].Number()]; ok {
 			blocks[i].Transactions = l1Messages
 		}
