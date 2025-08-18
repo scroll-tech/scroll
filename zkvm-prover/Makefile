@@ -63,6 +63,4 @@ test_run: $(CIRCUIT_STUFF)
 test_e2e_run: $(CIRCUIT_STUFF) ${E2E_HANDLE_SET}
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json handle ${E2E_HANDLE_SET}
 
-gen_verifier_stuff:
-	mkdir -p ${DUMP_DIR}
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json --forkname feynman dump ${DUMP_DIR}
+
