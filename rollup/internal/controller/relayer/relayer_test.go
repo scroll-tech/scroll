@@ -81,6 +81,7 @@ func setupEnv(t *testing.T) {
 	block1 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace1, block1)
 	assert.NoError(t, err)
+	block1.Header.Number = big.NewInt(1)
 	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
 	codec, err := encoding.CodecFromVersion(encoding.CodecV0)
 	assert.NoError(t, err)
@@ -94,6 +95,7 @@ func setupEnv(t *testing.T) {
 	block2 = &encoding.Block{}
 	err = json.Unmarshal(templateBlockTrace2, block2)
 	assert.NoError(t, err)
+	block2.Header.Number = big.NewInt(2)
 	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
 	daChunk2, err := codec.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
