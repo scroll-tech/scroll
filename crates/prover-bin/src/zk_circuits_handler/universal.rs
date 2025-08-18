@@ -16,12 +16,10 @@ unsafe impl Send for UniversalHandler {}
 
 impl UniversalHandler {
     pub fn new(workspace_path: impl AsRef<Path>, proof_type: ProofType) -> Result<Self> {
-        let dir_cache = Some(workspace_path.as_ref().join("cache"));
         let path_app_exe = workspace_path.as_ref().join("app.vmexe");
         let path_app_config = workspace_path.as_ref().join("openvm.toml");
         let segment_len = Some((1 << 22) - 100);
         let config = ProverConfig {
-            dir_cache,
             path_app_config,
             path_app_exe,
             segment_len,
@@ -70,7 +68,6 @@ impl CircuitsHandler for Mutex<UniversalHandler> {
             )
         }
 
-        // let use_evm = prove_request.proof_type == ProofType::Bundle;
         let proof = handler_self
             .get_prover()
             .gen_proof_universal(u_task, need_snark)?;

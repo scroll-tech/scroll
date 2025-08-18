@@ -7,7 +7,7 @@ use scroll_zkvm_types::{
     batch::BatchInfo,
     bundle::BundleInfo,
     chunk::ChunkInfo,
-    proof::{EvmProof, OpenVmEvmProof, ProofEnum, RootProof},
+    proof::{EvmProof, OpenVmEvmProof, ProofEnum, StarkProof},
     public_inputs::{ForkName, MultiVersionPublicInputs},
     types_agg::{AggregationInput, ProgramCommitment},
     utils::vec_as_base64,
@@ -40,7 +40,7 @@ pub struct WrappedProof<Metadata> {
 }
 
 pub trait AsRootProof {
-    fn as_root_proof(&self) -> &RootProof;
+    fn as_root_proof(&self) -> &StarkProof;
 }
 
 pub trait AsEvmProof {
@@ -61,17 +61,17 @@ pub type BatchProof = WrappedProof<BatchProofMetadata>;
 pub type BundleProof = WrappedProof<BundleProofMetadata>;
 
 impl AsRootProof for ChunkProof {
-    fn as_root_proof(&self) -> &RootProof {
+    fn as_root_proof(&self) -> &StarkProof {
         self.proof
-            .as_root_proof()
+            .as_stark_proof()
             .expect("batch proof use root proof")
     }
 }
 
 impl AsRootProof for BatchProof {
-    fn as_root_proof(&self) -> &RootProof {
+    fn as_root_proof(&self) -> &StarkProof {
         self.proof
-            .as_root_proof()
+            .as_stark_proof()
             .expect("batch proof use root proof")
     }
 }

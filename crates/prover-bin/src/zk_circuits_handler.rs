@@ -26,12 +26,10 @@ pub(crate) enum Phase {
 
 impl Phase {
     pub fn phase_spec_chunk(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
         let path_app_exe = workspace_path.join("chunk/app.vmexe");
         let path_app_config = workspace_path.join("chunk/openvm.toml");
         let segment_len = Some((1 << 22) - 100);
         ProverConfig {
-            dir_cache,
             path_app_config,
             path_app_exe,
             segment_len,
@@ -40,12 +38,10 @@ impl Phase {
     }
 
     pub fn phase_spec_batch(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
         let path_app_exe = workspace_path.join("batch/app.vmexe");
         let path_app_config = workspace_path.join("batch/openvm.toml");
         let segment_len = Some((1 << 22) - 100);
         ProverConfig {
-            dir_cache,
             path_app_config,
             path_app_exe,
             segment_len,
@@ -54,11 +50,9 @@ impl Phase {
     }
 
     pub fn phase_spec_bundle(&self, workspace_path: &Path) -> ProverConfig {
-        let dir_cache = Some(workspace_path.join("cache"));
         let path_app_config = workspace_path.join("bundle/openvm.toml");
         let segment_len = Some((1 << 22) - 100);
         ProverConfig {
-            dir_cache,
             path_app_config,
             segment_len,
             path_app_exe: workspace_path.join("bundle/app.vmexe"),

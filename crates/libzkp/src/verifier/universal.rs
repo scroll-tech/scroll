@@ -18,11 +18,9 @@ pub struct Verifier {
 impl Verifier {
     pub fn new(assets_dir: &str, fork: ForkName) -> Self {
         let verifier_bin = Path::new(assets_dir).join("verifier.bin");
-        let config = Path::new(assets_dir).join("root-verifier-vm-config");
-        let exe = Path::new(assets_dir).join("root-verifier-committed-exe");
 
         Self {
-            verifier: UniversalVerifier::setup(&config, &exe, &verifier_bin)
+            verifier: UniversalVerifier::setup(&verifier_bin)
                 .expect("Setting up chunk verifier"),
             fork,
         }
@@ -34,32 +32,25 @@ impl ProofVerifier for Verifier {
         panic_catch(|| match task_type {
             TaskType::Chunk => {
                 let proof = serde_json::from_slice::<ChunkProof>(proof).unwrap();
-                if !proof.pi_hash_check(self.fork) {
-                    return false;
-                }
-                self.verifier
-                    .verify_proof(proof.as_root_proof(), &proof.vk)
+                assert!(proof.pi_hash_check(self.fork));
+                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk)
                     .unwrap()
             }
             TaskType::Batch => {
                 let proof = serde_json::from_slice::<BatchProof>(proof).unwrap();
-                if !proof.pi_hash_check(self.fork) {
-                    return false;
-                }
-                self.verifier
-                    .verify_proof(proof.as_root_proof(), &proof.vk)
+                assert!(proof.pi_hash_check(self.fork));
+                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk)
                     .unwrap()
             }
             TaskType::Bundle => {
                 let proof = serde_json::from_slice::<BundleProof>(proof).unwrap();
-                if !proof.pi_hash_check(self.fork) {
-                    return false;
-                }
+                assert!(proof.pi_hash_check(self.fork));
                 let vk = proof.vk.clone();
                 let evm_proof = proof.into_evm_proof();
-                self.verifier.verify_proof_evm(&evm_proof, &vk).unwrap()
+                self.verifier.verify_evm_proof(&evm_proof, &vk).unwrap()
             }
         })
+        .map(|_|true)
         .map_err(|err_str: String| eyre::eyre!("{err_str}"))
     }
 
