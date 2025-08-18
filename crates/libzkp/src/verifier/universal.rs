@@ -20,8 +20,7 @@ impl Verifier {
         let verifier_bin = Path::new(assets_dir).join("verifier.bin");
 
         Self {
-            verifier: UniversalVerifier::setup(&verifier_bin)
-                .expect("Setting up chunk verifier"),
+            verifier: UniversalVerifier::setup(&verifier_bin).expect("Setting up chunk verifier"),
             fork,
         }
     }
@@ -33,14 +32,12 @@ impl ProofVerifier for Verifier {
             TaskType::Chunk => {
                 let proof = serde_json::from_slice::<ChunkProof>(proof).unwrap();
                 assert!(proof.pi_hash_check(self.fork));
-                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk)
-                    .unwrap()
+                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk).unwrap()
             }
             TaskType::Batch => {
                 let proof = serde_json::from_slice::<BatchProof>(proof).unwrap();
                 assert!(proof.pi_hash_check(self.fork));
-                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk)
-                    .unwrap()
+                UniversalVerifier::verify_stark_proof(proof.as_root_proof(), &proof.vk).unwrap()
             }
             TaskType::Bundle => {
                 let proof = serde_json::from_slice::<BundleProof>(proof).unwrap();
@@ -50,7 +47,7 @@ impl ProofVerifier for Verifier {
                 self.verifier.verify_evm_proof(&evm_proof, &vk).unwrap()
             }
         })
-        .map(|_|true)
+        .map(|_| true)
         .map_err(|err_str: String| eyre::eyre!("{err_str}"))
     }
 

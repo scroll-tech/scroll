@@ -1,6 +1,4 @@
-use crate::zk_circuits_handler::{
-    assets::AssetsHandler, universal::UniversalHandler, CircuitsHandler,
-};
+use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
@@ -332,56 +330,5 @@ impl LocalProver {
             input: Some(req.input),
             ..Default::default()
         })
-    }
-
-    pub fn dump_verifier_assets(&self, hard_fork_name: &str, out_path: &Path) -> Result<()> {
-        let config = self
-            .config
-            .circuits
-            .get(hard_fork_name)
-            .ok_or_else(|| eyre::eyre!("no corresponding config for fork {hard_fork_name}"))?;
-
-        if !config.vks.is_empty() {
-            eyre::bail!("clean vks cache first or we will have wrong dumped vk");
-        }
-
-        let workspace_path = &config.workspace_path;
-        let universal_prover = AssetsHandler::new(config);
-        let _ = universal_prover
-            .get_evm_prover()
-            .dump_universal_verifier(Some(out_path))?;
-
-        #[derive(Debug, serde::Serialize)]
-        struct VKDump {
-            pub chunk_vk: String,
-            pub batch_vk: String,
-            pub bundle_vk: String,
-        }
-
-        let dump = VKDump {
-            chunk_vk: universal_prover.get_vk_and_cache(ProofType::Chunk),
-            batch_vk: universal_prover.get_vk_and_cache(ProofType::Batch),
-            bundle_vk: universal_prover.get_vk_and_cache(ProofType::Bundle),
-        };
-
-        let f = File::create(out_path.join("openVmVk.json"))?;
-        serde_json::to_writer(f, &dump)?;
-
-        // Copy verifier.bin from workspace bundle directory to output path
-        let bundle_verifier_path = Path::new(workspace_path)
-            .join("bundle")
-            .join("verifier.bin");
-        if bundle_verifier_path.exists() {
-            let dest_path = out_path.join("verifier.bin");
-            std::fs::copy(&bundle_verifier_path, &dest_path)
-                .map_err(|e| eyre::eyre!("Failed to copy verifier.bin: {}", e))?;
-        } else {
-            eprintln!(
-                "Warning: verifier.bin not found at {:?}",
-                bundle_verifier_path
-            );
-        }
-
-        Ok(())
     }
 }

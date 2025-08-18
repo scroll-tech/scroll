@@ -23,7 +23,6 @@ impl UniversalHandler {
             path_app_config,
             path_app_exe,
             segment_len,
-            ..Default::default()
         };
 
         let use_evm = proof_type == ProofType::Bundle;

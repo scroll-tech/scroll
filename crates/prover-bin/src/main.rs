@@ -34,11 +34,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Dump vk of this prover
-    Dump {
-        /// path to save the verifier's asset
-        asset_path: String,
-    },
     Handle {
         /// path to save the verifier's asset
         task_path: String,
@@ -64,16 +59,10 @@ async fn main() -> eyre::Result<()> {
     }
 
     let cfg = LocalProverConfig::from_file(args.config_file)?;
-    let default_fork_name = cfg.circuits.keys().next().unwrap().clone();
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg.clone());
 
     match args.command {
-        Some(Commands::Dump { asset_path }) => {
-            let fork_name = args.fork_name.unwrap_or(default_fork_name);
-            println!("dump assets for {fork_name} into {asset_path}");
-            local_prover.dump_verifier_assets(&fork_name, asset_path.as_ref())?;
-        }
         Some(Commands::Handle { task_path }) => {
             let file = File::open(Path::new(&task_path))?;
             let reader = BufReader::new(file);
