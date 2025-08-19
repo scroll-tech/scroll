@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -53,16 +54,16 @@ func action(ctx *cli.Context) error {
 
 	// Sanity check config. Make sure the required fields are set.
 	if cfg.RecoveryConfig == nil {
-		return fmt.Errorf("recovery config must be specified")
+		return errors.New("recovery config must be specified")
 	}
 	if cfg.RecoveryConfig.L1BeaconNodeEndpoint == "" {
-		return fmt.Errorf("L1 beacon node endpoint must be specified")
+		return errors.New("L1 beacon node endpoint must be specified")
 	}
 	if cfg.RecoveryConfig.L1BlockHeight == 0 {
-		return fmt.Errorf("L1 block height must be specified")
+		return errors.New("L1 block height must be specified")
 	}
 	if cfg.RecoveryConfig.LatestFinalizedBatch == 0 {
-		return fmt.Errorf("latest finalized batch must be specified")
+		return errors.New("latest finalized batch must be specified")
 	}
 
 	// init db connection

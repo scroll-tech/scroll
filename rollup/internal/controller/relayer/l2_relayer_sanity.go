@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -18,7 +19,7 @@ import (
 // This ensures the constructed transaction data is correct and consistent with the database state.
 func (r *Layer2Relayer) sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata []byte, blobs []*kzg4844.Blob) error {
 	if r.l1RollupABI == nil {
-		return fmt.Errorf("l1RollupABI is nil: cannot parse commitBatches calldata")
+		return errors.New("l1RollupABI is nil: cannot parse commitBatches calldata")
 	}
 	calldataInfo, err := parseCommitBatchesCalldata(r.l1RollupABI, calldata)
 	if err != nil {

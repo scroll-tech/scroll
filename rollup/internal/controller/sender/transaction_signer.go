@@ -2,6 +2,7 @@ package sender
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -51,7 +52,7 @@ func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*Trans
 		}, nil
 	case RemoteSignerType:
 		if config.RemoteSignerConfig.SignerAddress == "" {
-			return nil, fmt.Errorf("failed to create RemoteSigner, signer address is empty")
+			return nil, errors.New("failed to create RemoteSigner, signer address is empty")
 		}
 		rpcClient, err := rpc.Dial(config.RemoteSignerConfig.RemoteSignerUrl)
 		if err != nil {
@@ -94,7 +95,7 @@ func (ts *TransactionSigner) SignTransaction(ctx context.Context, tx *gethTypes.
 		return signedTx, nil
 	default:
 		// this shouldn't happen, because SignerType is checked during creation
-		return nil, fmt.Errorf("shouldn't happen, unknown signer type")
+		return nil, errors.New("shouldn't happen, unknown signer type")
 	}
 }
 
