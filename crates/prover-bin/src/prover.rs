@@ -269,7 +269,6 @@ impl LocalProver {
     }
 
     async fn do_prove(&mut self, req: ProveRequest) -> Result<ProveResponse> {
-
         self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
