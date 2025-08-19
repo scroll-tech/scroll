@@ -229,15 +229,15 @@ impl ProvingService for LocalProver {
 static GLOBAL_ASSET_URLS_FEYNMAN: LazyLock<HashMap<String, url::Url>> = LazyLock::new(|| {
     HashMap::from([
         (
-            "to/cPyilzgBigJgN9wzTRH5WkT5bymBUYDuoXweUwjpmGOolp5kYRbvF/VcWcO5HN5ujGs6S00W8pZcCoNQRLQ==".to_string(),
+            "b68fdc3f28a5ce006280980df70cd3447e56913e5bca6054603ba85f0794c23a6618ea25a7991845bbc5fd571670ee47379ba31ace92d345bca59702a0d4112d".to_string(),
             url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/chunk/").unwrap(),
         ),
         (
-            "mj9mNw8R4zA/GhJIkhAlEE6DJT7+pDpw0iHPThX8FFvyvi9EaNGsSnDnaCurscYEF+IcdjPUtVtY9EcD7IKwWg==".to_string(),
+            "9a3f66370f11e3303f1a1248921025104e83253efea43a70d221cf4e15fc145bf2be2f4468d1ac4a70e7682babb1c60417e21c7633d4b55b58f44703ec82b05a".to_string(),
             url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/batch/").unwrap(),
         ),
         (
-            "H4YnJ34cH24cxwwD5v3gaSnl6ifKWx1W4jsjXf7aKC4iwOUpS8sbOp3vg2+NDxhhKphgYpuUlykpdsoRhEt+cw==".to_string(),
+            "1f8627277e1c1f6e1cc70c03e6fde06929e5ea27ca5b1d56e23b235dfeda282e22c0e5294bcb1b3a9def836f8d0f18612a9860629b9497292976ca11844b7e73".to_string(),
             url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/bundle/").unwrap(),
         ),
     ])
@@ -269,17 +269,13 @@ impl LocalProver {
     }
 
     async fn do_prove(&mut self, req: ProveRequest) -> Result<ProveResponse> {
-        use base64::{
-            prelude::{BASE64_STANDARD, BASE64_URL_SAFE},
-            Engine,
-        };
 
         self.next_task_id += 1;
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
-        let vk = BASE64_STANDARD.encode(&prover_task.vk);
+        let vk = hex::encode(&prover_task.vk);
         let handler = if let Some(handler) = self.handlers.get(&vk) {
             handler.clone()
         } else {
@@ -293,17 +289,16 @@ impl LocalProver {
                         req.hard_fork_name
                     )
                 })?;
-            let vk_as_path = BASE64_URL_SAFE.encode(&prover_task.vk);
             let url_base = if let Some(url) = base_config.location_data.asset_detours.get(&vk) {
                 url.clone()
             } else {
                 base_config
                     .location_data
-                    .gen_asset_url(&vk_as_path, req.proof_type)?
+                    .gen_asset_url(&vk, req.proof_type)?
             };
             let asset_path = base_config
                 .location_data
-                .get_asset(&vk_as_path, &url_base, &base_config.workspace_path)
+                .get_asset(&vk, &url_base, &base_config.workspace_path)
                 .await?;
             let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(
                 &asset_path,

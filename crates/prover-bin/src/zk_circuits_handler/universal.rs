@@ -44,9 +44,6 @@ impl UniversalHandler {
 
 #[async_trait]
 impl CircuitsHandler for Mutex<UniversalHandler> {
-    async fn get_vk(&self) -> String {
-        BASE64_STANDARD.encode(self.lock().await.get_prover().get_app_vk())
-    }
 
     async fn get_proof_data(&self, u_task: &ProvingTask, need_snark: bool) -> Result<String> {
         let handler_self = self.lock().await;

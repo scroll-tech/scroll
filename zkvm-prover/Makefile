@@ -3,8 +3,6 @@
 RUST_MIN_STACK ?= 16777216
 export RUST_MIN_STACK
 
-CIRCUIT_STUFF = .work/euclid/chunk/app.vmexe .work/feynman/chunk/app.vmexe
-
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
     PLONKY3_VERSION=$(shell grep -m 1 "Plonky3.git" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
@@ -53,14 +51,10 @@ lint:
 	cargo clippy --all-features --all-targets -- -D warnings
 	cargo fmt --all
 
-$(CIRCUIT_STUFF):
-	@echo "Download stuff with download-release.sh, and put them into correct directory";
-	@exit 1;
-
-test_run: $(CIRCUIT_STUFF)
+test_run: 
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json
 
-test_e2e_run: $(CIRCUIT_STUFF) ${E2E_HANDLE_SET}
+test_e2e_run: ${E2E_HANDLE_SET}
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json handle ${E2E_HANDLE_SET}
 
 
