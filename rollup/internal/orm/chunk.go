@@ -7,8 +7,11 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
@@ -273,6 +276,48 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	}
 
 	return &newChunk, nil
+}
+
+func (o *Chunk) InsertPermissionlessChunk(ctx context.Context, index uint64, codecVersion encoding.CodecVersion, daBlobPayload encoding.DABlobPayload, totalL1MessagePoppedBefore uint64, stateRoot common.Hash) (*Chunk, error) {
+	// Create some unique identifier. It is not really used for anything except in DB.
+	var chunkBytes []byte
+	for _, block := range daBlobPayload.Blocks() {
+		blockBytes := block.Encode()
+		chunkBytes = append(chunkBytes, blockBytes...)
+	}
+	hash := crypto.Keccak256Hash(chunkBytes)
+
+	numBlocks := len(daBlobPayload.Blocks())
+	emptyHash := common.Hash{}.Hex()
+	newChunk := &Chunk{
+		Index:                        index,
+		Hash:                         hash.Hex(),
+		StartBlockNumber:             daBlobPayload.Blocks()[0].Number(),
+		StartBlockHash:               emptyHash,
+		EndBlockNumber:               daBlobPayload.Blocks()[numBlocks-1].Number(),
+		EndBlockHash:                 emptyHash,
+		StartBlockTime:               daBlobPayload.Blocks()[0].Timestamp(),
+		TotalL1MessagesPoppedInChunk: 0, // this needs to be 0 so that the calculation of the total L1 messages popped before for the next chunk is correct
+		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
+		PrevL1MessageQueueHash:       daBlobPayload.PrevL1MessageQueueHash().Hex(),
+		PostL1MessageQueueHash:       daBlobPayload.PostL1MessageQueueHash().Hex(),
+		ParentChunkHash:              emptyHash,
+		StateRoot:                    stateRoot.Hex(),
+		ParentChunkStateRoot:         emptyHash,
+		WithdrawRoot:                 emptyHash,
+		CodecVersion:                 int16(codecVersion),
+		EnableCompress:               false,
+		ProvingStatus:                int16(types.ProvingTaskVerified),
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+
+	if err := db.Create(newChunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk. InsertPermissionlessChunk error: %w, chunk hash: %v", err, newChunk.Hash)
+	}
+
+	return newChunk, nil
 }
 
 // InsertTestChunkForProposerTool inserts a new chunk into the database only for analysis usage by proposer tool.

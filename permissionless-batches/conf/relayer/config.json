@@ -1,0 +1,49 @@
+{
+  "l1_config": {
+    "endpoint": "<L1 RPC execution node>"
+  },
+  "l2_config": {
+    "confirmations": "0x0",
+    "endpoint": "<L2 RPC with generated blocks reachable from Docker network>",
+    "relayer_config": {
+      "commit_sender_signer_config": {
+        "signer_type": "PrivateKey",
+        "private_key_signer_config": {
+          "private_key": "<the private key of L1 address to submit permissionless batch, please fund it in advance>"
+        }
+      }
+    },
+    "chunk_proposer_config": {
+      "propose_interval_milliseconds": 100,
+      "max_block_num_per_chunk": 100,
+      "max_l2_gas_per_chunk": 20000000,
+      "chunk_timeout_sec": 300,
+      "max_uncompressed_batch_bytes_size": 4194304
+    },
+    "batch_proposer_config": {
+      "propose_interval_milliseconds": 1000,
+      "batch_timeout_sec": 300,
+      "max_chunks_per_batch": 45,
+      "max_uncompressed_batch_bytes_size": 4194304
+    },
+    "bundle_proposer_config": {
+      "max_batch_num_per_bundle": 20,
+      "bundle_timeout_sec": 36000
+    }
+  },
+  "db_config": {
+    "driver_name": "postgres",
+    "dsn": "postgres://172.17.0.1:5432/scroll?sslmode=disable&user=postgres",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "recovery_config": {
+    "enable": true,
+    "l1_block_height": "<commit tx of last finalized batch on L1>",
+    "latest_finalized_batch": "<last finalized batch on L1>",
+    "l2_block_height_limit": "<L2 block up to which to produce batch>",
+    "force_latest_finalized_batch": false,
+    "force_l1_message_count": 0,
+    "submit_without_proof": false
+  }
+}

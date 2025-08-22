@@ -13,6 +13,8 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
+	"gorm.io/gorm"
+
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -20,7 +22,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
-	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -289,6 +290,12 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		log.Info("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
 	} else {
 		// rollup mode: pass batchHeader and stateRoot
+
+		// Check state root is not zero
+		if stateRoot == (common.Hash{}) {
+			return fmt.Errorf("state root is zero")
+		}
+
 		calldata, packErr = r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
 		if packErr != nil {
 			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
@@ -499,6 +506,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit, firstBatch, lastBatch)
 			if err != nil {
 				log.Error("failed to construct normal payload", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+				return
+			}
+
+			if err = r.sanityChecksCommitBatchCodecV7CalldataAndBlobs(calldata, blobs); err != nil {
+				log.Error("Sanity check failed for calldata and blobs", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 				return
 			}
 		}
@@ -998,6 +1010,18 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 }
 
 func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithChunks) ([]byte, uint64, uint64, error) {
+	// Check state root is not zero
+	stateRoot := common.HexToHash(batch.Batch.StateRoot)
+	if stateRoot == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d state root is zero", batch.Batch.Index)
+	}
+
+	// Check parent batch hash is not zero
+	parentBatchHash := common.HexToHash(batch.Batch.ParentBatchHash)
+	if parentBatchHash == (common.Hash{}) {
+		return nil, 0, 0, fmt.Errorf("batch %d parent batch hash is zero", batch.Batch.Index)
+	}
+
 	// Calculate metrics
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
@@ -1017,6 +1041,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
+
 	version := encoding.CodecVersion(batch.Batch.CodecVersion)
 	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
@@ -1027,6 +1052,12 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 }
 
 func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, endChunk *orm.Chunk, aggProof *message.OpenVMBundleProof) ([]byte, error) {
+	// Check state root is not zero
+	stateRoot := common.HexToHash(dbBatch.StateRoot)
+	if stateRoot == (common.Hash{}) {
+		return nil, fmt.Errorf("batch %d state root is zero", dbBatch.Index)
+	}
+
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundlePostEuclidV2",

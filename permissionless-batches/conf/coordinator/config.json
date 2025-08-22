@@ -1,0 +1,30 @@
+{
+  "prover_manager": {
+    "provers_per_session": 1,
+    "session_attempts": 100,
+    "chunk_collection_time_sec": 36000,
+    "batch_collection_time_sec": 2700,
+    "bundle_collection_time_sec": 2700,
+    "verifier": {
+      "high_version_circuit" : {
+        "fork_name": "euclid",
+        "assets_path": "/verifier/openvm/verifier",
+        "min_prover_version": "v4.5.7"
+      }
+    }
+  },
+  "db": {
+    "driver_name": "postgres",
+    "dsn": "postgres://db/scroll?sslmode=disable&user=postgres",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "l2": {
+    "chain_id": 333333
+  },
+  "auth": {
+    "secret": "e788b62d39254928a821ac1c76b274a8c835aa1e20ecfb6f50eb10e87847de44",
+    "challenge_expire_duration_sec": 10,
+    "login_expire_duration_sec": 3600
+  }
+}
