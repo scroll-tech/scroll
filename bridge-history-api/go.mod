@@ -10,7 +10,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.1.3-0.20250626091118-58b899494da6
+	github.com/scroll-tech/da-codec v0.1.3-0.20250822100821-0f1ad362e5b9
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20250729113104-bd8f141bb3e9
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
