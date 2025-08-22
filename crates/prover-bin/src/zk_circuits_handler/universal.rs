@@ -58,7 +58,6 @@ impl CircuitsHandler for Mutex<UniversalHandler> {
             .get_prover()
             .gen_proof_universal(u_task, need_snark)?;
 
-        //TODO: check expected PI
         Ok(serde_json::to_string(&proof)?)
     }
 }
