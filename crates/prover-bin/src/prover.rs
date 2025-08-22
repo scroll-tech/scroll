@@ -38,7 +38,7 @@ impl AssetsLocationData {
                 ProofType::Chunk => format!("chunk/{vk_as_path}/"),
                 ProofType::Batch => format!("batch/{vk_as_path}/"),
                 ProofType::Bundle => format!("bundle/{vk_as_path}/"),
-                _ => unreachable!("unreconginzed type"),
+                t => eyre::bail!("unrecognized proof type: {}", t as u8),
             }
             .as_str(),
         )?)
@@ -226,38 +226,37 @@ impl ProvingService for LocalProver {
     }
 }
 
-static GLOBAL_ASSET_URLS_FEYNMAN: LazyLock<HashMap<String, url::Url>> = LazyLock::new(|| {
-    HashMap::from([
-        (
-            "b68fdc3f28a5ce006280980df70cd3447e56913e5bca6054603ba85f0794c23a6618ea25a7991845bbc5fd571670ee47379ba31ace92d345bca59702a0d4112d".to_string(),
-            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/chunk/").unwrap(),
-        ),
-        (
-            "9a3f66370f11e3303f1a1248921025104e83253efea43a70d221cf4e15fc145bf2be2f4468d1ac4a70e7682babb1c60417e21c7633d4b55b58f44703ec82b05a".to_string(),
-            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/batch/").unwrap(),
-        ),
-        (
-            "1f8627277e1c1f6e1cc70c03e6fde06929e5ea27ca5b1d56e23b235dfeda282e22c0e5294bcb1b3a9def836f8d0f18612a9860629b9497292976ca11844b7e73".to_string(),
-            url::Url::parse("https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/bundle/").unwrap(),
-        ),
-    ])
-});
+static GLOBAL_ASSET_URLS: LazyLock<HashMap<String, HashMap<String, url::Url>>> =
+    LazyLock::new(|| {
+        const ASSETS_JSON: &str = include_str!("../assets_url_preset.json");
+        serde_json::from_str(ASSETS_JSON).expect("Failed to parse assets_url_preset.json")
+    });
 
 impl LocalProver {
     pub fn new(mut config: LocalProverConfig) -> Self {
         for (fork_name, circuit_config) in config.circuits.iter_mut() {
             // validate each base url
             circuit_config.location_data.validate().unwrap();
-            let mut template_url_mapping = match fork_name.to_lowercase().as_str() {
-                "feynman" => GLOBAL_ASSET_URLS_FEYNMAN.clone(),
-                _ => HashMap::new(),
-            };
+            let mut template_url_mapping = GLOBAL_ASSET_URLS
+                .get(&fork_name.to_lowercase())
+                .cloned()
+                .unwrap_or_default();
 
             // apply default settings in template
             for (key, url) in circuit_config.location_data.asset_detours.drain() {
                 template_url_mapping.insert(key, url);
             }
+
             circuit_config.location_data.asset_detours = template_url_mapping;
+
+            // validate each detours url
+            for url in circuit_config.location_data.asset_detours.values() {
+                assert!(
+                    url.path().ends_with('/'),
+                    "url {} must be end with /",
+                    url.as_str()
+                );
+            }
         }
 
         Self {

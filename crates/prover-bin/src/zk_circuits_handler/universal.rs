@@ -46,16 +46,7 @@ impl UniversalHandler {
 impl CircuitsHandler for Mutex<UniversalHandler> {
     async fn get_proof_data(&self, u_task: &ProvingTask, need_snark: bool) -> Result<String> {
         let handler_self = self.lock().await;
-        // let u_task: ProvingTask = serde_json::from_str(&prove_request.input)?;
-        // let expected_vk = handler_self.get_prover().get_app_vk();
-        // if u_task.vk != expected_vk {
-        //     eyre::bail!(
-        //         "vk is not match!, prove type {:?}, expected {}, get {}",
-        //         prove_request.proof_type,
-        //         BASE64_STANDARD.encode(expected_vk),
-        //         BASE64_STANDARD.encode(u_task.vk),
-        //     );
-        // }
+
         if need_snark && handler_self.prover.evm_prover.is_none() {
             eyre::bail!(
                 "do not init prover for evm (vk: {})",
