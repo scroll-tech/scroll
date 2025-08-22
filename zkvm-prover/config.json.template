@@ -28,6 +28,6 @@
       "hard_fork_name": "feynman",
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/",
       "workspace_path": ".work/feynman"
-    },    
+    }
   }
 }
