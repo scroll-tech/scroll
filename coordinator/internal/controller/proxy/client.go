@@ -11,38 +11,31 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
+	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
 )
 
 // Client wraps an http client with a preset host for coordinator API calls
 type Client struct {
 	httpClient *http.Client
-	host       string
+	baseURL    string
 	loginToken string
 }
 
 // NewClient creates a new Client with the specified host
-func NewClient(host string) *Client {
+func NewClient(cfg *config.UpStream) *Client {
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: time.Duration(cfg.ConnectionTimeoutSec) * time.Second,
 		},
-		host: host,
-	}
-}
-
-// NewClientWithHTTPClient creates a new Client with a custom http.Client
-func NewClientWithHTTPClient(host string, httpClient *http.Client) *Client {
-	return &Client{
-		httpClient: httpClient,
-		host:       host,
+		baseURL: cfg.BaseUrl,
 	}
 }
 
 // FullLogin performs the complete login process: get challenge then login
 func (c *Client) Login(param types.LoginParameter) (*types.LoginSchema, error) {
 	// Step 1: Get challenge
-	url := fmt.Sprintf("%s/v1/challenge", c.host)
+	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -66,7 +59,7 @@ func (c *Client) Login(param types.LoginParameter) (*types.LoginSchema, error) {
 	}
 
 	// Step 3: Use the token from challenge as Bearer token for login
-	url = fmt.Sprintf("%s/v1/login", c.host)
+	url = fmt.Sprintf("%s/coordinator/v1/login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
 	if err != nil {
@@ -101,7 +94,7 @@ func (c *Client) Login(param types.LoginParameter) (*types.LoginSchema, error) {
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
 func (c *Client) ProxyLogin(param types.LoginParameter) (*http.Response, error) {
-	url := fmt.Sprintf("%s/v1/proxy_login", c.host)
+	url := fmt.Sprintf("%s/coordinator/v1/proxy_login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
 	if err != nil {
@@ -121,7 +114,7 @@ func (c *Client) ProxyLogin(param types.LoginParameter) (*http.Response, error) 
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
 func (c *Client) GetTask(param types.GetTaskParameter, token string) (*http.Response, error) {
-	url := fmt.Sprintf("%s/v1/get_task", c.host)
+	url := fmt.Sprintf("%s/coordinator/v1/get_task", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
 	if err != nil {
@@ -143,7 +136,7 @@ func (c *Client) GetTask(param types.GetTaskParameter, token string) (*http.Resp
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
 func (c *Client) SubmitProof(param types.SubmitProofParameter, token string) (*http.Response, error) {
-	url := fmt.Sprintf("%s/v1/submit_proof", c.host)
+	url := fmt.Sprintf("%s/coordinator/v1/submit_proof", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
 	if err != nil {
