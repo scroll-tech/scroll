@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"sync"
@@ -24,7 +25,9 @@ type ClientManager struct {
 
 	cachedCli struct {
 		sync.RWMutex
-		cli *upClient
+		cli            *upClient
+		completionCtx  context.Context
+		completionDone context.CancelFunc
 	}
 }
 
@@ -74,13 +77,49 @@ func (cliMgr *ClientManager) Client(ctx *gin.Context) *upClient {
 		return cliMgr.cachedCli.cli
 	}
 	cliMgr.cachedCli.RUnlock()
+
 	cliMgr.cachedCli.Lock()
-	defer cliMgr.cachedCli.Unlock()
 	if cliMgr.cachedCli.cli != nil {
+		defer cliMgr.cachedCli.Unlock()
 		return cliMgr.cachedCli.cli
 	}
 
-	return nil
+	var completionCtx context.Context
+	// Check if completion context is set
+	if cliMgr.cachedCli.completionCtx != nil {
+		completionCtx = cliMgr.cachedCli.completionCtx
+	} else {
+		// Set new completion context and launch login goroutine
+		ctx, completionDone := context.WithCancel(context.TODO())
+		cliMgr.cachedCli.completionCtx = ctx
+
+		// Launch login goroutine
+		go func() {
+			defer completionDone()
+
+			loginCli := cliMgr.doLogin()
+			if loginResult, err := loginCli.Login(context.Background()); err == nil {
+				loginCli.loginToken = loginResult.Token
+
+				cliMgr.cachedCli.Lock()
+				cliMgr.cachedCli.cli = loginCli
+				cliMgr.cachedCli.completionCtx = nil
+				cliMgr.cachedCli.Unlock()
+			}
+		}()
+	}
+	cliMgr.cachedCli.Unlock()
+
+	// Wait for completion or request cancellation
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-completionCtx.Done():
+		cliMgr.cachedCli.Lock()
+		cli := cliMgr.cachedCli.cli
+		cliMgr.cachedCli.Unlock()
+		return cli
+	}
 }
 
 func (cliMgr *ClientManager) OnError(isUnauth bool) {
