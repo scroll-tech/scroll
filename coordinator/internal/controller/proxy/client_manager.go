@@ -1,10 +1,11 @@
 package proxy
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"sync"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
@@ -13,13 +14,18 @@ import (
 )
 
 type Client interface {
-	Client(context.Context) *upClient
+	Client(*gin.Context) *upClient
 }
 
 type ClientManager struct {
 	cliCfg  *config.ProxyClient
 	cfg     *config.UpStream
 	privKey *ecdsa.PrivateKey
+
+	cachedCli struct {
+		sync.RWMutex
+		cli *upClient
+	}
 }
 
 // transformToValidPrivateKey safely transforms arbitrary bytes into valid private key bytes
@@ -55,8 +61,26 @@ func NewClientManager(cliCfg *config.ProxyClient, cfg *config.UpStream) (*Client
 	}, nil
 }
 
-func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
-	return newUpClient(cliMgr.cfg, cliMgr)
+func (cliMgr *ClientManager) doLogin() *upClient {
+	loginCli := newUpClient(cliMgr.cfg, cliMgr)
+
+	return loginCli
+}
+
+func (cliMgr *ClientManager) Client(ctx *gin.Context) *upClient {
+	cliMgr.cachedCli.RLock()
+	if cliMgr.cachedCli.cli != nil {
+		defer cliMgr.cachedCli.RUnlock()
+		return cliMgr.cachedCli.cli
+	}
+	cliMgr.cachedCli.RUnlock()
+	cliMgr.cachedCli.Lock()
+	defer cliMgr.cachedCli.Unlock()
+	if cliMgr.cachedCli.cli != nil {
+		return cliMgr.cachedCli.cli
+	}
+
+	return nil
 }
 
 func (cliMgr *ClientManager) OnError(isUnauth bool) {
