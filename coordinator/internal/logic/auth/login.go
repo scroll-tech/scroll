@@ -19,7 +19,7 @@ import (
 
 // LoginLogic the auth logic
 type LoginLogic struct {
-	cfg          *config.Config
+	cfg          *config.VerifierConfig
 	challengeOrm *orm.Challenge
 
 	openVmVks map[string]struct{}
@@ -28,30 +28,25 @@ type LoginLogic struct {
 }
 
 // NewLoginLogic new a LoginLogic
-func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
+func NewLoginLogic(db *gorm.DB, vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
 	proverVersionHardForkMap := make(map[string][]string)
 
 	var hardForks []string
-	for _, cfg := range cfg.ProverManager.Verifier.Verifiers {
+	for _, cfg := range vcfg.Verifiers {
 		hardForks = append(hardForks, cfg.ForkName)
 	}
-	proverVersionHardForkMap[cfg.ProverManager.Verifier.MinProverVersion] = hardForks
+	proverVersionHardForkMap[vcfg.MinProverVersion] = hardForks
 
 	return &LoginLogic{
-		cfg:                      cfg,
+		cfg:                      vcfg,
 		openVmVks:                vf.OpenVMVkMap,
 		challengeOrm:             orm.NewChallenge(db),
 		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
 }
 
-// InsertChallengeString insert and check the challenge string is existed
-func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
-	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
-}
-
 // Verify the completeness of login message
-func (l *LoginLogic) VerifyMsg(login *types.LoginParameter) error {
+func VerifyMsg(login *types.LoginParameter) error {
 	verify, err := login.Verify()
 	if err != nil || !verify {
 		log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
@@ -61,11 +56,16 @@ func (l *LoginLogic) VerifyMsg(login *types.LoginParameter) error {
 	return nil
 }
 
+// InsertChallengeString insert and check the challenge string is existed
+func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
+	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
+}
+
 // Check if the login client is compatible with the setting in coordinator
 func (l *LoginLogic) CompatiblityCheck(login *types.LoginParameter) error {
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.MinProverVersion) {
-		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.ProverManager.Verifier.MinProverVersion, login.Message.ProverVersion)
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.MinProverVersion) {
+		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	vks := make(map[string]struct{})

@@ -22,7 +22,7 @@ type AuthController struct {
 // NewAuthController returns an LoginController instance
 func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
 	return &AuthController{
-		loginLogic: auth.NewLoginLogic(db, cfg, vf),
+		loginLogic: auth.NewLoginLogic(db, cfg.ProverManager.Verifier, vf),
 	}
 }
 
@@ -52,7 +52,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 			return "", errors.New("check challenge failure for the not equal challenge string")
 		}
 
-		if err := a.loginLogic.VerifyMsg(&login); err != nil {
+		if err := auth.VerifyMsg(&login); err != nil {
 			return "", err
 		}
 
