@@ -50,13 +50,19 @@ func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) e
 	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
 }
 
-func (l *LoginLogic) Check(login *types.LoginParameter) error {
+// Verify the completeness of login message
+func (l *LoginLogic) VerifyMsg(login *types.LoginParameter) error {
 	verify, err := login.Verify()
 	if err != nil || !verify {
 		log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
 			"prover_version", login.Message.ProverVersion, "message", login.Message)
 		return errors.New("auth message verify failure")
 	}
+	return nil
+}
+
+// Check if the login client is compatible with the setting in coordinator
+func (l *LoginLogic) CompatiblityCheck(login *types.LoginParameter) error {
 
 	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.MinProverVersion) {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.ProverManager.Verifier.MinProverVersion, login.Message.ProverVersion)
@@ -80,14 +86,16 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		}
 	}
 
-	if login.Message.ProverProviderType != types.ProverProviderTypeInternal && login.Message.ProverProviderType != types.ProverProviderTypeExternal {
+	switch login.Message.ProverProviderType {
+	case types.ProverProviderTypeInternal:
+	case types.ProverProviderTypeExternal:
+	case types.ProverProviderTypeProxy:
+	case types.ProverProviderTypeUndefined:
 		// for backward compatibility, set ProverProviderType as internal
-		if login.Message.ProverProviderType == types.ProverProviderTypeUndefined {
-			login.Message.ProverProviderType = types.ProverProviderTypeInternal
-		} else {
-			log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover version", login.Message.ProverVersion)
-			return errors.New("invalid prover provider type.")
-		}
+		login.Message.ProverProviderType = types.ProverProviderTypeInternal
+	default:
+		log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover version", login.Message.ProverVersion)
+		return errors.New("invalid prover provider type.")
 	}
 
 	return nil
