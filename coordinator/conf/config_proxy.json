@@ -1,0 +1,33 @@
+{
+  "proxy_manager": {
+    "proxy_cli": {
+      "proxy_name": "proxy_name"    
+    },
+    "auth": {
+      "secret": "proxy secret key",
+      "challenge_expire_duration_sec": 3600,
+      "login_expire_duration_sec": 3600
+    },      
+    "verifier": {
+      "min_prover_version": "v4.4.45",
+      "verifiers": [
+        {
+          "assets_path": "assets",
+          "fork_name": "euclidV2"
+        },
+        {
+          "assets_path": "assets",
+          "fork_name": "feynman"
+        }
+      ]
+    }
+  },  
+  "coordinators": {
+    "sepolia": {
+      "base_url": "http://localhost:8555",
+      "retry_count": 10,
+      "retry_wait_time_sec": 10,
+      "connection_timeout_sec": 30
+    }
+  }
+}
