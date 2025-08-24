@@ -2,29 +2,28 @@ package proxy
 
 import (
 	"bytes"
-	"crypto/ecdsa"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/gin-gonic/gin"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
 )
 
 // Client wraps an http client with a preset host for coordinator API calls
-type Client struct {
+type upClient struct {
 	httpClient *http.Client
 	baseURL    string
 	loginToken string
 }
 
 // NewClient creates a new Client with the specified host
-func NewClient(cfg *config.UpStream) *Client {
-	return &Client{
+func newUpClient(cfg *config.UpStream) *upClient {
+	return &upClient{
 		httpClient: &http.Client{
 			Timeout: time.Duration(cfg.ConnectionTimeoutSec) * time.Second,
 		},
@@ -33,7 +32,7 @@ func NewClient(cfg *config.UpStream) *Client {
 }
 
 // FullLogin performs the complete login process: get challenge then login
-func (c *Client) Login(param types.LoginParameter) (*types.LoginSchema, error) {
+func (c *upClient) Login(ctx context.Context, param types.LoginParameter) (*types.LoginSchema, error) {
 	// Step 1: Get challenge
 	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
@@ -93,7 +92,7 @@ func (c *Client) Login(param types.LoginParameter) (*types.LoginSchema, error) {
 }
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
-func (c *Client) ProxyLogin(param types.LoginParameter) (*http.Response, error) {
+func (c *upClient) ProxyLogin(ctx *gin.Context, param types.LoginParameter) (*http.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/proxy_login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -101,7 +100,7 @@ func (c *Client) ProxyLogin(param types.LoginParameter) (*http.Response, error) 
 		return nil, fmt.Errorf("failed to marshal proxy login parameter: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create proxy login request: %w", err)
 	}
@@ -113,7 +112,7 @@ func (c *Client) ProxyLogin(param types.LoginParameter) (*http.Response, error) 
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *Client) GetTask(param types.GetTaskParameter, token string) (*http.Response, error) {
+func (c *upClient) GetTask(ctx *gin.Context, param types.GetTaskParameter, token string) (*http.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/get_task", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -121,7 +120,7 @@ func (c *Client) GetTask(param types.GetTaskParameter, token string) (*http.Resp
 		return nil, fmt.Errorf("failed to marshal get task parameter: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get task request: %w", err)
 	}
@@ -135,7 +134,7 @@ func (c *Client) GetTask(param types.GetTaskParameter, token string) (*http.Resp
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *Client) SubmitProof(param types.SubmitProofParameter, token string) (*http.Response, error) {
+func (c *upClient) SubmitProof(ctx *gin.Context, param types.SubmitProofParameter, token string) (*http.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/submit_proof", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -143,7 +142,7 @@ func (c *Client) SubmitProof(param types.SubmitProofParameter, token string) (*h
 		return nil, fmt.Errorf("failed to marshal submit proof parameter: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create submit proof request: %w", err)
 	}
@@ -154,54 +153,4 @@ func (c *Client) SubmitProof(param types.SubmitProofParameter, token string) (*h
 	}
 
 	return c.httpClient.Do(req)
-}
-
-// transformToValidPrivateKey safely transforms arbitrary bytes into valid private key bytes
-func (c *Client) buildPrivateKey(inputBytes []byte) (*ecdsa.PrivateKey, error) {
-	// Try appending bytes from 0x0 to 0x20 until we get a valid private key
-	for appendByte := byte(0x0); appendByte <= 0x20; appendByte++ {
-		// Append the byte to input
-		extendedBytes := append(inputBytes, appendByte)
-
-		// Calculate 256-bit hash
-		hash := crypto.Keccak256(extendedBytes)
-
-		// Try to create private key from hash
-		if k, err := crypto.ToECDSA(hash); err == nil {
-			return k, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to generate valid private key from input bytes")
-}
-
-func (c *Client) generateLoginParameter(privateKeyBytes []byte, challenge string) (*types.LoginParameter, error) {
-	// Generate private key
-	privKey, err := c.buildPrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate public key string
-	publicKeyHex := common.Bytes2Hex(crypto.CompressPubkey(&privKey.PublicKey))
-
-	// Create login parameter with proxy settings
-	loginParam := &types.LoginParameter{
-		Message: types.Message{
-			Challenge:          challenge,
-			ProverName:         "proxy",
-			ProverVersion:      "proxy",
-			ProverProviderType: types.ProverProviderTypeProxy,
-			ProverTypes:        []types.ProverType{}, // Default empty
-			VKs:                []string{},           // Default empty
-		},
-		PublicKey: publicKeyHex,
-	}
-
-	// Sign the message with the private key
-	if err := loginParam.SignWithKey(privKey); err != nil {
-		return nil, fmt.Errorf("failed to sign login parameter: %w", err)
-	}
-
-	return loginParam, nil
 }

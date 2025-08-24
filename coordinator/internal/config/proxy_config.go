@@ -12,6 +12,25 @@ import (
 type ProxyManager struct {
 	// Zk verifier config help to confine the connected prover.
 	Verifier *VerifierConfig `json:"verifier"`
+	Client   *ProxyClient    `json:"proxy_cli"`
+	Auth     *Auth           `json:"auth"`
+}
+
+func (m *ProxyManager) Normalize() {
+	if m.Client.Auth == nil {
+		m.Client.Auth = m.Auth
+	}
+
+	if m.Client.ProxyVersion == "" {
+		m.Client.ProxyVersion = m.Verifier.MinProverVersion
+	}
+}
+
+// Proxy client configuration for connect to upstream as a client
+type ProxyClient struct {
+	ProxyName    string `json:"proxy_name"`
+	ProxyVersion string `json:"proxy_version,omitempty"`
+	Auth         *Auth  `json:"auth,omitempty"`
 }
 
 // Coordinator configuration

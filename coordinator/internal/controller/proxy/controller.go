@@ -18,10 +18,13 @@ var (
 
 // Clients manager a series of thread-safe clients for requesting upstream
 // coordinators
-type Clients map[string]*Client
+type Clients map[string]Client
 
 // InitController inits Controller with database
 func InitController(cfg *config.ProxyConfig) {
+	// normalize cfg
+	cfg.ProxyManager.Normalize()
+
 	vf, err := verifier.NewVerifier(cfg.ProxyManager.Verifier)
 	if err != nil {
 		panic("proof receiver new verifier failure")
@@ -29,10 +32,14 @@ func InitController(cfg *config.ProxyConfig) {
 
 	log.Info("verifier created", "openVmVerifier", vf.OpenVMVkMap)
 
-	clients := make(map[string]*Client)
+	clients := make(map[string]Client)
 
-	for nm, cfg := range cfg.Coordinators {
-		clients[nm] = NewClient(cfg)
+	for nm, upCfg := range cfg.Coordinators {
+		cli, err := NewClientManager(cfg.ProxyManager.Client, upCfg)
+		if err != nil {
+			panic("create new client fail")
+		}
+		clients[nm] = cli
 	}
 
 	Auth = NewAuthController(cfg, clients, vf)
