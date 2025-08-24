@@ -56,10 +56,14 @@ func NewClientManager(cliCfg *config.ProxyClient, cfg *config.UpStream) (*Client
 }
 
 func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
-	return newUpClient(cliMgr.cfg)
+	return newUpClient(cliMgr.cfg, cliMgr)
 }
 
-func (cliMgr *ClientManager) generateLoginParameter(privKey []byte, challenge string) (*types.LoginParameter, error) {
+func (cliMgr *ClientManager) OnError(isUnauth bool) {
+
+}
+
+func (cliMgr *ClientManager) GenLoginParam(challenge string) (*types.LoginParameter, error) {
 
 	// Generate public key string
 	publicKeyHex := common.Bytes2Hex(crypto.CompressPubkey(&cliMgr.privKey.PublicKey))

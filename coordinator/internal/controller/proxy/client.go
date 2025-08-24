@@ -14,25 +14,32 @@ import (
 	"scroll-tech/coordinator/internal/types"
 )
 
+type ClientHelper interface {
+	GenLoginParam(string) (*types.LoginParameter, error)
+	OnError(isUnauth bool)
+}
+
 // Client wraps an http client with a preset host for coordinator API calls
 type upClient struct {
 	httpClient *http.Client
 	baseURL    string
 	loginToken string
+	helper     ClientHelper
 }
 
 // NewClient creates a new Client with the specified host
-func newUpClient(cfg *config.UpStream) *upClient {
+func newUpClient(cfg *config.UpStream, helper ClientHelper) *upClient {
 	return &upClient{
 		httpClient: &http.Client{
 			Timeout: time.Duration(cfg.ConnectionTimeoutSec) * time.Second,
 		},
 		baseURL: cfg.BaseUrl,
+		helper:  helper,
 	}
 }
 
 // FullLogin performs the complete login process: get challenge then login
-func (c *upClient) Login(ctx context.Context, param types.LoginParameter) (*types.LoginSchema, error) {
+func (c *upClient) Login(ctx context.Context) (*types.LoginSchema, error) {
 	// Step 1: Get challenge
 	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
@@ -59,6 +66,11 @@ func (c *upClient) Login(ctx context.Context, param types.LoginParameter) (*type
 
 	// Step 3: Use the token from challenge as Bearer token for login
 	url = fmt.Sprintf("%s/coordinator/v1/login", c.baseURL)
+
+	param, err := c.helper.GenLoginParam(loginSchema.Token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup login parameter: %w", err)
+	}
 
 	jsonData, err := json.Marshal(param)
 	if err != nil {
