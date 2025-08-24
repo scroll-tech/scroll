@@ -34,6 +34,7 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	// need jwt token api
 	r.Use(loginMiddleware.MiddlewareFunc())
 	{
+		r.POST("/proxy_login", loginMiddleware.LoginHandler)
 		r.POST("/get_task", api.GetTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)
 	}
