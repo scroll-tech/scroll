@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -20,15 +21,35 @@ import (
 // LoginLogic the auth logic
 type LoginLogic struct {
 	cfg          *config.VerifierConfig
-	challengeOrm *orm.Challenge
+	deduplicator ChallengeDeduplicator
 
 	openVmVks map[string]struct{}
 
 	proverVersionHardForkMap map[string][]string
 }
 
+type ChallengeDeduplicator interface {
+	InsertChallenge(ctx context.Context, challengeString string) error
+}
+
+type SimpleDeduplicator struct {
+}
+
+func (s *SimpleDeduplicator) InsertChallenge(ctx context.Context, challengeString string) error {
+	return nil
+}
+
+// NewLoginLogicWithSimpleDEduplicator new a LoginLogic, do not use db to deduplicate challege
+func NewLoginLogicWithSimpleDEduplicator(vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+	return newLoginLogic(&SimpleDeduplicator{}, vcfg, vf)
+}
+
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+	return newLoginLogic(orm.NewChallenge(db), vcfg, vf)
+}
+
+func newLoginLogic(deduplicator ChallengeDeduplicator, vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
 	proverVersionHardForkMap := make(map[string][]string)
 
 	var hardForks []string
@@ -40,7 +61,7 @@ func NewLoginLogic(db *gorm.DB, vcfg *config.VerifierConfig, vf *verifier.Verifi
 	return &LoginLogic{
 		cfg:                      vcfg,
 		openVmVks:                vf.OpenVMVkMap,
-		challengeOrm:             orm.NewChallenge(db),
+		deduplicator:             deduplicator,
 		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
 }
@@ -58,7 +79,7 @@ func VerifyMsg(login *types.LoginParameter) error {
 
 // InsertChallengeString insert and check the challenge string is existed
 func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
-	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
+	return l.deduplicator.InsertChallenge(ctx.Copy(), challenge)
 }
 
 // Check if the login client is compatible with the setting in coordinator
