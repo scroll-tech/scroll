@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.2
 
 require (
-	github.com/scroll-tech/da-codec v0.1.3-0.20250822100821-0f1ad362e5b9
+	github.com/scroll-tech/da-codec v0.1.3-0.20250825071838-cddc263e5ef6
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20250625112225-a67863c65587
 	github.com/stretchr/testify v1.10.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
