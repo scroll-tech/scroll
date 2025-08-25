@@ -35,7 +35,7 @@ func InitController(cfg *config.ProxyConfig) {
 	clients := make(map[string]Client)
 
 	for nm, upCfg := range cfg.Coordinators {
-		cli, err := NewClientManager(cfg.ProxyManager.Client, upCfg)
+		cli, err := NewClientManager(nm, cfg.ProxyManager.Client, upCfg)
 		if err != nil {
 			panic("create new client fail")
 		}

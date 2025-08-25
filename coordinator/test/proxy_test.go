@@ -43,7 +43,7 @@ func testProxyClient(t *testing.T) {
 	cliCfg := testProxyClientCfg()
 	upCfg := testProxyUpStreamCfg(coordinatorURL)
 
-	clientManager, err := proxy.NewClientManager(cliCfg, upCfg)
+	clientManager, err := proxy.NewClientManager("test_coordinator", cliCfg, upCfg)
 	assert.NoError(t, err)
 	assert.NotNil(t, clientManager)
 
