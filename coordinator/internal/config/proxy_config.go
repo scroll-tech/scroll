@@ -17,8 +17,8 @@ type ProxyManager struct {
 }
 
 func (m *ProxyManager) Normalize() {
-	if m.Client.Auth == nil {
-		m.Client.Auth = m.Auth
+	if m.Client.Secret == "" {
+		m.Client.Secret = m.Auth.Secret
 	}
 
 	if m.Client.ProxyVersion == "" {
@@ -30,7 +30,7 @@ func (m *ProxyManager) Normalize() {
 type ProxyClient struct {
 	ProxyName    string `json:"proxy_name"`
 	ProxyVersion string `json:"proxy_version,omitempty"`
-	Auth         *Auth  `json:"auth,omitempty"`
+	Secret       string `json:"secret,omitempty"`
 }
 
 // Coordinator configuration

@@ -16,7 +16,7 @@ import (
 
 type ClientHelper interface {
 	GenLoginParam(string) (*types.LoginParameter, error)
-	OnError(isUnauth bool)
+	OnResp(*upClient, *http.Response)
 }
 
 // Client wraps an http client with a preset host for coordinator API calls

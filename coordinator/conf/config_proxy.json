@@ -1,7 +1,8 @@
 {
   "proxy_manager": {
     "proxy_cli": {
-      "proxy_name": "proxy_name"    
+      "proxy_name": "proxy_name",
+      "secret": "client private key"  
     },
     "auth": {
       "secret": "proxy secret key",

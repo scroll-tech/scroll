@@ -4,18 +4,20 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"net/http"
 	"sync"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
 )
 
 type Client interface {
-	Client(*gin.Context) *upClient
+	Client(context.Context) *upClient
 }
 
 type ClientManager struct {
@@ -25,9 +27,9 @@ type ClientManager struct {
 
 	cachedCli struct {
 		sync.RWMutex
-		cli            *upClient
-		completionCtx  context.Context
-		completionDone context.CancelFunc
+		cli           *upClient
+		completionCtx context.Context
+		resultChan    chan *upClient
 	}
 }
 
@@ -52,7 +54,7 @@ func buildPrivateKey(inputBytes []byte) (*ecdsa.PrivateKey, error) {
 
 func NewClientManager(cliCfg *config.ProxyClient, cfg *config.UpStream) (*ClientManager, error) {
 
-	privKey, err := buildPrivateKey([]byte(cliCfg.Auth.Secret))
+	privKey, err := buildPrivateKey([]byte(cliCfg.Secret))
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +66,35 @@ func NewClientManager(cliCfg *config.ProxyClient, cfg *config.UpStream) (*Client
 	}, nil
 }
 
-func (cliMgr *ClientManager) doLogin() *upClient {
-	loginCli := newUpClient(cliMgr.cfg, cliMgr)
+func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) time.Time {
+	// Calculate wait time between 2 seconds and cfg.RetryWaitTime
+	minWait := 2 * time.Second
+	waitDuration := time.Duration(cliMgr.cfg.RetryWaitTime) * time.Second
+	if waitDuration < minWait {
+		waitDuration = minWait
+	}
 
-	return loginCli
+	for {
+		log.Info("attempting login to upstream coordinator", "baseURL", cliMgr.cfg.BaseUrl)
+		loginResult, err := loginCli.Login(ctx)
+		if err == nil && loginResult != nil {
+			log.Info("login to upstream coordinator successful", "baseURL", cliMgr.cfg.BaseUrl, "time", loginResult.Time)
+			return loginResult.Time
+		}
+		log.Info("login to upstream coordinator failed, retrying", "baseURL", cliMgr.cfg.BaseUrl, "error", err, "waitDuration", waitDuration)
+
+		timer := time.NewTimer(waitDuration)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return time.Now()
+		case <-timer.C:
+			// Continue to next retry
+		}
+	}
 }
 
-func (cliMgr *ClientManager) Client(ctx *gin.Context) *upClient {
+func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 	cliMgr.cachedCli.RLock()
 	if cliMgr.cachedCli.cli != nil {
 		defer cliMgr.cachedCli.RUnlock()
@@ -91,21 +115,54 @@ func (cliMgr *ClientManager) Client(ctx *gin.Context) *upClient {
 	} else {
 		// Set new completion context and launch login goroutine
 		ctx, completionDone := context.WithCancel(context.TODO())
-		cliMgr.cachedCli.completionCtx = ctx
+		loginCli := newUpClient(cliMgr.cfg, cliMgr)
+		cliMgr.cachedCli.completionCtx = context.WithValue(ctx, "cli", loginCli)
 
 		// Launch login goroutine
 		go func() {
 			defer completionDone()
+			expiredT := cliMgr.doLogin(context.Background(), loginCli)
 
-			loginCli := cliMgr.doLogin()
-			if loginResult, err := loginCli.Login(context.Background()); err == nil {
-				loginCli.loginToken = loginResult.Token
+			cliMgr.cachedCli.Lock()
+			cliMgr.cachedCli.cli = loginCli
+			cliMgr.cachedCli.completionCtx = nil
 
-				cliMgr.cachedCli.Lock()
-				cliMgr.cachedCli.cli = loginCli
-				cliMgr.cachedCli.completionCtx = nil
-				cliMgr.cachedCli.Unlock()
-			}
+			// Launch waiting thread to clear cached client before expiration
+			go func() {
+				now := time.Now()
+				clearTime := expiredT.Add(-10 * time.Second) // 10s before expiration
+
+				// If clear time is too soon (less than 10s from now), set it to 10s from now
+				if clearTime.Before(now.Add(10 * time.Second)) {
+					clearTime = now.Add(10 * time.Second)
+					log.Error("token expiration time is too close, delaying clear time",
+						"baseURL", cliMgr.cfg.BaseUrl,
+						"expiredT", expiredT,
+						"adjustedClearTime", clearTime)
+				}
+
+				waitDuration := time.Until(clearTime)
+				log.Info("token expiration monitor started",
+					"baseURL", cliMgr.cfg.BaseUrl,
+					"expiredT", expiredT,
+					"clearTime", clearTime,
+					"waitDuration", waitDuration)
+
+				timer := time.NewTimer(waitDuration)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					log.Info("token expiration monitor cancelled", "baseURL", cliMgr.cfg.BaseUrl)
+				case <-timer.C:
+					log.Info("clearing cached client before token expiration",
+						"baseURL", cliMgr.cfg.BaseUrl,
+						"expiredT", expiredT)
+					cliMgr.clearCachedCli(loginCli)
+				}
+			}()
+
+			cliMgr.cachedCli.Unlock()
+
 		}()
 	}
 	cliMgr.cachedCli.Unlock()
@@ -115,15 +172,26 @@ func (cliMgr *ClientManager) Client(ctx *gin.Context) *upClient {
 	case <-ctx.Done():
 		return nil
 	case <-completionCtx.Done():
-		cliMgr.cachedCli.Lock()
-		cli := cliMgr.cachedCli.cli
-		cliMgr.cachedCli.Unlock()
+		cli := completionCtx.Value("cli").(*upClient)
 		return cli
 	}
 }
 
-func (cliMgr *ClientManager) OnError(isUnauth bool) {
+func (cliMgr *ClientManager) clearCachedCli(cli *upClient) {
+	cliMgr.cachedCli.Lock()
+	if cliMgr.cachedCli.cli == cli {
+		cliMgr.cachedCli.cli = nil
+		cliMgr.cachedCli.completionCtx = nil
+		log.Info("cached client cleared due to forbidden response", "baseURL", cliMgr.cfg.BaseUrl)
+	}
+	cliMgr.cachedCli.Unlock()
+}
 
+func (cliMgr *ClientManager) OnResp(cli *upClient, resp *http.Response) {
+	if resp.StatusCode == http.StatusForbidden {
+		log.Info("cached client cleared due to forbidden response", "baseURL", cliMgr.cfg.BaseUrl)
+		cliMgr.clearCachedCli(cli)
+	}
 }
 
 func (cliMgr *ClientManager) GenLoginParam(challenge string) (*types.LoginParameter, error) {
