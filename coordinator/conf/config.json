@@ -11,10 +11,6 @@
       "verifiers": [
         {
           "assets_path": "assets",
-          "fork_name": "euclidV2"
-        },
-        {
-          "assets_path": "assets",
           "fork_name": "feynman"
         }
       ]
