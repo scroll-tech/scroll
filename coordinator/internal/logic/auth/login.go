@@ -24,18 +24,16 @@ type LoginLogic struct {
 
 	openVmVks map[string]struct{}
 
-	proverVersionHardForkMap map[string][]string
+	proverVersionHardForkMap map[string]string
 }
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
-	proverVersionHardForkMap := make(map[string][]string)
+	proverVersionHardForkMap := make(map[string]string)
 
-	var hardForks []string
 	for _, cfg := range cfg.ProverManager.Verifier.Verifiers {
-		hardForks = append(hardForks, cfg.ForkName)
+		proverVersionHardForkMap[cfg.ForkName] = cfg.MinProverVersion
 	}
-	proverVersionHardForkMap[cfg.ProverManager.Verifier.MinProverVersion] = hardForks
 
 	return &LoginLogic{
 		cfg:                      cfg,
@@ -101,9 +99,15 @@ func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, er
 	}
 
 	proverVersion := proverVersionSplits[0]
-	if hardForkNames, ok := l.proverVersionHardForkMap[proverVersion]; ok {
-		return strings.Join(hardForkNames, ","), nil
+	var hardForkNames []string
+	for n, minVersion := range l.proverVersionHardForkMap {
+		if minVersion == "" || version.CheckScrollRepoVersion(proverVersion, minVersion) {
+			hardForkNames = append(hardForkNames, n)
+		}
+	}
+	if len(hardForkNames) == 0 {
+		return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
 	}
 
-	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
+	return strings.Join(hardForkNames, ","), nil
 }
