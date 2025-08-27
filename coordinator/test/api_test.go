@@ -584,7 +584,8 @@ func testTimeoutProof(t *testing.T) {
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 100, batch.Hash)
 	assert.NoError(t, err)
 	encodeData, err := json.Marshal(message.OpenVMChunkProof{VmProof: &message.OpenVMProof{}, MetaData: struct {
-		ChunkInfo *message.ChunkInfo `json:"chunk_info"`
+		ChunkInfo    *message.ChunkInfo `json:"chunk_info"`
+		TotalGasUsed uint64             `json:"chunk_total_gas"`
 	}{ChunkInfo: &message.ChunkInfo{}}})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, encodeData)

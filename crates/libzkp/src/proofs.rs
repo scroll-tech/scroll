@@ -122,6 +122,8 @@ pub trait PersistableProof: Sized {
 pub struct ChunkProofMetadata {
     /// The chunk information describing the list of blocks contained within the chunk.
     pub chunk_info: ChunkInfo,
+    /// Additional data for stat
+    pub chunk_total_gas: u64,
 }
 
 impl ProofMetadata for ChunkProofMetadata {
