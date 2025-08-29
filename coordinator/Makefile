@@ -34,6 +34,13 @@ coordinator_cron:
 coordinator_tool:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
 
+localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, and setup releases
+	@echo "Copying configuration files..."
+	cp -r $(PWD)/conf $(PWD)/build/bin/
+	@echo "Setting up releases..."
+	cd $(PWD)/build && bash setup_releases.sh
+
+
 #coordinator_api_skip_libzkp:
 #	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 

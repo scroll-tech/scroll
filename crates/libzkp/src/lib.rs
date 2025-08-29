@@ -5,7 +5,7 @@ pub use verifier::{TaskType, VerifierConfig};
 mod utils;
 
 use sbv_primitives::B256;
-use scroll_zkvm_types::util::vec_as_base64;
+use scroll_zkvm_types::utils::vec_as_base64;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::path::Path;

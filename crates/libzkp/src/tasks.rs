@@ -44,12 +44,16 @@ pub fn gen_universal_chunk_task(
     if let Some(interpreter) = interpreter {
         task.prepare_task_via_interpret(interpreter)?;
     }
+    let chunk_total_gas = task.stats().total_gas_used;
     let chunk_info = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;
     let expected_pi_hash = chunk_info.pi_hash_by_fork(fork_name);
     Ok((
         expected_pi_hash,
-        ChunkProofMetadata { chunk_info },
+        ChunkProofMetadata {
+            chunk_info,
+            chunk_total_gas,
+        },
         proving_task,
     ))
 }
