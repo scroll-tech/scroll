@@ -243,8 +243,8 @@ func (p *BatchProposer) proposeBatch() error {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), p.minCodecVersion)
 	}
 
-	// always take the minimum of the configured max chunks per batch and the codec's max chunks per batch
-	maxChunksThisBatch := min(codec.MaxNumChunksPerBatch(), p.cfg.MaxChunksPerBatch)
+	// use the codec's max chunks per batch limit
+	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, maxChunksThisBatch)

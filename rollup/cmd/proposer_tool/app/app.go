@@ -59,9 +59,6 @@ func action(ctx *cli.Context) error {
 	}
 
 	// sanity check config
-	if cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch <= 0 {
-		log.Crit("cfg.L2Config.BatchProposerConfig.MaxChunksPerBatch must be greater than 0")
-	}
 	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
 		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
 	}

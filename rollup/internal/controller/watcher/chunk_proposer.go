@@ -54,7 +54,6 @@ type ChunkProposer struct {
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Info("new chunk proposer",
-		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxL2GasPerChunk", cfg.MaxL2GasPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"maxBlobSize", maxBlobSize)
@@ -232,10 +231,9 @@ func (p *ChunkProposer) ProposeChunk() error {
 		return err
 	}
 
-	maxBlocksThisChunk := p.cfg.MaxBlockNumPerChunk
-
-	// select at most maxBlocksThisChunk blocks
-	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
+	// select blocks without a hard limit on count in practice (use a large value)
+	// The actual limits will be enforced by gas, timeout, and blob size constraints
+	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, 100000)
 	if err != nil {
 		return err
 	}
@@ -251,7 +249,7 @@ func (p *ChunkProposer) ProposeChunk() error {
 		currentHardfork := encoding.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
 		if currentHardfork != hardforkName {
 			blocks = blocks[:i]
-			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
+			// Truncate blocks at hardfork boundary
 			break
 		}
 	}
@@ -324,8 +322,8 @@ func (p *ChunkProposer) ProposeChunk() error {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if metrics.FirstBlockTimestamp+p.cfg.ChunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
-		log.Info("reached maximum number of blocks in chunk or first block timeout",
+	if metrics.FirstBlockTimestamp+p.cfg.ChunkTimeoutSec < currentTimeSec {
+		log.Info("first block timeout reached",
 			"block count", len(chunk.Blocks),
 			"start block number", chunk.Blocks[0].Header.Number,
 			"start block timestamp", metrics.FirstBlockTimestamp,
