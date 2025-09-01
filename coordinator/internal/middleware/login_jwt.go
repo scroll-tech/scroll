@@ -4,12 +4,20 @@ import (
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/types"
 )
+
+func nonIdendityAuthorizator(data interface{}, _ *gin.Context) bool {
+	if data == nil {
+		return false
+	}
+	return true
+}
 
 // LoginMiddleware jwt auth middleware
 func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
@@ -20,6 +28,7 @@ func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 		Key:             []byte(conf.Auth.Secret),
 		Timeout:         time.Second * time.Duration(conf.Auth.LoginExpireDurationSec),
 		Authenticator:   api.Auth.Login,
+		Authorizator:    nonIdendityAuthorizator,
 		Unauthorized:    unauthorized,
 		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName:   "Bearer",

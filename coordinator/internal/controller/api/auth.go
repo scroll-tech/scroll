@@ -19,6 +19,12 @@ type AuthController struct {
 	loginLogic *auth.LoginLogic
 }
 
+func NewAuthControllerWithLogic(loginLogic *auth.LoginLogic) *AuthController {
+	return &AuthController{
+		loginLogic: loginLogic,
+	}
+}
+
 // NewAuthController returns an LoginController instance
 func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
 	return &AuthController{
@@ -102,10 +108,6 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.ProverName, proverName)
 	}
 
-	if publicKey, ok := claims[types.PublicKey]; ok {
-		c.Set(types.PublicKey, publicKey)
-	}
-
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
 	}
@@ -116,6 +118,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if providerType, ok := claims[types.ProverProviderTypeKey]; ok {
 		c.Set(types.ProverProviderTypeKey, providerType)
+	}
+
+	if publicKey, ok := claims[types.PublicKey]; ok {
+		return publicKey
 	}
 
 	return nil

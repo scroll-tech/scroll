@@ -30,7 +30,6 @@ type ClientManager struct {
 		sync.RWMutex
 		cli           *upClient
 		completionCtx context.Context
-		resultChan    chan *upClient
 	}
 }
 
