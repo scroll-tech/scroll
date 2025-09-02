@@ -1,0 +1,7 @@
+{
+    "feynman": {
+        "b68fdc3f28a5ce006280980df70cd3447e56913e5bca6054603ba85f0794c23a6618ea25a7991845bbc5fd571670ee47379ba31ace92d345bca59702a0d4112d": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/chunk/",
+        "9a3f66370f11e3303f1a1248921025104e83253efea43a70d221cf4e15fc145bf2be2f4468d1ac4a70e7682babb1c60417e21c7633d4b55b58f44703ec82b05a": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/batch/",
+        "1f8627277e1c1f6e1cc70c03e6fde06929e5ea27ca5b1d56e23b235dfeda282e22c0e5294bcb1b3a9def836f8d0f18612a9860629b9497292976ca11844b7e73": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.5.2/bundle/"
+    }
+}

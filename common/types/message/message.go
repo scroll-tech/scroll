@@ -135,10 +135,18 @@ type BlockContextV2 struct {
 	NumL1Msgs uint16      `json:"num_l1_msgs"`
 }
 
+// Metric data carried with OpenVMProof
+type OpenVMProofStat struct {
+	TotalCycle         uint64 `json:"total_cycles"`
+	ExecutionTimeMills uint64 `json:"execution_time_mills"`
+	ProvingTimeMills   uint64 `json:"proving_time_mills"`
+}
+
 // Proof for flatten VM proof
 type OpenVMProof struct {
-	Proof        []byte `json:"proofs"`
-	PublicValues []byte `json:"public_values"`
+	Proof        []byte           `json:"proofs"`
+	PublicValues []byte           `json:"public_values"`
+	Stat         *OpenVMProofStat `json:"stat,omitempty"`
 }
 
 // Proof for flatten EVM proof
@@ -150,7 +158,8 @@ type OpenVMEvmProof struct {
 // OpenVMChunkProof includes the proof info that are required for chunk verification and rollup.
 type OpenVMChunkProof struct {
 	MetaData struct {
-		ChunkInfo *ChunkInfo `json:"chunk_info"`
+		ChunkInfo    *ChunkInfo `json:"chunk_info"`
+		TotalGasUsed uint64     `json:"chunk_total_gas"`
 	} `json:"metadata"`
 
 	VmProof    *OpenVMProof `json:"proof"`

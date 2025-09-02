@@ -24,13 +24,10 @@
     "db_path": ".work/db"
   },
   "circuits": {
-    "euclidV2": {
-      "hard_fork_name": "euclidV2",
-      "workspace_path": ".work/euclid"
-    },
     "feynman": {
       "hard_fork_name": "feynman",
-      "workspace_path": ".work/feynman1"
-    },    
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/",
+      "workspace_path": ".work/feynman"
+    }
   }
 }

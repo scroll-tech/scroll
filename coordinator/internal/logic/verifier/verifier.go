@@ -4,6 +4,7 @@ package verifier
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,6 +130,23 @@ const blocked_vks = `
 	D6YFHwTLZF/U2zpYJPQ3LwJZRm85yA5Vq2iFBqd3Mk4iwOUpS8sbOp3vg2+NDxhhKphgYpuUlykpdsoRhEt+cw==,
 `
 
+// tries to decode s as hex, and if that fails, as base64.
+func decodeVkString(s string) ([]byte, error) {
+	// Try hex decoding first
+	if b, err := hex.DecodeString(s); err == nil {
+		return b, nil
+	}
+	// Fallback to base64 decoding
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) == 0 {
+		return nil, fmt.Errorf("decode vk string %s fail (empty bytes)", s)
+	}
+	return b, nil
+}
+
 func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 
 	vkFileName := cfg.Vkfile
@@ -165,17 +183,17 @@ func (v *Verifier) loadOpenVMVks(cfg config.AssetConfig) error {
 	v.OpenVMVkMap[dump.Bundle] = struct{}{}
 	log.Info("Load vks", "from", cfg.AssetsPath, "chunk", dump.Chunk, "batch", dump.Batch, "bundle", dump.Bundle)
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(dump.Chunk)
+	decodedBytes, err := decodeVkString(dump.Chunk)
 	if err != nil {
 		return err
 	}
 	v.ChunkVk[cfg.ForkName] = decodedBytes
-	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Batch)
+	decodedBytes, err = decodeVkString(dump.Batch)
 	if err != nil {
 		return err
 	}
 	v.BatchVk[cfg.ForkName] = decodedBytes
-	decodedBytes, err = base64.StdEncoding.DecodeString(dump.Bundle)
+	decodedBytes, err = decodeVkString(dump.Bundle)
 	if err != nil {
 		return err
 	}

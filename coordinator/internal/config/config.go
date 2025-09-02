@@ -57,9 +57,10 @@ type Config struct {
 
 // AssetConfig contain assets configurated for each fork, the defaul vkfile name is "OpenVmVk.json".
 type AssetConfig struct {
-	AssetsPath string `json:"assets_path"`
-	ForkName   string `json:"fork_name"`
-	Vkfile     string `json:"vk_file,omitempty"`
+	AssetsPath       string `json:"assets_path"`
+	ForkName         string `json:"fork_name"`
+	Vkfile           string `json:"vk_file,omitempty"`
+	MinProverVersion string `json:"min_prover_version,omitempty"`
 }
 
 // VerifierConfig load zk verifier config.
