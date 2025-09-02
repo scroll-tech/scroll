@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	ctypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 type ClientHelper interface {
@@ -90,19 +93,26 @@ func (c *upClient) Login(ctx context.Context) (*types.LoginSchema, error) {
 
 	// Parse login response as LoginSchema and store the token
 	if loginResp.StatusCode == http.StatusOK {
-		var loginResult types.LoginSchema
-		if err := json.NewDecoder(loginResp.Body).Decode(&loginResult); err == nil {
-			c.loginToken = loginResult.Token
-		}
+		var respWithData ctypes.Response
 		// Note: Body is consumed after decoding, caller should not read it again
-		return &loginResult, nil
+		if err := json.NewDecoder(loginResp.Body).Decode(&respWithData); err == nil {
+			var loginResult types.LoginSchema
+			err = mapstructure.Decode(respWithData.Data, &loginResult)
+			if err != nil {
+				return nil, fmt.Errorf("login parsing data fail, get %v", respWithData.Data)
+			}
+			c.loginToken = loginResult.Token
+			return &loginResult, nil
+		} else {
+			return nil, fmt.Errorf("login parsing response failed: %v", err)
+		}
 	}
 
 	return nil, fmt.Errorf("login request failed with status: %d", loginResp.StatusCode)
 }
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
-func (c *upClient) ProxyLogin(ctx context.Context, param types.LoginParameter) (*types.LoginSchema, error) {
+func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) (*types.LoginSchema, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/proxy_login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -141,7 +151,7 @@ func (c *upClient) ProxyLogin(ctx context.Context, param types.LoginParameter) (
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *upClient) GetTask(ctx context.Context, param types.GetTaskParameter, token string) (*http.Response, error) {
+func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, token string) (*http.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/get_task", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -163,7 +173,7 @@ func (c *upClient) GetTask(ctx context.Context, param types.GetTaskParameter, to
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *upClient) SubmitProof(ctx context.Context, param types.SubmitProofParameter, token string) (*http.Response, error) {
+func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, token string) (*http.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/submit_proof", c.baseURL)
 
 	jsonData, err := json.Marshal(param)

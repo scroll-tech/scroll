@@ -20,10 +20,9 @@ import (
 
 // AuthController is login API
 type AuthController struct {
-	apiLogin         *api.AuthController
-	clients          Clients
-	userTokenCache   *UserTokenCache
-	tokenCacheUpdate chan<- *TokenUpdate
+	apiLogin       *api.AuthController
+	clients        Clients
+	userTokenCache *UserTokenCache
 }
 
 type TokenUpdate struct {
@@ -42,7 +41,8 @@ type UpstreamTokens struct {
 
 type UserTokenCache struct {
 	sync.RWMutex
-	data map[string]UpstreamTokens
+	data             map[string]UpstreamTokens
+	tokenCacheUpdate chan<- *TokenUpdate
 }
 
 func newUserTokens() UpstreamTokens {
@@ -51,8 +51,11 @@ func newUserTokens() UpstreamTokens {
 	}
 }
 
-func newUserCache() *UserTokenCache {
-	return &UserTokenCache{data: make(map[string]UpstreamTokens)}
+func newUserCache(tokenCacheUpdate chan<- *TokenUpdate) *UserTokenCache {
+	return &UserTokenCache{
+		data:             make(map[string]UpstreamTokens),
+		tokenCacheUpdate: tokenCacheUpdate,
+	}
 }
 
 // get retrieves UpstreamTokens for a given user key, returns empty if still not exists
@@ -117,10 +120,9 @@ func NewAuthController(cfg *config.ProxyConfig, clients Clients, vf *verifier.Ve
 	tokenCacheUpdateChan := make(chan *TokenUpdate)
 
 	authController := &AuthController{
-		apiLogin:         api.NewAuthControllerWithLogic(loginLogic),
-		clients:          clients,
-		userTokenCache:   newUserCache(),
-		tokenCacheUpdate: tokenCacheUpdateChan,
+		apiLogin:       api.NewAuthControllerWithLogic(loginLogic),
+		clients:        clients,
+		userTokenCache: newUserCache(tokenCacheUpdateChan),
 	}
 
 	// Launch token cache manager in a separate goroutine
@@ -128,6 +130,8 @@ func NewAuthController(cfg *config.ProxyConfig, clients Clients, vf *verifier.Ve
 
 	return authController
 }
+
+func (a *AuthController) TokenCache() *UserTokenCache { return a.userTokenCache }
 
 func (a *AuthController) doUpdateRequest(ctx context.Context, req *TokenUpdate) (ret *types.LoginSchema) {
 	if req.CompleteNotify != nil {
@@ -143,13 +147,13 @@ func (a *AuthController) doUpdateRequest(ctx context.Context, req *TokenUpdate) 
 	cli := a.clients[req.Upstream]
 	if cli := cli.Client(ctx); cli != nil {
 		var err error
-		if ret, err = cli.ProxyLogin(ctx, req.LoginParam); err == nil {
+		if ret, err = cli.ProxyLogin(ctx, &req.LoginParam); err == nil {
 			a.userTokenCache.partialSet(req.PublicKey, req.Upstream, ret, req.Phase)
 		} else {
-			log.Error("proxy login failed during token cache update", 
-				"userKey", req.PublicKey, 
-				"upstream", req.Upstream, 
-				"phase", req.Phase, 
+			log.Error("proxy login failed during token cache update",
+				"userKey", req.PublicKey,
+				"upstream", req.Upstream,
+				"phase", req.Phase,
 				"error", err)
 		}
 	}
@@ -241,7 +245,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		defer close(notify)
 		select {
 		case <-c.Done():
-		case a.tokenCacheUpdate <- &request:
+		case a.userTokenCache.tokenCacheUpdate <- &request:
 		}
 
 	}
@@ -319,7 +323,7 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 			a.userTokenCache.RUnlock()
 			a.userTokenCache.Lock()
 			if _, exists := a.userTokenCache.data[loginParam.PublicKey]; !exists {
-				log.Info("creating token cache for user after proxy restart", 
+				log.Info("creating token cache for user after proxy restart",
 					"publicKey", loginParam.PublicKey,
 					"proverName", loginParam.Message.ProverName,
 					"reason", "prover using JWT token from before proxy restart")

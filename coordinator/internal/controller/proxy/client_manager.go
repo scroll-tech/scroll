@@ -18,6 +18,7 @@ import (
 
 type Client interface {
 	Client(context.Context) *upClient
+	PeekClient() *upClient
 }
 
 type ClientManager struct {
@@ -93,6 +94,13 @@ func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) ti
 			// Continue to next retry
 		}
 	}
+}
+
+func (cliMgr *ClientManager) PeekClient() *upClient {
+	cliMgr.cachedCli.RLock()
+	defer cliMgr.cachedCli.RUnlock()
+
+	return cliMgr.cachedCli.cli
 }
 
 func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
