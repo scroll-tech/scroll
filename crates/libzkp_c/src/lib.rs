@@ -250,6 +250,19 @@ pub unsafe extern "C" fn gen_wrapped_proof(
 
 /// # Safety
 #[no_mangle]
+pub unsafe extern "C" fn univ_task_compatibility_fix(task_json: *const c_char) -> *mut c_char {
+    let task_json_str = c_char_to_str(task_json);
+    match libzkp::univ_task_compatibility_fix(task_json_str) {
+        Ok(result) => CString::new(result).unwrap().into_raw(),
+        Err(e) => {
+            tracing::error!("univ_task_compability_fix failed, error: {:#}", e);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// # Safety
+#[no_mangle]
 pub unsafe extern "C" fn release_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);

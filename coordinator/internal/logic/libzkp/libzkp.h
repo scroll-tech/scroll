@@ -54,4 +54,7 @@ char* gen_wrapped_proof(char* proof_json, char* metadata, char* vk, size_t vk_le
 // Release memory allocated for a string returned by gen_wrapped_proof
 void release_string(char* string_ptr);
 
+// Universal task compatibility fix function
+char* univ_task_compatibility_fix(char* task_json);
+
 #endif /* LIBZKP_H */
