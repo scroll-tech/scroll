@@ -205,7 +205,7 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 const CompatibilityVersion = "4.5.43"
 
 func isCompatibilityFixingVersion(ver string) bool {
-	return version.CheckScrollRepoVersion(ver, CompatibilityVersion)
+	return !version.CheckScrollRepoVersion(ver, CompatibilityVersion)
 }
 
 func fixCompatibility(schema *coordinatorType.GetTaskSchema) error {
