@@ -11,36 +11,27 @@ import (
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
-
-	"github.com/mitchellh/mapstructure"
 )
-
-type ClientHelper interface {
-	GenLoginParam(string) (*types.LoginParameter, error)
-	OnResp(*upClient, *http.Response)
-}
 
 // Client wraps an http client with a preset host for coordinator API calls
 type upClient struct {
 	httpClient *http.Client
 	baseURL    string
 	loginToken string
-	helper     ClientHelper
 }
 
 // NewClient creates a new Client with the specified host
-func newUpClient(cfg *config.UpStream, helper ClientHelper) *upClient {
+func newUpClient(cfg *config.UpStream) *upClient {
 	return &upClient{
 		httpClient: &http.Client{
 			Timeout: time.Duration(cfg.ConnectionTimeoutSec) * time.Second,
 		},
 		baseURL: cfg.BaseUrl,
-		helper:  helper,
 	}
 }
 
 // FullLogin performs the complete login process: get challenge then login
-func (c *upClient) Login(ctx context.Context) (*types.LoginSchema, error) {
+func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.LoginParameter, error)) (*types.LoginSchema, error) {
 	// Step 1: Get challenge
 	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
@@ -68,7 +59,7 @@ func (c *upClient) Login(ctx context.Context) (*types.LoginSchema, error) {
 	// Step 3: Use the token from challenge as Bearer token for login
 	url = fmt.Sprintf("%s/coordinator/v1/login", c.baseURL)
 
-	param, err := c.helper.GenLoginParam(loginSchema.Token)
+	param, err := genLogin(loginSchema.Token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup login parameter: %w", err)
 	}
@@ -91,28 +82,38 @@ func (c *upClient) Login(ctx context.Context) (*types.LoginSchema, error) {
 		return nil, fmt.Errorf("failed to perform login request: %w", err)
 	}
 
-	// Parse login response as LoginSchema and store the token
-	if loginResp.StatusCode == http.StatusOK {
-		var respWithData ctypes.Response
-		// Note: Body is consumed after decoding, caller should not read it again
-		if err := json.NewDecoder(loginResp.Body).Decode(&respWithData); err == nil {
-			var loginResult types.LoginSchema
-			err = mapstructure.Decode(respWithData.Data, &loginResult)
-			if err != nil {
-				return nil, fmt.Errorf("login parsing data fail, get %v", respWithData.Data)
-			}
-			c.loginToken = loginResult.Token
-			return &loginResult, nil
-		} else {
-			return nil, fmt.Errorf("login parsing response failed: %v", err)
-		}
+	parsedResp, err := handleHttpResp(loginResp)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("login request failed with status: %d", loginResp.StatusCode)
+	var loginResult types.LoginSchema
+	err = parsedResp.DecodeData(&loginResult)
+	if err != nil {
+		return nil, fmt.Errorf("login parsing data fail: %v", err)
+	}
+	c.loginToken = loginResult.Token
+	return &loginResult, nil
+
+}
+
+func handleHttpResp(resp *http.Response) (*ctypes.Response, error) {
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
+		defer resp.Body.Close()
+		var respWithData ctypes.Response
+		// Note: Body is consumed after decoding, caller should not read it again
+		if err := json.NewDecoder(resp.Body).Decode(&respWithData); err == nil {
+			return &respWithData, nil
+		} else {
+			return nil, fmt.Errorf("login parsing expected response failed: %v", err)
+		}
+
+	}
+	return nil, fmt.Errorf("login request failed with status: %d", resp.StatusCode)
 }
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
-func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) (*types.LoginSchema, error) {
+func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) (*ctypes.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/proxy_login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -132,26 +133,11 @@ func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform proxy login request: %w", err)
 	}
-	defer proxyLoginResp.Body.Close()
-
-	// Call helper's OnResp method with the response
-	c.helper.OnResp(c, proxyLoginResp)
-
-	// Parse proxy login response as LoginSchema
-	if proxyLoginResp.StatusCode == http.StatusOK {
-		var loginResult types.LoginSchema
-		if err := json.NewDecoder(proxyLoginResp.Body).Decode(&loginResult); err == nil {
-			return &loginResult, nil
-		}
-		// If parsing fails, still return success but with nil result
-		return nil, nil
-	}
-
-	return nil, fmt.Errorf("proxy login request failed with status: %d", proxyLoginResp.StatusCode)
+	return handleHttpResp(proxyLoginResp)
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, token string) (*http.Response, error) {
+func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, token string) (*ctypes.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/get_task", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -169,11 +155,15 @@ func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, t
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	return c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return handleHttpResp(resp)
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, token string) (*http.Response, error) {
+func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, token string) (*ctypes.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/submit_proof", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -191,5 +181,9 @@ func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofPara
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	return c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return handleHttpResp(resp)
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mitchellh/mapstructure"
 )
 
 // Response the response schema
@@ -11,6 +12,10 @@ type Response struct {
 	ErrCode int         `json:"errcode"`
 	ErrMsg  string      `json:"errmsg"`
 	Data    interface{} `json:"data"`
+}
+
+func (resp *Response) DecodeData(out interface{}) error {
+	return mapstructure.Decode(resp.Data, out)
 }
 
 // RenderJSON renders response with json
