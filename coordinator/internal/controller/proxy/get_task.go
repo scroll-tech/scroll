@@ -1,12 +1,9 @@
 package proxy
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -16,7 +13,7 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-func getSessionData(ctx *gin.Context) (string, *coordinatorType.LoginParameter) {
+func getSessionData(ctx *gin.Context) string {
 
 	publicKeyData, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	publicKey, castOk := publicKeyData.(string)
@@ -25,25 +22,15 @@ func getSessionData(ctx *gin.Context) (string, *coordinatorType.LoginParameter) 
 		log.Warn("get_task parameter fail", "error", nerr)
 
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
-		return "", nil
+		return ""
 	}
 
-	loginParamData, publicKeyExist := ctx.Get(LoginParamCache)
-	loginParam, castOk := loginParamData.(*coordinatorType.LoginParameter)
-	if !publicKeyExist || !castOk {
-		nerr := fmt.Errorf("no login param binding: %v", loginParamData)
-		log.Warn("get_task parameter fail", "error", nerr)
-
-		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
-		return "", nil
-	}
-
-	return publicKey, loginParam
+	return publicKey
 }
 
 // GetTaskController the get prover task api controller
 type GetTaskController struct {
-	tokenCache       *UserTokenCache
+	proverMgr        *ProverManager
 	clients          Clients
 	priorityUpstream map[string]string
 
@@ -51,11 +38,11 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, clients Clients, tokenCache *UserTokenCache, reg prometheus.Registerer) *GetTaskController {
+func NewGetTaskController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, reg prometheus.Registerer) *GetTaskController {
 	// TODO: implement proxy get task controller initialization
 	return &GetTaskController{
 		priorityUpstream: make(map[string]string),
-		tokenCache:       tokenCache,
+		proverMgr:        proverMgr,
 		clients:          clients,
 	}
 }
@@ -74,88 +61,30 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		return
 	}
 
-	publicKey, loginParam := getSessionData(ctx)
-	if publicKey == "" || loginParam == nil {
+	publicKey := getSessionData(ctx)
+	if publicKey == "" {
 		return
 	}
 
-	tokens := ptc.tokenCache.Get(publicKey)
+	session := ptc.proverMgr.Get(publicKey)
 
-	onClientFail := func(upstream string) {
-		//TODO: log re-connect request in info level
-
-		request := TokenUpdate{
-			PublicKey:      publicKey,
-			Upstream:       upstream,
-			Phase:          tokens.LoginPhase,
-			LoginParam:     *loginParam,
-			CompleteNotify: nil,
-		}
-		select {
-		case <-ctx.Done():
-		case ptc.tokenCache.tokenCacheUpdate <- &request:
-		}
-
-	}
-
+	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
 	priorityUpstream, exist := ptc.priorityUpstream[publicKey]
 	if exist {
 		cli := ptc.clients[priorityUpstream]
-		loginSchema := tokens.LoginData[priorityUpstream]
-		if loginSchema == nil {
-			onClientFail(priorityUpstream)
-		} else {
-			ret, triggerUpdate := getTaskFromClient(ctx, cli, &getTaskParameter, loginSchema.Token)
-			if ret != nil {
-
-			} else if triggerUpdate {
-				onClientFail(priorityUpstream)
-			}
+		resp, err := session.GetTask(ctx, &getTaskParameter, cli, priorityUpstream)
+		if err != nil {
+			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
+			return
+		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
+			// simply dispatch the error from upstream to prover
+			types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
+			return
 		}
-		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, fmt.Errorf("get empty prover task"))
 	}
 
 	for n, cli := range ptc.clients {
-
+		// return the first task we can get
+		// TODO: use random array for all clients
 	}
-}
-
-func getTaskFromClient(ctx *gin.Context, cli Client, param *coordinatorType.GetTaskParameter, token string) (*coordinatorType.GetTaskSchema, bool) {
-
-	theCli := cli.PeekClient()
-	if theCli == nil {
-		return nil, true
-	}
-
-	resp, err := theCli.GetTask(ctx, param, token)
-	if err != nil {
-		// log the err in error level
-		return nil, false
-	}
-
-	// Parse response
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
-		unAuth := resp.StatusCode == http.StatusUnauthorized
-		var respWithData types.Response
-		// Note: Body is consumed after decoding, caller should not read it again
-		if err := json.NewDecoder(resp.Body).Decode(&respWithData); err == nil {
-			if unAuth && respWithData.ErrCode == types.ErrJWTTokenExpired {
-				return nil, true
-			}
-
-			var getTaskResult coordinatorType.GetTaskSchema
-			err = mapstructure.Decode(respWithData.Data, &getTaskResult)
-			if err != nil {
-				log.Error("parse get task data fail", "respdata", respWithData.Data)
-				return nil, false
-			}
-			return &getTaskResult, false
-		} else {
-			log.Error("parse get task response failed", "error", err)
-			//fmt.Errorf("login parsing response failed: %v", err)
-			return nil, false
-		}
-	}
-
-	return nil, false
 }

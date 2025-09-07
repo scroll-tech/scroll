@@ -4,37 +4,84 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/types"
 )
 
+type ProverManager struct {
+	sync.RWMutex
+	data map[string]*proverSession
+}
+
+func NewProverManager() *ProverManager {
+	return &ProverManager{
+		data: make(map[string]*proverSession),
+	}
+}
+
+// get retrieves ProverSession for a given user key, returns empty if still not exists
+func (m *ProverManager) Get(userKey string) *proverSession {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.data[userKey]
+}
+
+func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
+	m.Lock()
+	defer m.Unlock()
+
+	if ret, ok := m.data[userKey]; ok {
+		return ret
+	}
+
+	ret := &proverSession{
+		proverToken: make(map[string]loginToken),
+	}
+
+	m.data[userKey] = ret
+	return ret
+}
+
+func (m *ProverManager) Set(userKey string, session *proverSession) {
+	m.Lock()
+	defer m.Unlock()
+
+	m.data[userKey] = session
+}
+
+type loginToken struct {
+	*types.LoginSchema
+	phase uint
+}
+
 // Client wraps an http client with a preset host for coordinator API calls
 type proverSession struct {
 	sync.RWMutex
-	proverToken   string
-	phase         uint
+	proverToken   map[string]loginToken
 	completionCtx context.Context
 }
 
-func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, param *types.LoginParameter, phase uint) error {
+func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up string, param *types.LoginParameter, phase uint) (*types.LoginSchema, error) {
 	c.Lock()
-	curPhase := c.phase
+	curPhase := c.proverToken[up].phase
 	if c.completionCtx != nil {
 		waitctx := c.completionCtx
 		c.Unlock()
 		select {
 		case <-waitctx.Done():
-			return c.maintainLogin(ctx, cliMgr, param, phase)
+			return c.maintainLogin(ctx, cliMgr, up, param, phase)
 		case <-ctx.Done():
-			return fmt.Errorf("ctx fail")
+			return nil, fmt.Errorf("ctx fail")
 		}
 	}
 
 	if phase < curPhase {
 		// outdate login phase, give up
-		c.Unlock()
-		return nil
+		defer c.Unlock()
+		return c.proverToken[up].LoginSchema, nil
 	}
 
 	// occupy the update slot
@@ -45,59 +92,75 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, param 
 
 	cli := cliMgr.Client(ctx)
 	if cli == nil {
-		return fmt.Errorf("get upstream cli fail")
+		return nil, fmt.Errorf("get upstream cli fail")
 	}
 
 	resp, err := cli.ProxyLogin(ctx, param)
 	if err != nil {
-		return fmt.Errorf("proxylogin fail: %v", err)
+		return nil, fmt.Errorf("proxylogin fail: %v", err)
 	}
 
 	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
 		cliMgr.Reset(cli)
 		cli = cliMgr.Client(ctx)
 		if cli == nil {
-			return fmt.Errorf("get upstream cli fail (secondary try)")
+			return nil, fmt.Errorf("get upstream cli fail (secondary try)")
 		}
 
 		// like SDK, we would try one more time if the upstream token is expired
 		resp, err = cli.ProxyLogin(ctx, param)
 		if err != nil {
-			return fmt.Errorf("proxylogin fail: %v", err)
+			return nil, fmt.Errorf("proxylogin fail: %v", err)
 		}
 	}
 
 	if resp.ErrCode != 0 {
-		return fmt.Errorf("upstream fail: %d (%s)", resp.ErrCode, resp.ErrMsg)
+		return nil, fmt.Errorf("upstream fail: %d (%s)", resp.ErrCode, resp.ErrMsg)
 	}
 
 	var loginResult types.LoginSchema
 	if err := resp.DecodeData(&loginResult); err != nil {
-		return err
+		return nil, err
 	}
 
 	c.Lock()
 	defer c.Unlock()
-	c.proverToken = loginResult.Token
+
+	c.proverToken[up] = loginToken{
+		LoginSchema: &loginResult,
+		phase:       phase,
+	}
 	c.completionCtx = nil
 
-	return nil
+	return &loginResult, nil
 }
 
+const expireTolerant = 10 * time.Minute
+
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
-func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, param *types.LoginParameter) error {
+func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, up string, param *types.LoginParameter) error {
 	c.RLock()
-	phase := c.phase + 1
+	existedToken := c.proverToken[up].LoginSchema
+	phase := c.proverToken[up].phase + 1
 	c.RUnlock()
 
-	return c.maintainLogin(ctx, cli, param, phase)
+	// Check if we have a valid cached token that hasn't expired
+	if existedToken != nil {
+		timeRemaining := time.Until(existedToken.Time)
+		if timeRemaining > expireTolerant {
+			// Token is still valid enouth, continue to next client
+			return nil
+		}
+	}
+
+	_, err := c.maintainLogin(ctx, cli, up, param, phase)
+	return err
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParameter, cliMgr Client) (*ctypes.Response, error) {
+func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParameter, cliMgr Client, up string) (*ctypes.Response, error) {
 	c.RLock()
-	phase := c.phase
-	token := c.proverToken
+	token := c.proverToken[up]
 	c.RUnlock()
 
 	cli := cliMgr.Client(ctx)
@@ -105,35 +168,36 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 		return nil, fmt.Errorf("get upstream cli fail")
 	}
 
-	resp, err := cli.GetTask(ctx, param, token)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
-		// get param from ctx
-		loginParam, ok := ctx.Value(LoginParamCache).(*types.LoginParameter)
-		if !ok {
-			return nil, fmt.Errorf("Unexpected error, no loginparam ctx value")
-		}
-
-		err = c.maintainLogin(ctx, cliMgr, loginParam, phase)
+	if token.LoginSchema != nil {
+		resp, err := cli.GetTask(ctx, param, token.Token)
 		if err != nil {
-			return nil, fmt.Errorf("update prover token fail: %V", err)
+			return nil, err
 		}
-
-		// like SDK, we would try one more time if the upstream token is expired
-		return cli.GetTask(ctx, param, token)
+		if resp.ErrCode != ctypes.ErrJWTTokenExpired {
+			return resp, nil
+		}
 	}
 
-	return resp, nil
+	// like SDK, we would try one more time if the upstream token is expired
+	// get param from ctx
+	loginParam, ok := ctx.Value(LoginParamCache).(*types.LoginParameter)
+	if !ok {
+		return nil, fmt.Errorf("Unexpected error, no loginparam ctx value")
+	}
+
+	newToken, err := c.maintainLogin(ctx, cliMgr, up, loginParam, token.phase)
+	if err != nil {
+		return nil, fmt.Errorf("update prover token fail: %V", err)
+	}
+
+	return cli.GetTask(ctx, param, newToken.Token)
+
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, cliMgr Client) (*ctypes.Response, error) {
+func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, cliMgr Client, up string) (*ctypes.Response, error) {
 	c.RLock()
-	phase := c.phase
-	token := c.proverToken
+	token := c.proverToken[up]
 	c.RUnlock()
 
 	cli := cliMgr.Client(ctx)
@@ -141,26 +205,27 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 		return nil, fmt.Errorf("get upstream cli fail")
 	}
 
-	resp, err := cli.SubmitProof(ctx, param, token)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
-		// get param from ctx
-		loginParam, ok := ctx.Value(LoginParamCache).(*types.LoginParameter)
-		if !ok {
-			return nil, fmt.Errorf("Unexpected error, no loginparam ctx value")
-		}
-
-		err = c.maintainLogin(ctx, cliMgr, loginParam, phase)
+	if token.LoginSchema != nil {
+		resp, err := cli.SubmitProof(ctx, param, token.Token)
 		if err != nil {
-			return nil, fmt.Errorf("update prover token fail: %V", err)
+			return nil, err
 		}
-
-		// like SDK, we would try one more time if the upstream token is expired
-		return cli.SubmitProof(ctx, param, token)
+		if resp.ErrCode != ctypes.ErrJWTTokenExpired {
+			return resp, nil
+		}
 	}
 
-	return resp, nil
+	// like SDK, we would try one more time if the upstream token is expired
+	// get param from ctx
+	loginParam, ok := ctx.Value(LoginParamCache).(*types.LoginParameter)
+	if !ok {
+		return nil, fmt.Errorf("Unexpected error, no loginparam ctx value")
+	}
+
+	newToken, err := c.maintainLogin(ctx, cliMgr, up, loginParam, token.phase)
+	if err != nil {
+		return nil, fmt.Errorf("update prover token fail: %V", err)
+	}
+
+	return cli.SubmitProof(ctx, param, newToken.Token)
 }

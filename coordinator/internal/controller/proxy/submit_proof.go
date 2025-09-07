@@ -1,29 +1,69 @@
 package proxy
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/params"
-	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/submitproof"
-	"scroll-tech/coordinator/internal/logic/verifier"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // SubmitProofController the submit proof api controller
 type SubmitProofController struct {
-	submitProofReceiverLogic *submitproof.ProofReceiverLogic
+	proverMgr *ProverManager
+	clients   Clients
 }
 
 // NewSubmitProofController create the submit proof api controller instance
-func NewSubmitProofController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *SubmitProofController {
+func NewSubmitProofController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, reg prometheus.Registerer) *SubmitProofController {
 	return &SubmitProofController{
-		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, chainCfg, db, vf, reg),
+		proverMgr: proverMgr,
+		clients:   clients,
 	}
+}
+
+func upstreamFromTaskName(taskID string) string {
+	// TODO
+	return ""
 }
 
 // SubmitProof prover submit the proof to coordinator
 func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
-	// TODO: implement proxy submit proof logic
+	var submitParameter coordinatorType.SubmitProofParameter
+	if err := ctx.ShouldBind(&submitParameter); err != nil {
+		nerr := fmt.Errorf("prover submitProof parameter invalid, err:%w", err)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
+		return
+	}
+
+	publicKey := getSessionData(ctx)
+	if publicKey == "" {
+		return
+	}
+
+	session := spc.proverMgr.Get(publicKey)
+	upstream := upstreamFromTaskName(submitParameter.TaskID)
+	cli, existed := spc.clients[upstream]
+	if !existed {
+		// TODO: log error
+		nerr := fmt.Errorf("Invalid upstream name (%s) from taskID %s", upstream, submitParameter.TaskID)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
+		return
+	}
+
+	resp, err := session.SubmitProof(ctx, &submitParameter, cli, upstream)
+	if err != nil {
+		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
+		return
+	} else if resp.ErrCode != 0 {
+		// simply dispatch the error from upstream to prover
+		types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
+		return
+	} else {
+		types.RenderSuccess(ctx, resp.Data)
+		return
+	}
 }

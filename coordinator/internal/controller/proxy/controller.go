@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/coordinator/internal/config"
@@ -21,7 +22,7 @@ var (
 type Clients map[string]Client
 
 // InitController inits Controller with database
-func InitController(cfg *config.ProxyConfig) {
+func InitController(cfg *config.ProxyConfig, reg prometheus.Registerer) {
 	// normalize cfg
 	cfg.ProxyManager.Normalize()
 
@@ -42,7 +43,9 @@ func InitController(cfg *config.ProxyConfig) {
 		clients[nm] = cli
 	}
 
-	Auth = NewAuthController(cfg, clients, vf)
-	// GetTask = NewGetTaskController(cfg, chainCfg, db, vf, reg)
-	// SubmitProof = NewSubmitProofController(cfg, chainCfg, db, vf, reg)
+	proverManager := NewProverManager()
+
+	Auth = NewAuthController(cfg, clients, vf, proverManager)
+	GetTask = NewGetTaskController(cfg, clients, proverManager, reg)
+	SubmitProof = NewSubmitProofController(cfg, clients, proverManager, reg)
 }
