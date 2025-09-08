@@ -88,6 +88,7 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 			cp.TryProposeChunk() // chunk2 contains block2
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+				MaxChunksPerBatch:             math.MaxInt32,
 				BatchTimeoutSec:               tt.batchTimeoutSec,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{
@@ -172,6 +173,7 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 	}
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunksPerBatch:             math.MaxInt32,
 		BatchTimeoutSec:               math.MaxUint32,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
@@ -238,6 +240,7 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 	}
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunksPerBatch:             45,
 		BatchTimeoutSec:               math.MaxUint32,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
@@ -325,6 +328,7 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 	// Create batch proposer with 4KiB uncompressed batch bytes limit
 	// Each chunk is ~3KiB, so 1 chunk (~3KiB) should fit, but 2 chunks (~6KiB) should exceed limit
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunksPerBatch:             math.MaxInt32,  // No chunk count limit
 		BatchTimeoutSec:               math.MaxUint32, // No timeout limit
 		MaxUncompressedBatchBytesSize: 4 * 1024,       // 4KiB limit
 	}, encoding.CodecV8, chainConfig, db, false /* rollup mode */, nil)

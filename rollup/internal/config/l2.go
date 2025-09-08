@@ -40,6 +40,7 @@ type ChunkProposerConfig struct {
 type BatchProposerConfig struct {
 	ProposeIntervalMilliseconds   uint64 `json:"propose_interval_milliseconds"`
 	BatchTimeoutSec               uint64 `json:"batch_timeout_sec"`
+	MaxChunksPerBatch             int    `json:"max_chunks_per_batch"`
 	MaxUncompressedBatchBytesSize uint64 `json:"max_uncompressed_batch_bytes_size"`
 }
 

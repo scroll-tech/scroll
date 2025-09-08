@@ -8,6 +8,7 @@
       },
       "batch_proposer_config": {
         "batch_timeout_sec": 72000000000,
+        "max_chunks_per_batch": 45,
         "max_uncompressed_batch_bytes_size": 4194304
       },
       "bundle_proposer_config": {

@@ -124,6 +124,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 	}, encoding.CodecV7, chainConfig, db, nil)
 
 	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunksPerBatch:             math.MaxInt32,
 		BatchTimeoutSec:               300,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)
