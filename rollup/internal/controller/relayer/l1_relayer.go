@@ -105,23 +105,20 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	r.metrics.rollupL1RelayerGasPriceOraclerRunTotal.Inc()
-	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
+
+	limit := r.cfg.GasOracleConfig.CalculateAverageFeesWindowSize
+	blocks, err := r.l1BlockOrm.GetLatestL1Blocks(r.ctx, limit)
 	if err != nil {
-		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
+		log.Error("Failed to GetLatestL1Blocks from db", "limit", limit, "err", err)
 		return
 	}
 
-	blocks, err := r.l1BlockOrm.GetL1Blocks(r.ctx, map[string]interface{}{
-		"number": latestBlockHeight,
-	})
-	if err != nil {
-		log.Error("Failed to GetL1Blocks from db", "height", latestBlockHeight, "err", err)
+	// nothing to do if we don't have any l1 blocks
+	if len(blocks) == 0 {
+		log.Info("No l1 blocks to process", "limit", limit)
 		return
 	}
-	if len(blocks) != 1 {
-		log.Error("Block not exist", "height", latestBlockHeight)
-		return
-	}
+
 	block := blocks[0]
 
 	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
@@ -130,8 +127,8 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			return
 		}
 
-		baseFee := block.BaseFee
-		blobBaseFee := block.BlobBaseFee
+		// calculate the average base fee and blob base fee of the last N blocks
+		baseFee, blobBaseFee := r.calculateAverageFees(blocks)
 
 		// include the token exchange rate in the fee data if alternative gas token enabled
 		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig != nil && r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
@@ -286,4 +283,20 @@ func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 	// If finalizing/finalized status is updated before committed status, skip the timeout check of this round.
 	// Because batches[0].CommittedAt is nil in this case, this will only continue for a short time window.
 	return len(batches) == 0 || (batches[0].Index != 0 && batches[0].CommittedAt != nil && utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute), nil
+}
+
+// calculateAverageFees returns the average base fee and blob base fee.
+func (r *Layer1Relayer) calculateAverageFees(blocks []orm.L1Block) (avgBaseFee uint64, avgBlobBaseFee uint64) {
+	if len(blocks) == 0 {
+		return 0, 0
+	}
+
+	var totalBaseFee, totalBlobBaseFee uint64
+	for _, b := range blocks {
+		totalBaseFee += b.BaseFee
+		totalBlobBaseFee += b.BlobBaseFee
+	}
+
+	count := uint64(len(blocks))
+	return totalBaseFee / count, totalBlobBaseFee / count
 }

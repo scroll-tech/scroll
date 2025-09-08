@@ -71,6 +71,46 @@ func (o *L1Block) GetL1Blocks(ctx context.Context, fields map[string]interface{}
 	return l1Blocks, nil
 }
 
+// GetLatestL1Blocks get the latest N l1 blocks ordered by block number descending
+func (o *L1Block) GetLatestL1Blocks(ctx context.Context, limit int) ([]L1Block, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L1Block{})
+	db = db.Order("number DESC")
+	db = db.Limit(limit)
+
+	var l1Blocks []L1Block
+	if err := db.Find(&l1Blocks).Error; err != nil {
+		return nil, fmt.Errorf("L1Block.GetLatestL1Blocks error: %w, limit: %d", err, limit)
+	}
+	return l1Blocks, nil
+}
+
+// GetAverageFees returns the average base_fee and blob_base_fee of all blocks
+func (o *L1Block) GetAverageFees(ctx context.Context) (avgBaseFee float64, avgBlobBaseFee float64, err error) {
+	db := o.db.WithContext(ctx)
+
+	var l1Blocks []L1Block
+	if err := db.Model(&L1Block{}).Find(&l1Blocks).Error; err != nil {
+		return 0, 0, fmt.Errorf("L1Block.GetAverageFees error: %w", err)
+	}
+
+	if len(l1Blocks) == 0 {
+		return 0, 0, nil
+	}
+
+	var totalBaseFee, totalBlobBaseFee uint64
+	for _, block := range l1Blocks {
+		totalBaseFee += block.BaseFee
+		totalBlobBaseFee += block.BlobBaseFee
+	}
+
+	count := float64(len(l1Blocks))
+	avgBaseFee = float64(totalBaseFee) / count
+	avgBlobBaseFee = float64(totalBlobBaseFee) / count
+
+	return avgBaseFee, avgBlobBaseFee, nil
+}
+
 // GetBlobFeesInRange returns all blob_base_fee values for blocks
 // with number ∈ [startBlock..endBlock], ordered by block number ascending.
 func (o *L1Block) GetBlobFeesInRange(ctx context.Context, startBlock, endBlock uint64) ([]uint64, error) {
