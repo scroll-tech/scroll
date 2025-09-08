@@ -14,7 +14,7 @@ import (
 )
 
 // ChallengeMiddleware jwt challenge middleware
-func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
+func ChallengeMiddleware(auth *config.Auth) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Authenticator: func(c *gin.Context) (interface{}, error) {
 			return nil, nil
@@ -30,8 +30,8 @@ func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 			}
 		},
 		Unauthorized:  unauthorized,
-		Key:           []byte(conf.Auth.Secret),
-		Timeout:       time.Second * time.Duration(conf.Auth.ChallengeExpireDurationSec),
+		Key:           []byte(auth.Secret),
+		Timeout:       time.Second * time.Duration(auth.ChallengeExpireDurationSec),
 		TokenLookup:   "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,

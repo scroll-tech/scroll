@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,8 +27,15 @@ func NewSubmitProofController(cfg *config.ProxyConfig, clients Clients, proverMg
 }
 
 func upstreamFromTaskName(taskID string) string {
-	// TODO
+	parts, _, found := strings.Cut(taskID, ":")
+	if found {
+		return parts
+	}
 	return ""
+}
+
+func formUpstreamWithTaskName(upstream string, taskID string) string {
+	return fmt.Sprintf("%s:%s", upstream, taskID)
 }
 
 // SubmitProof prover submit the proof to coordinator

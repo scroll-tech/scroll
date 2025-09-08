@@ -68,23 +68,51 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	session := ptc.proverMgr.Get(publicKey)
 
-	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
-	priorityUpstream, exist := ptc.priorityUpstream[publicKey]
-	if exist {
-		cli := ptc.clients[priorityUpstream]
-		resp, err := session.GetTask(ctx, &getTaskParameter, cli, priorityUpstream)
+	getTask := func(upStream string, cli Client) (tryNext bool) {
+		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
 		if err != nil {
 			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 			return
 		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
-			// simply dispatch the error from upstream to prover
-			types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
+
+			if resp.ErrCode != 0 {
+				// simply dispatch the error from upstream to prover
+				types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
+				return
+			}
+
+			var task coordinatorType.GetTaskSchema
+			if err = resp.DecodeData(&task); err == nil {
+				task.TaskID = formUpstreamWithTaskName(upStream, task.TaskID)
+				// TODO: log the new id in debug level
+				types.RenderSuccess(ctx, &task)
+			} else {
+				types.RenderFailure(ctx, types.InternalServerError, fmt.Errorf("decode task fail: %v", err))
+			}
+
 			return
+		}
+		tryNext = true
+		return
+	}
+
+	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
+	priorityUpstream, exist := ptc.priorityUpstream[publicKey]
+	if exist {
+		cli := ptc.clients[priorityUpstream]
+		if cli != nil && !getTask(priorityUpstream, cli) {
+			return
+		} else if cli == nil {
+			// TODO: log error
 		}
 	}
 
 	for n, cli := range ptc.clients {
-		// return the first task we can get
-		// TODO: use random array for all clients
+		if !getTask(n, cli) {
+			return
+		}
 	}
+
+	// if all get task failed, throw empty proof resp
+	types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, fmt.Errorf("get empty prover task"))
 }
