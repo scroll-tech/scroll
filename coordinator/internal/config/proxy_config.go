@@ -45,7 +45,6 @@ type UpStream struct {
 type ProxyConfig struct {
 	ProxyManager *ProxyManager        `json:"proxy_manager"`
 	ProxyName    string               `json:"proxy_name"`
-	Auth         *Auth                `json:"auth"`
 	Coordinators map[string]*UpStream `json:"coondiators"`
 }
 

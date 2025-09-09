@@ -40,7 +40,7 @@ func (s *SimpleDeduplicator) InsertChallenge(ctx context.Context, challengeStrin
 }
 
 // NewLoginLogicWithSimpleDEduplicator new a LoginLogic, do not use db to deduplicate challege
-func NewLoginLogicWithSimpleDEduplicator(vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+func NewLoginLogicWithSimpleDeduplicator(vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
 	return newLoginLogic(&SimpleDeduplicator{}, vcfg, vf)
 }
 

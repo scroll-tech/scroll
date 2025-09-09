@@ -21,13 +21,13 @@ func nonIdendityAuthorizator(data interface{}, _ *gin.Context) bool {
 }
 
 // LoginMiddleware jwt auth middleware
-func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
+func LoginMiddleware(auth *config.Auth) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		PayloadFunc:     api.Auth.PayloadFunc,
 		IdentityHandler: api.Auth.IdentityHandler,
 		IdentityKey:     types.PublicKey,
-		Key:             []byte(conf.Auth.Secret),
-		Timeout:         time.Second * time.Duration(conf.Auth.LoginExpireDurationSec),
+		Key:             []byte(auth.Secret),
+		Timeout:         time.Second * time.Duration(auth.LoginExpireDurationSec),
 		Authenticator:   api.Auth.Login,
 		Authorizator:    nonIdendityAuthorizator,
 		Unauthorized:    unauthorized,
@@ -49,13 +49,13 @@ func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 }
 
 // ProxyLoginMiddleware jwt auth middleware for proxy login
-func ProxyLoginMiddleware(conf *config.ProxyConfig) *jwt.GinJWTMiddleware {
+func ProxyLoginMiddleware(auth *config.Auth) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		PayloadFunc:     api.Auth.PayloadFunc,
 		IdentityHandler: api.Auth.IdentityHandler,
 		IdentityKey:     types.PublicKey,
-		Key:             []byte(conf.Auth.Secret),
-		Timeout:         time.Second * time.Duration(conf.Auth.LoginExpireDurationSec),
+		Key:             []byte(auth.Secret),
+		Timeout:         time.Second * time.Duration(auth.LoginExpireDurationSec),
 		Authenticator:   proxy.Auth.Login,
 		Authorizator:    nonIdendityAuthorizator,
 		Unauthorized:    unauthorized,

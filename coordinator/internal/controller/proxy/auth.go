@@ -29,9 +29,13 @@ const ProverTypesKey = "prover_types"
 const SignatureKey = "prover_signature"
 
 // NewAuthController returns an LoginController instance
-func NewAuthController(cfg *config.ProxyConfig, clients Clients, vf *verifier.Verifier, proverMgr *ProverManager) *AuthController {
+func NewAuthController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager) *AuthController {
 
-	loginLogic := auth.NewLoginLogicWithSimpleDEduplicator(cfg.ProxyManager.Verifier, vf)
+	// use a dummy Verifier to create login logic (we do not use any information in verifier)
+	dummyVf := verifier.Verifier{
+		OpenVMVkMap: make(map[string]struct{}),
+	}
+	loginLogic := auth.NewLoginLogicWithSimpleDeduplicator(cfg.ProxyManager.Verifier, &dummyVf)
 
 	authController := &AuthController{
 		apiLogin:  api.NewAuthControllerWithLogic(loginLogic),

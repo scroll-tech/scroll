@@ -126,7 +126,8 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 		// Set new completion context and launch login goroutine
 		ctx, completionDone := context.WithCancel(context.TODO())
 		loginCli := newUpClient(cliMgr.cfg)
-		cliMgr.cachedCli.completionCtx = context.WithValue(ctx, "cli", loginCli)
+		completionCtx = context.WithValue(ctx, "cli", loginCli)
+		cliMgr.cachedCli.completionCtx = completionCtx
 
 		// Launch keep-login goroutine
 		go func() {
@@ -137,40 +138,6 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 			cliMgr.cachedCli.Lock()
 			cliMgr.cachedCli.cli = loginCli
 			cliMgr.cachedCli.completionCtx = nil
-
-			// Launch waiting thread to clear cached client before expiration
-			// go func() {
-			// 	now := time.Now()
-			// 	clearTime := expiredT.Add(-10 * time.Second) // 10s before expiration
-
-			// 	// If clear time is too soon (less than 10s from now), set it to 10s from now
-			// 	if clearTime.Before(now.Add(10 * time.Second)) {
-			// 		clearTime = now.Add(10 * time.Second)
-			// 		log.Error("token expiration time is too close, delaying clear time",
-			// 			"name", cliMgr.name,
-			// 			"expiredT", expiredT,
-			// 			"adjustedClearTime", clearTime)
-			// 	}
-
-			// 	waitDuration := time.Until(clearTime)
-			// 	log.Info("token expiration monitor started",
-			// 		"name", cliMgr.name,
-			// 		"expiredT", expiredT,
-			// 		"clearTime", clearTime,
-			// 		"waitDuration", waitDuration)
-
-			// 	timer := time.NewTimer(waitDuration)
-			// 	select {
-			// 	case <-ctx.Done():
-			// 		timer.Stop()
-			// 		log.Info("token expiration monitor cancelled", "name", cliMgr.name)
-			// 	case <-timer.C:
-			// 		log.Info("clearing cached client before token expiration",
-			// 			"name", cliMgr.name,
-			// 			"expiredT", expiredT)
-			// 		cliMgr.clearCachedCli(loginCli)
-			// 	}
-			// }()
 
 			cliMgr.cachedCli.Unlock()
 

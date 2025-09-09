@@ -29,7 +29,7 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	challengeMiddleware := middleware.ChallengeMiddleware(conf.Auth)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)
 
-	loginMiddleware := middleware.LoginMiddleware(conf)
+	loginMiddleware := middleware.LoginMiddleware(conf.Auth)
 	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
 
 	// need jwt token api
@@ -41,13 +41,24 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	}
 }
 
+// Route register route for coordinator
+func ProxyRoute(router *gin.Engine, cfg *config.ProxyConfig, reg prometheus.Registerer) {
+	router.Use(gin.Recovery())
+
+	observability.Use(router, "coordinator", reg)
+
+	r := router.Group("coordinator")
+
+	v1_proxy(r, cfg)
+}
+
 func v1_proxy(router *gin.RouterGroup, conf *config.ProxyConfig) {
 	r := router.Group("/v1")
 
-	challengeMiddleware := middleware.ChallengeMiddleware(conf.Auth)
+	challengeMiddleware := middleware.ChallengeMiddleware(conf.ProxyManager.Auth)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)
 
-	loginMiddleware := middleware.ProxyLoginMiddleware(conf)
+	loginMiddleware := middleware.ProxyLoginMiddleware(conf.ProxyManager.Auth)
 	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
 
 	// need jwt token api

@@ -30,6 +30,16 @@ func newUpClient(cfg *config.UpStream) *upClient {
 	}
 }
 
+func (c *upClient) Token() string {
+	return c.loginToken
+}
+
+// need a parsable schema defination
+type loginSchema struct {
+	Time  string `json:"time"`
+	Token string `json:"token"`
+}
+
 // FullLogin performs the complete login process: get challenge then login
 func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.LoginParameter, error)) (*types.LoginSchema, error) {
 	// Step 1: Get challenge
@@ -44,22 +54,24 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenge: %w", err)
 	}
-	defer challengeResp.Body.Close()
 
-	if challengeResp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("challenge request failed with status: %d", challengeResp.StatusCode)
+	parsedResp, err := handleHttpResp(challengeResp)
+	if err != nil {
+		return nil, err
+	} else if parsedResp.ErrCode != 0 {
+		return nil, fmt.Errorf("challenge failed: %d (%s)", parsedResp.ErrCode, parsedResp.ErrMsg)
 	}
 
-	// Step 2: Parse challenge response
-	var loginSchema types.LoginSchema
-	if err := json.NewDecoder(challengeResp.Body).Decode(&loginSchema); err != nil {
+	// Ste p2: Parse challenge response
+	var challengeSchema loginSchema
+	if err := parsedResp.DecodeData(&challengeSchema); err != nil {
 		return nil, fmt.Errorf("failed to parse challenge response: %w", err)
 	}
 
 	// Step 3: Use the token from challenge as Bearer token for login
 	url = fmt.Sprintf("%s/coordinator/v1/login", c.baseURL)
 
-	param, err := genLogin(loginSchema.Token)
+	param, err := genLogin(challengeSchema.Token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup login parameter: %w", err)
 	}
@@ -75,26 +87,32 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+loginSchema.Token)
+	req.Header.Set("Authorization", "Bearer "+challengeSchema.Token)
 
 	loginResp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform login request: %w", err)
 	}
 
-	parsedResp, err := handleHttpResp(loginResp)
+	parsedResp, err = handleHttpResp(loginResp)
 	if err != nil {
 		return nil, err
+	} else if parsedResp.ErrCode != 0 {
+		return nil, fmt.Errorf("login failed: %d (%s)", parsedResp.ErrCode, parsedResp.ErrMsg)
 	}
 
-	var loginResult types.LoginSchema
+	var loginResult loginSchema
 	err = parsedResp.DecodeData(&loginResult)
 	if err != nil {
 		return nil, fmt.Errorf("login parsing data fail: %v", err)
 	}
 	c.loginToken = loginResult.Token
-	return &loginResult, nil
 
+	// TODO: we need to parse time if we start making use of it
+
+	return &types.LoginSchema{
+		Token: loginResult.Token,
+	}, nil
 }
 
 func handleHttpResp(resp *http.Response) (*ctypes.Response, error) {
