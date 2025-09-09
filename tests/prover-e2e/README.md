@@ -1,6 +1,6 @@
 ## A new e2e test tool to setup a local environment for testing coordinator and prover.
 
-It contain data from some blocks in scroll sepolia, and help to generate a series of chunks/batches/bundle from this blocks, filling the db for coordinator, so a e2e test (from chunk to bundle) can be run completely local
+It contains data from some blocks in scroll sepolia, and helps to generate a series of chunks/batches/bundles from these blocks, filling the DB for the coordinator, so an e2e test (from chunk to bundle) can be run completely local
 
 Steps:
 1. run `make all` under `tests/prover-e2e`, it would launch a postgreSql db in local docker container, which is ready to be used by coordinator (include some chunks/batches/bundle waiting to be proven)
