@@ -118,7 +118,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		return nil, fmt.Errorf("upstream fail: %d (%s)", resp.ErrCode, resp.ErrMsg)
 	}
 
-	var loginResult types.LoginSchema
+	var loginResult loginSchema
 	if err := resp.DecodeData(&loginResult); err != nil {
 		return nil, err
 	}
@@ -127,12 +127,14 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	defer c.Unlock()
 
 	c.proverToken[up] = loginToken{
-		LoginSchema: &loginResult,
-		phase:       phase,
+		LoginSchema: &types.LoginSchema{
+			Token: loginResult.Token,
+		},
+		phase: phase,
 	}
 	c.completionCtx = nil
 
-	return &loginResult, nil
+	return c.proverToken[up].LoginSchema, nil
 }
 
 const expireTolerant = 10 * time.Minute

@@ -128,8 +128,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 	if loginParam.PublicKey != "" {
 
 		c.Set(LoginParamCache, loginParam)
+		fmt.Println("identify", loginParam)
 		return loginParam.PublicKey
 	}
 
+	fmt.Println("identify empty")
 	return nil
 }

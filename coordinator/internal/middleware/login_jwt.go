@@ -51,8 +51,8 @@ func LoginMiddleware(auth *config.Auth) *jwt.GinJWTMiddleware {
 // ProxyLoginMiddleware jwt auth middleware for proxy login
 func ProxyLoginMiddleware(auth *config.Auth) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
-		PayloadFunc:     api.Auth.PayloadFunc,
-		IdentityHandler: api.Auth.IdentityHandler,
+		PayloadFunc:     proxy.Auth.PayloadFunc,
+		IdentityHandler: proxy.Auth.IdentityHandler,
 		IdentityKey:     types.PublicKey,
 		Key:             []byte(auth.Secret),
 		Timeout:         time.Second * time.Duration(auth.LoginExpireDurationSec),

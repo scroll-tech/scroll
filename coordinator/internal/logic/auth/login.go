@@ -93,16 +93,19 @@ func (l *LoginLogic) CompatiblityCheck(login *types.LoginParameter) error {
 		vks[vk] = struct{}{}
 	}
 
-	for _, vk := range login.Message.VKs {
-		if _, ok := vks[vk]; !ok {
-			log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
-				"prover_version", login.Message.ProverVersion, "message", login.Message)
-			if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
-				return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
-					version.Version, login.Message.ProverVersion)
+	// new coordinator / proxy do not check vks while login, code only for backward compatibility
+	if len(vks) != 0 {
+		for _, vk := range login.Message.VKs {
+			if _, ok := vks[vk]; !ok {
+				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
+					"prover_version", login.Message.ProverVersion, "message", login.Message)
+				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
+					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
+						version.Version, login.Message.ProverVersion)
+				}
+				// if the prover reports a same prover version
+				return errors.New("incompatible vk. please check your params files or config files")
 			}
-			// if the prover reports a same prover version
-			return errors.New("incompatible vk. please check your params files or config files")
 		}
 	}
 

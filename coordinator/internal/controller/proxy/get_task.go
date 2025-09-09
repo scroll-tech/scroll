@@ -54,6 +54,7 @@ func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 
 // GetTasks get assigned chunk/batch task
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
+	fmt.Println("start get task")
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
@@ -70,6 +71,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	getTask := func(upStream string, cli Client) (tryNext bool) {
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
+		fmt.Println("upstream get task", resp)
 		if err != nil {
 			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 			return
