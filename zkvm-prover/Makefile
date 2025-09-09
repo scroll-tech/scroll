@@ -38,6 +38,9 @@ DUMP_DIR ?= .work
 prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override build
 
+version:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override version
+
 prover_cpu:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
 

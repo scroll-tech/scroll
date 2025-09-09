@@ -16,6 +16,8 @@ clean:
 build:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build -Z unstable-options --release -p prover --lockfile-path ./Cargo.lock
 
+version:
+	echo ${GO_TAG}-${GIT_REV}-${ZK_VERSION}
 # update Cargo.lock while override config has been updated
 #update:
 #	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build -Z unstable-options --release -p prover --lockfile-path ./Cargo.lock
