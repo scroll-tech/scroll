@@ -99,6 +99,7 @@ func testBundleProposerLimitsCodecV7(t *testing.T) {
 			}, encoding.CodecV7, chainConfig, db, nil)
 
 			bap := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+				MaxChunksPerBatch:             math.MaxInt32,
 				BatchTimeoutSec:               0,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, chainConfig, db, false /* rollup mode */, nil)

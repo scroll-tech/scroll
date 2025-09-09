@@ -233,7 +233,7 @@ func (p *ChunkProposer) ProposeChunk() error {
 
 	// select blocks without a hard limit on count in practice (use a large value)
 	// The actual limits will be enforced by gas, timeout, and blob size constraints
-	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, 100000)
+	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, 1000)
 	if err != nil {
 		return err
 	}
