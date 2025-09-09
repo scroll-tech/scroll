@@ -3,7 +3,7 @@
 It contains data from some blocks in scroll sepolia, and helps to generate a series of chunks/batches/bundles from these blocks, filling the DB for the coordinator, so an e2e test (from chunk to bundle) can be run completely local
 
 Steps:
-1. run `make all` under `tests/prover-e2e`, it would launch a postgreSql db in local docker container, which is ready to be used by coordinator (include some chunks/batches/bundle waiting to be proven)
+1. run `make all` under `tests/prover-e2e`, it would launch a postgreSql db in local docker container, which is ready to be used by coordinator (include some chunks/batches/bundles waiting to be proven)
 2. download circuit assets with `download-release.sh` script in `zkvm-prover`
 3. generate the verifier stuff corresponding to the downloaded assets by `make gen_verifier_stuff` in `zkvm-prover`
 4. setup `config.json` and `genesis.json` for coordinator, copy the generated verifier stuff in step 3 to the directory which coordinator would load them
