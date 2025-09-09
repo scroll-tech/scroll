@@ -32,11 +32,14 @@ endif
 
 ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
 
-E2E_HANDLE_SET = ../tests/prover-e2e/testset.json
-DUMP_DIR = .work
+E2E_HANDLE_SET ?= ../tests/prover-e2e/testset.json
+DUMP_DIR ?= .work
 
 prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override build
+
+version:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override version
 
 prover_cpu:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
