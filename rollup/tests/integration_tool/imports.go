@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"sort"
-	"strings"
 
 	"gorm.io/gorm"
 
@@ -158,7 +158,7 @@ func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []
 	if last == nil {
 		var err error
 		last, err = batchOrm.GetLatestBatch(ctx)
-		if err != nil && !strings.Contains(err.Error(), "record not found") {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		} else if last != nil {
 			log.Info("start from last batch", "index", last.Index)
