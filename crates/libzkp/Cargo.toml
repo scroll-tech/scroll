@@ -6,7 +6,7 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 scroll-zkvm-types.workspace = true
-scroll-zkvm-verifier-euclid.workspace = true
+scroll-zkvm-verifier.workspace = true
 
 alloy-primitives.workspace = true #depress the effect of "native-keccak"
 sbv-primitives = {workspace = true, features = ["scroll-compress-ratio", "scroll"]}

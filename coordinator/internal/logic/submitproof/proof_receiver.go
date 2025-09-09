@@ -71,6 +71,9 @@ type ProofReceiverLogic struct {
 	validateFailureProverTaskStatusNotOk  prometheus.Counter
 	validateFailureProverTaskTimeout      prometheus.Counter
 	validateFailureProverTaskHaveVerifier prometheus.Counter
+	proverSpeed                           *prometheus.GaugeVec
+	provingTime                           prometheus.Gauge
+	evmCyclePerGas                        prometheus.Gauge
 
 	ChunkTask  provertask.ProverTask
 	BundleTask provertask.ProverTask
@@ -79,6 +82,7 @@ type ProofReceiverLogic struct {
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
 func NewSubmitProofReceiverLogic(cfg *config.ProverManager, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
+
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
@@ -133,6 +137,18 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, chainCfg *params.Cha
 			Name: "coordinator_validate_failure_submit_have_been_verifier",
 			Help: "Total number of submit proof validate failure proof have been verifier.",
 		}),
+		evmCyclePerGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evm_circuit_cycle_per_gas",
+			Help: "VM cycles cost for a gas unit cost in evm execution",
+		}),
+		provingTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "chunk_proving_time",
+			Help: "Wall clock time for chunk proving in second",
+		}),
+		proverSpeed: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "prover_speed",
+			Help: "Cycle against running time of prover (in mhz)",
+		}, []string{"type", "phase"}),
 	}
 }
 
@@ -204,12 +220,34 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)
+		if stat := chunkProof.VmProof.Stat; stat != nil {
+			if g, _ := m.proverSpeed.GetMetricWithLabelValues("chunk", "exec"); g != nil && stat.ExecutionTimeMills > 0 {
+				g.Set(float64(stat.TotalCycle) / float64(stat.ExecutionTimeMills*1000))
+			}
+			if g, _ := m.proverSpeed.GetMetricWithLabelValues("chunk", "proving"); g != nil && stat.ProvingTimeMills > 0 {
+				g.Set(float64(stat.TotalCycle) / float64(stat.ProvingTimeMills*1000))
+			}
+			if chunkProof.MetaData.TotalGasUsed > 0 {
+				cycle_per_gas := float64(stat.TotalCycle) / float64(chunkProof.MetaData.TotalGasUsed)
+				m.evmCyclePerGas.Set(cycle_per_gas)
+			}
+			m.provingTime.Set(float64(stat.ProvingTimeMills) / 1000)
+		}
+
 	case message.ProofTypeBatch:
 		batchProof := &message.OpenVMBatchProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyBatchProof(batchProof, hardForkName)
+		if stat := batchProof.VmProof.Stat; stat != nil {
+			if g, _ := m.proverSpeed.GetMetricWithLabelValues("batch", "exec"); g != nil && stat.ExecutionTimeMills > 0 {
+				g.Set(float64(stat.TotalCycle) / float64(stat.ExecutionTimeMills*1000))
+			}
+			if g, _ := m.proverSpeed.GetMetricWithLabelValues("batch", "proving"); g != nil && stat.ProvingTimeMills > 0 {
+				g.Set(float64(stat.TotalCycle) / float64(stat.ProvingTimeMills*1000))
+			}
+		}
 	case message.ProofTypeBundle:
 		bundleProof := &message.OpenVMBundleProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {

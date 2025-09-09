@@ -91,7 +91,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
             aggregated_proofs: value
                 .chunk_proofs
                 .into_iter()
-                .map(|w_proof| w_proof.proof.into_root_proof().expect("expect root proof"))
+                .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
                 .collect(),
             serialized_witness: vec![to_rkyv_bytes::<RancorError>(&witness)?.into_vec()],
             vk: Vec::new(),
