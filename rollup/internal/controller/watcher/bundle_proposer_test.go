@@ -86,14 +86,19 @@ func testBundleProposerLimitsCodecV7(t *testing.T) {
 			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
 			assert.NoError(t, err)
 
+			block3 := *block1
+			block3.Header = &gethTypes.Header{}
+			*block3.Header = *block1.Header
+			block3.Header.Number = new(big.Int).SetUint64(block2.Header.Number.Uint64() + 1)
+
 			l2BlockOrm := orm.NewL2Block(db)
-			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2, &block3})
 			assert.NoError(t, err)
 
 			chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxL2GasPerChunk:              1100000, // One block per chunk via gas limit
+				MaxL2GasPerChunk:              1152994, // One block per chunk via gas limit
 				ChunkTimeoutSec:               math.MaxUint32,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, chainConfig, db, nil)
