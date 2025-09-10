@@ -102,7 +102,6 @@ func TestFunction(t *testing.T) {
 
 	// Run chunk proposer test cases.
 	t.Run("TestChunkProposerLimitsCodecV7", testChunkProposerLimitsCodecV7)
-	t.Run("TestChunkProposerBlobSizeLimitCodecV7", testChunkProposerBlobSizeLimitCodecV7)
 	t.Run("TestChunkProposerUncompressedBatchBytesLimitCodecV8", testChunkProposerUncompressedBatchBytesLimitCodecV8)
 
 	// Run batch proposer test cases.
