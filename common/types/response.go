@@ -15,7 +15,16 @@ type Response struct {
 }
 
 func (resp *Response) DecodeData(out interface{}) error {
-	return mapstructure.Decode(resp.Data, out)
+	// Decode generically unmarshaled JSON (map[string]any, []any) into a typed struct
+	// honoring `json` tags and allowing weak type conversions.
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  out,
+	})
+	if err != nil {
+		return err
+	}
+	return dec.Decode(resp.Data)
 }
 
 // RenderJSON renders response with json

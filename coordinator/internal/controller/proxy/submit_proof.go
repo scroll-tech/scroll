@@ -14,24 +14,26 @@ import (
 
 // SubmitProofController the submit proof api controller
 type SubmitProofController struct {
-	proverMgr *ProverManager
-	clients   Clients
+	proverMgr        *ProverManager
+	clients          Clients
+	priorityUpstream *PriorityUpstreamManager
 }
 
 // NewSubmitProofController create the submit proof api controller instance
-func NewSubmitProofController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, reg prometheus.Registerer) *SubmitProofController {
+func NewSubmitProofController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, priorityMgr *PriorityUpstreamManager, reg prometheus.Registerer) *SubmitProofController {
 	return &SubmitProofController{
-		proverMgr: proverMgr,
-		clients:   clients,
+		proverMgr:        proverMgr,
+		clients:          clients,
+		priorityUpstream: priorityMgr,
 	}
 }
 
-func upstreamFromTaskName(taskID string) string {
-	parts, _, found := strings.Cut(taskID, ":")
+func upstreamFromTaskName(taskID string) (string, string) {
+	parts, rest, found := strings.Cut(taskID, ":")
 	if found {
-		return parts
+		return parts, rest
 	}
-	return ""
+	return "", parts
 }
 
 func formUpstreamWithTaskName(upstream string, taskID string) string {
@@ -40,6 +42,7 @@ func formUpstreamWithTaskName(upstream string, taskID string) string {
 
 // SubmitProof prover submit the proof to coordinator
 func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
+
 	var submitParameter coordinatorType.SubmitProofParameter
 	if err := ctx.ShouldBind(&submitParameter); err != nil {
 		nerr := fmt.Errorf("prover submitProof parameter invalid, err:%w", err)
@@ -53,7 +56,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 	}
 
 	session := spc.proverMgr.Get(publicKey)
-	upstream := upstreamFromTaskName(submitParameter.TaskID)
+	upstream, realTaskID := upstreamFromTaskName(submitParameter.TaskID)
 	cli, existed := spc.clients[upstream]
 	if !existed {
 		// TODO: log error
@@ -61,6 +64,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
+	submitParameter.TaskID = realTaskID
 
 	resp, err := session.SubmitProof(ctx, &submitParameter, cli, upstream)
 	if err != nil {
@@ -71,6 +75,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
 		return
 	} else {
+		spc.priorityUpstream.Delete(upstream)
 		types.RenderSuccess(ctx, resp.Data)
 		return
 	}

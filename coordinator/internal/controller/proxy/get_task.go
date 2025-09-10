@@ -146,6 +146,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 			// TODO: log error
 		}
 	}
+	ptc.priorityUpstream.Delete(publicKey)
 
 	// Create a slice to hold the keys
 	keys := make([]string, 0, len(ptc.clients))

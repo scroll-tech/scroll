@@ -39,5 +39,5 @@ func InitController(cfg *config.ProxyConfig, reg prometheus.Registerer) {
 
 	Auth = NewAuthController(cfg, clients, proverManager)
 	GetTask = NewGetTaskController(cfg, clients, proverManager, priorityManager, reg)
-	SubmitProof = NewSubmitProofController(cfg, clients, proverManager, reg)
+	SubmitProof = NewSubmitProofController(cfg, clients, proverManager, priorityManager, reg)
 }

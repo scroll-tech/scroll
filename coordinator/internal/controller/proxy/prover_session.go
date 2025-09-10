@@ -65,7 +65,7 @@ type proverSession struct {
 	completionCtx context.Context
 }
 
-func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up string, param *types.LoginParameter, phase uint) (*types.LoginSchema, error) {
+func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up string, param *types.LoginParameter, phase uint) (result *types.LoginSchema, nerr error) {
 	c.Lock()
 	curPhase := c.proverToken[up].phase
 	if c.completionCtx != nil {
@@ -89,6 +89,17 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	completeCtx, cf := context.WithCancel(ctx)
 	defer cf()
 	c.completionCtx = completeCtx
+	defer func() {
+		c.Lock()
+		c.completionCtx = nil
+		if result != nil {
+			c.proverToken[up] = loginToken{
+				LoginSchema: result,
+				phase:       curPhase + 1,
+			}
+		}
+		c.Unlock()
+	}()
 	c.Unlock()
 
 	cli := cliMgr.Client(ctx)
@@ -124,18 +135,9 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		return nil, err
 	}
 
-	c.Lock()
-	defer c.Unlock()
-
-	c.proverToken[up] = loginToken{
-		LoginSchema: &types.LoginSchema{
-			Token: loginResult.Token,
-		},
-		phase: curPhase + 1,
-	}
-	c.completionCtx = nil
-
-	return c.proverToken[up].LoginSchema, nil
+	return &types.LoginSchema{
+		Token: loginResult.Token,
+	}, nil
 }
 
 const expireTolerant = 10 * time.Minute
