@@ -51,6 +51,8 @@ var (
 	chunk        *encoding.Chunk
 	batch        *encoding.Batch
 	tokenTimeout int
+
+	envSet bool
 )
 
 func TestMain(m *testing.M) {
@@ -65,6 +67,25 @@ func TestMain(m *testing.M) {
 func randomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+}
+
+// Generate a batch of random localhost URLs with different ports, similar to randomURL.
+func randmURLBatch(n int) []string {
+	if n <= 0 {
+		return nil
+	}
+	urls := make([]string, 0, n)
+	used := make(map[int64]struct{}, n)
+	for len(urls) < n {
+		id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
+		port := 10000 + 2000 + id.Int64()
+		if _, ok := used[port]; ok {
+			continue
+		}
+		used[port] = struct{}{}
+		urls = append(urls, fmt.Sprintf("localhost:%d", port))
+	}
+	return urls
 }
 
 func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
@@ -130,6 +151,11 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
+	if envSet {
+		t.Log("SetEnv is re-entried")
+		return
+	}
+
 	var err error
 
 	version.Version = "v4.4.89"
@@ -169,6 +195,7 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 	batch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
 
+	envSet = true
 }
 
 func TestApis(t *testing.T) {

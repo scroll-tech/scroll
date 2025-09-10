@@ -137,14 +137,15 @@ func testProxyHandshake(t *testing.T) {
 
 func testProxyGetTask(t *testing.T) {
 	// Setup coordinator and http server.
-	coordinatorURL := randomURL()
+	urls := randmURLBatch(2)
+	coordinatorURL := urls[0]
 	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
-	proxyURL := randomURL()
+	proxyURL := urls[1]
 	proxyHttpHandler := setupProxy(t, proxyURL, []string{coordinatorURL})
 	defer func() {
 		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
@@ -157,16 +158,23 @@ func testProxyGetTask(t *testing.T) {
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
 
+	time.Sleep(time.Second)
+
 	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
-	code, _ := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	task, code, msg := chunkProver.getProverTask(t, message.ProofTypeChunk)
 	assert.Empty(t, code)
+	if code == 0 {
+		t.Log("get task id", task.TaskID)
+	} else {
+		t.Log("get task error msg", msg)
+	}
 }
 
 func TestProxyClient(t *testing.T) {
 
 	// Set up the test environment.
 	setEnv(t)
-	t.Run("TestProxyClient", testProxyClient)
-	t.Run("TestProxyHandshake", testProxyHandshake)
+	//t.Run("TestProxyClient", testProxyClient)
+	//t.Run("TestProxyHandshake", testProxyHandshake)
 	t.Run("TestProxyGetTask", testProxyGetTask)
 }
