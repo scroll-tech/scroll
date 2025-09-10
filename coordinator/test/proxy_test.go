@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
@@ -151,6 +153,10 @@ func testProxyGetTask(t *testing.T) {
 		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
 	}()
 
+	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
+	code, msg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	assert.Equal(t, int(types.ErrCoordinatorEmptyProofData), code)
+
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
@@ -158,9 +164,6 @@ func testProxyGetTask(t *testing.T) {
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
 
-	time.Sleep(time.Second)
-
-	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
 	task, code, msg := chunkProver.getProverTask(t, message.ProofTypeChunk)
 	assert.Empty(t, code)
 	if code == 0 {
@@ -168,13 +171,103 @@ func testProxyGetTask(t *testing.T) {
 	} else {
 		t.Log("get task error msg", msg)
 	}
+
+}
+
+func testProxyProof(t *testing.T) {
+	urls := randmURLBatch(3)
+	coordinatorURL0 := urls[0]
+	collector0, httpHandler0 := setupCoordinator(t, 3, coordinatorURL0)
+	defer func() {
+		collector0.Stop()
+		httpHandler0.Shutdown(context.Background())
+	}()
+	coordinatorURL1 := urls[1]
+	collector1, httpHandler1 := setupCoordinator(t, 3, coordinatorURL1)
+	defer func() {
+		collector1.Stop()
+		httpHandler1.Shutdown(context.Background())
+	}()
+	coordinators := map[string]*http.Server{
+		"coordinator_0": httpHandler0,
+		"coordinator_1": httpHandler1,
+	}
+
+	proxyURL := urls[2]
+	proxyHttpHandler := setupProxy(t, proxyURL, []string{coordinatorURL0, coordinatorURL1})
+	defer func() {
+		fmt.Println("px end start")
+		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
+		fmt.Println("px end")
+	}()
+
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
+
+	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
+	task, code, msg := chunkProver.getProverTask(t, message.ProofTypeChunk)
+	assert.Empty(t, code)
+	if code == 0 {
+		t.Log("get task", task)
+		parts, _, _ := strings.Cut(task.TaskID, ":")
+		// close the coordinator which do not dispatch task first, so if we submit to wrong target,
+		// there would be a chance the submit failed (to the closed coordinator)
+		for n, srv := range coordinators {
+			if n != parts {
+				t.Log("close coordinator", n)
+				assert.NoError(t, srv.Shutdown(context.Background()))
+			}
+		}
+		exceptProofStatus := verifiedSuccess
+		chunkProver.submitProof(t, task, exceptProofStatus, types.Success)
+
+	} else {
+		t.Log("get task error msg", msg)
+	}
+
+	// verify proof status
+	var (
+		tick     = time.Tick(1500 * time.Millisecond)
+		tickStop = time.Tick(time.Minute)
+	)
+
+	var (
+		chunkProofStatus    types.ProvingStatus
+		chunkActiveAttempts int16
+		chunkMaxAttempts    int16
+	)
+
+	for {
+		select {
+		case <-tick:
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			if chunkProofStatus == types.ProvingTaskVerified {
+				return
+			}
+
+			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(chunkMaxAttempts))
+			assert.Equal(t, 0, int(chunkActiveAttempts))
+
+		case <-tickStop:
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String())
+			return
+		}
+	}
 }
 
 func TestProxyClient(t *testing.T) {
 
 	// Set up the test environment.
 	setEnv(t)
-	//t.Run("TestProxyClient", testProxyClient)
-	//t.Run("TestProxyHandshake", testProxyHandshake)
+	t.Run("TestProxyClient", testProxyClient)
+	t.Run("TestProxyHandshake", testProxyHandshake)
 	t.Run("TestProxyGetTask", testProxyGetTask)
+	t.Run("TestProxyValidProof", testProxyProof)
 }

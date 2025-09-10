@@ -132,8 +132,7 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 		// Launch keep-login goroutine
 		go func() {
 			defer completionDone()
-			expiredT := cliMgr.doLogin(context.Background(), loginCli)
-			log.Info("login compeleted", "name", cliMgr.name, "expired", expiredT)
+			cliMgr.doLogin(context.Background(), loginCli)
 
 			cliMgr.cachedCli.Lock()
 			cliMgr.cachedCli.cli = loginCli
