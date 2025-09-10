@@ -3,7 +3,7 @@
 # Define version mapping
 declare -A VERSION_MAP
 VERSION_MAP["euclid"]="0.4.3"
-VERSION_MAP["feynman"]="0.5.0rc1"
+VERSION_MAP["feynman"]="0.5.2"
 
 # release version
 if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
@@ -14,7 +14,7 @@ if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
         echo "Setting SCROLL_ZKVM_VERSION to ${SCROLL_ZKVM_VERSION} based on '$1' argument"
     else
         # Default version if no argument or not recognized
-        SCROLL_ZKVM_VERSION=0.5.0rc0
+        SCROLL_ZKVM_VERSION=0.5.2
     fi
 fi
 
