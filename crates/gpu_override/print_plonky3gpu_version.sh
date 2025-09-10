@@ -1,15 +1,10 @@
 #!/bin/bash
 
-config_file=.cargo/config.toml
-plonky3_gpu_path=$(grep 'path.*plonky3-gpu' "$config_file" | cut -d'"' -f2 | head -n 1)
-plonky3_gpu_path=$(dirname "$plonky3_gpu_path")
+higher_plonky3_item=`grep "plonky3-gpu" ./Cargo.lock | sort | uniq | awk -F "[#=]" '{print $3" "$4}' | sort -k 1 | tail -n 1`
 
-if [ -z $plonky3_gpu_path ]; then
-    exit 0
-else
-    pushd $plonky3_gpu_path
-    commit_hash=$(git log --pretty=format:%h -n 1)
-    echo "${commit_hash:0:7}"
+higher_version=`echo $higher_plonky3_item | awk '{print $1}'`
 
-    popd
-fi
+higher_commit=`echo $higher_plonky3_item | cut -d ' ' -f2 | cut -c-7`
+
+echo "$higher_version"
+echo "$higher_commit"
