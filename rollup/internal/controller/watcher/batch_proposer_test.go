@@ -36,7 +36,7 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 			name:                       "Timeout",
 			batchTimeoutSec:            0,
 			expectedBatchesLen:         1,
-			expectedChunksInFirstBatch: 2,
+			expectedChunksInFirstBatch: 1,
 		},
 	}
 
@@ -72,8 +72,7 @@ func testBatchProposerLimitsCodecV7(t *testing.T) {
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk:           1,
-				MaxL2GasPerChunk:              20000000,
+				MaxL2GasPerChunk:              math.MaxUint64,
 				ChunkTimeoutSec:               300,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
 			}, encoding.CodecV7, &params.ChainConfig{
@@ -154,7 +153,6 @@ func testBatchProposerBlobSizeLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:           math.MaxUint64,
 		MaxL2GasPerChunk:              math.MaxUint64,
 		ChunkTimeoutSec:               0,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
@@ -227,7 +225,6 @@ func testBatchProposerMaxChunkNumPerBatchLimitCodecV7(t *testing.T) {
 	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:           math.MaxUint64,
 		MaxL2GasPerChunk:              math.MaxUint64,
 		ChunkTimeoutSec:               0,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
@@ -309,15 +306,14 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 
 	// Create chunk proposer with no uncompressed batch bytes limit for chunks
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:           1, // One block per chunk
-		MaxL2GasPerChunk:              math.MaxUint64,
+		MaxL2GasPerChunk:              1200000, // One block per chunk via gas limit
 		ChunkTimeoutSec:               math.MaxUint32,
 		MaxUncompressedBatchBytesSize: math.MaxUint64,
 	}, encoding.CodecV8, chainConfig, db, nil)
 
 	// Insert 2 blocks with large calldata and create 2 chunks
 	l2BlockOrm := orm.NewL2Block(db)
-	for i := uint64(1); i <= 2; i++ {
+	for i := uint64(1); i <= 3; i++ {
 		blockCopy := *block
 		blockCopy.Header = &gethTypes.Header{}
 		*blockCopy.Header = *block.Header
@@ -326,7 +322,9 @@ func testBatchProposerUncompressedBatchBytesLimitCodecV8(t *testing.T) {
 		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{&blockCopy})
 		assert.NoError(t, err)
 
-		cp.TryProposeChunk() // Each call creates one chunk with one block
+		cp.TryProposeChunk() // Each chunk will contain 1 block (~3KiB)
+		// We create 2 chunks here, as we have 3 blocks and reach the gas limit for the 1st chunk with the 2nd block
+		// and the 2nd chunk with the 3rd block.
 	}
 
 	// Create batch proposer with 4KiB uncompressed batch bytes limit

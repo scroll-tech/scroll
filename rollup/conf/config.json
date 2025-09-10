@@ -92,7 +92,6 @@
     },
     "chunk_proposer_config": {
       "propose_interval_milliseconds": 100,
-      "max_block_num_per_chunk": 100,
       "max_l2_gas_per_chunk": 20000000,
       "chunk_timeout_sec": 300,
       "max_uncompressed_batch_bytes_size": 4194304
