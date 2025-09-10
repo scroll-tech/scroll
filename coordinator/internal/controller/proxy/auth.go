@@ -63,12 +63,14 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 
 	for n, cli := range a.clients {
 
-		if err := session.ProxyLogin(c, cli, n, &loginParam.LoginParameter); err != nil {
-			log.Error("proxy login failed during token cache update",
-				"userKey", loginParam.PublicKey,
-				"upstream", n,
-				"error", err)
-		}
+		go func(n string, cli Client) {
+			if err := session.ProxyLogin(c, cli, n, &loginParam.LoginParameter); err != nil {
+				log.Error("proxy login failed during token cache update",
+					"userKey", loginParam.PublicKey,
+					"upstream", n,
+					"error", err)
+			}
+		}(n, cli)
 	}
 
 	return loginParam.LoginParameter, nil
@@ -128,10 +130,8 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 	if loginParam.PublicKey != "" {
 
 		c.Set(LoginParamCache, loginParam)
-		fmt.Println("identify", loginParam)
 		return loginParam.PublicKey
 	}
 
-	fmt.Println("identify empty")
 	return nil
 }

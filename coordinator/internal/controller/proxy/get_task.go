@@ -2,6 +2,8 @@ package proxy
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,20 +30,56 @@ func getSessionData(ctx *gin.Context) string {
 	return publicKey
 }
 
+// PriorityUpstreamManager manages priority upstream mappings with thread safety
+type PriorityUpstreamManager struct {
+	sync.RWMutex
+	data map[string]string
+}
+
+// NewPriorityUpstreamManager creates a new PriorityUpstreamManager
+func NewPriorityUpstreamManager() *PriorityUpstreamManager {
+	return &PriorityUpstreamManager{
+		data: make(map[string]string),
+	}
+}
+
+// Get retrieves the priority upstream for a given key
+func (p *PriorityUpstreamManager) Get(key string) (string, bool) {
+	p.RLock()
+	defer p.RUnlock()
+	value, exists := p.data[key]
+	return value, exists
+}
+
+// Set sets the priority upstream for a given key
+func (p *PriorityUpstreamManager) Set(key, value string) {
+	p.Lock()
+	defer p.Unlock()
+	p.data[key] = value
+}
+
+// Delete removes the priority upstream for a given key
+func (p *PriorityUpstreamManager) Delete(key string) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.data, key)
+}
+
 // GetTaskController the get prover task api controller
 type GetTaskController struct {
 	proverMgr        *ProverManager
 	clients          Clients
-	priorityUpstream map[string]string
+	priorityUpstream *PriorityUpstreamManager
 
+	workingRnd           *rand.Rand
 	getTaskAccessCounter *prometheus.CounterVec
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, reg prometheus.Registerer) *GetTaskController {
+func NewGetTaskController(cfg *config.ProxyConfig, clients Clients, proverMgr *ProverManager, priorityMgr *PriorityUpstreamManager, reg prometheus.Registerer) *GetTaskController {
 	// TODO: implement proxy get task controller initialization
 	return &GetTaskController{
-		priorityUpstream: make(map[string]string),
+		priorityUpstream: priorityMgr,
 		proverMgr:        proverMgr,
 		clients:          clients,
 	}
@@ -54,7 +92,7 @@ func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 
 // GetTasks get assigned chunk/batch task
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
-	fmt.Println("start get task")
+
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
@@ -71,7 +109,6 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	getTask := func(upStream string, cli Client) (tryNext bool) {
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
-		fmt.Println("upstream get task", resp)
 		if err != nil {
 			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 			return
@@ -86,6 +123,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 			var task coordinatorType.GetTaskSchema
 			if err = resp.DecodeData(&task); err == nil {
 				task.TaskID = formUpstreamWithTaskName(upStream, task.TaskID)
+				ptc.priorityUpstream.Set(publicKey, upStream)
 				// TODO: log the new id in debug level
 				types.RenderSuccess(ctx, &task)
 			} else {
@@ -99,7 +137,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	}
 
 	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
-	priorityUpstream, exist := ptc.priorityUpstream[publicKey]
+	priorityUpstream, exist := ptc.priorityUpstream.Get(publicKey)
 	if exist {
 		cli := ptc.clients[priorityUpstream]
 		if cli != nil && !getTask(priorityUpstream, cli) {
@@ -109,8 +147,20 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		}
 	}
 
-	for n, cli := range ptc.clients {
-		if !getTask(n, cli) {
+	// Create a slice to hold the keys
+	keys := make([]string, 0, len(ptc.clients))
+	for k := range ptc.clients {
+		keys = append(keys, k)
+	}
+
+	// Shuffle the keys using a local RNG (avoid deprecated rand.Seed)
+	rand.Shuffle(len(keys), func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+
+	// Iterate over the shuffled keys
+	for _, n := range keys {
+		if !getTask(n, ptc.clients[n]) {
 			return
 		}
 	}

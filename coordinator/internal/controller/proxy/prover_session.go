@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -130,7 +131,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		LoginSchema: &types.LoginSchema{
 			Token: loginResult.Token,
 		},
-		phase: phase,
+		phase: curPhase + 1,
 	}
 	c.completionCtx = nil
 
@@ -143,19 +144,18 @@ const expireTolerant = 10 * time.Minute
 func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, up string, param *types.LoginParameter) error {
 	c.RLock()
 	existedToken := c.proverToken[up].LoginSchema
-	phase := c.proverToken[up].phase + 1
 	c.RUnlock()
 
 	// Check if we have a valid cached token that hasn't expired
 	if existedToken != nil {
-		timeRemaining := time.Until(existedToken.Time)
-		if timeRemaining > expireTolerant {
-			// Token is still valid enouth, continue to next client
-			return nil
-		}
+		// TODO: how to reduce the unnecessary re-login?
+		// timeRemaining := time.Until(existedToken.Time)
+		// if timeRemaining > expireTolerant {
+		// 	return nil
+		// }
 	}
 
-	_, err := c.maintainLogin(ctx, cli, up, param, phase)
+	_, err := c.maintainLogin(ctx, cli, up, param, math.MaxUint)
 	return err
 }
 
