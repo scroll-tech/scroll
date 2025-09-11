@@ -192,7 +192,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			txHash, _, err := r.gasOracleSender.SendTransaction("updateL1GasOracle-"+block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil)
+			txHash, _, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil)
 			if err != nil {
 				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "baseFee", baseFee, "blobBaseFee", blobBaseFee, "err", err)
 				return
@@ -302,31 +302,42 @@ func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 }
 
 // calculateAverageFees returns the average base fee and blob base fee.
+// Uses big.Int for intermediate calculations to avoid overflow.
 func (r *Layer1Relayer) calculateAverageFees(blocks []orm.L1Block) (avgBaseFee uint64, avgBlobBaseFee uint64) {
-	count := uint64(len(blocks))
-	if count == 0 {
+	if len(blocks) == 0 {
 		return 0, 0
 	}
 
-	var totalBaseFee, totalBlobBaseFee uint64
-	for i, b := range blocks {
-		// Check for overflow before addition
-		if totalBaseFee > ^uint64(0)-b.BaseFee {
-			log.Error("Base fee overflow detected, using max uint64", "totalBaseFee", totalBaseFee, "blockBaseFee", b.BaseFee)
-			totalBaseFee = ^uint64(0) // Set to max uint64
-			count = uint64(i + 1)     // set the count to the index of the block that caused the overflow
-			break
-		}
-		if totalBlobBaseFee > ^uint64(0)-b.BlobBaseFee {
-			log.Error("Blob base fee overflow detected, using max uint64", "totalBlobBaseFee", totalBlobBaseFee, "blockBlobBaseFee", b.BlobBaseFee)
-			totalBlobBaseFee = ^uint64(0) // Set to max uint64
-			count = uint64(i + 1)         // set the count to the index of the block that caused the overflow
-			break
-		}
+	// Use big.Int to handle large sums without overflow
+	totalBaseFee := big.NewInt(0)
+	totalBlobBaseFee := big.NewInt(0)
+	count := big.NewInt(int64(len(blocks)))
 
-		totalBaseFee += b.BaseFee
-		totalBlobBaseFee += b.BlobBaseFee
+	for _, b := range blocks {
+		totalBaseFee.Add(totalBaseFee, big.NewInt(0).SetUint64(b.BaseFee))
+		totalBlobBaseFee.Add(totalBlobBaseFee, big.NewInt(0).SetUint64(b.BlobBaseFee))
 	}
 
-	return totalBaseFee / count, totalBlobBaseFee / count
+	// Calculate averages
+	avgBaseFeeBig := big.NewInt(0).Div(totalBaseFee, count)
+	avgBlobBaseFeeBig := big.NewInt(0).Div(totalBlobBaseFee, count)
+
+	// Check if results fit in uint64
+	maxUint64 := big.NewInt(0).SetUint64(^uint64(0))
+
+	if avgBaseFeeBig.Cmp(maxUint64) > 0 {
+		log.Error("Average base fee exceeds uint64 max, capping at max value", "calculatedAvg", avgBaseFeeBig.String())
+		avgBaseFee = ^uint64(0)
+	} else {
+		avgBaseFee = avgBaseFeeBig.Uint64()
+	}
+
+	if avgBlobBaseFeeBig.Cmp(maxUint64) > 0 {
+		log.Error("Average blob base fee exceeds uint64 max, capping at max value", "calculatedAvg", avgBlobBaseFeeBig.String())
+		avgBlobBaseFee = ^uint64(0)
+	} else {
+		avgBlobBaseFee = avgBlobBaseFeeBig.Uint64()
+	}
+
+	return avgBaseFee, avgBlobBaseFee
 }
