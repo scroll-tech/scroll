@@ -1,9 +1,11 @@
 use super::chunk_interpreter::*;
 use eyre::Result;
-use sbv_primitives::{types::BlockWitness, B256};
+use sbv_primitives::B256;
+use sbv_core::BlockWitness;
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, ToArchievedWitness},
+    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness},
     task::ProvingTask,
+    utils::{to_rkyv_bytes, RancorError},
 };
 
 /// The type aligned with coordinator's defination
@@ -66,12 +68,18 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
 
     fn try_from(value: ChunkProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
+        let serialized_witness = if crate::LEGACY_WITNESS_ENCODING {
+            let legacy_witness = LegacyChunkWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
 
         Ok(ProvingTask {
             identifier: value.identifier(),
             fork_name: value.fork_name,
             aggregated_proofs: Vec::new(),
-            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
+            serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
         })
     }
@@ -83,7 +91,7 @@ impl ChunkProvingTask {
         let num_txs = self
             .block_witnesses
             .iter()
-            .map(|b| b.transaction.len())
+            .map(|b| b.transactions.len())
             .sum::<usize>();
         let total_gas_used = self
             .block_witnesses
@@ -131,13 +139,8 @@ impl ChunkProvingTask {
 
     pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
         let witness = self.build_guest_input();
-        let archieved = ToArchievedWitness::create(&witness)
-            .map_err(|e| eyre::eyre!("archieve chunk witness fail: {e}"))?;
-        let archieved_witness = archieved
-            .access()
-            .map_err(|e| eyre::eyre!("access archieved chunk witness fail: {e}"))?;
 
-        let ret = ChunkInfo::try_from(archieved_witness).map_err(|e| eyre::eyre!("{e}"))?;
+        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
         Ok(ret)
     }
 
@@ -166,13 +169,8 @@ impl ChunkProvingTask {
         let mut attempts = 0;
         loop {
             let witness = self.build_guest_input();
-            let archieved = ToArchievedWitness::create(&witness)
-                .map_err(|e| eyre::eyre!("archieve chunk witness fail: {e}"))?;
-            let archieved_witness = archieved
-                .access()
-                .map_err(|e| eyre::eyre!("access archieved chunk witness fail: {e}"))?;
 
-            match execute(archieved_witness) {
+            match execute(witness) {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     if let Some(caps) = err_parse_re.captures(&e) {

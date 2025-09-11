@@ -49,13 +49,13 @@ pub struct RpcConfig {
 /// so it can be run in block mode (i.e. inside dynamic library without a global entry)
 pub struct RpcClientCore {
     /// rpc prover
-    provider: RootProvider<Network>,
+    client: alloy::rpc::client::RpcClient,
     rt: tokio::runtime::Runtime,
 }
 
 #[derive(Clone, Copy)]
-pub struct RpcClient<'a> {
-    provider: &'a RootProvider<Network>,
+pub struct RpcClient<'a, T: Provider<Network>> {
+    provider: T,
     handle: &'a tokio::runtime::Handle,
 }
 
@@ -76,79 +76,68 @@ impl RpcClientCore {
         let client = ClientBuilder::default().layer(retry_layer).http(rpc);
 
         Ok(Self {
-            provider: ProviderBuilder::<_, _, Network>::default().connect_client(client),
+            client,
             rt,
         })
     }
 
-    pub fn get_client(&self) -> RpcClient {
+    pub fn get_client(&self) -> RpcClient<impl Provider<Network>> {
         RpcClient {
-            provider: &self.provider,
+            provider: ProviderBuilder::<_, _, Network>::default().connect_client(self.client.clone()),
             handle: self.rt.handle(),
         }
     }
 }
 
-impl ChunkInterpreter for RpcClient<'_> {
+impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
     fn try_fetch_block_witness(
         &self,
         block_hash: sbv_primitives::B256,
-        prev_witness: Option<&sbv_primitives::types::BlockWitness>,
-    ) -> Result<sbv_primitives::types::BlockWitness> {
+        prev_witness: Option<&sbv_core::BlockWitness>,
+    ) -> Result<sbv_core::BlockWitness> {
         async fn fetch_witness_async(
-            provider: &RootProvider<Network>,
+            provider: impl Provider<Network>,
             block_hash: sbv_primitives::B256,
-            prev_witness: Option<&sbv_primitives::types::BlockWitness>,
-        ) -> Result<sbv_primitives::types::BlockWitness> {
+            prev_witness: Option<&sbv_core::BlockWitness>,
+        ) -> Result<sbv_core::BlockWitness> {
             use sbv_utils::{rpc::ProviderExt, witness::WitnessBuilder};
 
-            let chain_id = provider.get_chain_id().await?;
+            let (chain_id, block_num, prev_state_root) = if let Some(w) = prev_witness {
+                (
+                    w.chain_id,
+                    w.header.number + 1,
+                    w.prev_state_root,
+                )
+            } else {
+                let chain_id = provider.get_chain_id().await?;
+                let block = provider
+                    .get_block_by_hash(block_hash)
+                    .full()
+                    .await?
+                    .ok_or_else(|| eyre::eyre!("Block {block_hash} not found"))?;
 
-            let block = provider
-                .get_block_by_hash(block_hash)
-                .full()
-                .await?
-                .ok_or_else(|| eyre::eyre!("Block {block_hash} not found"))?;
+                let parent_block = provider
+                    .get_block_by_hash(block.header.parent_hash)
+                    .await?
+                    .expect(&format!("parent block for block {} should exist", block.header.number));
 
-            let number = block.header.number;
-            let parent_hash = block.header.parent_hash;
-            if number == 0 {
-                eyre::bail!("no number in header or use block 0");
-            }
-
-            let mut witness_builder = WitnessBuilder::new()
-                .block(block)
-                .chain_id(chain_id)
-                .execution_witness(provider.debug_execution_witness(number.into()).await?);
-
-            let prev_state_root = match prev_witness {
-                Some(witness) => {
-                    if witness.header.number != number - 1 {
-                        eyre::bail!(
-                            "the ref witness is not the previous block, expected {} get {}",
-                            number - 1,
-                            witness.header.number,
-                        );
-                    }
-                    witness.header.state_root
-                }
-                None => {
-                    let parent_block = provider
-                        .get_block_by_hash(parent_hash)
-                        .await?
-                        .expect("parent block should exist");
-
-                    parent_block.header.state_root
-                }
+                (chain_id, block.header.number, parent_block.header.state_root)
             };
-            witness_builder = witness_builder.prev_state_root(prev_state_root);
 
-            Ok(witness_builder.build()?)
+            let req = provider.dump_block_witness(block_num)
+                .with_chain_id(chain_id)
+                .with_prev_state_root(prev_state_root);
+
+            let witness = req.send().await.transpose()
+                .ok_or_else(|| eyre::eyre!("Block witness {block_num} not avaliable"))??;
+
+            Ok(witness)
+
         }
 
         tracing::debug!("fetch witness for {block_hash}");
         self.handle
-            .block_on(fetch_witness_async(self.provider, block_hash, prev_witness))
+            .block_on(fetch_witness_async(&self.provider, block_hash, prev_witness))
     }
 
     fn try_fetch_storage_node(
@@ -156,7 +145,7 @@ impl ChunkInterpreter for RpcClient<'_> {
         node_hash: sbv_primitives::B256,
     ) -> Result<sbv_primitives::Bytes> {
         async fn fetch_storage_node_async(
-            provider: &RootProvider<Network>,
+            provider: impl Provider<Network>,
             node_hash: sbv_primitives::B256,
         ) -> Result<sbv_primitives::Bytes> {
             let ret = provider
@@ -168,7 +157,7 @@ impl ChunkInterpreter for RpcClient<'_> {
 
         tracing::debug!("fetch storage node for {node_hash}");
         self.handle
-            .block_on(fetch_storage_node_async(self.provider, node_hash))
+            .block_on(fetch_storage_node_async(&self.provider, node_hash))
     }
 }
 

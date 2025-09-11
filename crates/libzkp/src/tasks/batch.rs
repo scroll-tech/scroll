@@ -5,8 +5,8 @@ use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
         BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8, BatchInfo, BatchWitness,
-        Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, PointEvalWitness, ReferenceHeader,
-        ToArchievedWitness, N_BLOB_BYTES,
+        Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, ReferenceHeader,
+        build_point_eval_witness, N_BLOB_BYTES, LegacyBatchWitness,
     },
     public_inputs::ForkName,
     task::ProvingTask,
@@ -84,6 +84,12 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 
     fn try_from(value: BatchProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
+        let serialized_witness = if crate::LEGACY_WITNESS_ENCODING {
+            let legacy_witness = LegacyBatchWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
 
         Ok(ProvingTask {
             identifier: value.batch_header.batch_hash().to_string(),
@@ -93,7 +99,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
                 .into_iter()
                 .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
                 .collect(),
-            serialized_witness: vec![to_rkyv_bytes::<RancorError>(&witness)?.into_vec()],
+            serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
         })
     }
@@ -161,10 +167,10 @@ impl BatchProvingTask {
             assert_eq!(p, kzg_proof);
         }
 
-        let point_eval_witness = PointEvalWitness {
-            kzg_commitment: kzg_commitment.into_inner(),
-            kzg_proof: kzg_proof.into_inner(),
-        };
+        let point_eval_witness = Some(build_point_eval_witness (
+            kzg_commitment.into_inner(),
+            kzg_proof.into_inner(),
+        ));
 
         let reference_header = match fork_name {
             ForkName::EuclidV1 => ReferenceHeader::V6(*self.batch_header.must_v6_header()),
@@ -192,12 +198,7 @@ impl BatchProvingTask {
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
-        let archieved = ToArchievedWitness::create(&witness)
-            .map_err(|e| eyre::eyre!("archieve batch witness fail: {e}"))?;
-        let archieved_witness = archieved
-            .access()
-            .map_err(|e| eyre::eyre!("access archieved batch witness fail: {e}"))?;
-        let metadata: BatchInfo = archieved_witness.into();
+        let metadata = BatchInfo::from(&witness);
 
         super::check_aggregation_proofs(self.chunk_proofs.as_slice(), fork_name)?;
 

@@ -11,7 +11,7 @@ pub fn init(config: &str) -> eyre::Result<()> {
     Ok(())
 }
 
-pub fn get_client() -> rpc_client::RpcClient<'static> {
+pub fn get_client() -> impl libzkp::tasks::ChunkInterpreter {
     GLOBAL_L2GETH_CLI
         .get()
         .expect("must has been inited")

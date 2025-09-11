@@ -11,6 +11,9 @@ use serde_json::value::RawValue;
 use std::path::Path;
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
+/// global features: use legacy encoding for witness
+pub(crate) static LEGACY_WITNESS_ENCODING: bool = false;
+
 /// Turn the coordinator's chunk task into a json string for formal chunk proving
 /// task (with full witnesses)
 pub fn checkout_chunk_task(

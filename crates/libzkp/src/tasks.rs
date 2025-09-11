@@ -16,6 +16,11 @@ use crate::{
 use sbv_primitives::B256;
 use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
 
+fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>> {
+    let config = bincode::config::standard();
+    Ok(bincode::serde::encode_to_vec(task, config)?)
+}
+
 fn check_aggregation_proofs<Metadata>(
     proofs: &[proofs::WrappedProof<Metadata>],
     fork_name: ForkName,
