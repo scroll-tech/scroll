@@ -1,6 +1,6 @@
 use eyre::Result;
-use sbv_primitives::{Bytes, B256};
 use sbv_core::BlockWitness;
+use sbv_primitives::{Bytes, B256};
 
 /// An interpreter which is cirtical in translating chunk data
 /// since we need to grep block witness and storage node data

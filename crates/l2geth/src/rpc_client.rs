@@ -75,15 +75,13 @@ impl RpcClientCore {
         let retry_layer = RetryBackoffLayer::new(config.max_retry, config.backoff, config.cups);
         let client = ClientBuilder::default().layer(retry_layer).http(rpc);
 
-        Ok(Self {
-            client,
-            rt,
-        })
+        Ok(Self { client, rt })
     }
 
     pub fn get_client(&self) -> RpcClient<'_, impl Provider<Network>> {
         RpcClient {
-            provider: ProviderBuilder::<_, _, Network>::default().connect_client(self.client.clone()),
+            provider: ProviderBuilder::<_, _, Network>::default()
+                .connect_client(self.client.clone()),
             handle: self.rt.handle(),
         }
     }
@@ -103,11 +101,7 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             use sbv_utils::rpc::ProviderExt;
 
             let (chain_id, block_num, prev_state_root) = if let Some(w) = prev_witness {
-                (
-                    w.chain_id,
-                    w.header.number + 1,
-                    w.prev_state_root,
-                )
+                (w.chain_id, w.header.number + 1, w.prev_state_root)
             } else {
                 let chain_id = provider.get_chain_id().await?;
                 let block = provider
@@ -119,25 +113,40 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
                 let parent_block = provider
                     .get_block_by_hash(block.header.parent_hash)
                     .await?
-                    .unwrap_or_else(||panic!("parent block for block {} should exist", block.header.number));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "parent block for block {} should exist",
+                            block.header.number
+                        )
+                    });
 
-                (chain_id, block.header.number, parent_block.header.state_root)
+                (
+                    chain_id,
+                    block.header.number,
+                    parent_block.header.state_root,
+                )
             };
 
-            let req = provider.dump_block_witness(block_num)
+            let req = provider
+                .dump_block_witness(block_num)
                 .with_chain_id(chain_id)
                 .with_prev_state_root(prev_state_root);
 
-            let witness = req.send().await.transpose()
+            let witness = req
+                .send()
+                .await
+                .transpose()
                 .ok_or_else(|| eyre::eyre!("Block witness {block_num} not avaliable"))??;
 
             Ok(witness)
-
         }
 
         tracing::debug!("fetch witness for {block_hash}");
-        self.handle
-            .block_on(fetch_witness_async(&self.provider, block_hash, prev_witness))
+        self.handle.block_on(fetch_witness_async(
+            &self.provider,
+            block_hash,
+            prev_witness,
+        ))
     }
 
     fn try_fetch_storage_node(
@@ -209,5 +218,4 @@ mod tests {
 
         println!("{}", serde_json::to_string_pretty(&wit2).unwrap());
     }
-
 }

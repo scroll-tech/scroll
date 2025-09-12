@@ -157,7 +157,7 @@ pub unsafe extern "C" fn gen_universal_task(
         let pre_task_str = c_char_to_str(task);
         let cli = l2geth::get_client();
         match libzkp::checkout_chunk_task(pre_task_str, cli) {
-            Ok(str) => str,            
+            Ok(str) => str,
             Err(e) => {
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");
                 return failed_handling_result();
@@ -173,12 +173,8 @@ pub unsafe extern "C" fn gen_universal_task(
         &[]
     };
 
-    let ret = libzkp::gen_universal_task(
-        task_type,
-        &task_json,
-        c_char_to_str(fork_name),
-        expected_vk,
-    );
+    let ret =
+        libzkp::gen_universal_task(task_type, &task_json, c_char_to_str(fork_name), expected_vk);
 
     if let Ok((pi_hash, meta_json, task_json)) = ret {
         let expected_pi_hash = pi_hash.0.map(|byte| byte as c_char);

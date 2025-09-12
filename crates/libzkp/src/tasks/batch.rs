@@ -4,9 +4,9 @@ use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
-        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8, BatchInfo, BatchWitness,
-        Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, ReferenceHeader,
-        build_point_eval_witness, N_BLOB_BYTES, LegacyBatchWitness,
+        build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8,
+        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, LegacyBatchWitness,
+        ReferenceHeader, N_BLOB_BYTES,
     },
     public_inputs::ForkName,
     task::ProvingTask,
@@ -167,7 +167,7 @@ impl BatchProvingTask {
             assert_eq!(p, kzg_proof);
         }
 
-        let point_eval_witness = Some(build_point_eval_witness (
+        let point_eval_witness = Some(build_point_eval_witness(
             kzg_commitment.into_inner(),
             kzg_proof.into_inner(),
         ));

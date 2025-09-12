@@ -1,7 +1,7 @@
 use super::chunk_interpreter::*;
 use eyre::Result;
-use sbv_primitives::B256;
 use sbv_core::BlockWitness;
+use sbv_primitives::B256;
 use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness},
     task::ProvingTask,
