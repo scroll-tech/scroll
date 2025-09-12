@@ -66,6 +66,7 @@ type AssetConfig struct {
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
 	MinProverVersion string        `json:"min_prover_version"`
+	Features         string        `json:"features,omitempty"`
 	Verifiers        []AssetConfig `json:"verifiers"`
 }
 

@@ -84,7 +84,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 
     fn try_from(value: BatchProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
-        let serialized_witness = if crate::LEGACY_WITNESS_ENCODING {
+        let serialized_witness = if crate::witness_use_legacy_mode() {
             let legacy_witness = LegacyBatchWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
         } else {

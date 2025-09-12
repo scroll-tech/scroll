@@ -68,7 +68,7 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
 
     fn try_from(value: ChunkProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
-        let serialized_witness = if crate::LEGACY_WITNESS_ENCODING {
+        let serialized_witness = if crate::witness_use_legacy_mode() {
             let legacy_witness = LegacyChunkWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
         } else {
@@ -146,6 +146,7 @@ impl ChunkProvingTask {
 
     /// this method check the validate of current task (there may be missing storage node)
     /// and try fixing it until everything is ok
+    #[deprecated]
     pub fn prepare_task_via_interpret(
         &mut self,
         interpreter: impl ChunkInterpreter,

@@ -70,7 +70,7 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
 
     fn try_from(value: BundleProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
-        let serialized_witness = if crate::LEGACY_WITNESS_ENCODING {
+        let serialized_witness = if crate::witness_use_legacy_mode() {
             to_rkyv_bytes::<RancorError>(&witness)?.into_vec()
         } else {
             super::encode_task_to_witness(&witness)?

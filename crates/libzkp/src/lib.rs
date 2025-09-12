@@ -12,10 +12,24 @@ use std::path::Path;
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
 /// global features: use legacy encoding for witness
-pub(crate) static LEGACY_WITNESS_ENCODING: bool = false;
+static mut LEGACY_WITNESS_ENCODING: bool = false;
+pub(crate) fn witness_use_legacy_mode() -> bool {unsafe{LEGACY_WITNESS_ENCODING}}
+
 
 pub fn set_dynamic_feature(feats: &str){
+    for feat_s in feats.split(':') {
 
+        match feat_s.trim().to_lowercase().as_str() {
+            "legacy_witness" => {
+                tracing::info!("set witness encoding for legacy mode");
+                unsafe {
+                    // the function is only called while initialize step
+                    LEGACY_WITNESS_ENCODING = true;
+                }
+            }
+            s => tracing::warn!("unrecognized dynamic feature: {s}"),
+        }
+    }
 }
 
 

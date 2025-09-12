@@ -67,6 +67,9 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return nil, err
 	}
 
+	if cfg.Features != "" {
+		libzkp.SetDynamicFeature(cfg.Features)
+	}
 	libzkp.InitVerifier(string(configBytes))
 
 	v := &Verifier{
