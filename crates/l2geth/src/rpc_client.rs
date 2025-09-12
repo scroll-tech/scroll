@@ -101,7 +101,7 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             use sbv_utils::rpc::ProviderExt;
 
             let (chain_id, block_num, prev_state_root) = if let Some(w) = prev_witness {
-                (w.chain_id, w.header.number + 1, w.prev_state_root)
+                (w.chain_id, w.header.number + 1, w.header.state_root)
             } else {
                 let chain_id = provider.get_chain_id().await?;
                 let block = provider
