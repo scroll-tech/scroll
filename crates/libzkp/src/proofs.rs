@@ -9,7 +9,7 @@ use scroll_zkvm_types::{
     chunk::ChunkInfo,
     proof::{EvmProof, OpenVmEvmProof, ProofEnum, StarkProof},
     public_inputs::{ForkName, MultiVersionPublicInputs},
-    types_agg::{AggregationInput, ProgramCommitment},
+    types_agg::AggregationInput,
     utils::{vec_as_base64, serialize_vk}
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

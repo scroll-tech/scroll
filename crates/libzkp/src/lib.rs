@@ -35,7 +35,6 @@ pub fn gen_universal_task(
     task_json: &str,
     fork_name_str: &str,
     expected_vk: &[u8],
-    interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, String, String)> {
     use proofs::*;
     use tasks::*;
@@ -60,7 +59,7 @@ pub fn gen_universal_task(
                 eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
             }
             let (pi_hash, metadata, u_task) = utils::panic_catch(move || {
-                gen_universal_chunk_task(task, fork_name_str.into(), interpreter)
+                gen_universal_chunk_task(task, fork_name_str.into())
             })
             .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)

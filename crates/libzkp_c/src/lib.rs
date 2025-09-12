@@ -153,17 +153,12 @@ pub unsafe extern "C" fn gen_universal_task(
     expected_vk: *const u8,
     expected_vk_len: usize,
 ) -> HandlingResult {
-    let mut interpreter = None;
     let task_json = if task_type == TaskType::Chunk as i32 {
         let pre_task_str = c_char_to_str(task);
         let cli = l2geth::get_client();
         match libzkp::checkout_chunk_task(pre_task_str, cli) {
-            Ok(str) => {
-                interpreter.replace(cli);
-                str
-            }
+            Ok(str) => str,            
             Err(e) => {
-                println!("gen_universal_task failed at pre interpret step, error: {e}");
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");
                 return failed_handling_result();
             }
@@ -183,7 +178,6 @@ pub unsafe extern "C" fn gen_universal_task(
         &task_json,
         c_char_to_str(fork_name),
         expected_vk,
-        interpreter,
     );
 
     if let Ok((pi_hash, meta_json, task_json)) = ret {

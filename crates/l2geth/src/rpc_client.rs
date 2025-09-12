@@ -1,5 +1,5 @@
 use alloy::{
-    providers::{Provider, ProviderBuilder, RootProvider},
+    providers::{Provider, ProviderBuilder},
     rpc::client::ClientBuilder,
     transports::layers::RetryBackoffLayer,
 };
@@ -81,7 +81,7 @@ impl RpcClientCore {
         })
     }
 
-    pub fn get_client(&self) -> RpcClient<impl Provider<Network>> {
+    pub fn get_client(&self) -> RpcClient<'_, impl Provider<Network>> {
         RpcClient {
             provider: ProviderBuilder::<_, _, Network>::default().connect_client(self.client.clone()),
             handle: self.rt.handle(),
@@ -100,7 +100,7 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             block_hash: sbv_primitives::B256,
             prev_witness: Option<&sbv_core::BlockWitness>,
         ) -> Result<sbv_core::BlockWitness> {
-            use sbv_utils::{rpc::ProviderExt, witness::WitnessBuilder};
+            use sbv_utils::rpc::ProviderExt;
 
             let (chain_id, block_num, prev_state_root) = if let Some(w) = prev_witness {
                 (
@@ -119,7 +119,7 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
                 let parent_block = provider
                     .get_block_by_hash(block.header.parent_hash)
                     .await?
-                    .expect(&format!("parent block for block {} should exist", block.header.number));
+                    .unwrap_or_else(||panic!("parent block for block {} should exist", block.header.number));
 
                 (chain_id, block.header.number, parent_block.header.state_root)
             };
@@ -183,10 +183,10 @@ mod tests {
         let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
         let client = client_core.get_client();
 
-        // latest - 1 block in 2025.6.15
+        // latest - 1 block in 2025.9.11
         let block_hash = B256::from(
             hex::const_decode_to_array(
-                b"0x9535a6970bc4db9031749331a214e35ed8c8a3f585f6f456d590a0bc780a1368",
+                b"0x093fb6bf2e556a659b35428ac447cd9f0635382fc40ffad417b5910824f9e932",
             )
             .unwrap(),
         );
@@ -196,10 +196,10 @@ mod tests {
             .try_fetch_block_witness(block_hash, None)
             .expect("should success");
 
-        // latest block in 2025.6.15
+        // block selected in 2025.9.11
         let block_hash = B256::from(
             hex::const_decode_to_array(
-                b"0xd47088cdb6afc68aa082e633bb7da9340d29c73841668afacfb9c1e66e557af0",
+                b"0x77cc84dd7a4dedf6fe5fb9b443aeb5a4fb0623ad088a365d3232b7b23fc848e5",
             )
             .unwrap(),
         );
@@ -210,25 +210,4 @@ mod tests {
         println!("{}", serde_json::to_string_pretty(&wit2).unwrap());
     }
 
-    #[test]
-    #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
-    fn test_try_fetch_storage_node() {
-        let config = create_config_from_env();
-        let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
-        let client = client_core.get_client();
-
-        // the root node (state root) of the block in unittest above
-        let node_hash = B256::from(
-            hex::const_decode_to_array(
-                b"0xb9e67403a2eb35afbb0475fe942918cf9a330a1d7532704c24554506be62b27c",
-            )
-            .unwrap(),
-        );
-
-        // This is expected to fail since we're using a dummy hash, but it tests the code path
-        let node = client
-            .try_fetch_storage_node(node_hash)
-            .expect("should success");
-        println!("{}", serde_json::to_string_pretty(&node).unwrap());
-    }
 }
