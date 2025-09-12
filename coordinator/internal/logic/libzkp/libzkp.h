@@ -54,4 +54,7 @@ char* gen_wrapped_proof(char* proof_json, char* metadata, char* vk, size_t vk_le
 // Release memory allocated for a string returned by gen_wrapped_proof
 void release_string(char* string_ptr);
 
+void set_dynamic_feature(const char* feats);
+
+
 #endif /* LIBZKP_H */
