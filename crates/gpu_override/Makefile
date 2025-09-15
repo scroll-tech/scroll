@@ -14,7 +14,7 @@ clean:
 
 # build gpu prover, never touch lock file
 build:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build -Z unstable-options --release -p prover --lockfile-path ./Cargo.lock
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build -Z unstable-options --release -p prover --features cuda --lockfile-path ./Cargo.lock
 
 version:
 	echo ${GO_TAG}-${GIT_REV}-${ZK_VERSION}
