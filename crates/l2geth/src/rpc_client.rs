@@ -136,7 +136,7 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
                 .send()
                 .await
                 .transpose()
-                .ok_or_else(|| eyre::eyre!("Block witness {block_num} not avaliable"))??;
+                .ok_or_else(|| eyre::eyre!("Block witness {block_num} not available"))??;
 
             Ok(witness)
         }
