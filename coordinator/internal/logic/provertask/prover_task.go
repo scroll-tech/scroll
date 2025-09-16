@@ -1,6 +1,7 @@
 package provertask
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -212,7 +213,12 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 		return nil, nil, fmt.Errorf("no expectedVk found from hardfork %s", schema.HardForkName)
 	}
 
-	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk)
+	decryptionKey, err := hex.DecodeString(b.cfg.Sequencer.DecryptionKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("sequencer decryption key hex-decoding failed")
+	}
+
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk, decryptionKey)
 	if !ok {
 		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}

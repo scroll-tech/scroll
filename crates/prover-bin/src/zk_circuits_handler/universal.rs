@@ -46,14 +46,6 @@ impl CircuitsHandler for Mutex<UniversalHandler> {
     async fn get_proof_data(&self, u_task: &ProvingTask, need_snark: bool) -> Result<String> {
         let mut handler_self = self.lock().await;
 
-        // if need_snark && handler_self.prover.evm_prover.is_none() {
-        //     use base64::{prelude::BASE64_STANDARD, Engine};
-        //     eyre::bail!(
-        //         "do not init prover for evm (vk: {})",
-        //         BASE64_STANDARD.encode(handler_self.get_prover().get_app_vk())
-        //     )
-        // }
-
         let proof = handler_self
             .get_prover()
             .gen_proof_universal(u_task, need_snark)?;
