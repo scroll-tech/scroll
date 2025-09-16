@@ -14,7 +14,7 @@ import (
 func InitL2geth(configJSON string) {
 }
 
-func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte) (bool, string, string, []byte) {
+func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {
 
 	fmt.Printf("call mocked generate universal task %d, taskJson %s\n", taskType, taskJSON)
 	var metadata interface{}

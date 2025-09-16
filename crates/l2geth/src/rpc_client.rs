@@ -5,7 +5,7 @@ use alloy::{
 };
 use eyre::Result;
 use libzkp::tasks::ChunkInterpreter;
-use sbv_primitives::types::Network;
+use sbv_primitives::types::{consensus::TxL1Message, Network};
 use serde::{Deserialize, Serialize};
 
 fn default_max_retry() -> u32 {
@@ -167,6 +167,22 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
         tracing::debug!("fetch storage node for {node_hash}");
         self.handle
             .block_on(fetch_storage_node_async(&self.provider, node_hash))
+    }
+
+    fn try_fetch_l1_msgs(&self, block_number: u64) -> Result<Vec<TxL1Message>> {
+        async fn fetch_l1_msgs(
+            provider: impl Provider<Network>,
+            block_number: u64,
+        ) -> Result<Vec<TxL1Message>> {
+            Ok(provider
+                .client()
+                .request::<_, Vec<TxL1Message>>("scroll_getL1MessagesInBlock", (block_number,))
+                .await?)
+        }
+
+        tracing::debug!("fetch L1 msgs for {block_number}");
+        self.handle
+            .block_on(fetch_l1_msgs(&self.provider, block_number))
     }
 }
 
