@@ -189,6 +189,7 @@ impl BatchProvingTask {
             blob_bytes: self.blob_bytes.clone(),
             reference_header,
             point_eval_witness,
+            version: 0,
         }
     }
 

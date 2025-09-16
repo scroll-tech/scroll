@@ -17,9 +17,9 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.5.47"
 
 [workspace.dependencies]
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "060be4c" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "060be4c" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "060be4c" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "5c361ad" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "5c361ad" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "5c361ad" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master" }
@@ -32,6 +32,7 @@ metrics-tracing-context = "0.16.0"
 anyhow = "1.0"
 alloy = { version = "1", default-features = false }
 alloy-primitives = { version = "1.3", default-features = false, features = ["tiny-keccak"] }
+alloy-sol-types = { version = "1.3", default-features = false }
 # also use this to trigger "serde" feature for primitives
 alloy-serde = { version = "1", default-features = false }
 

@@ -252,6 +252,7 @@ mod tests {
                 batch_hash: B256::repeat_byte(4),
                 withdraw_root: B256::repeat_byte(5),
                 msg_queue_hash: B256::repeat_byte(6),
+                encryption_key: None,
             };
             let bundle_pi_hash = bundle_info.pi_hash(ForkName::EuclidV1);
             BundleProofMetadata {

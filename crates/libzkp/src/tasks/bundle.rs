@@ -41,6 +41,7 @@ impl BundleProvingTask {
 
     fn build_guest_input(&self) -> BundleWitness {
         BundleWitness {
+            version: 0,
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
             batch_infos: self
                 .batch_proofs
@@ -71,7 +72,8 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
     fn try_from(value: BundleProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
         let serialized_witness = if crate::witness_use_legacy_mode() {
-            to_rkyv_bytes::<RancorError>(&witness)?.into_vec()
+            //to_rkyv_bytes::<RancorError>(&witness)?.into_vec()
+            unimplemented!();
         } else {
             super::encode_task_to_witness(&witness)?
         };

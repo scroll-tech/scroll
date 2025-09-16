@@ -127,9 +127,11 @@ impl ChunkProvingTask {
 
     fn build_guest_input(&self) -> ChunkWitness {
         ChunkWitness::new(
+            0,
             &self.block_witnesses,
             self.prev_msg_queue_hash,
             self.fork_name.to_lowercase().as_str().into(),
+            None,
         )
     }
 

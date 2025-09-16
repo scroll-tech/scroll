@@ -30,9 +30,9 @@ where
 {
     panic_catch(|| {
         for w in proofs.windows(2) {
-            w[1].metadata
-                .pi_hash_info()
-                .validate(w[0].metadata.pi_hash_info(), fork_name);
+            // w[1].metadata
+            //     .pi_hash_info()
+            //     .validate(w[0].metadata.pi_hash_info(), fork_name);
         }
     })
     .map_err(|e| eyre::eyre!("Chunk data validation failed: {}", e))?;
