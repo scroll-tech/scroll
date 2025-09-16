@@ -54,7 +54,7 @@ const CHUNK_SANITY_MSG: &str = "chunk must have at least one block";
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ChunkProvingTask {
     /// The version for the chunk, as per [Version][scroll_zkvm_types::version::Version].
-    pub version: Version,
+    pub version: u8,
     /// Witnesses for every block in the chunk.
     pub block_witnesses: Vec<BlockWitness>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
@@ -133,21 +133,22 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        if self.version.is_validium() {
+        let version = Version::from(self.version);
+        if version.is_validium() {
             ChunkWitness::new_validium(
-                self.version.as_version_byte(),
+                version.as_version_byte(),
                 &self.block_witnesses,
                 self.prev_msg_queue_hash,
-                self.version.fork,
+                version.fork,
                 vec![], // TODO: validium txs
                 SecretKey::try_from_bytes(vec![0; 32]).expect("should be ok"), // TODO: secret key
             )
         } else {
             ChunkWitness::new_scroll(
-                self.version.as_version_byte(),
+                version.as_version_byte(),
                 &self.block_witnesses,
                 self.prev_msg_queue_hash,
-                self.version.fork,
+                version.fork,
             )
         }
     }
@@ -158,9 +159,7 @@ impl ChunkProvingTask {
 
     pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
         let witness = self.build_guest_input();
-
-        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
-        Ok(ret)
+        Ok(ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?)
     }
 
     /// this method check the validate of current task (there may be missing storage node)

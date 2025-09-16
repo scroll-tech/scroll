@@ -73,7 +73,7 @@ impl BatchHeaderV {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct BatchProvingTask {
     /// The version of the chunks in the batch, as per [`Version`].
-    pub version: Version,
+    pub version: u8,
     /// Chunk proofs for the contiguous list of chunks within the batch.
     pub chunk_proofs: Vec<ChunkProof>,
     /// The [`BatchHeaderV6/V7`], as computed on-chain for this batch.
@@ -106,7 +106,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 
         Ok(ProvingTask {
             identifier: value.batch_header.batch_hash().to_string(),
-            fork_name: value.version.fork.to_string(),
+            fork_name: value.fork_name,
             aggregated_proofs: value
                 .chunk_proofs
                 .into_iter()
@@ -120,7 +120,9 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 
 impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
-        let point_eval_witness = if !self.version.is_validium() {
+        let version = Version::from(self.version);
+
+        let point_eval_witness = if !version.is_validium() {
             // sanity check: calculate point eval needed and compare with task input
             let (kzg_commitment, kzg_proof, challenge_digest) = {
                 let blob = point_eval::to_blob(&self.blob_bytes);
@@ -129,10 +131,10 @@ impl BatchProvingTask {
                 let challenge_digest = match &self.batch_header {
                     BatchHeaderV::V6(_) => {
                         assert_eq!(
-                            self.version.fork,
+                            version.fork,
                             ForkName::EuclidV1,
                             "hardfork mismatch for da-codec@v6 header: found={:?}, expected={:?}",
-                            self.version.fork,
+                            version.fork,
                             ForkName::EuclidV1,
                         );
                         EnvelopeV6::from_slice(self.blob_bytes.as_slice())
@@ -145,7 +147,7 @@ impl BatchProvingTask {
                             padded_blob_bytes
                         };
 
-                        match self.version.fork {
+                        match version.fork {
                             ForkName::EuclidV2 => {
                                 <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
                                     .challenge_digest(versioned_hash)
@@ -198,7 +200,7 @@ impl BatchProvingTask {
             None
         };
 
-        let reference_header = match (self.version.domain, self.version.stf_version) {
+        let reference_header = match (version.domain, version.stf_version) {
             (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
@@ -217,8 +219,8 @@ impl BatchProvingTask {
         };
 
         BatchWitness {
-            version: self.version.as_version_byte(),
-            fork_name: self.version.fork,
+            version: version.as_version_byte(),
+            fork_name: version.fork,
             chunk_proofs: self.chunk_proofs.iter().map(|proof| proof.into()).collect(),
             chunk_infos: self
                 .chunk_proofs
@@ -237,7 +239,7 @@ impl BatchProvingTask {
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BatchInfo::from(&witness);
-        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), self.version)?;
+        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), Version::from(self.version))?;
 
         Ok(metadata)
     }

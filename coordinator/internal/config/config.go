@@ -47,12 +47,18 @@ type Auth struct {
 	LoginExpireDurationSec     int    `json:"login_expire_duration_sec"`
 }
 
+// The sequencer controlled data
+type Sequencer struct {
+	DecryptionKey string `json:"decryption_key"`
+}
+
 // Config load configuration items.
 type Config struct {
 	ProverManager *ProverManager   `json:"prover_manager"`
 	DB            *database.Config `json:"db"`
 	L2            *L2              `json:"l2"`
 	Auth          *Auth            `json:"auth"`
+	Sequencer     *Sequencer       `json:"sequencer"`
 }
 
 // AssetConfig contain assets configurated for each fork, the defaul vkfile name is "OpenVmVk.json".

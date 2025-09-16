@@ -14,7 +14,7 @@ const BUNDLE_SANITY_MSG: &str = "bundle must have at least one batch";
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct BundleProvingTask {
     /// The version of batches in the bundle.
-    pub version: Version,
+    pub version: u8,
     /// The STARK proofs of each batch in the bundle.
     pub batch_proofs: Vec<BatchProof>,
     /// for sanity check
@@ -44,15 +44,16 @@ impl BundleProvingTask {
     }
 
     fn build_guest_input(&self) -> BundleWitness {
+        let version = Version::from(self.version);
         BundleWitness {
-            version: self.version.as_version_byte(),
+            version: version.as_version_byte(),
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
             batch_infos: self
                 .batch_proofs
                 .iter()
                 .map(|wrapped_proof| wrapped_proof.metadata.batch_info.clone())
                 .collect(),
-            fork_name: self.version.fork,
+            fork_name: version.fork,
         }
     }
 
@@ -62,7 +63,7 @@ impl BundleProvingTask {
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BundleInfo::from(&witness);
-        super::check_aggregation_proofs(self.batch_proofs.as_slice(), self.version)?;
+        super::check_aggregation_proofs(self.batch_proofs.as_slice(), Version::from(self.version))?;
 
         Ok(metadata)
     }
