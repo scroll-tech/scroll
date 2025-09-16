@@ -179,6 +179,7 @@ impl BatchProvingTask {
         };
 
         BatchWitness {
+            version: 65,
             fork_name,
             chunk_proofs: self.chunk_proofs.iter().map(|proof| proof.into()).collect(),
             chunk_infos: self

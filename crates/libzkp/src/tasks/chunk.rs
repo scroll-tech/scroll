@@ -126,6 +126,7 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
+        let validium_input: ValidiumInputs = todo!();
         ChunkWitness::new(
             &self.block_witnesses,
             self.prev_msg_queue_hash,

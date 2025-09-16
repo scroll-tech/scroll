@@ -29,6 +29,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 
 [[package]]
+name = "aead"
+version = "0.6.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac8202ab55fcbf46ca829833f347a82a2a4ce0596f0304ac322c2d100030cd56"
+dependencies = [
+ "crypto-common 0.2.0-rc.4",
+ "inout",
+]
+
+[[package]]
+name = "aes"
+version = "0.9.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e713c57c2a2b19159e7be83b9194600d7e8eb3b7c2cd67e671adf47ce189a05"
+dependencies = [
+ "cfg-if",
+ "cipher",
+ "cpufeatures",
+]
+
+[[package]]
+name = "aes-gcm"
+version = "0.11.0-rc.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2be322be4a73a3a55ad74b9833238e76bfd6034ce69a05c1b41c879f6a3bdca6"
+dependencies = [
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
+ "subtle",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -263,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-json-abi"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b26fdd571915bafe857fccba4ee1a4f352965800e46a53e4a5f50187b7776fa"
+checksum = "459f98c6843f208856f338bfb25e65325467f7aff35dfeb0484d0a76e059134b"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-type-parser",
@@ -535,9 +570,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro"
-version = "1.2.1"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a14f21d053aea4c6630687c2f4ad614bed4c81e14737a9b904798b24f30ea849"
+checksum = "d20d867dcf42019d4779519a1ceb55eba8d7f3d0e4f0a89bcba82b8f9eb01e48"
 dependencies = [
  "alloy-sol-macro-expander",
  "alloy-sol-macro-input",
@@ -549,9 +584,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro-expander"
-version = "1.2.1"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34d99282e7c9ef14eb62727981a985a01869e586d1dec729d3bb33679094c100"
+checksum = "b74e91b0b553c115d14bd0ed41898309356dc85d0e3d4b9014c4e7715e48c8ad"
 dependencies = [
  "alloy-sol-macro-input",
  "const-hex",
@@ -567,9 +602,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro-input"
-version = "1.2.1"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eda029f955b78e493360ee1d7bd11e1ab9f2a220a5715449babc79d6d0a01105"
+checksum = "84194d31220803f5f62d0a00f583fd3a062b36382e2bea446f1af96727754565"
 dependencies = [
  "const-hex",
  "dunce",
@@ -583,9 +618,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-type-parser"
-version = "1.2.1"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10db1bd7baa35bc8d4a1b07efbf734e73e5ba09f2580fb8cee3483a36087ceb2"
+checksum = "fe8c27b3cf6b2bb8361904732f955bc7c05e00be5f469cec7e2280b6167f3ff0"
 dependencies = [
  "serde",
  "winnow 0.7.10",
@@ -593,9 +628,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-types"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6185e98a79cf19010722f48a74b5a65d153631d2f038cabd250f4b9e9813b8ad"
+checksum = "a285b46e3e0c177887028278f04cc8262b76fd3b8e0e20e93cea0a58c35f5ac5"
 dependencies = [
  "alloy-json-abi",
  "alloy-primitives",
@@ -1456,6 +1491,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.11.0-rc.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9ef36a6fcdb072aa548f3da057640ec10859eb4e91ddf526ee648d50c76a949"
+dependencies = [
+ "hybrid-array",
+]
+
+[[package]]
 name = "bls12_381"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1670,6 +1714,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cipher"
+version = "0.5.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e12a13eb01ded5d32ee9658d94f553a19e804204f2dc811df69ab4d9e0cb8c7"
+dependencies = [
+ "block-buffer 0.11.0-rc.5",
+ "crypto-common 0.2.0-rc.4",
+ "inout",
+]
+
+[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1733,7 +1788,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1936,6 +1991,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-common"
+version = "0.2.0-rc.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8235645834fbc6832939736ce2f2d08192652269e11010a6240f61b908a1c6"
+dependencies = [
+ "hybrid-array",
+ "rand_core 0.9.3",
+]
+
+[[package]]
 name = "ctor"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1943,6 +2008,15 @@ checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
 dependencies = [
  "quote",
  "syn 2.0.101",
+]
+
+[[package]]
+name = "ctr"
+version = "0.10.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27e41d01c6f73b9330177f5cf782ae5b581b5f2c7840e298e0275ceee5001434"
+dependencies = [
+ "cipher",
 ]
 
 [[package]]
@@ -2198,7 +2272,7 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer 0.10.4",
  "const-oid",
- "crypto-common",
+ "crypto-common 0.1.6",
  "subtle",
 ]
 
@@ -2250,6 +2324,19 @@ dependencies = [
  "serdect",
  "signature",
  "spki",
+]
+
+[[package]]
+name = "ecies"
+version = "0.1.0"
+source = "git+https://github.com/scroll-tech/ecies-rs#e32a93f736aac2158bf5982b8e4786b82be8b854"
+dependencies = [
+ "aes-gcm",
+ "digest 0.10.7",
+ "hkdf",
+ "k256",
+ "sha2 0.10.9",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2396,7 +2483,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cea14ef9355e3beab063703aa9dab15afd25f0667c341310c1e5274bb1d0da18"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2831,6 +2918,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghash"
+version = "0.6.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f88107cb02ed63adcc4282942e60c4d09d80208d33b360ce7c729ce6dae1739"
+dependencies = [
+ "polyval",
+]
+
+[[package]]
 name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3188,6 +3284,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
+name = "hkdf"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
+dependencies = [
+ "hmac",
+]
+
+[[package]]
 name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3263,6 +3368,15 @@ name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
+
+[[package]]
+name = "hybrid-array"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7116c472cf19838450b1d421b4e842569f52b519d640aee9ace1ebcf5b21051"
+dependencies = [
+ "typenum",
+]
 
 [[package]]
 name = "hyper"
@@ -3585,6 +3699,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inout"
+version = "0.2.0-rc.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1603f76010ff924b616c8f44815a42eb10fb0b93d308b41deaa8da6d4251fd4b"
+dependencies = [
+ "hybrid-array",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3785,7 +3908,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4354,7 +4477,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
 dependencies = [
- "proc-macro-crate 3.3.0",
+ "proc-macro-crate 1.3.1",
  "proc-macro2",
  "quote",
  "syn 2.0.101",
@@ -6117,6 +6240,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
+name = "polyval"
+version = "0.7.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ffd40cc99d0fbb02b4b3771346b811df94194bc103983efa0203c8893755085"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "universal-hash",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6396,7 +6530,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -7787,7 +7921,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8178,7 +8312,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "base64 0.22.1",
  "bincode 1.3.3",
@@ -8205,7 +8339,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -8225,7 +8359,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-base"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 1.0.30",
@@ -8238,7 +8372,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-batch"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "alloy-primitives",
  "c-kzg",
@@ -8260,7 +8394,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-bundle"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "rkyv",
  "scroll-zkvm-types-base",
@@ -8270,9 +8404,12 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-chunk"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "alloy-primitives",
+ "alloy-sol-types",
+ "ecies",
+ "itertools 0.14.0",
  "rkyv",
  "sbv-core",
  "sbv-helpers",
@@ -8280,12 +8417,13 @@ dependencies = [
  "sbv-trie",
  "scroll-zkvm-types-base",
  "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?rev=060be4c#060be4c0461b0a197c5be47fc74415165a0abe25"
+source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
 dependencies = [
  "bincode 1.3.3",
  "eyre",
@@ -8806,7 +8944,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8942,9 +9080,9 @@ dependencies = [
 
 [[package]]
 name = "syn-solidity"
-version = "1.2.1"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9ac494e7266fcdd2ad80bf4375d55d27a117ea5c866c26d0e97fe5b3caeeb75"
+checksum = "a0b198d366dbec045acfcd97295eb653a7a2b40e4dc764ef1e79aafcad439d3c"
 dependencies = [
  "paste",
  "proc-macro2",
@@ -9036,7 +9174,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -9606,6 +9744,16 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "universal-hash"
+version = "0.6.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a55be643b40a21558f44806b53ee9319595bc7ca6896372e4e08e5d7d83c9cd6"
+dependencies = [
+ "crypto-common 0.2.0-rc.4",
+ "subtle",
+]
 
 [[package]]
 name = "unroll"
