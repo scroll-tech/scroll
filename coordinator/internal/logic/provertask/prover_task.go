@@ -65,6 +65,26 @@ type proverTaskContext struct {
 	hasAssignedTask *orm.ProverTask
 }
 
+// version get the version for the chain instance
+//
+// TODO: This is not foolproof and does not cover all scenarios.
+func (b *BaseProverTask) version(hardForkName string) (uint8, error) {
+	var domain, stfVersion uint8
+
+	if b.cfg.L2.ValidiumMode {
+		domain = 1
+		stfVersion = 1
+	} else {
+		domain = 0
+		stfVersion = 8
+		if hardForkName != "feynman" {
+			return 0, errors.New("expected hardfork=feynman")
+		}
+	}
+
+	return (domain << 6) + stfVersion, nil
+}
+
 // hardForkName get the chunk/batch/bundle hard fork name
 func (b *BaseProverTask) hardForkName(ctx *gin.Context, taskCtx *proverTaskContext) (string, error) {
 	switch {

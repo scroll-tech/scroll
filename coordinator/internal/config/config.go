@@ -36,8 +36,9 @@ type L2Endpoint struct {
 // L2 loads l2geth configuration items.
 type L2 struct {
 	// l2geth chain_id.
-	ChainID  uint64      `json:"chain_id"`
-	Endpoint *L2Endpoint `json:"l2geth"`
+	ChainID      uint64      `json:"chain_id"`
+	Endpoint     *L2Endpoint `json:"l2geth"`
+	ValidiumMode bool        `json:"validium_mode"`
 }
 
 // Auth provides the auth coordinator
