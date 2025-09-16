@@ -1,17 +1,21 @@
-use crate::{proofs::BatchProof, VALIDIUM_VERSION};
 use eyre::Result;
 use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
-    public_inputs::{ForkName, Version},
+    public_inputs::Version,
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
+
+use crate::proofs::BatchProof;
 
 /// Message indicating a sanity check failure.
 const BUNDLE_SANITY_MSG: &str = "bundle must have at least one batch";
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct BundleProvingTask {
+    /// The version of batches in the bundle.
+    pub version: Version,
+    /// The STARK proofs of each batch in the bundle.
     pub batch_proofs: Vec<BatchProof>,
     /// for sanity check
     pub bundle_info: Option<BundleInfo>,
@@ -41,26 +45,24 @@ impl BundleProvingTask {
 
     fn build_guest_input(&self) -> BundleWitness {
         BundleWitness {
-            version: VALIDIUM_VERSION,
+            version: self.version.as_version_byte(),
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
             batch_infos: self
                 .batch_proofs
                 .iter()
                 .map(|wrapped_proof| wrapped_proof.metadata.batch_info.clone())
                 .collect(),
-            fork_name: self.fork_name.to_lowercase().as_str().into(),
+            fork_name: self.version.fork,
         }
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BundleInfo> {
-        let fork_name = ForkName::from(self.fork_name.as_str());
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BundleInfo::from(&witness);
-
-        super::check_aggregation_proofs(self.batch_proofs.as_slice(), Version::validium_v1())?;
+        super::check_aggregation_proofs(self.batch_proofs.as_slice(), self.version)?;
 
         Ok(metadata)
     }

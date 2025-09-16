@@ -13,6 +13,7 @@ use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
 /// global features: use legacy encoding for witness
 static mut LEGACY_WITNESS_ENCODING: bool = false;
+
 pub(crate) fn witness_use_legacy_mode() -> bool {
     unsafe { LEGACY_WITNESS_ENCODING }
 }

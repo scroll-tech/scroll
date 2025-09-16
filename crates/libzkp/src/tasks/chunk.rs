@@ -1,18 +1,20 @@
-use crate::VALIDIUM_VERSION;
-
-use super::chunk_interpreter::*;
 use eyre::Result;
 use sbv_core::BlockWitness;
 use sbv_primitives::B256;
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness},
+    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, SecretKey},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
+    version::Version,
 };
+
+use super::chunk_interpreter::*;
 
 /// The type aligned with coordinator's defination
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChunkTask {
+    /// The version for the chunk, as per [`Version`].
+    pub version: Version,
     /// block hashes for a series of block
     pub block_hashes: Vec<B256>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
@@ -34,6 +36,7 @@ impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
         }
 
         Ok(Self {
+            version: value.version,
             block_witnesses,
             prev_msg_queue_hash: value.prev_msg_queue_hash,
             fork_name: value.fork_name,
@@ -50,6 +53,8 @@ const CHUNK_SANITY_MSG: &str = "chunk must have at least one block";
 /// - {first_block_number}-{last_block_number}
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ChunkProvingTask {
+    /// The version for the chunk, as per [Version][scroll_zkvm_types::version::Version].
+    pub version: Version,
     /// Witnesses for every block in the chunk.
     pub block_witnesses: Vec<BlockWitness>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
@@ -128,14 +133,23 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        let validium_input: scroll_zkvm_types::chunk::ValidiumInputs = todo!();
-        ChunkWitness::new(
-            VALIDIUM_VERSION,
-            &self.block_witnesses,
-            self.prev_msg_queue_hash,
-            self.fork_name.to_lowercase().as_str().into(),
-            Some(validium_input),
-        )
+        if self.version.is_validium() {
+            ChunkWitness::new_validium(
+                self.version.as_version_byte(),
+                &self.block_witnesses,
+                self.prev_msg_queue_hash,
+                self.version.fork,
+                vec![], // TODO: validium txs
+                SecretKey::try_from_bytes(vec![0; 32]).expect("should be ok"), // TODO: secret key
+            )
+        } else {
+            ChunkWitness::new_scroll(
+                self.version.as_version_byte(),
+                &self.block_witnesses,
+                self.prev_msg_queue_hash,
+                self.version.fork,
+            )
+        }
     }
 
     fn insert_state(&mut self, node: sbv_primitives::Bytes) {
