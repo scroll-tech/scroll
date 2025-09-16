@@ -35,7 +35,8 @@ func TestConfig(t *testing.T) {
 			"maxIdleNum": 20
 		},
 		"l2": {
-			"chain_id": 111
+			"chain_id": 111,
+			"validium_mode": false
 		},
  		"auth": {
 			"secret": "prover secret key",
