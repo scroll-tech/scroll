@@ -8312,7 +8312,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "base64 0.22.1",
  "bincode 1.3.3",
@@ -8339,7 +8339,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -8359,7 +8359,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-base"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 1.0.30",
@@ -8372,7 +8372,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-batch"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "alloy-primitives",
  "c-kzg",
@@ -8394,7 +8394,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-bundle"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "rkyv",
  "scroll-zkvm-types-base",
@@ -8404,7 +8404,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-types-chunk"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -8423,7 +8423,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.6.0"
-source = "git+https://github.com/scroll-tech/zkvm-prover?branch=feat%2Fvalidium#f8def9f059d6d2595d3dca86a1b83be5e1fca452"
+source = "git+https://github.com/scroll-tech/zkvm-prover?rev=5c361ad#5c361ad2eec9a2f115671d6a4dab1628aae63259"
 dependencies = [
  "bincode 1.3.3",
  "eyre",

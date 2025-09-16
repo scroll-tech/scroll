@@ -1,8 +1,8 @@
-use crate::proofs::BatchProof;
+use crate::{proofs::BatchProof, VALIDIUM_VERSION};
 use eyre::Result;
 use scroll_zkvm_types::{
-    bundle::{BundleInfo, BundleWitness},
-    public_inputs::ForkName,
+    bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
+    public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -41,6 +41,7 @@ impl BundleProvingTask {
 
     fn build_guest_input(&self) -> BundleWitness {
         BundleWitness {
+            version: VALIDIUM_VERSION,
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
             batch_infos: self
                 .batch_proofs
@@ -59,7 +60,7 @@ impl BundleProvingTask {
         let witness = self.build_guest_input();
         let metadata = BundleInfo::from(&witness);
 
-        super::check_aggregation_proofs(self.batch_proofs.as_slice(), fork_name)?;
+        super::check_aggregation_proofs(self.batch_proofs.as_slice(), Version::validium_v1())?;
 
         Ok(metadata)
     }
@@ -71,7 +72,8 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
     fn try_from(value: BundleProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
         let serialized_witness = if crate::witness_use_legacy_mode() {
-            to_rkyv_bytes::<RancorError>(&witness)?.into_vec()
+            let legacy = LegacyBundleWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
         } else {
             super::encode_task_to_witness(&witness)?
         };

@@ -1,3 +1,5 @@
+use crate::VALIDIUM_VERSION;
+
 use super::chunk_interpreter::*;
 use eyre::Result;
 use sbv_core::BlockWitness;
@@ -126,11 +128,13 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        let validium_input: ValidiumInputs = todo!();
+        let validium_input: scroll_zkvm_types::chunk::ValidiumInputs = todo!();
         ChunkWitness::new(
+            VALIDIUM_VERSION,
             &self.block_witnesses,
             self.prev_msg_queue_hash,
             self.fork_name.to_lowercase().as_str().into(),
+            Some(validium_input),
         )
     }
 

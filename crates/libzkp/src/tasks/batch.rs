@@ -1,4 +1,4 @@
-use crate::proofs::ChunkProof;
+use crate::{proofs::ChunkProof, VALIDIUM_VERSION};
 use c_kzg::Bytes48;
 use eyre::Result;
 use sbv_primitives::{B256, U256};
@@ -8,7 +8,7 @@ use scroll_zkvm_types::{
         BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, LegacyBatchWitness,
         ReferenceHeader, N_BLOB_BYTES,
     },
-    public_inputs::ForkName,
+    public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -179,7 +179,7 @@ impl BatchProvingTask {
         };
 
         BatchWitness {
-            version: 65,
+            version: VALIDIUM_VERSION,
             fork_name,
             chunk_proofs: self.chunk_proofs.iter().map(|proof| proof.into()).collect(),
             chunk_infos: self
@@ -201,7 +201,8 @@ impl BatchProvingTask {
         let witness = self.build_guest_input();
         let metadata = BatchInfo::from(&witness);
 
-        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), fork_name)?;
+        // FIXME
+        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), Version::validium_v1())?;
 
         Ok(metadata)
     }
