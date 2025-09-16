@@ -113,12 +113,12 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
                 let parent_block = provider
                     .get_block_by_hash(block.header.parent_hash)
                     .await?
-                    .unwrap_or_else(|| {
-                        panic!(
+                    .ok_or_else(|| {
+                        eyre::eyre!(
                             "parent block for block {} should exist",
                             block.header.number
                         )
-                    });
+                    })?;
 
                 (
                     chain_id,

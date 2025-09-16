@@ -11,6 +11,8 @@ pub struct UniversalHandler {
     prover: Prover,
 }
 
+/// Safe for current usage as `CircuitsHandler` trait (protected inside of Mutex and NEVER extract
+/// the instance out by `into_inner`)
 unsafe impl Send for UniversalHandler {}
 
 impl UniversalHandler {
