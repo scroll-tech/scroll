@@ -36,7 +36,7 @@ E2E_HANDLE_SET ?= ../tests/prover-e2e/testset.json
 DUMP_DIR ?= .work
 
 prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -Z unstable-options --features cuda --lockfile-path ../crates/gpu_override/Cargo.lock -p prover
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
 
 version:
 	echo ${GO_TAG}-${GIT_REV}-${ZK_VERSION}
