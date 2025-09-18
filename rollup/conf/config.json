@@ -40,6 +40,11 @@
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.ankr.com/eth",
+        "write_endpoints": [
+          "https://rpc.ankr.com/eth",
+          "https://ethereum.publicnode.com",
+          "https://eth.llamarpc.com"
+        ],
         "escalate_blocks": 1,
         "confirmations": "0x0",
         "escalate_multiple_num": 2,
