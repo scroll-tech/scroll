@@ -9,8 +9,8 @@ use scroll_zkvm_types::{
     chunk::ChunkInfo,
     proof::{EvmProof, OpenVmEvmProof, ProofEnum, StarkProof},
     public_inputs::{ForkName, MultiVersionPublicInputs},
-    types_agg::{AggregationInput, ProgramCommitment},
-    utils::vec_as_base64,
+    types_agg::AggregationInput,
+    utils::{serialize_vk, vec_as_base64},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -172,7 +172,7 @@ impl<Metadata> From<&WrappedProof<Metadata>> for AggregationInput {
     fn from(value: &WrappedProof<Metadata>) -> Self {
         Self {
             public_values: value.proof.public_values(),
-            commitment: ProgramCommitment::deserialize(&value.vk),
+            commitment: serialize_vk::deserialize(&value.vk),
         }
     }
 }
