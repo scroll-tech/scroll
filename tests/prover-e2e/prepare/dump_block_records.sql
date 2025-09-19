@@ -1,7 +1,12 @@
 -- Create a file with INSERT statements for the specific records
-\o block_export.sql
+\o 00100_import_blocks.sql
 \t on
 \a
+-- Write header comment
+SELECT '-- +goose Up';
+SELECT '-- +goose StatementBegin';
+SELECT '';
+
 SELECT 'INSERT INTO l2_block (number, hash, parent_hash, header, withdraw_root,
        state_root, tx_num, gas_used, block_timestamp, row_consumption,
        chunk_hash, transactions
@@ -20,8 +25,17 @@ SELECT 'INSERT INTO l2_block (number, hash, parent_hash, header, withdraw_root,
        quote_literal(transactions) ||
        ');'
 FROM l2_block 
-WHERE number >= 10973700 and number <= 10973730
+WHERE number >= 5 and number <= 36
 ORDER BY number ASC;
+
+-- Write footer
+SELECT '';
+SELECT '-- +goose StatementEnd';
+SELECT '-- +goose Down';
+SELECT '-- +goose StatementBegin';
+SELECT 'DELETE FROM l2_block;';
+SELECT '-- +goose StatementEnd';
+
 \t off
 \a
 \o

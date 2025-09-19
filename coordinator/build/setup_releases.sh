@@ -53,6 +53,7 @@ for ((i=0; i<$VERIFIER_COUNT; i++)); do
   # assets for verifier-only mode
   echo "Downloading assets for $FORK_NAME to $ASSET_DIR..."
   wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/verifier.bin -O ${ASSET_DIR}/verifier.bin
+  wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/root_verifier_vk -O ${ASSET_DIR}/root_verifier_vk
   wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/$SCROLL_ZKVM_VERSION/verifier/openVmVk.json -O ${ASSET_DIR}/openVmVk.json
   
   echo "Completed downloading assets for $FORK_NAME"
