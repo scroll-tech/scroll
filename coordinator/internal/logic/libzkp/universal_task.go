@@ -17,7 +17,7 @@ func InitL2geth(configJSON string) {
 	C.init_l2geth(cConfig)
 }
 
-func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte) (bool, string, string, []byte) {
+func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {
 	cTask := goToCString(taskJSON)
 	cForkName := goToCString(forkName)
 	defer freeCString(cTask)
@@ -29,7 +29,13 @@ func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk [
 		cVk = (*C.uchar)(unsafe.Pointer(&expectedVk[0]))
 	}
 
-	result := C.gen_universal_task(C.int(taskType), cTask, cForkName, cVk, C.size_t(len(expectedVk)))
+	// Create a C array from Go slice
+	var cDk *C.uchar
+	if len(decryptionKey) > 0 {
+		cDk = (*C.uchar)(unsafe.Pointer(&decryptionKey[0]))
+	}
+
+	result := C.gen_universal_task(C.int(taskType), cTask, cForkName, cVk, C.size_t(len(expectedVk)), cDk, C.size_t(len(decryptionKey)))
 	defer C.release_task_result(result)
 
 	// Check if the operation was successful

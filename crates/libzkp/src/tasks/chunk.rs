@@ -1,16 +1,20 @@
-use super::chunk_interpreter::*;
 use eyre::Result;
 use sbv_core::BlockWitness;
-use sbv_primitives::B256;
+use sbv_primitives::{types::consensus::BlockHeader, B256};
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness},
+    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
+    version::Version,
 };
+
+use super::chunk_interpreter::*;
 
 /// The type aligned with coordinator's defination
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChunkTask {
+    /// The version for the chunk, as per [`Version`].
+    pub version: u8,
     /// block hashes for a series of block
     pub block_hashes: Vec<B256>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
@@ -22,6 +26,7 @@ pub struct ChunkTask {
 impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
     fn try_from_with_interpret(
         value: ChunkTask,
+        decryption_key: Option<&[u8]>,
         interpreter: impl ChunkInterpreter,
     ) -> Result<Self> {
         let mut block_witnesses = Vec::new();
@@ -31,10 +36,27 @@ impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
             block_witnesses.push(witness);
         }
 
+        let validium_txs = if Version::from(value.version).is_validium() {
+            let mut validium_txs = Vec::new();
+            for block_number in block_witnesses.iter().map(|w| w.header.number()) {
+                validium_txs.push(interpreter.try_fetch_l1_msgs(block_number)?);
+            }
+            validium_txs
+        } else {
+            vec![]
+        };
+
+        let validium_inputs = decryption_key.map(|secret_key| ValidiumInputs {
+            validium_txs,
+            secret_key: secret_key.into(),
+        });
+
         Ok(Self {
+            version: value.version,
             block_witnesses,
             prev_msg_queue_hash: value.prev_msg_queue_hash,
             fork_name: value.fork_name,
+            validium_inputs,
         })
     }
 }
@@ -48,12 +70,16 @@ const CHUNK_SANITY_MSG: &str = "chunk must have at least one block";
 /// - {first_block_number}-{last_block_number}
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ChunkProvingTask {
+    /// The version for the chunk, as per [Version][scroll_zkvm_types::version::Version].
+    pub version: u8,
     /// Witnesses for every block in the chunk.
     pub block_witnesses: Vec<BlockWitness>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
     pub prev_msg_queue_hash: B256,
     /// Fork name specify
     pub fork_name: String,
+    /// Optional inputs in case of domain=validium.
+    pub validium_inputs: Option<ValidiumInputs>,
 }
 
 #[derive(Clone, Debug)]
@@ -126,11 +152,25 @@ impl ChunkProvingTask {
     }
 
     fn build_guest_input(&self) -> ChunkWitness {
-        ChunkWitness::new(
-            &self.block_witnesses,
-            self.prev_msg_queue_hash,
-            self.fork_name.to_lowercase().as_str().into(),
-        )
+        let version = Version::from(self.version);
+
+        if version.is_validium() {
+            assert!(self.validium_inputs.is_some());
+            ChunkWitness::new(
+                version.as_version_byte(),
+                &self.block_witnesses,
+                self.prev_msg_queue_hash,
+                version.fork,
+                self.validium_inputs.clone(),
+            )
+        } else {
+            ChunkWitness::new_scroll(
+                version.as_version_byte(),
+                &self.block_witnesses,
+                self.prev_msg_queue_hash,
+                version.fork,
+            )
+        }
     }
 
     fn insert_state(&mut self, node: sbv_primitives::Bytes) {
@@ -139,9 +179,7 @@ impl ChunkProvingTask {
 
     pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
         let witness = self.build_guest_input();
-
-        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
-        Ok(ret)
+        Ok(ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?)
     }
 
     /// this method check the validate of current task (there may be missing storage node)

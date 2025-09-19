@@ -35,13 +35,17 @@ func TestConfig(t *testing.T) {
 			"maxIdleNum": 20
 		},
 		"l2": {
-			"chain_id": 111
+			"chain_id": 111,
+			"validium_mode": false
 		},
  		"auth": {
 			"secret": "prover secret key",
 			"challenge_expire_duration_sec": 3600,
 			"login_expire_duration_sec": 3600
-  		}
+  		},
+    	"sequencer": {
+     		"decryption_key": "sequencer decryption key"
+     	}
 	}`
 
 	t.Run("Success Case", func(t *testing.T) {

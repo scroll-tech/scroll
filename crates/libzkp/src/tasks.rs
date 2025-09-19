@@ -14,7 +14,7 @@ use crate::{
     utils::panic_catch,
 };
 use sbv_primitives::B256;
-use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
+use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs, Version};
 
 fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>> {
     let config = bincode::config::standard();
@@ -23,7 +23,7 @@ fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>
 
 fn check_aggregation_proofs<Metadata>(
     proofs: &[proofs::WrappedProof<Metadata>],
-    fork_name: ForkName,
+    version: Version,
 ) -> eyre::Result<()>
 where
     Metadata: proofs::ProofMetadata,
@@ -32,7 +32,7 @@ where
         for w in proofs.windows(2) {
             w[1].metadata
                 .pi_hash_info()
-                .validate(w[0].metadata.pi_hash_info(), fork_name);
+                .validate(w[0].metadata.pi_hash_info(), version);
         }
     })
     .map_err(|e| eyre::eyre!("Chunk data validation failed: {}", e))?;

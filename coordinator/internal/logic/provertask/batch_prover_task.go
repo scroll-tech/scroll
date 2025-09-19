@@ -302,7 +302,14 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 }
 
 func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.OpenVMChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
+	// Get the version byte.
+	version, err := bp.version(hardForkName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode version byte: %w", err)
+	}
+
 	taskDetail := &message.BatchTaskDetail{
+		Version:     version,
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
 		ForkName:    hardForkName,

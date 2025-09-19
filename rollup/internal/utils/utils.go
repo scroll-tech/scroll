@@ -164,7 +164,19 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		commitmentOffset   = withdrawRootOffset + withdrawRootSize
 	)
 
-	batchBytes[versionOffset] = uint8(codecVersion)                                                                        // version
+	var version uint8
+	if codecVersion == encoding.CodecV8 {
+		// Validium version line starts with v1,
+		// but rollup-relayer behavior follows v8.
+		version = 1
+	} else if codecVersion == encoding.CodecV0 {
+		// Special case for genesis batch
+		version = 0
+	} else {
+		return nil, common.Hash{}, fmt.Errorf("unexpected codec version %d for batch %v in validium mode", codecVersion, b.Index)
+	}
+
+	batchBytes[versionOffset] = version                                                                                    // version
 	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                                     // batch index
 	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:parentHashSize])                // parentBatchHash
 	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:stateRootSize])                // postStateRoot

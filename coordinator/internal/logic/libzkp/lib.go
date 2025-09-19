@@ -93,8 +93,8 @@ func fromMessageTaskType(taskType int) int {
 }
 
 // Generate a universal task
-func GenerateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte) (bool, string, string, []byte) {
-	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName), expectedVk)
+func GenerateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName), expectedVk, decryptionKey)
 }
 
 // Generate wrapped proof

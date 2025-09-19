@@ -39,6 +39,7 @@ const (
 
 // ChunkTaskDetail is a type containing ChunkTask detail for chunk task.
 type ChunkTaskDetail struct {
+	Version uint8 `json:"version"`
 	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName         string        `json:"fork_name"`
 	BlockHashes      []common.Hash `json:"block_hashes"`
@@ -90,6 +91,7 @@ func (e *Byte48) UnmarshalJSON(input []byte) error {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
+	Version uint8 `json:"version"`
 	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName        string              `json:"fork_name"`
 	ChunkInfos      []*ChunkInfo        `json:"chunk_infos"`
@@ -103,6 +105,7 @@ type BatchTaskDetail struct {
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
+	Version uint8 `json:"version"`
 	// use one of the string of "euclidv1" / "euclidv2"
 	ForkName    string              `json:"fork_name"`
 	BatchProofs []*OpenVMBatchProof `json:"batch_proofs"`
@@ -124,6 +127,9 @@ type ChunkInfo struct {
 	TxDataLength       uint64           `json:"tx_data_length"`
 	InitialBlockNumber uint64           `json:"initial_block_number"`
 	BlockCtxs          []BlockContextV2 `json:"block_ctxs"`
+	PrevBlockhash      common.Hash      `json:"prev_blockhash"`
+	PostBlockhash      common.Hash      `json:"post_blockhash"`
+	EncryptionKey      []byte           `json:"encryption_key"`
 }
 
 // BlockContextV2 is the block context for euclid v2
@@ -186,6 +192,7 @@ type OpenVMBatchInfo struct {
 	ChainID          uint64      `json:"chain_id"`
 	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
 	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
+	EncryptionKey    []byte      `json:"encryption_key"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
@@ -246,6 +253,7 @@ type OpenVMBundleInfo struct {
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
 	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
+	EncryptionKey []byte      `json:"encryption_key"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.

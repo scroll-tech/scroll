@@ -36,8 +36,9 @@ type L2Endpoint struct {
 // L2 loads l2geth configuration items.
 type L2 struct {
 	// l2geth chain_id.
-	ChainID  uint64      `json:"chain_id"`
-	Endpoint *L2Endpoint `json:"l2geth"`
+	ChainID      uint64      `json:"chain_id"`
+	Endpoint     *L2Endpoint `json:"l2geth"`
+	ValidiumMode bool        `json:"validium_mode"`
 }
 
 // Auth provides the auth coordinator
@@ -47,12 +48,18 @@ type Auth struct {
 	LoginExpireDurationSec     int    `json:"login_expire_duration_sec"`
 }
 
+// The sequencer controlled data
+type Sequencer struct {
+	DecryptionKey string `json:"decryption_key"`
+}
+
 // Config load configuration items.
 type Config struct {
 	ProverManager *ProverManager   `json:"prover_manager"`
 	DB            *database.Config `json:"db"`
 	L2            *L2              `json:"l2"`
 	Auth          *Auth            `json:"auth"`
+	Sequencer     *Sequencer       `json:"sequencer"`
 }
 
 // AssetConfig contain assets configurated for each fork, the defaul vkfile name is "OpenVmVk.json".

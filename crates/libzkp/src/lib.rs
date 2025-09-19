@@ -13,9 +13,12 @@ use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
 /// global features: use legacy encoding for witness
 static mut LEGACY_WITNESS_ENCODING: bool = false;
+
 pub(crate) fn witness_use_legacy_mode() -> bool {
     unsafe { LEGACY_WITNESS_ENCODING }
 }
+
+pub const VALIDIUM_VERSION: u8 = 0b01000001;
 
 pub fn set_dynamic_feature(feats: &str) {
     for feat_s in feats.split(':') {
@@ -36,14 +39,13 @@ pub fn set_dynamic_feature(feats: &str) {
 /// task (with full witnesses)
 pub fn checkout_chunk_task(
     task_json: &str,
+    decryption_key: Option<&[u8]>,
     interpreter: impl ChunkInterpreter,
 ) -> eyre::Result<String> {
     let chunk_task = serde_json::from_str::<tasks::ChunkTask>(task_json)?;
-    let ret = serde_json::to_string(&tasks::ChunkProvingTask::try_from_with_interpret(
-        chunk_task,
-        interpreter,
-    )?)?;
-    Ok(ret)
+    Ok(serde_json::to_string(
+        &tasks::ChunkProvingTask::try_from_with_interpret(chunk_task, decryption_key, interpreter)?,
+    )?)
 }
 
 /// Generate required staff for proving tasks

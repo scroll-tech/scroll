@@ -12,7 +12,7 @@
         {
           "assets_path": "assets",
           "fork_name": "euclidV2"
-        },        
+        },
         {
           "assets_path": "assets",
           "fork_name": "feynman"
@@ -27,6 +27,7 @@
     "maxIdleNum": 20
   },
   "l2": {
+    "validium_mode": false,
     "chain_id": 111,
     "l2geth": {
       "endpoint": "not need to specified for mocking"
@@ -36,5 +37,8 @@
     "secret": "prover secret key",
     "challenge_expire_duration_sec": 3600,
     "login_expire_duration_sec": 3600
+  },
+  "sequencer": {
+    "decryption_key": "sequencer decryption key"
   }
 }
