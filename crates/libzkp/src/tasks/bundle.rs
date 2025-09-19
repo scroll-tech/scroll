@@ -1,9 +1,10 @@
 use crate::proofs::BatchProof;
 use eyre::Result;
 use scroll_zkvm_types::{
-    bundle::{BundleInfo, BundleWitness, ToArchievedWitness},
+    bundle::{BundleInfo, BundleWitness},
     public_inputs::ForkName,
     task::ProvingTask,
+    utils::{to_rkyv_bytes, RancorError},
 };
 
 /// Message indicating a sanity check failure.
@@ -56,12 +57,7 @@ impl BundleProvingTask {
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
-        let archieved = ToArchievedWitness::create(&witness)
-            .map_err(|e| eyre::eyre!("archieve bundle witness fail: {e}"))?;
-        let archieved_witness = archieved
-            .access()
-            .map_err(|e| eyre::eyre!("access archieved bundle witness fail: {e}"))?;
-        let metadata: BundleInfo = archieved_witness.into();
+        let metadata = BundleInfo::from(&witness);
 
         super::check_aggregation_proofs(self.batch_proofs.as_slice(), fork_name)?;
 
@@ -74,6 +70,11 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
 
     fn try_from(value: BundleProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
+        let serialized_witness = if crate::witness_use_legacy_mode() {
+            to_rkyv_bytes::<RancorError>(&witness)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
 
         Ok(ProvingTask {
             identifier: value.identifier(),
@@ -83,7 +84,7 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
                 .into_iter()
                 .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
                 .collect(),
-            serialized_witness: vec![witness.rkyv_serialize(None)?.to_vec()],
+            serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
         })
     }

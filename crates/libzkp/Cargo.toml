@@ -10,6 +10,7 @@ scroll-zkvm-verifier.workspace = true
 
 alloy-primitives.workspace = true #depress the effect of "native-keccak"
 sbv-primitives = {workspace = true, features = ["scroll-compress-ratio", "scroll"]}
+sbv-core = { workspace = true, features = ["scroll"] }
 base64.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
@@ -18,6 +19,7 @@ tracing.workspace = true
 eyre.workspace = true
 
 git-version = "0.3.5"
+bincode = { version = "2", features = ["serde"] }
 serde_stacker = "0.1"
 regex = "1.11"
 c-kzg = { version = "2.0", features = ["serde"] }

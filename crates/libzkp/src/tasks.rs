@@ -16,6 +16,11 @@ use crate::{
 use sbv_primitives::B256;
 use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs};
 
+fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>> {
+    let config = bincode::config::standard();
+    Ok(bincode::serde::encode_to_vec(task, config)?)
+}
+
 fn check_aggregation_proofs<Metadata>(
     proofs: &[proofs::WrappedProof<Metadata>],
     fork_name: ForkName,
@@ -37,13 +42,9 @@ where
 
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(
-    mut task: ChunkProvingTask,
+    task: ChunkProvingTask,
     fork_name: ForkName,
-    interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
-    if let Some(interpreter) = interpreter {
-        task.prepare_task_via_interpret(interpreter)?;
-    }
     let chunk_total_gas = task.stats().total_gas_used;
     let chunk_info = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;

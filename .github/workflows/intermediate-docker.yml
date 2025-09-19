@@ -22,11 +22,9 @@ on:
         required: true
         type: choice
         options:
-          - nightly-2023-12-03
-          - nightly-2022-12-10
           - 1.86.0
-          - nightly-2025-02-14
-        default: "nightly-2023-12-03"
+          - nightly-2025-08-18
+        default: "nightly-2025-08-18"
       PYTHON_VERSION:
         description: "Python version"
         required: false

@@ -1,4 +1,4 @@
-.PHONY: prover lint tests_binary
+.PHONY: prover prover_cpu lint tests_binary test_e2e_run test_run
 
 RUST_MIN_STACK ?= 16777216
 export RUST_MIN_STACK
@@ -36,14 +36,16 @@ E2E_HANDLE_SET ?= ../tests/prover-e2e/testset.json
 DUMP_DIR ?= .work
 
 prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override build
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
 
 version:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZKVM_COMMIT=${ZKVM_COMMIT} $(MAKE) -C ../crates/gpu_override version
+	echo ${GO_TAG}-${GIT_REV}-${ZK_VERSION}
 
 prover_cpu:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
 
+clean:
+	cargo clean -Z unstable-options --release -p prover --lockfile-path ../crates/gpu_override/Cargo.lock
 
 tests_binary:
 	cargo clean && cargo test --release --no-run

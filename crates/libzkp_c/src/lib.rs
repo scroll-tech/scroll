@@ -153,17 +153,12 @@ pub unsafe extern "C" fn gen_universal_task(
     expected_vk: *const u8,
     expected_vk_len: usize,
 ) -> HandlingResult {
-    let mut interpreter = None;
     let task_json = if task_type == TaskType::Chunk as i32 {
         let pre_task_str = c_char_to_str(task);
         let cli = l2geth::get_client();
         match libzkp::checkout_chunk_task(pre_task_str, cli) {
-            Ok(str) => {
-                interpreter.replace(cli);
-                str
-            }
+            Ok(str) => str,
             Err(e) => {
-                println!("gen_universal_task failed at pre interpret step, error: {e}");
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");
                 return failed_handling_result();
             }
@@ -178,13 +173,8 @@ pub unsafe extern "C" fn gen_universal_task(
         &[]
     };
 
-    let ret = libzkp::gen_universal_task(
-        task_type,
-        &task_json,
-        c_char_to_str(fork_name),
-        expected_vk,
-        interpreter,
-    );
+    let ret =
+        libzkp::gen_universal_task(task_type, &task_json, c_char_to_str(fork_name), expected_vk);
 
     if let Ok((pi_hash, meta_json, task_json)) = ret {
         let expected_pi_hash = pi_hash.0.map(|byte| byte as c_char);
@@ -254,4 +244,11 @@ pub unsafe extern "C" fn release_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);
     }
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn set_dynamic_feature(feats: *const c_char) {
+    let feats_str = c_char_to_str(feats);
+    libzkp::set_dynamic_feature(feats_str);
 }

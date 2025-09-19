@@ -11,6 +11,27 @@ use serde_json::value::RawValue;
 use std::path::Path;
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
+/// global features: use legacy encoding for witness
+static mut LEGACY_WITNESS_ENCODING: bool = false;
+pub(crate) fn witness_use_legacy_mode() -> bool {
+    unsafe { LEGACY_WITNESS_ENCODING }
+}
+
+pub fn set_dynamic_feature(feats: &str) {
+    for feat_s in feats.split(':') {
+        match feat_s.trim().to_lowercase().as_str() {
+            "legacy_witness" => {
+                tracing::info!("set witness encoding for legacy mode");
+                unsafe {
+                    // the function is only called while initialize step
+                    LEGACY_WITNESS_ENCODING = true;
+                }
+            }
+            s => tracing::warn!("unrecognized dynamic feature: {s}"),
+        }
+    }
+}
+
 /// Turn the coordinator's chunk task into a json string for formal chunk proving
 /// task (with full witnesses)
 pub fn checkout_chunk_task(
@@ -32,7 +53,6 @@ pub fn gen_universal_task(
     task_json: &str,
     fork_name_str: &str,
     expected_vk: &[u8],
-    interpreter: Option<impl ChunkInterpreter>,
 ) -> eyre::Result<(B256, String, String)> {
     use proofs::*;
     use tasks::*;
@@ -56,10 +76,9 @@ pub fn gen_universal_task(
             if fork_name_str != task.fork_name.as_str() {
                 eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
             }
-            let (pi_hash, metadata, u_task) = utils::panic_catch(move || {
-                gen_universal_chunk_task(task, fork_name_str.into(), interpreter)
-            })
-            .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
+            let (pi_hash, metadata, u_task) =
+                utils::panic_catch(move || gen_universal_chunk_task(task, fork_name_str.into()))
+                    .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {

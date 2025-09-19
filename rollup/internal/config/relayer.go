@@ -7,8 +7,14 @@ import (
 
 // SenderConfig The config for transaction sender
 type SenderConfig struct {
-	// The RPC endpoint of the ethereum or scroll public node.
+	// The RPC endpoint of the ethereum or scroll public node (for backward compatibility).
+	// If WriteEndpoints is specified, this endpoint will be used only for reading.
+	// If WriteEndpoints is empty, this endpoint will be used for both reading and writing.
 	Endpoint string `json:"endpoint"`
+	// The RPC endpoints to send transactions to (optional).
+	// If specified, transactions will be sent to all these endpoints in parallel.
+	// If empty, transactions will be sent to the Endpoint.
+	WriteEndpoints []string `json:"write_endpoints,omitempty"`
 	// The time to trigger check pending txs in sender.
 	CheckPendingTime uint64 `json:"check_pending_time"`
 	// The number of blocks to wait to escalate increase gas price of the transaction.
