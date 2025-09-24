@@ -174,9 +174,10 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             provider: impl Provider<Network>,
             block_number: u64,
         ) -> Result<Vec<TxL1Message>> {
+            let block_number_hex = format!("0x{:x}", block_number);
             Ok(provider
                 .client()
-                .request::<_, Vec<TxL1Message>>("scroll_getL1MessagesInBlock", (block_number,))
+                .request::<_, Vec<TxL1Message>>("scroll_getL1MessagesInBlock", (block_number_hex, "synced"))
                 .await?)
         }
 
@@ -202,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
+    // #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
     fn test_try_fetch_block_witness() {
         let config = create_config_from_env();
         let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
@@ -233,5 +234,19 @@ mod tests {
             .expect("should success");
 
         println!("{}", serde_json::to_string_pretty(&wit2).unwrap());
+    }
+
+    #[test]
+    #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
+    fn test_try_fetch_l1_messages() {
+        let config = create_config_from_env();
+        let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
+        let client = client_core.get_client();
+
+        let msgs = client
+            .try_fetch_l1_msgs(32)
+            .expect("should success");
+
+        println!("{}", serde_json::to_string_pretty(&msgs).unwrap());
     }
 }
