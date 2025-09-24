@@ -175,10 +175,22 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             block_number: u64,
         ) -> Result<Vec<TxL1Message>> {
             let block_number_hex = format!("0x{:x}", block_number);
-            Ok(provider
+
+            #[derive(Deserialize, Debug)]
+            #[serde(untagged)]
+            enum NullOrVec {
+                Null,                       // matches JSON `null`
+                Vec(Vec<TxL1Message>),      // matches JSON array
+            }
+
+            Ok(match provider
                 .client()
-                .request::<_, Vec<TxL1Message>>("scroll_getL1MessagesInBlock", (block_number_hex, "synced"))
-                .await?)
+                .request::<_, NullOrVec>("scroll_getL1MessagesInBlock", (block_number_hex, "synced"))
+                .await? {
+                    NullOrVec::Null => Vec::new(),
+                    NullOrVec::Vec(r) => r,
+                }
+            )
         }
 
         tracing::debug!("fetch L1 msgs for {block_number}");
