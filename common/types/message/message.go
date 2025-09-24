@@ -112,15 +112,29 @@ type BundleTaskDetail struct {
 	BundleInfo  *OpenVMBundleInfo   `json:"bundle_info,omitempty"`
 }
 
+type RawBytes []byte
+
+func (r RawBytes) MarshalJSON() ([]byte, error) {
+	if r == nil {
+		return []byte("null"), nil
+	}
+	// Marshal the []byte as a JSON array of numbers
+	rn := make([]uint16, len(r))
+	for i := range r {
+		rn[i] = uint16(r[i])
+	}
+	return json.Marshal(rn)
+}
+
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID            uint64           `json:"chain_id"`
-	PrevStateRoot      common.Hash      `json:"prev_state_root"`
-	PostStateRoot      common.Hash      `json:"post_state_root"`
-	WithdrawRoot       common.Hash      `json:"withdraw_root"`
-	DataHash           common.Hash      `json:"data_hash"`
-	IsPadding          bool             `json:"is_padding"`
-	TxBytes            []byte           `json:"tx_bytes"`
+	ChainID       uint64      `json:"chain_id"`
+	PrevStateRoot common.Hash `json:"prev_state_root"`
+	PostStateRoot common.Hash `json:"post_state_root"`
+	WithdrawRoot  common.Hash `json:"withdraw_root"`
+	DataHash      common.Hash `json:"data_hash"`
+	IsPadding     bool        `json:"is_padding"`
+	//	TxBytes            []byte           `json:"tx_bytes"`
 	TxBytesHash        common.Hash      `json:"tx_data_digest"`
 	PrevMsgQueueHash   common.Hash      `json:"prev_msg_queue_hash"`
 	PostMsgQueueHash   common.Hash      `json:"post_msg_queue_hash"`
@@ -129,7 +143,7 @@ type ChunkInfo struct {
 	BlockCtxs          []BlockContextV2 `json:"block_ctxs"`
 	PrevBlockhash      common.Hash      `json:"prev_blockhash"`
 	PostBlockhash      common.Hash      `json:"post_blockhash"`
-	EncryptionKey      []byte           `json:"encryption_key"`
+	EncryptionKey      RawBytes         `json:"encryption_key"`
 }
 
 // BlockContextV2 is the block context for euclid v2
@@ -192,7 +206,7 @@ type OpenVMBatchInfo struct {
 	ChainID          uint64      `json:"chain_id"`
 	PrevMsgQueueHash common.Hash `json:"prev_msg_queue_hash"`
 	PostMsgQueueHash common.Hash `json:"post_msg_queue_hash"`
-	EncryptionKey    []byte      `json:"encryption_key"`
+	EncryptionKey    RawBytes    `json:"encryption_key"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
@@ -253,7 +267,7 @@ type OpenVMBundleInfo struct {
 	PrevBatchHash common.Hash `json:"prev_batch_hash"`
 	BatchHash     common.Hash `json:"batch_hash"`
 	MsgQueueHash  common.Hash `json:"msg_queue_hash"`
-	EncryptionKey []byte      `json:"encryption_key"`
+	EncryptionKey RawBytes    `json:"encryption_key"`
 }
 
 // OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.
