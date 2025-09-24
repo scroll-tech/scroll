@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    // #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
+    #[ignore = "Requires L2GETH_ENDPOINT environment variable"]
     fn test_try_fetch_block_witness() {
         let config = create_config_from_env();
         let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
