@@ -185,7 +185,9 @@ func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []
 		Blocks:                     blks,
 	}
 
-	dbBatch, err := batchOrm.InsertBatch(ctx, batch, codecCfg, utils.BatchMetrics{})
+	dbBatch, err := batchOrm.InsertBatch(ctx, batch, codecCfg, utils.BatchMetrics{
+		ValidiumMode: cfg.ValidiumMode,
+	})
 	if err != nil {
 		return nil, err
 	}

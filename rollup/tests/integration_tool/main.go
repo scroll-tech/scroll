@@ -86,7 +86,8 @@ func parseThreeIntegers(value string) (int, int, int, error) {
 
 // load a comptabile type of config for rollup
 type config struct {
-	DBConfig *database.Config `json:"db_config"`
+	DBConfig     *database.Config `json:"db_config"`
+	ValidiumMode bool             `json:"validium_mode"`
 }
 
 func init() {

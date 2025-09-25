@@ -4,5 +4,6 @@
     "dsn": "postgres://dev:dev@localhost:5432/scroll?sslmode=disable",
     "maxOpenNum": 5,
     "maxIdleNum": 1
-  }
+  },
+  "validium_mode": true
 }
