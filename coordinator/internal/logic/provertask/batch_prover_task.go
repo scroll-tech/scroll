@@ -269,6 +269,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			InitialBlockNumber: proof.MetaData.ChunkInfo.InitialBlockNumber,
 			BlockCtxs:          proof.MetaData.ChunkInfo.BlockCtxs,
 			TxDataLength:       proof.MetaData.ChunkInfo.TxDataLength,
+			EncryptionKey:      proof.MetaData.ChunkInfo.EncryptionKey,
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -278,7 +279,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
 
-	chunkProofsBytes, err := json.Marshal(taskDetail)
+	taskBytesWithchunkProofs, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -286,7 +287,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	taskMsg := &coordinatorType.GetTaskSchema{
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBatch),
-		TaskData:     string(chunkProofsBytes),
+		TaskData:     string(taskBytesWithchunkProofs),
 		HardForkName: hardForkName,
 	}
 
@@ -333,13 +334,15 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
-	taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
-	// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
-	// | z       | y       | kzg_commitment | kzg_proof |
-	// |---------|---------|----------------|-----------|
-	// | bytes32 | bytes32 | bytes48        | bytes48   |
-	taskDetail.KzgProof = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
-	taskDetail.KzgCommitment = message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	if !bp.validiumMode() {
+		taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
+		// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
+		// | z       | y       | kzg_commitment | kzg_proof |
+		// |---------|---------|----------------|-----------|
+		// | bytes32 | bytes32 | bytes48        | bytes48   |
+		taskDetail.KzgProof = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
+		taskDetail.KzgCommitment = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	}
 
 	return taskDetail, nil
 }

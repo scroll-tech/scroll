@@ -86,6 +86,13 @@ func (b *BaseProverTask) version(hardForkName string) (uint8, error) {
 	return (domain << 6) + stfVersion, nil
 }
 
+// validiumMode induce different behavior in task generation:
+// + skip the point_evaluation part in batch task
+// +
+func (b *BaseProverTask) validiumMode() bool {
+	return b.cfg.L2.ValidiumMode
+}
+
 // hardForkName get the chunk/batch/bundle hard fork name
 func (b *BaseProverTask) hardForkName(ctx *gin.Context, taskCtx *proverTaskContext) (string, error) {
 	switch {

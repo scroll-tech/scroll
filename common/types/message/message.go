@@ -93,14 +93,15 @@ func (e *Byte48) UnmarshalJSON(input []byte) error {
 type BatchTaskDetail struct {
 	Version uint8 `json:"version"`
 	// use one of the string of "euclidv1" / "euclidv2"
-	ForkName        string              `json:"fork_name"`
-	ChunkInfos      []*ChunkInfo        `json:"chunk_infos"`
-	ChunkProofs     []*OpenVMChunkProof `json:"chunk_proofs"`
-	BatchHeader     interface{}         `json:"batch_header"`
-	BlobBytes       []byte              `json:"blob_bytes"`
-	KzgProof        Byte48              `json:"kzg_proof,omitempty"`
-	KzgCommitment   Byte48              `json:"kzg_commitment,omitempty"`
-	ChallengeDigest common.Hash         `json:"challenge_digest,omitempty"`
+	ForkName      string              `json:"fork_name"`
+	ChunkInfos    []*ChunkInfo        `json:"chunk_infos"`
+	ChunkProofs   []*OpenVMChunkProof `json:"chunk_proofs"`
+	BatchHeader   interface{}         `json:"batch_header"`
+	BlobBytes     []byte              `json:"blob_bytes"`
+	KzgProof      *Byte48             `json:"kzg_proof,omitempty"`
+	KzgCommitment *Byte48             `json:"kzg_commitment,omitempty"`
+	// ChallengeDigest should be a common.Hash type if it is not nil
+	ChallengeDigest interface{} `json:"challenge_digest,omitempty"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
