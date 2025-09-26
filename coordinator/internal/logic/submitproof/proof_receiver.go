@@ -207,7 +207,6 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 			return errors.New("no vk specified match current hard fork, check your config")
 		}
 
-		log.Info("metadata", "string", string(proverTask.Metadata))
 		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), expected_vk)
 		if proofParameter.Proof == "" {
 			return errors.New("can not re-wrapping proof, see coordinator log for reason")
