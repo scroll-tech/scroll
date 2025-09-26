@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+const (
+	DomainOffset   = 6
+	STFVersionMask = (1 << DomainOffset) - 1
+)
+
 // version get the version for the chain instance
 //
 // TODO: This is not foolproof and does not cover all scenarios.
@@ -29,5 +34,5 @@ func Version(hardForkName string, ValidiumMode bool) (uint8, error) {
 		}
 	}
 
-	return (domain << 6) + stfVersion, nil
+	return (domain << DomainOffset) + stfVersion, nil
 }

@@ -18,6 +18,13 @@ use crate::proofs::ChunkProof;
 mod utils;
 use utils::{base64, point_eval};
 
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+pub struct BatchHeaderValidiumWithHash {
+    #[serde(flatten)]
+    header: BatchHeaderValidium,
+    batch_hash: B256,
+}
+
 /// Define variable batch header type, since BatchHeaderV6 can not
 /// be decoded as V7 we can always has correct deserialization
 /// Notice: V6 header MUST be put above V7 since untagged enum
@@ -25,9 +32,9 @@ use utils::{base64, point_eval};
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum BatchHeaderV {
+    Validium(BatchHeaderValidiumWithHash),
     V6(BatchHeaderV6),
     V7_8(BatchHeaderV7),
-    Validium(BatchHeaderValidium),
 }
 
 impl BatchHeaderV {
@@ -35,7 +42,7 @@ impl BatchHeaderV {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
             BatchHeaderV::V7_8(h) => h.batch_hash(),
-            BatchHeaderV::Validium(h) => h.batch_hash(),
+            BatchHeaderV::Validium(h) => h.header.batch_hash(),
         }
     }
 
@@ -62,7 +69,7 @@ impl BatchHeaderV {
 
     pub fn must_validium_header(&self) -> &BatchHeaderValidium {
         match self {
-            BatchHeaderV::Validium(h) => h,
+            BatchHeaderV::Validium(h) => &h.header,
             _ => panic!("try to pick other header type"),
         }
     }
@@ -197,6 +204,15 @@ impl BatchProvingTask {
                 self.challenge_digest.is_none(),
                 "domain=validium has no blob-da"
             );
+
+            match &self.batch_header {
+                BatchHeaderV::Validium(h) => assert_eq!(
+                    h.header.batch_hash(),
+                    h.batch_hash,
+                    "calculated batch hash match which from coordinator"
+                ),
+                _ => panic!("unexpected header type"),
+            }            
             None
         };
 
@@ -242,5 +258,60 @@ impl BatchProvingTask {
         super::check_aggregation_proofs(self.chunk_proofs.as_slice(), Version::from(self.version))?;
 
         Ok(metadata)
+    }
+}
+
+
+
+#[test]
+fn test_deserde_batch_header_v_validium() {
+    use std::str::FromStr;
+
+    // Top-level JSON: flattened enum tag "V1" + batch_hash
+    let json = r#"{
+        "V1": {
+        "version": 1,
+        "batch_index": 42,
+        "parent_batch_hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "post_state_root": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "withdraw_root": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "commitment": "0x4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        "batch_hash": "0x5555555555555555555555555555555555555555555555555555555555555555"
+    }"#;
+
+    let parsed: BatchHeaderV = serde_json::from_str(json).expect("deserialize BatchHeaderV");
+
+    match parsed {
+        BatchHeaderV::Validium(v) => {
+            // Check the batch_hash field
+            let expected_batch_hash = B256::from_str(
+                "0x5555555555555555555555555555555555555555555555555555555555555555",
+            )
+            .unwrap();
+            assert_eq!(v.batch_hash, expected_batch_hash);
+
+            // Check the inner header variant and fields
+            match v.header {
+                BatchHeaderValidium::V1(h) => {
+                    assert_eq!(h.version, 1);
+                    assert_eq!(h.batch_index, 42);
+
+                    let p = B256::from_str("0x1111111111111111111111111111111111111111111111111111111111111111").unwrap();
+                    let s = B256::from_str("0x2222222222222222222222222222222222222222222222222222222222222222").unwrap();
+                    let w = B256::from_str("0x3333333333333333333333333333333333333333333333333333333333333333").unwrap();
+                    let c = B256::from_str("0x4444444444444444444444444444444444444444444444444444444444444444").unwrap();
+
+                    assert_eq!(h.parent_batch_hash, p);
+                    assert_eq!(h.post_state_root, s);
+                    assert_eq!(h.withdraw_root, w);
+                    assert_eq!(h.commitment, c);
+
+                    // Sanity: computed batch hash equals the provided one (if method available)
+                    // assert_eq!(v.header.batch_hash(), expected_batch_hash);
+                }
+            }
+        }
+        _ => panic!("expected validium header variant"),
     }
 }

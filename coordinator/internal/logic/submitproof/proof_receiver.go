@@ -207,6 +207,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 			return errors.New("no vk specified match current hard fork, check your config")
 		}
 
+		log.Info("metadata", "string", string(proverTask.Metadata))
 		proofParameter.Proof = libzkp.GenerateWrappedProof(proofParameter.Proof, string(proverTask.Metadata), expected_vk)
 		if proofParameter.Proof == "" {
 			return errors.New("can not re-wrapping proof, see coordinator log for reason")
@@ -219,6 +220,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
+		log.Info("parse chunkproof", "key", chunkProof.MetaData.ChunkInfo.EncryptionKey)
 		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)
 		if stat := chunkProof.VmProof.Stat; stat != nil {
 			if g, _ := m.proverSpeed.GetMetricWithLabelValues("chunk", "exec"); g != nil && stat.ExecutionTimeMills > 0 {

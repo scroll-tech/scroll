@@ -316,25 +316,26 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		ForkName:    hardForkName,
 	}
 
-	dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
-	switch dbBatchCodecVersion {
-	case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8:
-	default:
-		return taskDetail, nil
-	}
-
-	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
-	}
-
-	batchHeader, decodeErr := codec.NewDABatchFromBytes(dbBatch.BatchHeader)
-	if decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
-	}
-	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
 	if !bp.validiumMode() {
+		dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
+		switch dbBatchCodecVersion {
+		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8:
+		default:
+			return taskDetail, nil
+		}
+
+		codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+		}
+
+		batchHeader, decodeErr := codec.NewDABatchFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
+		}
+		taskDetail.BatchHeader = batchHeader
+
 		taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
 		// Memory layout of `BlobDataProof`: used in Codec.BlobDataProofForPointEvaluation()
 		// | z       | y       | kzg_commitment | kzg_proof |
@@ -342,6 +343,15 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		// | bytes32 | bytes32 | bytes48        | bytes48   |
 		taskDetail.KzgProof = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
 		taskDetail.KzgCommitment = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
+	} else {
+		log.Debug("Apply validium mode for batch proving task")
+		codec := cutils.FromVersion(version)
+		batchHeader, decodeErr := codec.DABatchForTaskFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
+		}
+		batchHeader.SetHash(common.HexToHash(dbBatch.Hash))
+		taskDetail.BatchHeader = batchHeader
 	}
 
 	return taskDetail, nil
