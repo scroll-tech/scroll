@@ -20,7 +20,7 @@ pub struct ChunkTask {
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
     pub prev_msg_queue_hash: B256,
     /// The on-chain L1 msg queue hash after applying L1 msg txs from the chunk (for validate)
-    pub post_msg_queue_hash: B256,    
+    pub post_msg_queue_hash: B256,
     /// Fork name specify
     pub fork_name: String,
 }
@@ -106,7 +106,7 @@ pub struct ChunkProvingTask {
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
     pub prev_msg_queue_hash: B256,
     /// The on-chain L1 msg queue hash after applying L1 msg txs from the chunk (for validate)
-    pub post_msg_queue_hash: B256,    
+    pub post_msg_queue_hash: B256,
     /// Fork name specify
     pub fork_name: String,
     /// Optional inputs in case of domain=validium.
