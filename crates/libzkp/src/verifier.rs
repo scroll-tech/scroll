@@ -69,7 +69,11 @@ pub fn init(config: VerifierConfig) {
             "DO NOT init the same fork {} twice",
             cfg.fork_name
         );
-        tracing::info!("load verifier config for fork {} (ver {})", cfg.fork_name, cfg.version);
+        tracing::info!(
+            "load verifier config for fork {} (ver {})",
+            cfg.fork_name,
+            cfg.version
+        );
     }
 
     let ret = VERIFIERS.set(verifiers).is_ok();

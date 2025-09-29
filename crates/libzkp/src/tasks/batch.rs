@@ -212,7 +212,7 @@ impl BatchProvingTask {
                     "calculated batch hash match which from coordinator"
                 ),
                 _ => panic!("unexpected header type"),
-            }            
+            }
             None
         };
 
@@ -261,8 +261,6 @@ impl BatchProvingTask {
     }
 }
 
-
-
 #[test]
 fn test_deserde_batch_header_v_validium() {
     use std::str::FromStr;
@@ -297,10 +295,22 @@ fn test_deserde_batch_header_v_validium() {
                     assert_eq!(h.version, 1);
                     assert_eq!(h.batch_index, 42);
 
-                    let p = B256::from_str("0x1111111111111111111111111111111111111111111111111111111111111111").unwrap();
-                    let s = B256::from_str("0x2222222222222222222222222222222222222222222222222222222222222222").unwrap();
-                    let w = B256::from_str("0x3333333333333333333333333333333333333333333333333333333333333333").unwrap();
-                    let c = B256::from_str("0x4444444444444444444444444444444444444444444444444444444444444444").unwrap();
+                    let p = B256::from_str(
+                        "0x1111111111111111111111111111111111111111111111111111111111111111",
+                    )
+                    .unwrap();
+                    let s = B256::from_str(
+                        "0x2222222222222222222222222222222222222222222222222222222222222222",
+                    )
+                    .unwrap();
+                    let w = B256::from_str(
+                        "0x3333333333333333333333333333333333333333333333333333333333333333",
+                    )
+                    .unwrap();
+                    let c = B256::from_str(
+                        "0x4444444444444444444444444444444444444444444444444444444444444444",
+                    )
+                    .unwrap();
 
                     assert_eq!(h.parent_batch_hash, p);
                     assert_eq!(h.post_state_root, s);

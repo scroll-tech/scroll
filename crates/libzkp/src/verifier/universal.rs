@@ -21,7 +21,7 @@ impl Verifier {
 
         Self {
             verifier: UniversalVerifier::setup(verifier_bin).expect("Setting up chunk verifier"),
-            version:  Version::from(ver_n),
+            version: Version::from(ver_n),
         }
     }
 }

@@ -179,17 +179,22 @@ impl<T: Provider<Network>> ChunkInterpreter for RpcClient<'_, T> {
             #[derive(Deserialize, Debug)]
             #[serde(untagged)]
             enum NullOrVec {
-                Null,                       // matches JSON `null`
-                Vec(Vec<TxL1Message>),      // matches JSON array
+                Null,                  // matches JSON `null`
+                Vec(Vec<TxL1Message>), // matches JSON array
             }
 
-            Ok(match provider
-                .client()
-                .request::<_, NullOrVec>("scroll_getL1MessagesInBlock", (block_number_hex, "synced"))
-                .await? {
+            Ok(
+                match provider
+                    .client()
+                    .request::<_, NullOrVec>(
+                        "scroll_getL1MessagesInBlock",
+                        (block_number_hex, "synced"),
+                    )
+                    .await?
+                {
                     NullOrVec::Null => Vec::new(),
                     NullOrVec::Vec(r) => r,
-                }
+                },
             )
         }
 
@@ -255,9 +260,7 @@ mod tests {
         let client_core = RpcClientCore::create(&config).expect("Failed to create RPC client");
         let client = client_core.get_client();
 
-        let msgs = client
-            .try_fetch_l1_msgs(32)
-            .expect("should success");
+        let msgs = client.try_fetch_l1_msgs(32).expect("should success");
 
         println!("{}", serde_json::to_string_pretty(&msgs).unwrap());
     }
