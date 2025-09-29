@@ -111,7 +111,7 @@ func action(ctx *cli.Context) error {
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, cfg.L2Config.RelayerConfig.ValidiumMode, registry)
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, cfg.L2Config.RelayerConfig.ValidiumMode, registry)
 
 	if cfg.RecoveryConfig != nil && cfg.RecoveryConfig.Enable {
 		log.Info("Starting rollup-relayer in recovery mode", "version", version.Version)
