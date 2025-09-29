@@ -19,6 +19,8 @@ pub struct ChunkTask {
     pub block_hashes: Vec<B256>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
     pub prev_msg_queue_hash: B256,
+    /// The on-chain L1 msg queue hash after applying L1 msg txs from the chunk (for validate)
+    pub post_msg_queue_hash: B256,    
     /// Fork name specify
     pub fork_name: String,
 }
@@ -81,6 +83,7 @@ impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
             version: value.version,
             block_witnesses,
             prev_msg_queue_hash: value.prev_msg_queue_hash,
+            post_msg_queue_hash: value.post_msg_queue_hash,
             fork_name: value.fork_name,
             validium_inputs,
         })
@@ -102,6 +105,8 @@ pub struct ChunkProvingTask {
     pub block_witnesses: Vec<BlockWitness>,
     /// The on-chain L1 msg queue hash before applying L1 msg txs from the chunk.
     pub prev_msg_queue_hash: B256,
+    /// The on-chain L1 msg queue hash after applying L1 msg txs from the chunk (for validate)
+    pub post_msg_queue_hash: B256,    
     /// Fork name specify
     pub fork_name: String,
     /// Optional inputs in case of domain=validium.
@@ -205,7 +210,9 @@ impl ChunkProvingTask {
 
     pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
         let witness = self.build_guest_input();
-        ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))
+        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
+        assert_eq!(ret.post_msg_queue_hash, self.post_msg_queue_hash);
+        Ok(ret)
     }
 
     /// this method check the validate of current task (there may be missing storage node)

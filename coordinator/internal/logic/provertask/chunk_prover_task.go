@@ -248,6 +248,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		Version:          version,
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+		PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 		ForkName:         hardForkName,
 	}
 

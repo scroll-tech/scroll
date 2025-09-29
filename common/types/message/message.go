@@ -44,6 +44,7 @@ type ChunkTaskDetail struct {
 	ForkName         string        `json:"fork_name"`
 	BlockHashes      []common.Hash `json:"block_hashes"`
 	PrevMsgQueueHash common.Hash   `json:"prev_msg_queue_hash"`
+	PostMsgQueueHash common.Hash   `json:"post_msg_queue_hash"`
 }
 
 // it is a hex encoded big with fixed length on 48 bytes
