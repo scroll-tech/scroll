@@ -71,6 +71,20 @@ func (o *L1Block) GetL1Blocks(ctx context.Context, fields map[string]interface{}
 	return l1Blocks, nil
 }
 
+// GetLatestL1Blocks get the latest N l1 blocks ordered by block number descending
+func (o *L1Block) GetLatestL1Blocks(ctx context.Context, limit int) ([]L1Block, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L1Block{})
+	db = db.Order("number DESC")
+	db = db.Limit(limit)
+
+	var l1Blocks []L1Block
+	if err := db.Find(&l1Blocks).Error; err != nil {
+		return nil, fmt.Errorf("L1Block.GetLatestL1Blocks error: %w, limit: %d", err, limit)
+	}
+	return l1Blocks, nil
+}
+
 // GetBlobFeesInRange returns all blob_base_fee values for blocks
 // with number ∈ [startBlock..endBlock], ordered by block number ascending.
 func (o *L1Block) GetBlobFeesInRange(ctx context.Context, startBlock, endBlock uint64) ([]uint64, error) {

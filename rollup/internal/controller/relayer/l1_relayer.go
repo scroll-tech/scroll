@@ -105,23 +105,20 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	r.metrics.rollupL1RelayerGasPriceOraclerRunTotal.Inc()
-	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
+
+	limit := r.cfg.GasOracleConfig.CalculateAverageFeesWindowSize
+	blocks, err := r.l1BlockOrm.GetLatestL1Blocks(r.ctx, limit)
 	if err != nil {
-		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
+		log.Error("Failed to GetLatestL1Blocks from db", "limit", limit, "err", err)
 		return
 	}
 
-	blocks, err := r.l1BlockOrm.GetL1Blocks(r.ctx, map[string]interface{}{
-		"number": latestBlockHeight,
-	})
-	if err != nil {
-		log.Error("Failed to GetL1Blocks from db", "height", latestBlockHeight, "err", err)
+	// nothing to do if we don't have any l1 blocks
+	if len(blocks) == 0 {
+		log.Warn("No l1 blocks to process", "limit", limit)
 		return
 	}
-	if len(blocks) != 1 {
-		log.Error("Block not exist", "height", latestBlockHeight)
-		return
-	}
+
 	block := blocks[0]
 
 	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
@@ -130,8 +127,8 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			return
 		}
 
-		baseFee := block.BaseFee
-		blobBaseFee := block.BlobBaseFee
+		// calculate the average base fee and blob base fee of the last N blocks
+		baseFee, blobBaseFee := r.calculateAverageFees(blocks)
 
 		// include the token exchange rate in the fee data if alternative gas token enabled
 		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig != nil && r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
@@ -154,8 +151,24 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("Invalid exchange rate", "exchangeRate", exchangeRate)
 				return
 			}
-			baseFee = uint64(math.Ceil(float64(baseFee) / exchangeRate))
-			blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / exchangeRate))
+
+			// Check for overflow in exchange rate calculation
+			adjustedBaseFee := math.Ceil(float64(baseFee) / exchangeRate)
+			adjustedBlobBaseFee := math.Ceil(float64(blobBaseFee) / exchangeRate)
+
+			if adjustedBaseFee > float64(^uint64(0)) {
+				log.Error("Base fee overflow after exchange rate adjustment", "originalBaseFee", baseFee, "exchangeRate", exchangeRate, "adjustedBaseFee", adjustedBaseFee)
+				baseFee = ^uint64(0) // Set to max uint64
+			} else {
+				baseFee = uint64(adjustedBaseFee)
+			}
+
+			if adjustedBlobBaseFee > float64(^uint64(0)) {
+				log.Error("Blob base fee overflow after exchange rate adjustment", "originalBlobBaseFee", blobBaseFee, "exchangeRate", exchangeRate, "adjustedBlobBaseFee", adjustedBlobBaseFee)
+				blobBaseFee = ^uint64(0) // Set to max uint64
+			} else {
+				blobBaseFee = uint64(adjustedBlobBaseFee)
+			}
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee) {
@@ -163,7 +176,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
 			// Also, set fees to some default value, because we have already updated fees to some high values, probably
 			var reachTimeout bool
-			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && block.BlobBaseFee > r.cfg.GasOracleConfig.L1BlobBaseFeeThreshold && err == nil {
+			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && blobBaseFee > r.cfg.GasOracleConfig.L1BlobBaseFeeThreshold && err == nil {
 				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}
@@ -175,13 +188,13 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			}
 			data, err := r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
 			if err != nil {
-				log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
+				log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "baseFee", baseFee, "blobBaseFee", blobBaseFee, "err", err)
 				return
 			}
 
 			txHash, _, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil)
 			if err != nil {
-				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
+				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "baseFee", baseFee, "blobBaseFee", blobBaseFee, "err", err)
 				return
 			}
 
@@ -286,4 +299,45 @@ func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 	// If finalizing/finalized status is updated before committed status, skip the timeout check of this round.
 	// Because batches[0].CommittedAt is nil in this case, this will only continue for a short time window.
 	return len(batches) == 0 || (batches[0].Index != 0 && batches[0].CommittedAt != nil && utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute), nil
+}
+
+// calculateAverageFees returns the average base fee and blob base fee.
+// Uses big.Int for intermediate calculations to avoid overflow.
+func (r *Layer1Relayer) calculateAverageFees(blocks []orm.L1Block) (avgBaseFee uint64, avgBlobBaseFee uint64) {
+	if len(blocks) == 0 {
+		return 0, 0
+	}
+
+	// Use big.Int to handle large sums without overflow
+	totalBaseFee := big.NewInt(0)
+	totalBlobBaseFee := big.NewInt(0)
+	count := big.NewInt(int64(len(blocks)))
+
+	for _, b := range blocks {
+		totalBaseFee.Add(totalBaseFee, big.NewInt(0).SetUint64(b.BaseFee))
+		totalBlobBaseFee.Add(totalBlobBaseFee, big.NewInt(0).SetUint64(b.BlobBaseFee))
+	}
+
+	// Calculate averages
+	avgBaseFeeBig := big.NewInt(0).Div(totalBaseFee, count)
+	avgBlobBaseFeeBig := big.NewInt(0).Div(totalBlobBaseFee, count)
+
+	// Check if results fit in uint64
+	maxUint64 := big.NewInt(0).SetUint64(^uint64(0))
+
+	if avgBaseFeeBig.Cmp(maxUint64) > 0 {
+		log.Error("Average base fee exceeds uint64 max, capping at max value", "calculatedAvg", avgBaseFeeBig.String())
+		avgBaseFee = ^uint64(0)
+	} else {
+		avgBaseFee = avgBaseFeeBig.Uint64()
+	}
+
+	if avgBlobBaseFeeBig.Cmp(maxUint64) > 0 {
+		log.Error("Average blob base fee exceeds uint64 max, capping at max value", "calculatedAvg", avgBlobBaseFeeBig.String())
+		avgBlobBaseFee = ^uint64(0)
+	} else {
+		avgBlobBaseFee = avgBlobBaseFeeBig.Uint64()
+	}
+
+	return avgBaseFee, avgBlobBaseFee
 }

@@ -21,7 +21,8 @@
         "check_committed_batches_window_minutes": 5,
         "l1_base_fee_default": 15000000000,
         "l1_blob_base_fee_default": 1,
-        "l1_blob_base_fee_threshold": 0
+        "l1_blob_base_fee_threshold": 0,
+        "calculate_average_fees_window_size": 100
       },
       "gas_oracle_sender_signer_config": {
         "signer_type": "PrivateKey",

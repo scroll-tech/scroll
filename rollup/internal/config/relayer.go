@@ -109,6 +109,9 @@ type GasOracleConfig struct {
 
 	// L1BlobBaseFeeThreshold the threshold of L1 blob base fee to enter the default gas price mode
 	L1BlobBaseFeeThreshold uint64 `json:"l1_blob_base_fee_threshold"`
+
+	// CalculateAverageFeesWindowSize the number of blocks used for average fee calculation
+	CalculateAverageFeesWindowSize int `json:"calculate_average_fees_window_size"`
 }
 
 // SignerConfig - config of signer, contains type and config corresponding to type
