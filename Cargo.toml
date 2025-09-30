@@ -18,9 +18,9 @@ version = "4.5.47"
 
 [workspace.dependencies]
 # include compatiblity fixing from "fix/coordinator"
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "8a00bd8" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "8a00bd8" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "8a00bd8" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2c7fd3c" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2c7fd3c" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "2c7fd3c" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master" }
