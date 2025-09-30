@@ -39,7 +39,8 @@ on:
         options:
           - "11.7.1"
           - "12.2.2"
-        default: "11.7.1"
+          - "12.9.1"
+        default: "12.9.1"
       CARGO_CHEF_TAG:
         description: "Cargo chef version"
         required: true
