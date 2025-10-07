@@ -34,8 +34,8 @@ coordinator_cron:
 coordinator_tool:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
 
-coordinator_proxy:
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_proxy ./cmd/proxy
+coordinator_proxy: 
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_proxy ./cmd/proxy
 
 
 localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, and setup releases
