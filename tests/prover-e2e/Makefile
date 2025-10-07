@@ -1,8 +1,8 @@
 .PHONY: clean setup_db test_tool all check_vars
 
 GOOSE_CMD?=goose
-BEGIN_BLOCK?=20
-END_BLOCK?=30
+BEGIN_BLOCK?=35
+END_BLOCK?=49
 
 all: setup_db test_tool import_data
 
