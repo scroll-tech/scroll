@@ -22,7 +22,7 @@
         }
       ]
     }
-  },  
+  },
   "coordinators": {
     "sepolia": {
       "base_url": "http://localhost:8555",
