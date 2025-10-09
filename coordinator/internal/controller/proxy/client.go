@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
+
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
@@ -15,9 +18,10 @@ import (
 
 // Client wraps an http client with a preset host for coordinator API calls
 type upClient struct {
-	httpClient *http.Client
-	baseURL    string
-	loginToken string
+	httpClient      *http.Client
+	baseURL         string
+	loginToken      string
+	compatibileMode bool
 }
 
 // NewClient creates a new Client with the specified host
@@ -26,7 +30,8 @@ func newUpClient(cfg *config.UpStream) *upClient {
 		httpClient: &http.Client{
 			Timeout: time.Duration(cfg.ConnectionTimeoutSec) * time.Second,
 		},
-		baseURL: cfg.BaseUrl,
+		baseURL:         cfg.BaseUrl,
+		compatibileMode: cfg.CompatibileMode,
 	}
 }
 
@@ -40,8 +45,8 @@ type loginSchema struct {
 	Token string `json:"token"`
 }
 
-// FullLogin performs the complete login process: get challenge then login
-func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.LoginParameter, error)) (*types.LoginSchema, error) {
+// Login performs the complete login process: get challenge then login
+func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.LoginParameter, error)) (*ctypes.Response, error) {
 	// Step 1: Get challenge
 	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
@@ -93,26 +98,7 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform login request: %w", err)
 	}
-
-	parsedResp, err = handleHttpResp(loginResp)
-	if err != nil {
-		return nil, err
-	} else if parsedResp.ErrCode != 0 {
-		return nil, fmt.Errorf("login failed: %d (%s)", parsedResp.ErrCode, parsedResp.ErrMsg)
-	}
-
-	var loginResult loginSchema
-	err = parsedResp.DecodeData(&loginResult)
-	if err != nil {
-		return nil, fmt.Errorf("login parsing data fail: %v", err)
-	}
-	c.loginToken = loginResult.Token
-
-	// TODO: we need to parse time if we start making use of it
-
-	return &types.LoginSchema{
-		Token: loginResult.Token,
-	}, nil
+	return handleHttpResp(loginResp)
 }
 
 func handleHttpResp(resp *http.Response) (*ctypes.Response, error) {
@@ -130,8 +116,40 @@ func handleHttpResp(resp *http.Response) (*ctypes.Response, error) {
 	return nil, fmt.Errorf("login request failed with status: %d", resp.StatusCode)
 }
 
+func (c *upClient) proxyLoginCompatibleMode(ctx context.Context, param *types.LoginParameter) (*ctypes.Response, error) {
+	mimePrivK, err := buildPrivateKey([]byte(param.PublicKey))
+	if err != nil {
+		return nil, err
+	}
+	mimePkHex := common.Bytes2Hex(crypto.CompressPubkey(&mimePrivK.PublicKey))
+
+	genLoginParam := func(challenge string) (*types.LoginParameter, error) {
+
+		// Create login parameter with proxy settings
+		loginParam := &types.LoginParameter{
+			Message:   param.Message,
+			PublicKey: mimePkHex,
+		}
+		loginParam.Message.Challenge = challenge
+
+		// Sign the message with the private key
+		if err := loginParam.SignWithKey(mimePrivK); err != nil {
+			return nil, fmt.Errorf("failed to sign login parameter: %w", err)
+		}
+
+		return loginParam, nil
+	}
+
+	return c.Login(ctx, genLoginParam)
+}
+
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
 func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) (*ctypes.Response, error) {
+
+	if c.compatibileMode {
+		return c.proxyLoginCompatibleMode(ctx, param)
+	}
+
 	url := fmt.Sprintf("%s/coordinator/v1/proxy_login", c.baseURL)
 
 	jsonData, err := json.Marshal(param)

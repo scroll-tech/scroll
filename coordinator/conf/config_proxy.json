@@ -11,16 +11,7 @@
     },      
     "verifier": {
       "min_prover_version": "v4.4.45",
-      "verifiers": [
-        {
-          "assets_path": "assets",
-          "fork_name": "euclidV2"
-        },
-        {
-          "assets_path": "assets",
-          "fork_name": "feynman"
-        }
-      ]
+      "verifiers": []
     }
   },
   "coordinators": {

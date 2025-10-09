@@ -108,13 +108,16 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	session := ptc.proverMgr.Get(publicKey)
 
 	getTask := func(upStream string, cli Client) (tryNext bool) {
+		log.Debug("Start get task", "up", upStream, "cli", session.CliName)
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
 		if err != nil {
+			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", session.CliName)
 			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 			return
 		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
 
 			if resp.ErrCode != 0 {
+				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", session.CliName)
 				// simply dispatch the error from upstream to prover
 				types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
 				return
@@ -124,9 +127,10 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 			if err = resp.DecodeData(&task); err == nil {
 				task.TaskID = formUpstreamWithTaskName(upStream, task.TaskID)
 				ptc.priorityUpstream.Set(publicKey, upStream)
-				// TODO: log the new id in debug level
+				log.Debug("Upstream get task", "up", upStream, "cli", session.CliName, "taskID", task.TaskID, "taskType", task.TaskType)
 				types.RenderSuccess(ctx, &task)
 			} else {
+				log.Error("Upstream has wrong data for get task", "error", err, "up", upStream, "cli", session.CliName)
 				types.RenderFailure(ctx, types.InternalServerError, fmt.Errorf("decode task fail: %v", err))
 			}
 
@@ -140,10 +144,11 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	priorityUpstream, exist := ptc.priorityUpstream.Get(publicKey)
 	if exist {
 		cli := ptc.clients[priorityUpstream]
+		log.Debug("Try get task from priority stream", "up", priorityUpstream)
 		if cli != nil && !getTask(priorityUpstream, cli) {
 			return
 		} else if cli == nil {
-			// TODO: log error
+			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream)
 		}
 	}
 	ptc.priorityUpstream.Delete(publicKey)
@@ -166,6 +171,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		}
 	}
 
+	log.Debug("get no task from upstream", "cli", session.CliName)
 	// if all get task failed, throw empty proof resp
 	types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, fmt.Errorf("get empty prover task"))
 }

@@ -216,7 +216,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 	switch message.ProofType(proofParameter.TaskType) {
 	case message.ProofTypeChunk:
 		chunkProof := &message.OpenVMChunkProof{}
-		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
+		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr == nil {
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)

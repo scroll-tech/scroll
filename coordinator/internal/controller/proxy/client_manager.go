@@ -67,7 +67,13 @@ func NewClientManager(name string, cliCfg *config.ProxyClient, cfg *config.UpStr
 	}, nil
 }
 
-func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) time.Time {
+func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) {
+	if cliMgr.cfg.CompatibileMode {
+		loginCli.loginToken = "dummy"
+		log.Info("Skip login process for compatibile mode")
+		return
+	}
+
 	// Calculate wait time between 2 seconds and cfg.RetryWaitTime
 	minWait := 2 * time.Second
 	waitDuration := time.Duration(cliMgr.cfg.RetryWaitTime) * time.Second
@@ -77,18 +83,31 @@ func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) ti
 
 	for {
 		log.Info("attempting login to upstream coordinator", "name", cliMgr.name)
-		loginResult, err := loginCli.Login(ctx, cliMgr.genLoginParam)
-		if err == nil && loginResult != nil {
-			log.Info("login to upstream coordinator successful", "name", cliMgr.name, "time", loginResult.Time)
-			return loginResult.Time
+		loginResp, err := loginCli.Login(ctx, cliMgr.genLoginParam)
+		if err == nil && loginResp.ErrCode == 0 {
+			var loginResult loginSchema
+			err = loginResp.DecodeData(&loginResult)
+			if err != nil {
+				log.Error("login parsing data fail", "error", err)
+			} else {
+				loginCli.loginToken = loginResult.Token
+				log.Info("login to upstream coordinator successful", "name", cliMgr.name, "time", loginResult.Time)
+				// TODO: we need to parse time if we start making use of it
+				return
+			}
+		} else if err != nil {
+			log.Error("login process fail", "error", err)
+		} else {
+			log.Error("login get fail resp", "code", loginResp.ErrCode, "msg", loginResp.ErrMsg)
 		}
+
 		log.Info("login to upstream coordinator failed, retrying", "name", cliMgr.name, "error", err, "waitDuration", waitDuration)
 
 		timer := time.NewTimer(waitDuration)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return time.Now()
+			return
 		case <-timer.C:
 			// Continue to next retry
 		}

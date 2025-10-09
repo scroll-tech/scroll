@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/log"
+
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/types"
 )
@@ -40,6 +42,7 @@ func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
 
 	ret := &proverSession{
 		proverToken: make(map[string]loginToken),
+		CliName:     "pending for login",
 	}
 
 	m.data[userKey] = ret
@@ -60,6 +63,8 @@ type loginToken struct {
 
 // Client wraps an http client with a preset host for coordinator API calls
 type proverSession struct {
+	CliName string
+
 	sync.RWMutex
 	proverToken   map[string]loginToken
 	completionCtx context.Context
@@ -97,10 +102,17 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 				LoginSchema: result,
 				phase:       curPhase + 1,
 			}
+			log.Info("maintain login status", "upstream", up, "cli", param.Message.ProverName, "phase", curPhase+1)
 		}
 		c.Unlock()
+		if nerr != nil {
+			log.Error("maintain login fail", "error", nerr, "upstream", up, "cli", param.Message.ProverName, "phase", curPhase)
+		}
 	}()
 	c.Unlock()
+
+	log.Debug("start proxy login process", "upstream", up, "cli", param.Message.ProverName)
+	c.CliName = param.Message.ProverName
 
 	cli := cliMgr.Client(ctx)
 	if cli == nil {

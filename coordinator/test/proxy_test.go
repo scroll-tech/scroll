@@ -31,12 +31,15 @@ func testProxyClientCfg() *config.ProxyClient {
 	}
 }
 
+var testCompatibileMode bool
+
 func testProxyUpStreamCfg(coordinatorURL string) *config.UpStream {
 
 	return &config.UpStream{
 		BaseUrl:              fmt.Sprintf("http://%s", coordinatorURL),
 		RetryWaitTime:        3,
 		ConnectionTimeoutSec: 30,
+		CompatibileMode:      testCompatibileMode,
 	}
 
 }
@@ -263,7 +266,17 @@ func testProxyProof(t *testing.T) {
 }
 
 func TestProxyClient(t *testing.T) {
+	testCompatibileMode = false
+	// Set up the test environment.
+	setEnv(t)
+	t.Run("TestProxyClient", testProxyClient)
+	t.Run("TestProxyHandshake", testProxyHandshake)
+	t.Run("TestProxyGetTask", testProxyGetTask)
+	t.Run("TestProxyValidProof", testProxyProof)
+}
 
+func TestProxyClientCompatibleMode(t *testing.T) {
+	testCompatibileMode = true
 	// Set up the test environment.
 	setEnv(t)
 	t.Run("TestProxyClient", testProxyClient)

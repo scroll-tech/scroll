@@ -60,6 +60,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	}
 
 	session := a.proverMgr.GetOrCreate(loginParam.PublicKey)
+	log.Debug("start handling login", "cli", loginParam.Message.ProverName)
 
 	for n, cli := range a.clients {
 
