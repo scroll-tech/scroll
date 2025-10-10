@@ -203,7 +203,7 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 
 	newToken, err := c.maintainLogin(ctx, cliMgr, up, loginParam, token.phase)
 	if err != nil {
-		return nil, fmt.Errorf("update prover token fail: %V", err)
+		return nil, fmt.Errorf("update prover token fail: %v", err)
 	}
 
 	return cli.GetTask(ctx, param, newToken.Token)

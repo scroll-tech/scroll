@@ -2,6 +2,10 @@
 
 package libzkp
 
+import (
+	"encoding/json"
+)
+
 // // InitVerifier is a no-op in the mock.
 // func InitVerifier(configJSON string) {}
 
@@ -22,7 +26,22 @@ package libzkp
 
 // GenerateWrappedProof returns a fixed dummy proof string in the mock.
 func GenerateWrappedProof(proofJSON, metadata string, vkData []byte) string {
-	return "mock-wrapped-proof"
+
+	payload := struct {
+		Metadata   json.RawMessage `json:"metadata"`
+		Proof      json.RawMessage `json:"proof"`
+		GitVersion string          `json:"git_version"`
+	}{
+		Metadata:   json.RawMessage(metadata),
+		Proof:      json.RawMessage(proofJSON),
+		GitVersion: "mock-git-version",
+	}
+
+	out, err := json.Marshal(payload)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
 }
 
 // DumpVk is a no-op and returns nil in the mock.
