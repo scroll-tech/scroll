@@ -50,8 +50,8 @@ pub fn checkout_chunk_task(
 pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
     use scroll_zkvm_types::proof::VmInternalStarkProof;
 
-    let u_task: tasks::ProvingTask = serde_json::from_str(task_json)?;
-    let aggregated_proofs: Vec<VmInternalStarkProof> = u_task
+    let task: tasks::ProvingTask = serde_json::from_str(task_json)?;
+    let aggregated_proofs: Vec<VmInternalStarkProof> = task
         .aggregated_proofs
         .into_iter()
         .map(|proof| VmInternalStarkProof {
@@ -77,11 +77,11 @@ pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
     }
 
     let compatible_u_task = CompatibleProvingTask {
-        serialized_witness: u_task.serialized_witness,
+        serialized_witness: task.serialized_witness,
         aggregated_proofs,
-        fork_name: u_task.fork_name,
-        vk: u_task.vk,
-        identifier: u_task.identifier,
+        fork_name: task.fork_name,
+        vk: task.vk,
+        identifier: task.identifier,
     };
 
     Ok(serde_json::to_string(&compatible_u_task)?)

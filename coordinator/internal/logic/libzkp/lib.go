@@ -149,7 +149,7 @@ func SetDynamicFeature(feats string) {
 }
 
 // UnivTaskCompatibilityFix calls the universal task compatibility fix function
-func UnivTaskCompatibilityFix(taskJSON string) (string, error) {
+func UniversalTaskCompatibilityFix(taskJSON string) (string, error) {
 	cTaskJSON := goToCString(taskJSON)
 	defer freeCString(cTaskJSON)
 

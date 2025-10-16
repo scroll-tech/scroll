@@ -210,7 +210,7 @@ func isCompatibilityFixingVersion(ver string) bool {
 
 func fixCompatibility(schema *coordinatorType.GetTaskSchema) error {
 
-	fixedTask, err := libzkp.UnivTaskCompatibilityFix(schema.TaskData)
+	fixedTask, err := libzkp.UniversalTaskCompatibilityFix(schema.TaskData)
 	if err != nil {
 		return err
 	}
