@@ -46,7 +46,7 @@ type UpStream struct {
 type ProxyConfig struct {
 	ProxyManager *ProxyManager        `json:"proxy_manager"`
 	ProxyName    string               `json:"proxy_name"`
-	Coordinators map[string]*UpStream `json:"coondiators"`
+	Coordinators map[string]*UpStream `json:"coordinators"`
 }
 
 // NewConfig returns a new instance of Config.

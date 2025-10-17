@@ -86,6 +86,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 
 	if phase < curPhase {
 		// outdate login phase, give up
+		log.Debug("drop outdated proxy login attemp", "upstream", up, "cli", param.Message.ProverName, "phase", phase, "now", curPhase)
 		defer c.Unlock()
 		return c.proverToken[up].LoginSchema, nil
 	}
@@ -147,6 +148,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		return nil, err
 	}
 
+	log.Debug("Proxy login done", "upstream", up, "cli", param.Message.ProverName)
 	return &types.LoginSchema{
 		Token: loginResult.Token,
 	}, nil
