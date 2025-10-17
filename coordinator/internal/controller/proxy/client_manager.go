@@ -54,6 +54,7 @@ func buildPrivateKey(inputBytes []byte) (*ecdsa.PrivateKey, error) {
 
 func NewClientManager(name string, cliCfg *config.ProxyClient, cfg *config.UpStream) (*ClientManager, error) {
 
+	log.Info("init client", "name", name, "upcfg", cfg.BaseUrl, "compatible mode", cfg.CompatibileMode)
 	privKey, err := buildPrivateKey([]byte(cliCfg.Secret))
 	if err != nil {
 		return nil, err
