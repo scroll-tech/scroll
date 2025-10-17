@@ -633,6 +633,10 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
+
+	// Note: This might fail during the Fusaka upgrade, if we originally sent a V0 blob tx.
+	// Normally we would need to convert it to V1 before resubmitting. However, this case is
+	// unlikely and geth would still accept the V0 version, so we omit the conversion.
 	signedTx, err := s.createTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), nonce)
 	if err != nil {
 		log.Error("failed to create signed tx (resubmit case)", "from", s.transactionSigner.GetAddr().String(), "nonce", nonce, "err", err)

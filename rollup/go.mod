@@ -16,7 +16,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/scroll-tech/da-codec v0.1.3-0.20250826112206-b4cce5c5d178
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20251009191550-e29abc7bcda2
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20251017054300-9aa8b3f38f63
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
