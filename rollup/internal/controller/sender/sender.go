@@ -287,6 +287,12 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		err     error
 	)
 
+	blockNumber, blockTimestamp, baseFee, blobBaseFee, err := s.getBlockNumberAndTimestampAndBaseFeeAndBlobFee(s.ctx)
+	if err != nil {
+		log.Error("failed to get block number and base fee", "error", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to get block number and base fee, err: %w", err)
+	}
+
 	if blobs != nil {
 		// check that number of pending blob-carrying txs is not too big
 		if s.senderType == types.SenderTypeCommitBatch {
@@ -303,19 +309,22 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 			if numPendingTransactions >= s.config.MaxPendingBlobTxs {
 				return common.Hash{}, 0, ErrTooManyPendingBlobTxs
 			}
-
 		}
-		sidecar, err = makeSidecar(blobs)
+
+		if blockTimestamp < s.config.FusakaTimestamp && (s.config.FusakaTimestamp-blockTimestamp) < 180 {
+			return common.Hash{}, 0, fmt.Errorf("pausing blob txs before Fusaka upgrade, eta %d seconds", s.config.FusakaTimestamp-blockTimestamp)
+		}
+
+		version := gethTypes.BlobSidecarVersion0
+		if blockTimestamp >= s.config.FusakaTimestamp {
+			version = gethTypes.BlobSidecarVersion1
+		}
+
+		sidecar, err = makeSidecar(version, blobs)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)
 			return common.Hash{}, 0, fmt.Errorf("failed to make sidecar for blob transaction, err: %w", err)
 		}
-	}
-
-	blockNumber, baseFee, blobBaseFee, err := s.getBlockNumberAndBaseFeeAndBlobFee(s.ctx)
-	if err != nil {
-		log.Error("failed to get block number and base fee", "error", err)
-		return common.Hash{}, 0, fmt.Errorf("failed to get block number and base fee, err: %w", err)
 	}
 
 	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee); err != nil {
@@ -624,6 +633,10 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
+
+	// Note: This might fail during the Fusaka upgrade, if we originally sent a V0 blob tx.
+	// Normally we would need to convert it to V1 before resubmitting. However, this case is
+	// unlikely and geth would still accept the V0 version, so we omit the conversion.
 	signedTx, err := s.createTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), nonce)
 	if err != nil {
 		log.Error("failed to create signed tx (resubmit case)", "from", s.transactionSigner.GetAddr().String(), "nonce", nonce, "err", err)
@@ -637,7 +650,7 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 func (s *Sender) checkPendingTransaction() {
 	s.metrics.senderCheckPendingTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 
-	blockNumber, baseFee, blobBaseFee, err := s.getBlockNumberAndBaseFeeAndBlobFee(s.ctx)
+	blockNumber, _, baseFee, blobBaseFee, err := s.getBlockNumberAndTimestampAndBaseFeeAndBlobFee(s.ctx)
 	if err != nil {
 		log.Error("failed to get block number and base fee", "error", err)
 		return
@@ -815,10 +828,10 @@ func (s *Sender) getSenderMeta() *orm.SenderMeta {
 	}
 }
 
-func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64, uint64, uint64, error) {
+func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Context) (uint64, uint64, uint64, uint64, error) {
 	header, err := s.client.HeaderByNumber(ctx, big.NewInt(rpc.PendingBlockNumber.Int64()))
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
+		return 0, 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
 
 	var baseFee uint64
@@ -831,10 +844,10 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
 	}
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
-	return header.Number.Uint64() - 1, baseFee, blobBaseFee, nil
+	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
 }
 
-func makeSidecar(blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
+func makeSidecar(version byte, blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
 	if len(blobsInput) == 0 {
 		return nil, errors.New("blobsInput is empty")
 	}
@@ -851,23 +864,33 @@ func makeSidecar(blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
 	var proofs []kzg4844.Proof
 
 	for i := range blobs {
+		// Calculate commitment
 		c, err := kzg4844.BlobToCommitment(&blobs[i])
 		if err != nil {
 			return nil, fmt.Errorf("failed to get blob commitment, err: %w", err)
 		}
-
-		p, err := kzg4844.ComputeBlobProof(&blobs[i], c)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compute blob proof, err: %w", err)
-		}
-
 		commitments = append(commitments, c)
-		proofs = append(proofs, p)
+
+		// Calculate proof
+		switch version {
+		case gethTypes.BlobSidecarVersion0:
+			p, err := kzg4844.ComputeBlobProof(&blobs[i], c)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute v0 blob proof, err: %w", err)
+			}
+			proofs = append(proofs, p)
+
+		case gethTypes.BlobSidecarVersion1:
+			ps, err := kzg4844.ComputeCellProofs(&blobs[i])
+			if err != nil {
+				return nil, fmt.Errorf("failed to compute v1 blob cell proofs, err: %w", err)
+			}
+			proofs = append(proofs, ps...)
+
+		default:
+			return nil, fmt.Errorf("unsupported blob sidecar version: %d", version)
+		}
 	}
 
-	return &gethTypes.BlobTxSidecar{
-		Blobs:       blobs,
-		Commitments: commitments,
-		Proofs:      proofs,
-	}, nil
+	return gethTypes.NewBlobTxSidecar(version, blobs, commitments, proofs), nil
 }
