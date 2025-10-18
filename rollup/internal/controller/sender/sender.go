@@ -872,19 +872,22 @@ func makeSidecar(version byte, blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSid
 		commitments = append(commitments, c)
 
 		// Calculate proof
-		if version == gethTypes.BlobSidecarVersion0 {
+		switch version {
+		case gethTypes.BlobSidecarVersion0:
 			p, err := kzg4844.ComputeBlobProof(&blobs[i], c)
 			if err != nil {
-				return nil, fmt.Errorf("failed to compute blob proof, err: %w", err)
+				return nil, fmt.Errorf("failed to compute v0 blob proof, err: %w", err)
 			}
 			proofs = append(proofs, p)
-		} else if version == gethTypes.BlobSidecarVersion1 {
+
+		case gethTypes.BlobSidecarVersion1:
 			ps, err := kzg4844.ComputeCellProofs(&blobs[i])
 			if err != nil {
-				return nil, fmt.Errorf("failed to compute blob cell proofs, err: %w", err)
+				return nil, fmt.Errorf("failed to compute v1 blob cell proofs, err: %w", err)
 			}
 			proofs = append(proofs, ps...)
-		} else {
+
+		default:
 			return nil, fmt.Errorf("unsupported blob sidecar version: %d", version)
 		}
 	}
