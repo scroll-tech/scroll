@@ -141,7 +141,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	priorityUpstream, exist := ptc.priorityUpstream.Get(publicKey)
 	if exist {
 		cli := ptc.clients[priorityUpstream]
-		log.Debug("Try get task from priority stream", "up", priorityUpstream)
+		log.Debug("Try get task from priority stream", "up", priorityUpstream, "cli", session.CliName)
 		if cli != nil {
 			err, code := getTask(priorityUpstream, cli)
 			if err != nil {
@@ -152,10 +152,10 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 				return
 			}
 			// only continue if get empty task (the task has been removed in upstream)
-			log.Debug("can not get priority task from upstream", "up", priorityUpstream)
+			log.Debug("can not get priority task from upstream", "up", priorityUpstream, "cli", session.CliName)
 
 		} else {
-			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream)
+			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream, "cli", session.CliName)
 		}
 	}
 	ptc.priorityUpstream.Delete(publicKey)

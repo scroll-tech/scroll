@@ -80,7 +80,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		return
 	} else {
 		log.Debug("Submit proof to upstream", "up", upstream, "cli", session.CliName, "taskID", realTaskID)
-		spc.priorityUpstream.Delete(upstream)
+		spc.priorityUpstream.Delete(publicKey)
 		types.RenderSuccess(ctx, resp.Data)
 		return
 	}
