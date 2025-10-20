@@ -112,14 +112,12 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
 		if err != nil {
 			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", session.CliName)
-			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 			return err, types.ErrCoordinatorGetTaskFailure
 		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
 
 			if resp.ErrCode != 0 {
-				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", session.CliName)
 				// simply dispatch the error from upstream to prover
-				types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
+				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", session.CliName)
 				return fmt.Errorf("upstream failure %s:", resp.ErrMsg), resp.ErrCode
 			}
 
@@ -132,7 +130,6 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 				return nil, 0
 			} else {
 				log.Error("Upstream has wrong data for get task", "error", err, "up", upStream, "cli", session.CliName)
-				types.RenderFailure(ctx, types.InternalServerError, fmt.Errorf("decode task fail: %v", err))
 				return fmt.Errorf("decode task fail: %v", err), types.InternalServerError
 			}
 		}
