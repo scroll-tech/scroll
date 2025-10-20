@@ -52,7 +52,8 @@ var (
 	batch        *encoding.Batch
 	tokenTimeout int
 
-	envSet bool
+	envSet   bool
+	portUsed map[int64]struct{}
 )
 
 func TestMain(m *testing.M) {
@@ -65,8 +66,7 @@ func TestMain(m *testing.M) {
 }
 
 func randomURL() string {
-	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
-	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+	return randmURLBatch(1)[0]
 }
 
 // Generate a batch of random localhost URLs with different ports, similar to randomURL.
@@ -75,14 +75,16 @@ func randmURLBatch(n int) []string {
 		return nil
 	}
 	urls := make([]string, 0, n)
-	used := make(map[int64]struct{}, n)
+	if portUsed == nil {
+		portUsed = make(map[int64]struct{})
+	}
 	for len(urls) < n {
 		id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
-		port := 10000 + 2000 + id.Int64()
-		if _, ok := used[port]; ok {
+		port := 20000 + 2000 + id.Int64()
+		if _, exist := portUsed[port]; exist {
 			continue
 		}
-		used[port] = struct{}{}
+		portUsed[port] = struct{}{}
 		urls = append(urls, fmt.Sprintf("localhost:%d", port))
 	}
 	return urls
@@ -135,6 +137,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		EuclidV2Time:   new(uint64),
 	}, db, nil)
 	route.Route(router, conf, nil)
+	t.Log("coordinator server url", coordinatorURL)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
 		Handler: router,

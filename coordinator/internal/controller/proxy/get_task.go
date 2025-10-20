@@ -107,20 +107,20 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	session := ptc.proverMgr.Get(publicKey)
 
-	getTask := func(upStream string, cli Client) (tryNext bool) {
+	getTask := func(upStream string, cli Client) (error, int) {
 		log.Debug("Start get task", "up", upStream, "cli", session.CliName)
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
 		if err != nil {
 			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", session.CliName)
 			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
-			return
+			return err, types.ErrCoordinatorGetTaskFailure
 		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
 
 			if resp.ErrCode != 0 {
 				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", session.CliName)
 				// simply dispatch the error from upstream to prover
 				types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
-				return
+				return fmt.Errorf("upstream failure %s:", resp.ErrMsg), resp.ErrCode
 			}
 
 			var task coordinatorType.GetTaskSchema
@@ -129,15 +129,15 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 				ptc.priorityUpstream.Set(publicKey, upStream)
 				log.Debug("Upstream get task", "up", upStream, "cli", session.CliName, "taskID", task.TaskID, "taskType", task.TaskType)
 				types.RenderSuccess(ctx, &task)
+				return nil, 0
 			} else {
 				log.Error("Upstream has wrong data for get task", "error", err, "up", upStream, "cli", session.CliName)
 				types.RenderFailure(ctx, types.InternalServerError, fmt.Errorf("decode task fail: %v", err))
+				return fmt.Errorf("decode task fail: %v", err), types.InternalServerError
 			}
-
-			return
 		}
-		tryNext = true
-		return
+
+		return nil, resp.ErrCode
 	}
 
 	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
@@ -145,9 +145,19 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	if exist {
 		cli := ptc.clients[priorityUpstream]
 		log.Debug("Try get task from priority stream", "up", priorityUpstream)
-		if cli != nil && !getTask(priorityUpstream, cli) {
-			return
-		} else if cli == nil {
+		if cli != nil {
+			err, code := getTask(priorityUpstream, cli)
+			if err != nil {
+				types.RenderFailure(ctx, code, err)
+				return
+			} else if code == 0 {
+				// get task done and rendered, return
+				return
+			}
+			// only continue if get empty task (the task has been removed in upstream)
+			log.Debug("can not get priority task from upstream", "up", priorityUpstream)
+
+		} else {
 			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream)
 		}
 	}
@@ -166,7 +176,8 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	// Iterate over the shuffled keys
 	for _, n := range keys {
-		if !getTask(n, ptc.clients[n]) {
+		if err, code := getTask(n, ptc.clients[n]); err == nil && code == 0 {
+			// get task done
 			return
 		}
 	}
