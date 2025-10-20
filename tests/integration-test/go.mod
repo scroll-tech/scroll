@@ -6,7 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/scroll-tech/da-codec v0.1.3-0.20250826112206-b4cce5c5d178
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20250625112225-a67863c65587
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20251017054300-9aa8b3f38f63
 	github.com/stretchr/testify v1.10.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -16,10 +16,10 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/consensys/bavard v0.1.29 // indirect
 	github.com/consensys/gnark-crypto v0.16.0 // indirect
-	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
+	github.com/crate-crypto/go-eth-kzg v1.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
-	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
+	github.com/ethereum/c-kzg-4844/v2 v2.1.5 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -34,7 +34,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/supranational/blst v0.3.13 // indirect
+	github.com/supranational/blst v0.3.15 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect

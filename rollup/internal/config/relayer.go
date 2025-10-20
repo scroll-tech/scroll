@@ -35,6 +35,8 @@ type SenderConfig struct {
 	TxType string `json:"tx_type"`
 	// The maximum number of pending blob-carrying transactions
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
+	// The timestamp of the Ethereum Fusaka upgrade in seconds since epoch.
+	FusakaTimestamp uint64 `json:"fusaka_timestamp"`
 }
 
 type BatchSubmission struct {

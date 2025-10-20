@@ -291,7 +291,7 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 
 		var sidecar *gethTypes.BlobTxSidecar
 		if txBlob[i] != nil {
-			sidecar, err = makeSidecar([]*kzg4844.Blob{txBlob[i]})
+			sidecar, err = makeSidecar(gethTypes.BlobSidecarVersion0, []*kzg4844.Blob{txBlob[i]})
 			assert.NoError(t, err)
 		}
 
@@ -332,7 +332,7 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		}
 		var sidecar *gethTypes.BlobTxSidecar
 		if txBlob[i] != nil {
-			sidecar, err = makeSidecar([]*kzg4844.Blob{txBlob[i]})
+			sidecar, err = makeSidecar(gethTypes.BlobSidecarVersion0, []*kzg4844.Blob{txBlob[i]})
 			assert.NoError(t, err)
 		}
 		tx, err := s.createTx(feeData, &common.Address{}, nil, sidecar, s.transactionSigner.GetNonce())
@@ -467,7 +467,7 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	})
 	defer patchGuard.Reset()
 
-	sidecar, err := makeSidecar(randBlobs(1))
+	sidecar, err := makeSidecar(gethTypes.BlobSidecarVersion0, randBlobs(1))
 	assert.NoError(t, err)
 	tx := gethTypes.NewTx(&gethTypes.BlobTx{
 		ChainID:    uint256.MustFromBig(s.chainID),
@@ -799,7 +799,7 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	blobs := randBlobs(1)
-	sideCar, err := makeSidecar(blobs)
+	sideCar, err := makeSidecar(gethTypes.BlobSidecarVersion0, blobs)
 	assert.NoError(t, err)
 	versionedHash := sideCar.BlobHashes()[0]
 	blsModulo, ok := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
