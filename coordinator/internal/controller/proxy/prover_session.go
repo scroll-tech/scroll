@@ -15,45 +15,59 @@ import (
 
 type ProverManager struct {
 	sync.RWMutex
-	data map[string]*proverSession
+	data               map[string]*proverSession
+	willDeprecatedData map[string]*proverSession
+	sizeLimit          int
 }
 
-func NewProverManager() *ProverManager {
+func NewProverManager(size int) *ProverManager {
 	return &ProverManager{
-		data: make(map[string]*proverSession),
+		data:               make(map[string]*proverSession),
+		willDeprecatedData: make(map[string]*proverSession),
+		sizeLimit:          size,
 	}
 }
 
 // get retrieves ProverSession for a given user key, returns empty if still not exists
 func (m *ProverManager) Get(userKey string) *proverSession {
 	m.RLock()
-	defer m.RUnlock()
 
-	return m.data[userKey]
+	if r, existed := m.data[userKey]; existed {
+		m.RUnlock()
+		return r
+	} else {
+		r, existed = m.willDeprecatedData[userKey]
+		m.RUnlock()
+		if existed {
+			m.Lock()
+			m.data[userKey] = r
+			m.Unlock()
+		}
+		return r
+	}
 }
 
 func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
-	m.Lock()
-	defer m.Unlock()
 
-	if ret, ok := m.data[userKey]; ok {
+	if ret := m.Get(userKey); ret != nil {
 		return ret
 	}
+
+	m.Lock()
+	defer m.Unlock()
 
 	ret := &proverSession{
 		proverToken: make(map[string]loginToken),
 		CliName:     "pending for login",
 	}
 
+	if len(m.data) >= m.sizeLimit {
+		m.willDeprecatedData = m.data
+		m.data = make(map[string]*proverSession)
+	}
+
 	m.data[userKey] = ret
 	return ret
-}
-
-func (m *ProverManager) Set(userKey string, session *proverSession) {
-	m.Lock()
-	defer m.Unlock()
-
-	m.data[userKey] = session
 }
 
 type loginToken struct {

@@ -34,7 +34,7 @@ func InitController(cfg *config.ProxyConfig, reg prometheus.Registerer) {
 		clients[nm] = cli
 	}
 
-	proverManager := NewProverManager()
+	proverManager := NewProverManager(100)
 	priorityManager := NewPriorityUpstreamManager()
 
 	Auth = NewAuthController(cfg, clients, proverManager)
