@@ -111,7 +111,7 @@ func setupProxy(t *testing.T, proxyURL string, coordinatorURL []string) *http.Se
 	}
 
 	router := gin.New()
-	proxy.InitController(proxyConf, nil)
+	proxy.InitController(proxyConf, nil, nil)
 	route.ProxyRoute(router, proxyConf, nil)
 	t.Log("proxy server url", proxyURL)
 	srv := &http.Server{

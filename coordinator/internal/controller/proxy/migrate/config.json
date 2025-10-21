@@ -1,0 +1,4 @@
+{
+  "dsn": "postgres://localhost/proxy_run?sslmode=disable",
+  "driver_name": "postgres"
+}

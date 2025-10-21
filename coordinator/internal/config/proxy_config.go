@@ -5,15 +5,17 @@ import (
 	"os"
 	"path/filepath"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
 )
 
 // Proxy loads proxy configuration items.
 type ProxyManager struct {
 	// Zk verifier config help to confine the connected prover.
-	Verifier *VerifierConfig `json:"verifier"`
-	Client   *ProxyClient    `json:"proxy_cli"`
-	Auth     *Auth           `json:"auth"`
+	Verifier *VerifierConfig  `json:"verifier"`
+	Client   *ProxyClient     `json:"proxy_cli"`
+	Auth     *Auth            `json:"auth"`
+	DB       *database.Config `json:"db,omitempty"`
 }
 
 func (m *ProxyManager) Normalize() {

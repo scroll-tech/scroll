@@ -13,7 +13,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
+	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -47,10 +50,22 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	//observability.Server(ctx, db)
+	var db *gorm.DB
+	if dbCfg := cfg.ProxyManager.DB; dbCfg != nil {
+		db, err = database.InitDB(cfg.ProxyManager.DB)
+		if err != nil {
+			log.Crit("failed to init db connection", "err", err)
+		}
+		defer func() {
+			if err = database.CloseDB(db); err != nil {
+				log.Error("can not close db connection", "error", err)
+			}
+		}()
+		observability.Server(ctx, db)
+	}
 	registry := prometheus.DefaultRegisterer
 
-	apiSrv := server(ctx, cfg, registry)
+	apiSrv := server(ctx, cfg, db, registry)
 
 	log.Info(
 		"Start coordinator api successfully.",
@@ -77,9 +92,9 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-func server(ctx *cli.Context, cfg *config.ProxyConfig, reg prometheus.Registerer) *http.Server {
+func server(ctx *cli.Context, cfg *config.ProxyConfig, db *gorm.DB, reg prometheus.Registerer) *http.Server {
 	router := gin.New()
-	proxy.InitController(cfg, reg)
+	proxy.InitController(cfg, db, reg)
 	route.ProxyRoute(router, cfg, reg)
 	port := ctx.String(httpPortFlag.Name)
 	srv := &http.Server{

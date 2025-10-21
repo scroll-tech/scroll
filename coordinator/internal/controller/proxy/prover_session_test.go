@@ -12,7 +12,7 @@ func TestProverManagerGetAndCreate(t *testing.T) {
 		t.Fatalf("expected nil for non-existent key, got: %+v", got)
 	}
 
-	sess1 := pm.GetOrCreate("user1")
+	sess1 := pm.GetOrCreate("user1", "u1_cli")
 	if sess1 == nil {
 		t.Fatalf("expected non-nil session from GetOrCreate")
 	}
@@ -23,8 +23,8 @@ func TestProverManagerGetAndCreate(t *testing.T) {
 	}
 
 	// Sanity check default value set during creation
-	if sess1.CliName != "pending for login" {
-		t.Fatalf("expected default CliName 'pending for login', got %q", sess1.CliName)
+	if sess1.CliName != "u1_cli" {
+		t.Fatalf("expected default CliName 'u1_cli', got %q", sess1.CliName)
 	}
 }
 
@@ -33,8 +33,8 @@ func TestProverManagerGetAndCreate(t *testing.T) {
 func TestProverManagerRolloverAndPromotion(t *testing.T) {
 	pm := NewProverManager(2)
 
-	s1 := pm.GetOrCreate("u1")
-	s2 := pm.GetOrCreate("u2")
+	s1 := pm.GetOrCreate("u1", "u1_cli")
+	s2 := pm.GetOrCreate("u2", "u2_cli")
 	if s1 == nil || s2 == nil {
 		t.Fatalf("expected sessions to be created for u1/u2")
 	}
@@ -52,7 +52,7 @@ func TestProverManagerRolloverAndPromotion(t *testing.T) {
 	pm.RUnlock()
 
 	// Trigger rollover by creating a third key.
-	s3 := pm.GetOrCreate("u3")
+	s3 := pm.GetOrCreate("u3", "u3_cli")
 	if s3 == nil {
 		t.Fatalf("expected session for u3 after rollover")
 	}

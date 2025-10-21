@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
 )
@@ -20,7 +21,7 @@ var (
 type Clients map[string]Client
 
 // InitController inits Controller with database
-func InitController(cfg *config.ProxyConfig, reg prometheus.Registerer) {
+func InitController(cfg *config.ProxyConfig, db *gorm.DB, reg prometheus.Registerer) {
 	// normalize cfg
 	cfg.ProxyManager.Normalize()
 
@@ -34,7 +35,7 @@ func InitController(cfg *config.ProxyConfig, reg prometheus.Registerer) {
 		clients[nm] = cli
 	}
 
-	proverManager := NewProverManager(100)
+	proverManager := NewProverManagerWithPersistent(100, db)
 	priorityManager := NewPriorityUpstreamManager()
 
 	Auth = NewAuthController(cfg, clients, proverManager)

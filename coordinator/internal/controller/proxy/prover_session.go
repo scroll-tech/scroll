@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/scroll-tech/go-ethereum/log"
 
 	ctypes "scroll-tech/common/types"
@@ -18,6 +20,7 @@ type ProverManager struct {
 	data               map[string]*proverSession
 	willDeprecatedData map[string]*proverSession
 	sizeLimit          int
+	persistent         *proverDataPersist
 }
 
 func NewProverManager(size int) *ProverManager {
@@ -28,26 +31,46 @@ func NewProverManager(size int) *ProverManager {
 	}
 }
 
-// get retrieves ProverSession for a given user key, returns empty if still not exists
-func (m *ProverManager) Get(userKey string) *proverSession {
-	m.RLock()
+func NewProverManagerWithPersistent(size int, db *gorm.DB) *ProverManager {
+	return &ProverManager{
+		data:               make(map[string]*proverSession),
+		willDeprecatedData: make(map[string]*proverSession),
+		sizeLimit:          size,
+		persistent:         NewProverDataPersist(db),
+	}
+}
 
-	if r, existed := m.data[userKey]; existed {
-		m.RUnlock()
-		return r
-	} else {
-		r, existed = m.willDeprecatedData[userKey]
-		m.RUnlock()
-		if existed {
+// get retrieves ProverSession for a given user key, returns empty if still not exists
+func (m *ProverManager) Get(userKey string) (ret *proverSession) {
+	defer func() {
+		r := ret
+		if r == nil {
+			var err error
+			r, err = m.persistent.Get(userKey)
+			if err != nil {
+				log.Error("Get persistent layer for prover tokens fail", "error", err)
+			} else if r != nil {
+				r.persistent = m.persistent
+			}
+		}
+
+		if r != nil {
 			m.Lock()
 			m.data[userKey] = r
 			m.Unlock()
 		}
+	}()
+
+	m.RLock()
+	defer m.RUnlock()
+	if r, existed := m.data[userKey]; existed {
 		return r
+	} else {
+		return m.willDeprecatedData[userKey]
 	}
 }
 
-func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
+func (m *ProverManager) GetOrCreate(userKey, cliName string) *proverSession {
 
 	if ret := m.Get(userKey); ret != nil {
 		return ret
@@ -58,7 +81,8 @@ func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
 
 	ret := &proverSession{
 		proverToken: make(map[string]loginToken),
-		CliName:     "pending for login",
+		CliName:     cliName,
+		persistent:  m.persistent,
 	}
 
 	if len(m.data) >= m.sizeLimit {
@@ -77,14 +101,15 @@ type loginToken struct {
 
 // Client wraps an http client with a preset host for coordinator API calls
 type proverSession struct {
-	CliName string
+	CliName    string
+	persistent *proverDataPersist
 
 	sync.RWMutex
 	proverToken   map[string]loginToken
 	completionCtx context.Context
 }
 
-func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up string, param *types.LoginParameter, phase uint) (result *types.LoginSchema, nerr error) {
+func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up string, param *types.LoginParameter, phase uint) (result loginToken, nerr error) {
 	c.Lock()
 	curPhase := c.proverToken[up].phase
 	if c.completionCtx != nil {
@@ -94,7 +119,8 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		case <-waitctx.Done():
 			return c.maintainLogin(ctx, cliMgr, up, param, phase)
 		case <-ctx.Done():
-			return nil, fmt.Errorf("ctx fail")
+			nerr = fmt.Errorf("ctx fail")
+			return
 		}
 	}
 
@@ -102,7 +128,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		// outdate login phase, give up
 		log.Debug("drop outdated proxy login attemp", "upstream", up, "cli", param.Message.ProverName, "phase", phase, "now", curPhase)
 		defer c.Unlock()
-		return c.proverToken[up].LoginSchema, nil
+		return c.proverToken[up], nil
 	}
 
 	// occupy the update slot
@@ -112,11 +138,8 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	defer func() {
 		c.Lock()
 		c.completionCtx = nil
-		if result != nil {
-			c.proverToken[up] = loginToken{
-				LoginSchema: result,
-				phase:       curPhase + 1,
-			}
+		if result.LoginSchema != nil {
+			c.proverToken[up] = result
 			log.Info("maintain login status", "upstream", up, "cli", param.Message.ProverName, "phase", curPhase+1)
 		}
 		c.Unlock()
@@ -131,41 +154,51 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 
 	cli := cliMgr.Client(ctx)
 	if cli == nil {
-		return nil, fmt.Errorf("get upstream cli fail")
+		nerr = fmt.Errorf("get upstream cli fail")
+		return
 	}
 
 	resp, err := cli.ProxyLogin(ctx, param)
 	if err != nil {
-		return nil, fmt.Errorf("proxylogin fail: %v", err)
+		nerr = fmt.Errorf("proxylogin fail: %v", err)
+		return
 	}
 
 	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
 		cliMgr.Reset(cli)
 		cli = cliMgr.Client(ctx)
 		if cli == nil {
-			return nil, fmt.Errorf("get upstream cli fail (secondary try)")
+			nerr = fmt.Errorf("get upstream cli fail (secondary try)")
+			return
 		}
 
 		// like SDK, we would try one more time if the upstream token is expired
 		resp, err = cli.ProxyLogin(ctx, param)
 		if err != nil {
-			return nil, fmt.Errorf("proxylogin fail: %v", err)
+			nerr = fmt.Errorf("proxylogin fail: %v", err)
+			return
 		}
 	}
 
 	if resp.ErrCode != 0 {
-		return nil, fmt.Errorf("upstream fail: %d (%s)", resp.ErrCode, resp.ErrMsg)
+		nerr = fmt.Errorf("upstream fail: %d (%s)", resp.ErrCode, resp.ErrMsg)
+		return
 	}
 
 	var loginResult loginSchema
 	if err := resp.DecodeData(&loginResult); err != nil {
-		return nil, err
+		nerr = err
+		return
 	}
 
 	log.Debug("Proxy login done", "upstream", up, "cli", param.Message.ProverName)
-	return &types.LoginSchema{
-		Token: loginResult.Token,
-	}, nil
+	result = loginToken{
+		LoginSchema: &types.LoginSchema{
+			Token: loginResult.Token,
+		},
+		phase: curPhase + 1,
+	}
+	return
 }
 
 const expireTolerant = 10 * time.Minute
@@ -173,19 +206,16 @@ const expireTolerant = 10 * time.Minute
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
 func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, up string, param *types.LoginParameter) error {
 	c.RLock()
-	existedToken := c.proverToken[up].LoginSchema
+	existedToken := c.proverToken[up]
 	c.RUnlock()
 
-	// Check if we have a valid cached token that hasn't expired
-	if existedToken != nil {
-		// TODO: how to reduce the unnecessary re-login?
-		// timeRemaining := time.Until(existedToken.Time)
-		// if timeRemaining > expireTolerant {
-		// 	return nil
-		// }
+	newtoken, err := c.maintainLogin(ctx, cli, up, param, math.MaxUint)
+	if newtoken.phase > existedToken.phase {
+		if err := c.persistent.Update(param.PublicKey, up, newtoken.LoginSchema); err != nil {
+			log.Error("Update persistent layer for prover tokens fail", "error", err)
+		}
 	}
 
-	_, err := c.maintainLogin(ctx, cli, up, param, math.MaxUint)
 	return err
 }
 

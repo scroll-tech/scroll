@@ -59,7 +59,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return nil, fmt.Errorf("proxy do not support recursive login")
 	}
 
-	session := a.proverMgr.GetOrCreate(loginParam.PublicKey)
+	session := a.proverMgr.GetOrCreate(loginParam.PublicKey, loginParam.Message.ProverName)
 	log.Debug("start handling login", "cli", loginParam.Message.ProverName)
 
 	for n, cli := range a.clients {
