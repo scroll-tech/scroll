@@ -88,15 +88,20 @@ func NewProverPriorityPersist(db *gorm.DB) *proverPriorityPersist {
 	return &proverPriorityPersist{db: db}
 }
 
-func (p *proverPriorityPersist) Get(userKey string) string {
+func (p *proverPriorityPersist) Get(userKey string) (string, error) {
 	if p == nil || p.db == nil {
-		return ""
+		return "", nil
 	}
 	var rec priorityUpstreamRecord
 	if err := p.db.Where("public_key = ?", userKey).First(&rec).Error; err != nil {
-		return ""
+		if err != gorm.ErrRecordNotFound {
+			return "", err
+		} else {
+			return "", nil
+		}
+
 	}
-	return rec.Upstream
+	return rec.Upstream, nil
 }
 
 func (p *proverPriorityPersist) Update(userKey, up string) error {

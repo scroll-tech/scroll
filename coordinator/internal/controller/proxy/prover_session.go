@@ -204,7 +204,8 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 const expireTolerant = 10 * time.Minute
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
-func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, up string, param *types.LoginParameter) error {
+func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, param *types.LoginParameter) error {
+	up := cli.Name()
 	c.RLock()
 	existedToken := c.proverToken[up]
 	c.RUnlock()
@@ -220,7 +221,8 @@ func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, up string, p
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParameter, cliMgr Client, up string) (*ctypes.Response, error) {
+func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParameter, cliMgr Client) (*ctypes.Response, error) {
+	up := cliMgr.Name()
 	c.RLock()
 	token := c.proverToken[up]
 	c.RUnlock()
@@ -257,7 +259,8 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, cliMgr Client, up string) (*ctypes.Response, error) {
+func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, cliMgr Client) (*ctypes.Response, error) {
+	up := cliMgr.Name()
 	c.RLock()
 	token := c.proverToken[up]
 	c.RUnlock()

@@ -68,7 +68,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 	log.Debug("Start submitting", "up", upstream, "cli", session.CliName, "id", realTaskID, "status", submitParameter.Status)
 	submitParameter.TaskID = realTaskID
 
-	resp, err := session.SubmitProof(ctx, &submitParameter, cli, upstream)
+	resp, err := session.SubmitProof(ctx, &submitParameter, cli)
 	if err != nil {
 		log.Error("Upstream has error resp for submit", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upstream, "cli", session.CliName)
 		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)

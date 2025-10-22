@@ -33,6 +33,7 @@ func getSessionData(ctx *gin.Context) string {
 // PriorityUpstreamManager manages priority upstream mappings with thread safety
 type PriorityUpstreamManager struct {
 	sync.RWMutex
+	*proverPriorityPersist
 	data map[string]string
 }
 
@@ -46,8 +47,17 @@ func NewPriorityUpstreamManager() *PriorityUpstreamManager {
 // Get retrieves the priority upstream for a given key
 func (p *PriorityUpstreamManager) Get(key string) (string, bool) {
 	p.RLock()
-	defer p.RUnlock()
 	value, exists := p.data[key]
+	p.RUnlock()
+
+	if !exists {
+		if v, err := p.proverPriorityPersist.Get(key); err != nil {
+			log.Error("")
+		} else if v != "" {
+			return v, true
+		}
+	}
+
 	return value, exists
 }
 
@@ -107,9 +117,10 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	session := ptc.proverMgr.Get(publicKey)
 
-	getTask := func(upStream string, cli Client) (error, int) {
-		log.Debug("Start get task", "up", upStream, "cli", session.CliName)
-		resp, err := session.GetTask(ctx, &getTaskParameter, cli, upStream)
+	getTask := func(cli Client) (error, int) {
+		log.Debug("Start get task", "up", cli.Name(), "cli", session.CliName)
+		upStream := cli.Name()
+		resp, err := session.GetTask(ctx, &getTaskParameter, cli)
 		if err != nil {
 			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", session.CliName)
 			return err, types.ErrCoordinatorGetTaskFailure
@@ -143,7 +154,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		cli := ptc.clients[priorityUpstream]
 		log.Debug("Try get task from priority stream", "up", priorityUpstream, "cli", session.CliName)
 		if cli != nil {
-			err, code := getTask(priorityUpstream, cli)
+			err, code := getTask(cli)
 			if err != nil {
 				types.RenderFailure(ctx, code, err)
 				return
@@ -173,7 +184,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	// Iterate over the shuffled keys
 	for _, n := range keys {
-		if err, code := getTask(n, ptc.clients[n]); err == nil && code == 0 {
+		if err, code := getTask(ptc.clients[n]); err == nil && code == 0 {
 			// get task done
 			return
 		}

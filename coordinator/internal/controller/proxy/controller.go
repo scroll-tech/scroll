@@ -32,7 +32,7 @@ func InitController(cfg *config.ProxyConfig, db *gorm.DB, reg prometheus.Registe
 		if err != nil {
 			panic("create new client fail")
 		}
-		clients[nm] = cli
+		clients[cli.Name()] = cli
 	}
 
 	proverManager := NewProverManagerWithPersistent(100, db)

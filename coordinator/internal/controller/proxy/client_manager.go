@@ -18,6 +18,7 @@ import (
 type Client interface {
 	Client(context.Context) *upClient
 	Reset(cli *upClient)
+	Name() string
 }
 
 type ClientManager struct {
@@ -122,6 +123,10 @@ func (cliMgr *ClientManager) Reset(cli *upClient) {
 	}
 	cliMgr.cachedCli.Unlock()
 	log.Info("cached client cleared", "name", cliMgr.name)
+}
+
+func (cliMgr *ClientManager) Name() string {
+	return cliMgr.name
 }
 
 func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {

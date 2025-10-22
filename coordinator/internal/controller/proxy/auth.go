@@ -62,16 +62,16 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	session := a.proverMgr.GetOrCreate(loginParam.PublicKey, loginParam.Message.ProverName)
 	log.Debug("start handling login", "cli", loginParam.Message.ProverName)
 
-	for n, cli := range a.clients {
+	for _, cli := range a.clients {
 
-		go func(n string, cli Client) {
-			if err := session.ProxyLogin(c, cli, n, &loginParam.LoginParameter); err != nil {
+		go func(cli Client) {
+			if err := session.ProxyLogin(c, cli, &loginParam.LoginParameter); err != nil {
 				log.Error("proxy login failed during token cache update",
 					"userKey", loginParam.PublicKey,
-					"upstream", n,
+					"upstream", cli.Name(),
 					"error", err)
 			}
-		}(n, cli)
+		}(cli)
 	}
 
 	return loginParam.LoginParameter, nil
