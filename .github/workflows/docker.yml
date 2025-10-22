@@ -51,9 +51,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   rollup_relayer:
     runs-on:
@@ -97,9 +95,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   blob_uploader:
     runs-on:
@@ -143,9 +139,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   rollup-db-cli:
     runs-on:
@@ -189,9 +183,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-fetcher:
     runs-on:
@@ -235,9 +227,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-api:
     runs-on:
@@ -281,9 +271,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   bridgehistoryapi-db-cli:
     runs-on:
@@ -327,9 +315,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-api:
     runs-on:
@@ -372,9 +358,7 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
   coordinator-cron:
     runs-on:
@@ -418,6 +402,4 @@ jobs:
           push: true
           tags: |
             scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest

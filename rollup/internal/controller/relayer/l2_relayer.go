@@ -345,8 +345,16 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // - backlogCount > r.cfg.BatchSubmission.BacklogMax -> forceSubmit
 // - we have at least minBatches AND price hits a desired target price
 func (r *Layer2Relayer) ProcessPendingBatches() {
-	// Get effective batch limits based on whether validium mode is enabled.
-	minBatches, maxBatches := r.getEffectiveBatchLimits()
+	// First, get the backlog count to determine batch submission strategy
+	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
+	if err != nil {
+		log.Error("Failed to fetch pending L2 batches count", "err", err)
+		return
+	}
+	r.metrics.rollupL2RelayerBacklogCounts.Set(float64(backlogCount))
+
+	// Get effective batch limits based on validium mode and backlog size.
+	minBatches, maxBatches := r.getEffectiveBatchLimits(backlogCount)
 
 	// get pending batches from database in ascending order by their index.
 	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, maxBatches)
@@ -357,15 +365,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	// nothing to do if we don't have any pending batches
 	if len(dbBatches) == 0 {
-		return
-	}
-
-	// if backlog outgrow max size, force‐submit enough oldest batches
-	backlogCount, err := r.batchOrm.GetFailedAndPendingBatchesCount(r.ctx)
-	r.metrics.rollupL2RelayerBacklogCounts.Set(float64(backlogCount))
-
-	if err != nil {
-		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
 
@@ -563,12 +562,22 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
-// getEffectiveBatchLimits returns the effective min and max batch limits based on whether validium mode is enabled.
-func (r *Layer2Relayer) getEffectiveBatchLimits() (int, int) {
+// getEffectiveBatchLimits returns the effective min and max batch limits based on whether validium mode is enabled
+// and the current backlog size.
+// When backlogCount >= backlog_max: submit min_batches for fast inclusion at slightly higher price.
+// When backlogCount < backlog_max: submit max_batches for better cost amortization.
+func (r *Layer2Relayer) getEffectiveBatchLimits(backlogCount int64) (int, int) {
 	if r.cfg.ValidiumMode {
 		return 1, 1 // minBatches=1, maxBatches=1
 	}
-	return r.cfg.BatchSubmission.MinBatches, r.cfg.BatchSubmission.MaxBatches
+
+	// If backlog is at or above max, prioritize fast inclusion by submitting min_batches
+	if backlogCount >= r.cfg.BatchSubmission.BacklogMax {
+		return r.cfg.BatchSubmission.MinBatches, r.cfg.BatchSubmission.MinBatches
+	}
+
+	// Otherwise, prioritize cost efficiency by trying to submit max_batches
+	return r.cfg.BatchSubmission.MaxBatches, r.cfg.BatchSubmission.MaxBatches
 }
 
 func (r *Layer2Relayer) contextIDFromBatches(codecVersion encoding.CodecVersion, batches []*dbBatchWithChunks) string {

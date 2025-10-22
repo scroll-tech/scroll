@@ -732,7 +732,6 @@ github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0/go.mod h1:4Zcju
 github.com/compose-spec/compose-go v1.20.0 h1:h4ZKOst1EF/DwZp7dWkb+wbTVE4nEyT9Lc89to84Ol4=
 github.com/compose-spec/compose-go v1.20.0/go.mod h1:+MdqXV4RA7wdFsahh/Kb8U0pAJqkg7mr4PM9tFKU8RM=
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
-github.com/consensys/bavard v0.1.27/go.mod h1:k/zVjHHC4B+PQy1Pg7fgvG3ALicQw540Crag8qx+dZs=
 github.com/consensys/gnark-crypto v0.12.1/go.mod h1:v2Gy7L/4ZRosZ7Ivs+9SfUDr0f5UlG+EM5t7MPHiLuY=
 github.com/consensys/gnark-crypto v0.13.0/go.mod h1:wKqwsieaKPThcFkHe0d0zMsbHEUWFmZcG7KBCse210o=
 github.com/container-orchestrated-devices/container-device-interface v0.6.1 h1:mz77uJoP8im/4Zins+mPqt677ZMaflhoGaYrRAl5jvA=
@@ -1419,6 +1418,8 @@ github.com/scroll-tech/go-ethereum v1.10.14-0.20240821074444-b3fa00861e5e/go.mod
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241010064814-3d88e870ae22/go.mod h1:r9FwtxCtybMkTbWYCyBuevT9TW3zHmOTHqD082Uh+Oo=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250206083728-ea43834c198f/go.mod h1:Ik3OBLl7cJxPC+CFyCBYNXBPek4wpdzkWehn/y5qLM8=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250225152658-bcfdb48dd939/go.mod h1:AgU8JJxC7+nfs7R7ma35AU7dMAGW7wCw3dRZRefIKyQ=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20251017081611-2bc7a5482dcc h1:zSO+VMyzmEVezVuMC7jZ9PcvihwmrlKt+7cyv9rpq2s=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20251017081611-2bc7a5482dcc/go.mod h1:zRa7CnS75mFdgp8IeMtZV/wCAlxPRT33Ek3+fFbBJVQ=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 h1:nn5Wsu0esKSJiIVhscUtVbo7ada43DJhG55ua/hjS5I=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=

@@ -96,6 +96,9 @@ func action(ctx *cli.Context) error {
 	if cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk <= 0 {
 		log.Crit("cfg.L2Config.ChunkProposerConfig.MaxL2GasPerChunk must be greater than 0")
 	}
+	if cfg.L2Config.RelayerConfig.SenderConfig.FusakaTimestamp == 0 {
+		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.FusakaTimestamp must be set")
+	}
 
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
