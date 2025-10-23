@@ -24,6 +24,15 @@ func init() {
 	goose.SetVerbose(verbose)
 }
 
+// FreeMigrate migrate db with specified goose TableName and Dir
+func FreeMigrate(db *sql.DB, dir, tableName string) error {
+	if tableName != "" {
+		goose.SetTableName(tableName)
+	}
+
+	return goose.Up(db, dir, goose.WithAllowMissing())
+}
+
 // Migrate migrate db
 func Migrate(db *sql.DB) error {
 	//return goose.Up(db, MIGRATIONS_DIR, goose.WithAllowMissing())
