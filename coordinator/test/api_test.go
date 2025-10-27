@@ -132,7 +132,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 func setEnv(t *testing.T) {
 	var err error
 
-	version.Version = "v4.4.89"
+	version.Version = "v4.5.45"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)

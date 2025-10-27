@@ -7,7 +7,7 @@ if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
 fi
 
 # set ASSET_DIR by reading from config.json
-CONFIG_FILE="bin/conf/config.json"
+CONFIG_FILE="bin/conf/config.template.json"
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "Config file $CONFIG_FILE not found"
   exit 1

@@ -1,6 +1,11 @@
 ## A new e2e test tool to setup a local environment for testing coordinator and prover.
 
-It contains data from some blocks in scroll sepolia, and helps to generate a series of chunks/batches/bundles from these blocks, filling the DB for the coordinator, so an e2e test (from chunk to bundle) can be run completely local
+It contains data from some blocks in a specified testnet, and helps to generate a series of chunks/batches/bundles from these blocks, filling the DB for the coordinator, so an e2e test (from chunk to bundle) can be run completely local
+
+Prepare:
+link the staff dir as "conf" from one of the dir with staff set, currently we have following staff sets:
++ sepolia: with blocks from scroll sepolia
++ cloak-xen: with blocks from xen sepolia, which is a cloak network
 
 Steps:
 1. run `make all` under `tests/prover-e2e`, it would launch a postgreSql db in local docker container, which is ready to be used by coordinator (include some chunks/batches/bundles waiting to be proven)

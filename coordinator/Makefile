@@ -35,6 +35,7 @@ coordinator_tool:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
 
 localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, and setup releases
+	mkdir -p build/bin/conf
 	@echo "Copying configuration files..."
 	cp -r $(PWD)/conf/config.json $(PWD)/build/bin/conf/config.template.json
 	@echo "Setting up releases..."

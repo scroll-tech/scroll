@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/libzkp"
@@ -217,6 +218,23 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 
 	schema.TaskData = uTaskData
 	return schema, []byte(metadata), nil
+}
+
+const CompatibilityVersion = "4.5.43"
+
+func isCompatibilityFixingVersion(ver string) bool {
+	return !version.CheckScrollRepoVersion(ver, CompatibilityVersion)
+}
+
+func fixCompatibility(schema *coordinatorType.GetTaskSchema) error {
+
+	fixedTask, err := libzkp.UniversalTaskCompatibilityFix(schema.TaskData)
+	if err != nil {
+		return err
+	}
+	schema.TaskData = fixedTask
+
+	return nil
 }
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {

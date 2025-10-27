@@ -1,8 +1,13 @@
 .PHONY: clean setup_db test_tool all check_vars
 
+include conf/.make.env
 GOOSE_CMD?=goose
-BEGIN_BLOCK?=35
-END_BLOCK?=49
+ifndef BEGIN_BLOCK
+$(error BEGIN_BLOCK is not set. Define it in .make.env or pass BEGIN_BLOCK=<start_block>)
+endif
+ifndef END_BLOCK
+$(error END_BLOCK is not set. Define it in .make.env or pass END_BLOCK=<end_block>)
+endif
 
 all: setup_db test_tool import_data
 
@@ -33,7 +38,7 @@ setup_db: clean
         fi; \
     done	
 	${GOOSE_CMD} up
-	GOOSE_MIGRATION_DIR=./ ${GOOSE_CMD} up-to 100
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
@@ -41,7 +46,7 @@ test_tool:
 build/bin/e2e_tool: test_tool
 
 import_data_euclid: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config ./config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
+	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
 
 import_data: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config ./config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}    
+	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}    

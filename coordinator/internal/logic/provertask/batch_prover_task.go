@@ -213,6 +213,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 		proverTask.Metadata = metadata
+
+		if isCompatibilityFixingVersion(taskCtx.ProverVersion) {
+			log.Info("Apply compatibility fixing for prover", "version", taskCtx.ProverVersion)
+			if err := fixCompatibility(taskMsg); err != nil {
+				log.Error("apply compatibility failure", "err", err)
+				return nil, ErrCoordinatorInternalFailure
+			}
+		}
 	}
 
 	// Store session info.
