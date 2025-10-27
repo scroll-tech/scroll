@@ -39,8 +39,9 @@ coordinator_proxy:
 
 
 localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, and setup releases
+	mkdir -p build/bin/conf
 	@echo "Copying configuration files..."
-	cp -r $(PWD)/conf $(PWD)/build/bin/
+	cp -r $(PWD)/conf/config.json $(PWD)/build/bin/conf/config.template.json
 	@echo "Setting up releases..."
 	cd $(PWD)/build && bash setup_releases.sh
 

@@ -122,3 +122,20 @@ func SetDynamicFeature(feats string) {
 	defer freeCString(cFeats)
 	C.set_dynamic_feature(cFeats)
 }
+
+// UnivTaskCompatibilityFix calls the universal task compatibility fix function
+func UniversalTaskCompatibilityFix(taskJSON string) (string, error) {
+	cTaskJSON := goToCString(taskJSON)
+	defer freeCString(cTaskJSON)
+
+	resultPtr := C.univ_task_compatibility_fix(cTaskJSON)
+	if resultPtr == nil {
+		return "", fmt.Errorf("univ_task_compatibility_fix failed")
+	}
+
+	// Convert result to Go string and free C memory
+	result := C.GoString(resultPtr)
+	C.release_string(resultPtr)
+
+	return result, nil
+}

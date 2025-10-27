@@ -56,5 +56,7 @@ void release_string(char* string_ptr);
 
 void set_dynamic_feature(const char* feats);
 
+// Universal task compatibility fix function
+char* univ_task_compatibility_fix(char* task_json);
 
 #endif /* LIBZKP_H */
