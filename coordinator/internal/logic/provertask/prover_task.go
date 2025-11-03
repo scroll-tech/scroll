@@ -37,6 +37,81 @@ type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
 }
 
+// ProverTaskManager manage task which has been assigned
+type ProverTaskManager struct {
+	proverTaskOrm      *orm.ProverTask
+	proverBlockListOrm *orm.ProverBlockList
+}
+
+const proverTaskCtxKey = "prover_task_context_key"
+
+// NewProverTaskManager new a prover task manager
+func NewProverTaskManager(db *gorm.DB) *ProverTaskManager {
+	return &ProverTaskManager{
+		proverTaskOrm:      orm.NewProverTask(db),
+		proverBlockListOrm: orm.NewProverBlockList(db),
+	}
+}
+
+// checkParameter check the prover task parameter illegal
+func (b *ProverTaskManager) CheckParameter(ctx *gin.Context) (*orm.ProverTask, error) {
+	var ptc proverTaskContext
+	ptc.HardForkNames = make(map[string]struct{})
+
+	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
+	if !publicKeyExist {
+		return nil, errors.New("get public key from context failed")
+	}
+	ptc.PublicKey = publicKey.(string)
+
+	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
+	if !proverNameExist {
+		return nil, errors.New("get prover name from context failed")
+	}
+	ptc.ProverName = proverName.(string)
+
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, errors.New("get prover version from context failed")
+	}
+	ptc.ProverVersion = proverVersion.(string)
+
+	ProverProviderType, ProverProviderTypeExist := ctx.Get(coordinatorType.ProverProviderTypeKey)
+	if !ProverProviderTypeExist {
+		// for backward compatibility, set ProverProviderType as internal
+		ProverProviderType = float64(coordinatorType.ProverProviderTypeInternal)
+	}
+	ptc.ProverProviderType = uint8(ProverProviderType.(float64))
+
+	hardForkNamesStr, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
+	if !hardForkNameExist {
+		return nil, errors.New("get hard fork name from context failed")
+	}
+	hardForkNames := strings.Split(hardForkNamesStr.(string), ",")
+	for _, hardForkName := range hardForkNames {
+		ptc.HardForkNames[hardForkName] = struct{}{}
+	}
+
+	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx.Copy(), publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check whether the public key %s is blocked before assigning a chunk task, err: %w, proverName: %s, proverVersion: %s", publicKey, err, proverName, proverVersion)
+	}
+	if isBlocked {
+		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
+	}
+
+	assigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
+	}
+
+	ptc.hasAssignedTask = assigned
+
+	ctx.Set(proverTaskCtxKey, &ptc)
+
+	return assigned, nil
+}
+
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
 	cfg        *config.Config
@@ -44,12 +119,12 @@ type BaseProverTask struct {
 	db         *gorm.DB
 	expectedVk map[string][]byte
 
-	batchOrm           *orm.Batch
-	chunkOrm           *orm.Chunk
-	bundleOrm          *orm.Bundle
-	blockOrm           *orm.L2Block
-	proverTaskOrm      *orm.ProverTask
-	proverBlockListOrm *orm.ProverBlockList
+	batchOrm  *orm.Batch
+	chunkOrm  *orm.Chunk
+	bundleOrm *orm.Bundle
+	blockOrm  *orm.L2Block
+
+	proverTaskOrm *orm.ProverTask
 }
 
 type proverTaskContext struct {
@@ -132,59 +207,13 @@ func (b *BaseProverTask) hardForkSanityCheck(ctx *gin.Context, taskCtx *proverTa
 }
 
 // checkParameter check the prover task parameter illegal
-func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, error) {
-	var ptc proverTaskContext
-	ptc.HardForkNames = make(map[string]struct{})
-
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
-	if !publicKeyExist {
-		return nil, errors.New("get public key from context failed")
-	}
-	ptc.PublicKey = publicKey.(string)
-
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
-	if !proverNameExist {
-		return nil, errors.New("get prover name from context failed")
-	}
-	ptc.ProverName = proverName.(string)
-
-	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
-	if !proverVersionExist {
-		return nil, errors.New("get prover version from context failed")
-	}
-	ptc.ProverVersion = proverVersion.(string)
-
-	ProverProviderType, ProverProviderTypeExist := ctx.Get(coordinatorType.ProverProviderTypeKey)
-	if !ProverProviderTypeExist {
-		// for backward compatibility, set ProverProviderType as internal
-		ProverProviderType = float64(coordinatorType.ProverProviderTypeInternal)
-	}
-	ptc.ProverProviderType = uint8(ProverProviderType.(float64))
-
-	hardForkNamesStr, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
-	if !hardForkNameExist {
-		return nil, errors.New("get hard fork name from context failed")
-	}
-	hardForkNames := strings.Split(hardForkNamesStr.(string), ",")
-	for _, hardForkName := range hardForkNames {
-		ptc.HardForkNames[hardForkName] = struct{}{}
+func (b *BaseProverTask) checkParameter(ctx *gin.Context) *proverTaskContext {
+	pctx, exist := ctx.Get(proverTaskCtxKey)
+	if !exist {
+		return nil
 	}
 
-	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx.Copy(), publicKey.(string))
-	if err != nil {
-		return nil, fmt.Errorf("failed to check whether the public key %s is blocked before assigning a chunk task, err: %w, proverName: %s, proverVersion: %s", publicKey, err, proverName, proverVersion)
-	}
-	if isBlocked {
-		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
-	}
-
-	assigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
-	}
-
-	ptc.hasAssignedTask = assigned
-	return &ptc, nil
+	return pctx.(*proverTaskContext)
 }
 
 func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (*coordinatorType.GetTaskSchema, []byte, error) {

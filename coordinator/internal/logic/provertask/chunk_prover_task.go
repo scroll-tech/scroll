@@ -36,14 +36,13 @@ type ChunkProverTask struct {
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			db:                 db,
-			cfg:                cfg,
-			chainCfg:           chainCfg,
-			expectedVk:         expectedVk,
-			chunkOrm:           orm.NewChunk(db),
-			blockOrm:           orm.NewL2Block(db),
-			proverTaskOrm:      orm.NewProverTask(db),
-			proverBlockListOrm: orm.NewProverBlockList(db),
+			db:            db,
+			cfg:           cfg,
+			chainCfg:      chainCfg,
+			expectedVk:    expectedVk,
+			chunkOrm:      orm.NewChunk(db),
+			blockOrm:      orm.NewL2Block(db),
+			proverTaskOrm: orm.NewProverTask(db),
 		},
 		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
@@ -56,9 +55,9 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 
 // Assign the chunk proof which need to prove
 func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	taskCtx, err := cp.checkParameter(ctx)
-	if err != nil || taskCtx == nil {
-		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
+	taskCtx := cp.checkParameter(ctx)
+	if taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter missed")
 	}
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
