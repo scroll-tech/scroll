@@ -69,10 +69,14 @@ func NewClientManager(name string, cliCfg *config.ProxyClient, cfg *config.UpStr
 	}, nil
 }
 
+type ctxKeyType string
+
+const loginCliKey ctxKeyType = "cli"
+
 func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) {
 	if cliMgr.cfg.CompatibileMode {
 		loginCli.loginToken = "dummy"
-		log.Info("Skip login process for compatibile mode")
+		log.Info("Skip login process for compatible mode")
 		return
 	}
 
@@ -84,7 +88,7 @@ func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) {
 	}
 
 	for {
-		log.Info("attempting login to upstream coordinator", "name", cliMgr.name)
+		log.Info("proxy attempting login to upstream coordinator", "name", cliMgr.name)
 		loginResp, err := loginCli.Login(ctx, cliMgr.genLoginParam)
 		if err == nil && loginResp.ErrCode == 0 {
 			var loginResult loginSchema
@@ -151,7 +155,7 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 		// Set new completion context and launch login goroutine
 		ctx, completionDone := context.WithCancel(context.TODO())
 		loginCli := newUpClient(cliMgr.cfg)
-		completionCtx = context.WithValue(ctx, "cli", loginCli)
+		completionCtx = context.WithValue(ctx, loginCliKey, loginCli)
 		cliMgr.cachedCli.completionCtx = completionCtx
 
 		// Launch keep-login goroutine
@@ -174,7 +178,7 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 	case <-ctx.Done():
 		return nil
 	case <-completionCtx.Done():
-		cli := completionCtx.Value("cli").(*upClient)
+		cli := completionCtx.Value(loginCliKey).(*upClient)
 		return cli
 	}
 }

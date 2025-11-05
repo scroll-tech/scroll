@@ -21,5 +21,11 @@
       "retry_wait_time_sec": 10,
       "connection_timeout_sec": 30
     }
-  }
+  },
+  "db": {
+    "driver_name": "postgres",
+    "dsn": "postgres://localhost/scroll?sslmode=disable",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  }  
 }

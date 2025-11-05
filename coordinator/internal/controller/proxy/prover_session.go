@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
 	ctypes "scroll-tech/common/types"
+
 	"scroll-tech/coordinator/internal/types"
 )
 
@@ -43,20 +43,20 @@ func NewProverManagerWithPersistent(size int, db *gorm.DB) *ProverManager {
 // get retrieves ProverSession for a given user key, returns empty if still not exists
 func (m *ProverManager) Get(userKey string) (ret *proverSession) {
 	defer func() {
-		r := ret
-		if r == nil {
+		if ret == nil {
 			var err error
-			r, err = m.persistent.Get(userKey)
+			ret, err = m.persistent.Get(userKey)
 			if err != nil {
 				log.Error("Get persistent layer for prover tokens fail", "error", err)
-			} else if r != nil {
-				r.persistent = m.persistent
+			} else if ret != nil {
+				fmt.Println("restore record from persistent", userKey, ret.proverToken)
+				ret.persistent = m.persistent
 			}
 		}
 
-		if r != nil {
+		if ret != nil {
 			m.Lock()
-			m.data[userKey] = r
+			m.data[userKey] = ret
 			m.Unlock()
 		}
 	}()
@@ -70,7 +70,7 @@ func (m *ProverManager) Get(userKey string) (ret *proverSession) {
 	}
 }
 
-func (m *ProverManager) GetOrCreate(userKey, cliName string) *proverSession {
+func (m *ProverManager) GetOrCreate(userKey string) *proverSession {
 
 	if ret := m.Get(userKey); ret != nil {
 		return ret
@@ -81,7 +81,6 @@ func (m *ProverManager) GetOrCreate(userKey, cliName string) *proverSession {
 
 	ret := &proverSession{
 		proverToken: make(map[string]loginToken),
-		CliName:     cliName,
 		persistent:  m.persistent,
 	}
 
@@ -101,7 +100,6 @@ type loginToken struct {
 
 // Client wraps an http client with a preset host for coordinator API calls
 type proverSession struct {
-	CliName    string
 	persistent *proverDataPersist
 
 	sync.RWMutex
@@ -126,7 +124,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 
 	if phase < curPhase {
 		// outdate login phase, give up
-		log.Debug("drop outdated proxy login attemp", "upstream", up, "cli", param.Message.ProverName, "phase", phase, "now", curPhase)
+		log.Debug("drop outdated proxy login attempt", "upstream", up, "cli", param.Message.ProverName, "phase", phase, "now", curPhase)
 		defer c.Unlock()
 		return c.proverToken[up], nil
 	}
@@ -150,7 +148,6 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	c.Unlock()
 
 	log.Debug("start proxy login process", "upstream", up, "cli", param.Message.ProverName)
-	c.CliName = param.Message.ProverName
 
 	cli := cliMgr.Client(ctx)
 	if cli == nil {
@@ -201,7 +198,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	return
 }
 
-const expireTolerant = 10 * time.Minute
+// const expireTolerant = 10 * time.Minute
 
 // ProxyLogin makes a POST request to /v1/proxy_login with LoginParameter
 func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, param *types.LoginParameter) error {
@@ -224,6 +221,7 @@ func (c *proverSession) ProxyLogin(ctx context.Context, cli Client, param *types
 func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParameter, cliMgr Client) (*ctypes.Response, error) {
 	up := cliMgr.Name()
 	c.RLock()
+	log.Debug("call get task", "up", up, "tokens", c.proverToken)
 	token := c.proverToken[up]
 	c.RUnlock()
 

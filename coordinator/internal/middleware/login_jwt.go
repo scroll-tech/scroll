@@ -14,10 +14,7 @@ import (
 )
 
 func nonIdendityAuthorizator(data interface{}, _ *gin.Context) bool {
-	if data == nil {
-		return false
-	}
-	return true
+	return data != nil
 }
 
 // LoginMiddleware jwt auth middleware

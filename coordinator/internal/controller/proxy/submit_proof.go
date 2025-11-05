@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/coordinator/internal/config"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -51,12 +52,18 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		return
 	}
 
-	publicKey := getSessionData(ctx)
+	publicKey, proverName := getSessionData(ctx)
 	if publicKey == "" {
 		return
 	}
 
 	session := spc.proverMgr.Get(publicKey)
+	if session == nil {
+		nerr := fmt.Errorf("can not get session for prover %s", proverName)
+		types.RenderFailure(ctx, types.InternalServerError, nerr)
+		return
+	}
+
 	upstream, realTaskID := upstreamFromTaskName(submitParameter.TaskID)
 	cli, existed := spc.clients[upstream]
 	if !existed {
@@ -65,21 +72,21 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
-	log.Debug("Start submitting", "up", upstream, "cli", session.CliName, "id", realTaskID, "status", submitParameter.Status)
+	log.Debug("Start submitting", "up", upstream, "cli", proverName, "id", realTaskID, "status", submitParameter.Status)
 	submitParameter.TaskID = realTaskID
 
 	resp, err := session.SubmitProof(ctx, &submitParameter, cli)
 	if err != nil {
-		log.Error("Upstream has error resp for submit", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upstream, "cli", session.CliName)
+		log.Error("Upstream has error resp for submit", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upstream, "cli", proverName)
 		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, err)
 		return
 	} else if resp.ErrCode != 0 {
-		log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upstream, "cli", session.CliName)
+		log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upstream, "cli", proverName)
 		// simply dispatch the error from upstream to prover
 		types.RenderFailure(ctx, resp.ErrCode, fmt.Errorf("%s", resp.ErrMsg))
 		return
 	} else {
-		log.Debug("Submit proof to upstream", "up", upstream, "cli", session.CliName, "taskID", realTaskID)
+		log.Debug("Submit proof to upstream", "up", upstream, "cli", proverName, "taskID", realTaskID)
 		spc.priorityUpstream.Delete(publicKey)
 		types.RenderSuccess(ctx, resp.Data)
 		return

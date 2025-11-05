@@ -74,7 +74,7 @@ func (p *proverDataPersist) Update(userKey, up string, login *types.LoginSchema)
 
 	return p.db.Clauses(
 		clause.OnConflict{
-			Columns:   []clause.Column{{Name: "public_key"}, {Name: "upstream"}}, // fixed typo
+			Columns:   []clause.Column{{Name: "public_key"}, {Name: "upstream"}},
 			DoUpdates: clause.AssignmentColumns([]string{"up_token", "expired"}),
 		},
 	).Create(&rec).Error

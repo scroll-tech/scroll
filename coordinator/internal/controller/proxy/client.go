@@ -1,3 +1,4 @@
+//nolint:errcheck,bodyclose // body is closed in the following handleHttpResp call
 package proxy
 
 import (
@@ -12,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 
 	ctypes "scroll-tech/common/types"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
 )
@@ -39,7 +41,7 @@ func (c *upClient) Token() string {
 	return c.loginToken
 }
 
-// need a parsable schema defination
+// need a parsable schema definition
 type loginSchema struct {
 	Time  string `json:"time"`
 	Token string `json:"token"`

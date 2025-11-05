@@ -41,7 +41,7 @@ type UpStream struct {
 	RetryCount           uint   `json:"retry_count"`
 	RetryWaitTime        uint   `json:"retry_wait_time_sec"`
 	ConnectionTimeoutSec uint   `json:"connection_timeout_sec"`
-	CompatibileMode      bool   `json:"compatibile_mode,omitempty"`
+	CompatibileMode      bool   `json:"compatible_mode,omitempty"`
 }
 
 // Config load configuration items.

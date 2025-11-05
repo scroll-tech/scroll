@@ -2,14 +2,12 @@ package test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/stretchr/testify/assert"
 
@@ -19,7 +17,6 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/proxy"
-	"scroll-tech/coordinator/internal/route"
 )
 
 func testProxyClientCfg() *config.ProxyClient {
@@ -76,63 +73,10 @@ func testProxyClient(t *testing.T) {
 	t.Logf("Client token: %s (%v)", client.Token(), client)
 }
 
-var (
-	proxyConf *config.ProxyConfig
-)
-
-func setupProxy(t *testing.T, proxyURL string, coordinatorURL []string) *http.Server {
-	var err error
-	assert.NoError(t, err)
-
-	coordinators := make(map[string]*config.UpStream)
-	for i, n := range coordinatorURL {
-		coordinators[fmt.Sprintf("coordinator_%d", i)] = testProxyUpStreamCfg(n)
-	}
-
-	tokenTimeout = 60
-	proxyConf = &config.ProxyConfig{
-		ProxyName: "test_proxy",
-		ProxyManager: &config.ProxyManager{
-			Verifier: &config.VerifierConfig{
-				MinProverVersion: "v4.4.89",
-				Verifiers: []config.AssetConfig{{
-					AssetsPath: "",
-					ForkName:   "euclidV2",
-				}},
-			},
-			Client: testProxyClientCfg(),
-			Auth: &config.Auth{
-				Secret:                     "proxy",
-				ChallengeExpireDurationSec: tokenTimeout,
-				LoginExpireDurationSec:     tokenTimeout,
-			},
-		},
-		Coordinators: coordinators,
-	}
-
-	router := gin.New()
-	proxy.InitController(proxyConf, nil, nil)
-	route.ProxyRoute(router, proxyConf, nil)
-	t.Log("proxy server url", proxyURL)
-	srv := &http.Server{
-		Addr:    proxyURL,
-		Handler: router,
-	}
-	go func() {
-		runErr := srv.ListenAndServe()
-		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
-			assert.NoError(t, runErr)
-		}
-	}()
-	time.Sleep(time.Second * 2)
-
-	return srv
-}
-
 func testProxyHandshake(t *testing.T) {
 	// Setup proxy http server.
 	proxyURL := randomURL()
-	proxyHttpHandler := setupProxy(t, proxyURL, []string{})
+	proxyHttpHandler := launchProxy(t, proxyURL, []string{}, false)
 	defer func() {
 		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
 	}()
@@ -152,13 +96,14 @@ func testProxyGetTask(t *testing.T) {
 	}()
 
 	proxyURL := urls[1]
-	proxyHttpHandler := setupProxy(t, proxyURL, []string{coordinatorURL})
+	proxyHttpHandler := launchProxy(t, proxyURL, []string{coordinatorURL}, false)
 	defer func() {
 		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
 	}()
 
 	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
-	code, msg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	chunkProver.setUseCacheToken(true)
+	code, _ := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, int(types.ErrCoordinatorEmptyProofData), code)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
@@ -181,13 +126,14 @@ func testProxyGetTask(t *testing.T) {
 func testProxyProof(t *testing.T) {
 	urls := randmURLBatch(3)
 	coordinatorURL0 := urls[0]
-	collector0, httpHandler0 := setupCoordinator(t, 3, coordinatorURL0)
+	setupCoordinatorDb(t)
+	collector0, httpHandler0 := launchCoordinator(t, 3, coordinatorURL0)
 	defer func() {
 		collector0.Stop()
 		httpHandler0.Shutdown(context.Background())
 	}()
 	coordinatorURL1 := urls[1]
-	collector1, httpHandler1 := setupCoordinator(t, 3, coordinatorURL1)
+	collector1, httpHandler1 := launchCoordinator(t, 3, coordinatorURL1)
 	defer func() {
 		collector1.Stop()
 		httpHandler1.Shutdown(context.Background())
@@ -198,11 +144,9 @@ func testProxyProof(t *testing.T) {
 	}
 
 	proxyURL := urls[2]
-	proxyHttpHandler := setupProxy(t, proxyURL, []string{coordinatorURL0, coordinatorURL1})
+	proxyHttpHandler := launchProxy(t, proxyURL, []string{coordinatorURL0, coordinatorURL1}, false)
 	defer func() {
-		fmt.Println("px end start")
 		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
-		fmt.Println("px end")
 	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
@@ -213,6 +157,7 @@ func testProxyProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL, message.ProofTypeChunk, version.Version)
+	chunkProver.setUseCacheToken(true)
 	task, code, msg := chunkProver.getProverTask(t, message.ProofTypeChunk)
 	assert.Empty(t, code)
 	if code == 0 {
@@ -266,6 +211,56 @@ func testProxyProof(t *testing.T) {
 	}
 }
 
+func testProxyPersistent(t *testing.T) {
+	urls := randmURLBatch(4)
+	coordinatorURL0 := urls[0]
+	setupCoordinatorDb(t)
+	collector0, httpHandler0 := launchCoordinator(t, 3, coordinatorURL0)
+	defer func() {
+		collector0.Stop()
+		httpHandler0.Shutdown(context.Background())
+	}()
+	coordinatorURL1 := urls[1]
+	collector1, httpHandler1 := launchCoordinator(t, 3, coordinatorURL1)
+	defer func() {
+		collector1.Stop()
+		httpHandler1.Shutdown(context.Background())
+	}()
+
+	setupProxyDb(t)
+	proxyURL1 := urls[2]
+	proxyHttpHandler := launchProxy(t, proxyURL1, []string{coordinatorURL0, coordinatorURL1}, true)
+	defer func() {
+		assert.NoError(t, proxyHttpHandler.Shutdown(context.Background()))
+	}()
+
+	proxyURL2 := urls[3]
+	proxyHttpHandler2 := launchProxy(t, proxyURL2, []string{coordinatorURL0, coordinatorURL1}, true)
+	defer func() {
+		assert.NoError(t, proxyHttpHandler2.Shutdown(context.Background()))
+	}()
+
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
+
+	chunkProver := newMockProver(t, "prover_chunk_test", proxyURL1, message.ProofTypeChunk, version.Version)
+	chunkProver.setUseCacheToken(true)
+	task, _, _ := chunkProver.getProverTask(t, message.ProofTypeChunk)
+	assert.NotNil(t, task)
+	taskFrom, _, _ := strings.Cut(task.TaskID, ":")
+	t.Log("get task from coordinator:", taskFrom)
+
+	chunkProver.resetConnection(proxyURL2)
+	task, _, _ = chunkProver.getProverTask(t, message.ProofTypeChunk)
+	assert.NotNil(t, task)
+	taskFrom2, _, _ := strings.Cut(task.TaskID, ":")
+	assert.Equal(t, taskFrom, taskFrom2)
+}
+
 func TestProxyClient(t *testing.T) {
 	testCompatibileMode = false
 	// Set up the test environment.
@@ -274,6 +269,7 @@ func TestProxyClient(t *testing.T) {
 	t.Run("TestProxyHandshake", testProxyHandshake)
 	t.Run("TestProxyGetTask", testProxyGetTask)
 	t.Run("TestProxyValidProof", testProxyProof)
+	t.Run("testProxyPersistent", testProxyPersistent)
 }
 
 func TestProxyClientCompatibleMode(t *testing.T) {
@@ -284,4 +280,5 @@ func TestProxyClientCompatibleMode(t *testing.T) {
 	t.Run("TestProxyHandshake", testProxyHandshake)
 	t.Run("TestProxyGetTask", testProxyGetTask)
 	t.Run("TestProxyValidProof", testProxyProof)
+	t.Run("testProxyPersistent", testProxyPersistent)
 }

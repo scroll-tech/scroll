@@ -30,12 +30,14 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/controller/proxy"
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/internal/route"
 )
 
 var (
-	conf *config.Config
+	conf      *config.Config
+	proxyConf *config.ProxyConfig
 
 	testApps *testcontainers.TestcontainerApps
 
@@ -90,14 +92,20 @@ func randmURLBatch(n int) []string {
 	return urls
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+func setupCoordinatorDb(t *testing.T) {
 	var err error
-	db, err = testApps.GetGormDBClient()
+	assert.NotNil(t, db, "setEnv must be called before")
+	// db, err = testApps.GetGormDBClient()
 
-	assert.NoError(t, err)
+	// assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+}
+
+func launchCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+
+	assert.NotNil(t, db, "db must be set")
 
 	tokenTimeout = 60
 	conf = &config.Config{
@@ -153,6 +161,71 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	return proofCollector, srv
 }
 
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+	setupCoordinatorDb(t)
+	return launchCoordinator(t, proversPerSession, coordinatorURL)
+}
+
+func setupProxyDb(t *testing.T) {
+	assert.NotNil(t, db, "setEnv must be called before")
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetModuleDB(sqlDB, "proxy"))
+}
+
+func launchProxy(t *testing.T, proxyURL string, coordinatorURL []string, usePersistent bool) *http.Server {
+	var err error
+	assert.NoError(t, err)
+
+	coordinators := make(map[string]*config.UpStream)
+	for i, n := range coordinatorURL {
+		coordinators[fmt.Sprintf("coordinator_%d", i)] = testProxyUpStreamCfg(n)
+	}
+
+	tokenTimeout = 60
+	proxyConf = &config.ProxyConfig{
+		ProxyName: "test_proxy",
+		ProxyManager: &config.ProxyManager{
+			Verifier: &config.VerifierConfig{
+				MinProverVersion: "v4.4.89",
+				Verifiers: []config.AssetConfig{{
+					AssetsPath: "",
+					ForkName:   "euclidV2",
+				}},
+			},
+			Client: testProxyClientCfg(),
+			Auth: &config.Auth{
+				Secret:                     "proxy",
+				ChallengeExpireDurationSec: tokenTimeout,
+				LoginExpireDurationSec:     tokenTimeout,
+			},
+		},
+		Coordinators: coordinators,
+	}
+
+	router := gin.New()
+	if usePersistent {
+		proxy.InitController(proxyConf, db, nil)
+	} else {
+		proxy.InitController(proxyConf, nil, nil)
+	}
+	route.ProxyRoute(router, proxyConf, nil)
+	t.Log("proxy server url", proxyURL)
+	srv := &http.Server{
+		Addr:    proxyURL,
+		Handler: router,
+	}
+	go func() {
+		runErr := srv.ListenAndServe()
+		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
+			assert.NoError(t, runErr)
+		}
+	}()
+	time.Sleep(time.Second * 2)
+
+	return srv
+}
+
 func setEnv(t *testing.T) {
 	if envSet {
 		t.Log("SetEnv is re-entried")
@@ -175,6 +248,7 @@ func setEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+	assert.NoError(t, migrate.MigrateModule(sqlDB, "proxy"))
 
 	batchOrm = orm.NewBatch(db)
 	chunkOrm = orm.NewChunk(db)

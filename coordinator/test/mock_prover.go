@@ -34,6 +34,8 @@ type mockProver struct {
 	privKey        *ecdsa.PrivateKey
 	proofType      message.ProofType
 	coordinatorURL string
+	token          string
+	useCacheToken  bool
 }
 
 func newMockProver(t *testing.T, proverName string, coordinatorURL string, proofType message.ProofType, version string) *mockProver {
@@ -48,6 +50,14 @@ func newMockProver(t *testing.T, proverName string, coordinatorURL string, proof
 		coordinatorURL: coordinatorURL,
 	}
 	return prover
+}
+
+func (r *mockProver) resetConnection(coordinatorURL string) {
+	r.coordinatorURL = coordinatorURL
+}
+
+func (r *mockProver) setUseCacheToken(enable bool) {
+	r.useCacheToken = enable
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
@@ -115,6 +125,7 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []t
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Empty(t, result.ErrMsg)
+	r.token = loginData.Token
 	return loginData.Token, 0, ""
 }
 
@@ -144,11 +155,14 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 
 func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*types.GetTaskSchema, int, string) {
 	// get task from coordinator
-	token, errCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(proofType)})
-	if errCode != 0 {
-		return nil, errCode, errMsg
+	if !r.useCacheToken || r.token == "" {
+		token, errCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(proofType)})
+		if errCode != 0 {
+			return nil, errCode, errMsg
+		}
+		assert.NotEmpty(t, token)
+		assert.Equal(t, token, r.token)
 	}
-	assert.NotEmpty(t, token)
 
 	type response struct {
 		ErrCode int                 `json:"errcode"`
@@ -160,7 +174,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", r.token)).
 		SetBody(map[string]interface{}{"universal": true, "prover_height": 100, "task_types": []int{int(proofType)}}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
@@ -174,11 +188,14 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*
 //nolint:unparam
 func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType) (int, string) {
 	// get task from coordinator
-	token, errCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(proofType)})
-	if errCode != 0 {
-		return errCode, errMsg
+	if !r.useCacheToken || r.token == "" {
+		token, errCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(proofType)})
+		if errCode != 0 {
+			return errCode, errMsg
+		}
+		assert.NotEmpty(t, token)
+		assert.Equal(t, token, r.token)
 	}
-	assert.NotEmpty(t, token)
 
 	type response struct {
 		ErrCode int                 `json:"errcode"`
@@ -190,7 +207,7 @@ func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType)
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", r.token)).
 		SetBody(map[string]interface{}{"prover_height": 100, "task_types": []int{int(proofType)}, "universal": true}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
@@ -249,10 +266,13 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		Universal: true,
 	}
 
-	token, authErrCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(message.ProofType(proverTaskSchema.TaskType))})
-	assert.Equal(t, authErrCode, 0)
-	assert.Equal(t, errMsg, "")
-	assert.NotEmpty(t, token)
+	if !r.useCacheToken || r.token == "" {
+		token, authErrCode, errMsg := r.connectToCoordinator(t, []types.ProverType{types.MakeProverType(message.ProofType(proverTaskSchema.TaskType))})
+		assert.Equal(t, authErrCode, 0)
+		assert.Equal(t, errMsg, "")
+		assert.NotEmpty(t, token)
+		assert.Equal(t, token, r.token)
+	}
 
 	submitProofData, err := json.Marshal(submitProof)
 	assert.NoError(t, err)
@@ -262,7 +282,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", r.token)).
 		SetBody(string(submitProofData)).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/submit_proof")

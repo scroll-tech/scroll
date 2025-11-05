@@ -3,8 +3,6 @@ package proxy
 import (
 	"fmt"
 
-	"time"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -23,7 +21,6 @@ type AuthController struct {
 	proverMgr *ProverManager
 }
 
-const upstreamConnTimeout = time.Second * 2
 const LoginParamCache = "login_param"
 const ProverTypesKey = "prover_types"
 const SignatureKey = "prover_signature"
@@ -59,7 +56,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return nil, fmt.Errorf("proxy do not support recursive login")
 	}
 
-	session := a.proverMgr.GetOrCreate(loginParam.PublicKey, loginParam.Message.ProverName)
+	session := a.proverMgr.GetOrCreate(loginParam.PublicKey)
 	log.Debug("start handling login", "cli", loginParam.Message.ProverName)
 
 	for _, cli := range a.clients {
@@ -131,6 +128,8 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 	if loginParam.PublicKey != "" {
 
 		c.Set(LoginParamCache, loginParam)
+		c.Set(types.ProverName, loginParam.Message.ProverName)
+		// publickey will also be set since we have specified public_key as identical key
 		return loginParam.PublicKey
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 
@@ -15,7 +16,7 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-func getSessionData(ctx *gin.Context) string {
+func getSessionData(ctx *gin.Context) (string, string) {
 
 	publicKeyData, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	publicKey, castOk := publicKeyData.(string)
@@ -24,10 +25,17 @@ func getSessionData(ctx *gin.Context) string {
 		log.Warn("get_task parameter fail", "error", nerr)
 
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
-		return ""
+		return "", ""
 	}
 
-	return publicKey
+	publicNameData, publicNameExist := ctx.Get(coordinatorType.ProverName)
+	publicName, castOk := publicNameData.(string)
+	if !publicNameExist || !castOk {
+		log.Error("no public name binding for unknown reason, but we still forward with name = 'unknown'", "data", publicNameData)
+		publicName = "unknown"
+	}
+
+	return publicKey, publicName
 }
 
 // PriorityUpstreamManager manages priority upstream mappings with thread safety
@@ -44,16 +52,26 @@ func NewPriorityUpstreamManager() *PriorityUpstreamManager {
 	}
 }
 
+// NewPriorityUpstreamManager creates a new PriorityUpstreamManager
+func NewPriorityUpstreamManagerPersistent(db *gorm.DB) *PriorityUpstreamManager {
+	return &PriorityUpstreamManager{
+		data:                  make(map[string]string),
+		proverPriorityPersist: NewProverPriorityPersist(db),
+	}
+}
+
 // Get retrieves the priority upstream for a given key
 func (p *PriorityUpstreamManager) Get(key string) (string, bool) {
+
 	p.RLock()
 	value, exists := p.data[key]
 	p.RUnlock()
 
 	if !exists {
 		if v, err := p.proverPriorityPersist.Get(key); err != nil {
-			log.Error("")
+			log.Error("persistent priority record read failure", "error", err, "key", key)
 		} else if v != "" {
+			log.Debug("restore record from persistent layer", "key", key, "value", v)
 			return v, true
 		}
 	}
@@ -63,6 +81,11 @@ func (p *PriorityUpstreamManager) Get(key string) (string, bool) {
 
 // Set sets the priority upstream for a given key
 func (p *PriorityUpstreamManager) Set(key, value string) {
+	defer func() {
+		if err := p.proverPriorityPersist.Update(key, value); err != nil {
+			log.Error("persistent priority record failure", "error", err, "key", key, "value", value)
+		}
+	}()
 	p.Lock()
 	defer p.Unlock()
 	p.data[key] = value
@@ -81,8 +104,8 @@ type GetTaskController struct {
 	clients          Clients
 	priorityUpstream *PriorityUpstreamManager
 
-	workingRnd           *rand.Rand
-	getTaskAccessCounter *prometheus.CounterVec
+	//workingRnd           *rand.Rand
+	//getTaskAccessCounter *prometheus.CounterVec
 }
 
 // NewGetTaskController create a get prover task controller
@@ -95,10 +118,10 @@ func NewGetTaskController(cfg *config.ProxyConfig, clients Clients, proverMgr *P
 	}
 }
 
-func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
-	// TODO: implement proxy get task access counter
-	return nil
-}
+// func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
+// 	// TODO: implement proxy get task access counter
+// 	return nil
+// }
 
 // GetTasks get assigned chunk/batch task
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
@@ -110,25 +133,30 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		return
 	}
 
-	publicKey := getSessionData(ctx)
+	publicKey, proverName := getSessionData(ctx)
 	if publicKey == "" {
 		return
 	}
 
 	session := ptc.proverMgr.Get(publicKey)
+	if session == nil {
+		nerr := fmt.Errorf("can not get session for prover %s", proverName)
+		types.RenderFailure(ctx, types.InternalServerError, nerr)
+		return
+	}
 
 	getTask := func(cli Client) (error, int) {
-		log.Debug("Start get task", "up", cli.Name(), "cli", session.CliName)
+		log.Debug("Start get task", "up", cli.Name(), "cli", proverName)
 		upStream := cli.Name()
 		resp, err := session.GetTask(ctx, &getTaskParameter, cli)
 		if err != nil {
-			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", session.CliName)
+			log.Error("Upstream error for get task", "error", err, "up", upStream, "cli", proverName)
 			return err, types.ErrCoordinatorGetTaskFailure
 		} else if resp.ErrCode != types.ErrCoordinatorEmptyProofData {
 
 			if resp.ErrCode != 0 {
 				// simply dispatch the error from upstream to prover
-				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", session.CliName)
+				log.Error("Upstream has error resp for get task", "code", resp.ErrCode, "msg", resp.ErrMsg, "up", upStream, "cli", proverName)
 				return fmt.Errorf("upstream failure %s:", resp.ErrMsg), resp.ErrCode
 			}
 
@@ -136,11 +164,11 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 			if err = resp.DecodeData(&task); err == nil {
 				task.TaskID = formUpstreamWithTaskName(upStream, task.TaskID)
 				ptc.priorityUpstream.Set(publicKey, upStream)
-				log.Debug("Upstream get task", "up", upStream, "cli", session.CliName, "taskID", task.TaskID, "taskType", task.TaskType)
+				log.Debug("Upstream get task", "up", upStream, "cli", proverName, "taskID", task.TaskID, "taskType", task.TaskType)
 				types.RenderSuccess(ctx, &task)
 				return nil, 0
 			} else {
-				log.Error("Upstream has wrong data for get task", "error", err, "up", upStream, "cli", session.CliName)
+				log.Error("Upstream has wrong data for get task", "error", err, "up", upStream, "cli", proverName)
 				return fmt.Errorf("decode task fail: %v", err), types.InternalServerError
 			}
 		}
@@ -148,11 +176,11 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		return nil, resp.ErrCode
 	}
 
-	// if the priority upsteam is set, we try this upstream first until get the task resp or no task resp
+	// if the priority upstream is set, we try this upstream first until get the task resp or no task resp
 	priorityUpstream, exist := ptc.priorityUpstream.Get(publicKey)
 	if exist {
 		cli := ptc.clients[priorityUpstream]
-		log.Debug("Try get task from priority stream", "up", priorityUpstream, "cli", session.CliName)
+		log.Debug("Try get task from priority stream", "up", priorityUpstream, "cli", proverName)
 		if cli != nil {
 			err, code := getTask(cli)
 			if err != nil {
@@ -163,10 +191,10 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 				return
 			}
 			// only continue if get empty task (the task has been removed in upstream)
-			log.Debug("can not get priority task from upstream", "up", priorityUpstream, "cli", session.CliName)
+			log.Debug("can not get priority task from upstream", "up", priorityUpstream, "cli", proverName)
 
 		} else {
-			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream, "cli", session.CliName)
+			log.Warn("A upstream is removed or lost for some reason while running", "up", priorityUpstream, "cli", proverName)
 		}
 	}
 	ptc.priorityUpstream.Delete(publicKey)
@@ -190,7 +218,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		}
 	}
 
-	log.Debug("get no task from upstream", "cli", session.CliName)
+	log.Debug("get no task from upstream", "cli", proverName)
 	// if all get task failed, throw empty proof resp
 	types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, fmt.Errorf("get empty prover task"))
 }
