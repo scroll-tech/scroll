@@ -1,7 +1,10 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -21,6 +24,7 @@ type AuthController struct {
 	proverMgr *ProverManager
 }
 
+const upstreamConnTimeout = time.Second * 5
 const LoginParamCache = "login_param"
 const ProverTypesKey = "prover_types"
 const SignatureKey = "prover_signature"
@@ -59,10 +63,13 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	session := a.proverMgr.GetOrCreate(loginParam.PublicKey)
 	log.Debug("start handling login", "cli", loginParam.Message.ProverName)
 
+	loginCtx, cf := context.WithTimeout(context.Background(), upstreamConnTimeout)
+	var wg sync.WaitGroup
 	for _, cli := range a.clients {
-
+		wg.Add(1)
 		go func(cli Client) {
-			if err := session.ProxyLogin(c, cli, &loginParam.LoginParameter); err != nil {
+			defer wg.Done()
+			if err := session.ProxyLogin(loginCtx, cli, &loginParam.LoginParameter); err != nil {
 				log.Error("proxy login failed during token cache update",
 					"userKey", loginParam.PublicKey,
 					"upstream", cli.Name(),
@@ -70,6 +77,11 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 			}
 		}(cli)
 	}
+	go func(cliName string) {
+		wg.Wait()
+		cf()
+		log.Debug("first login attempt has completed", "cli", cliName)
+	}(loginParam.Message.ProverName)
 
 	return loginParam.LoginParameter, nil
 }

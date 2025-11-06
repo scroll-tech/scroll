@@ -123,10 +123,10 @@ func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) {
 func (cliMgr *ClientManager) Reset(cli *upClient) {
 	cliMgr.cachedCli.Lock()
 	if cliMgr.cachedCli.cli == cli {
+		log.Info("cached client cleared", "name", cliMgr.name)
 		cliMgr.cachedCli.cli = nil
 	}
 	cliMgr.cachedCli.Unlock()
-	log.Info("cached client cleared", "name", cliMgr.name)
 }
 
 func (cliMgr *ClientManager) Name() string {

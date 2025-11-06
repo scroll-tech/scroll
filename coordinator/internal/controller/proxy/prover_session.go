@@ -162,6 +162,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	}
 
 	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
+		log.Info("up stream has expired, renew upstream connection", "up", up)
 		cliMgr.Reset(cli)
 		cli = cliMgr.Client(ctx)
 		if cli == nil {
