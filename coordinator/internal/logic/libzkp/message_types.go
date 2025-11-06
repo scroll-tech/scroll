@@ -2,6 +2,7 @@ package libzkp
 
 import (
 	"fmt"
+
 	"scroll-tech/common/types/message"
 )
 
