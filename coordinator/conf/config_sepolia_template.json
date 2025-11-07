@@ -7,10 +7,11 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
-      "min_prover_version": "v4.4.45",
+      "min_prover_version": "v4.4.33",
+      "features": "legacy_witness",
       "verifiers": [
         {
-          "assets_path": "cloak",
+          "assets_path": "assets",
           "fork_name": "feynman"
         }
       ]
@@ -23,10 +24,10 @@
     "maxIdleNum": 20
   },
   "l2": {
-    "validium_mode": true,
-    "chain_id": 5343513301,
+    "validium_mode": false,
+    "chain_id": 534351,
     "l2geth": {
-      "endpoint": "http://cloak-xen-sequencer.sepolia.scroll.tech:8545/"
+      "endpoint": "https://scroll-sepolia.g.alchemy.com/v2/uFWDEQJgyTiUYSbbIQlbf"
     }
   },
   "auth": {
