@@ -206,9 +206,13 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 		return nil, nil, fmt.Errorf("no expectedVk found from hardfork %s", schema.HardForkName)
 	}
 
-	decryptionKey, err := hex.DecodeString(b.cfg.Sequencer.DecryptionKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("sequencer decryption key hex-decoding failed")
+	var decryptionKey []byte
+	if b.cfg.L2.ValidiumMode {
+		var err error
+		decryptionKey, err = hex.DecodeString(b.cfg.Sequencer.DecryptionKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("sequencer decryption key hex-decoding failed")
+		}
 	}
 
 	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk, decryptionKey)

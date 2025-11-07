@@ -10,7 +10,7 @@ pub use chunk_interpreter::ChunkInterpreter;
 pub use scroll_zkvm_types::task::ProvingTask;
 
 use crate::{
-    proofs::{self, BatchProofMetadata, BundleProofMetadata, ChunkProofMetadata},
+    proofs::{BatchProofMetadata, BundleProofMetadata, ChunkProofMetadata},
     utils::panic_catch,
 };
 use sbv_primitives::B256;
@@ -21,21 +21,17 @@ fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>
     Ok(bincode::serde::encode_to_vec(task, config)?)
 }
 
-fn check_aggregation_proofs<Metadata>(
-    proofs: &[proofs::WrappedProof<Metadata>],
+fn check_aggregation_proofs<Metadata: MultiVersionPublicInputs>(
+    metadata: &[Metadata],
     version: Version,
 ) -> eyre::Result<()>
-where
-    Metadata: proofs::ProofMetadata,
 {
     panic_catch(|| {
-        for w in proofs.windows(2) {
-            w[1].metadata
-                .pi_hash_info()
-                .validate(w[0].metadata.pi_hash_info(), version);
+        for w in metadata.windows(2) {
+            w[1].validate(&w[0], version);
         }
     })
-    .map_err(|e| eyre::eyre!("Chunk data validation failed: {}", e))?;
+    .map_err(|e| eyre::eyre!("Metadata validation failed: {}", e))?;
 
     Ok(())
 }
