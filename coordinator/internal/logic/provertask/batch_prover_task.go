@@ -257,7 +257,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	var chunkProofs []*message.OpenVMChunkProof
-	var chunkInfos []*message.ChunkInfo
+	//	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
 		var proof message.OpenVMChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
@@ -265,24 +265,24 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
-		chunkInfo := message.ChunkInfo{
-			ChainID:            bp.cfg.L2.ChainID,
-			PrevStateRoot:      common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot:      common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:       common.HexToHash(chunk.WithdrawRoot),
-			DataHash:           common.HexToHash(chunk.Hash),
-			PrevMsgQueueHash:   common.HexToHash(chunk.PrevL1MessageQueueHash),
-			PostMsgQueueHash:   common.HexToHash(chunk.PostL1MessageQueueHash),
-			IsPadding:          false,
-			InitialBlockNumber: proof.MetaData.ChunkInfo.InitialBlockNumber,
-			BlockCtxs:          proof.MetaData.ChunkInfo.BlockCtxs,
-			TxDataLength:       proof.MetaData.ChunkInfo.TxDataLength,
-			EncryptionKey:      proof.MetaData.ChunkInfo.EncryptionKey,
-		}
-		chunkInfos = append(chunkInfos, &chunkInfo)
+		// chunkInfo := message.ChunkInfo{
+		// 	ChainID:            bp.cfg.L2.ChainID,
+		// 	PrevStateRoot:      common.HexToHash(chunk.ParentChunkStateRoot),
+		// 	PostStateRoot:      common.HexToHash(chunk.StateRoot),
+		// 	WithdrawRoot:       common.HexToHash(chunk.WithdrawRoot),
+		// 	DataHash:           common.HexToHash(chunk.Hash),
+		// 	PrevMsgQueueHash:   common.HexToHash(chunk.PrevL1MessageQueueHash),
+		// 	PostMsgQueueHash:   common.HexToHash(chunk.PostL1MessageQueueHash),
+		// 	IsPadding:          false,
+		// 	InitialBlockNumber: proof.MetaData.ChunkInfo.InitialBlockNumber,
+		// 	BlockCtxs:          proof.MetaData.ChunkInfo.BlockCtxs,
+		// 	TxDataLength:       proof.MetaData.ChunkInfo.TxDataLength,
+		// 	EncryptionKey:      proof.MetaData.ChunkInfo.EncryptionKey,
+		// }
+		// chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs, hardForkName)
+	taskDetail, err := bp.getBatchTaskDetail(batch, chunkProofs, hardForkName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -310,7 +310,7 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.OpenVMChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []*message.OpenVMChunkProof, hardForkName string) (*message.BatchTaskDetail, error) {
 	// Get the version byte.
 	version, err := bp.version(hardForkName)
 	if err != nil {
@@ -319,7 +319,6 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 
 	taskDetail := &message.BatchTaskDetail{
 		Version:     version,
-		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
 		ForkName:    hardForkName,
 	}
