@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -220,11 +221,21 @@ func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
 
 // GetL2GethClient returns a ethclient by dialing running L2Geth
 func (t *TestcontainerApps) GetL2GethClient() (*ethclient.Client, error) {
+
+	rpcCli, err := t.GetL2Client()
+	if err != nil {
+		return nil, err
+	}
+	return ethclient.NewClient(rpcCli), nil
+}
+
+// GetL2GethClient returns a rpc client by dialing running L2Geth
+func (t *TestcontainerApps) GetL2Client() (*rpc.Client, error) {
 	endpoint, err := t.GetL2GethEndPoint()
 	if err != nil {
 		return nil, err
 	}
-	client, err := ethclient.Dial(endpoint)
+	client, err := rpc.Dial(endpoint)
 	if err != nil {
 		return nil, err
 	}

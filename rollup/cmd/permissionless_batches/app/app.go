@@ -10,8 +10,8 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/urfave/cli/v2"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/observability"
@@ -91,12 +91,13 @@ func action(ctx *cli.Context) error {
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
 	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	l2client, err := rpc.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L2geth at RPC=%s: %w", cfg.L2Config.Endpoint, err)
 	}
 
-	l2Watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
+	l2Watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress,
+		cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, cfg.L2Config.RelayerConfig.ValidiumMode, registry)
 
 	recovery := permissionless_batches.NewRecovery(subCtx, cfg, genesis, db, chunkProposer, batchProposer, bundleProposer, l2Watcher)
 
