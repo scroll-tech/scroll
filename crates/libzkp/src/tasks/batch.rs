@@ -7,6 +7,7 @@ use scroll_zkvm_types::{
         BatchHeaderValidium, BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8,
         LegacyBatchWitness, ReferenceHeader, N_BLOB_BYTES,
     },
+    chunk::ChunkInfo,
     public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
@@ -234,15 +235,28 @@ impl BatchProvingTask {
             }
         };
 
+        // patch: ensure block_hash field is ZERO for scroll domain
+        let chunk_infos = self
+                .chunk_proofs
+                .iter()
+                .map(|p| 
+                    if version.domain == Domain::Scroll {
+                        ChunkInfo {
+                            prev_blockhash: B256::ZERO,
+                            post_blockhash: B256::ZERO,
+                            ..p.metadata.chunk_info.clone()
+                        }
+                    } else {
+                        p.metadata.chunk_info.clone()
+                    }
+            ).collect();
+
+
         BatchWitness {
             version: version.as_version_byte(),
             fork_name: version.fork,
             chunk_proofs: self.chunk_proofs.iter().map(|proof| proof.into()).collect(),
-            chunk_infos: self
-                .chunk_proofs
-                .iter()
-                .map(|p| p.metadata.chunk_info.clone())
-                .collect(),
+            chunk_infos,
             blob_bytes: self.blob_bytes.clone(),
             reference_header,
             point_eval_witness,

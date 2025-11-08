@@ -33,34 +33,7 @@ impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
     ) -> Result<Self> {
         let mut block_witnesses = Vec::new();
         for block_hash in value.block_hashes {
-            let mut witness =
-                interpreter.try_fetch_block_witness(block_hash, block_witnesses.last())?;
-            if witness.header.number == 1 {
-                use std::str::FromStr;
-                let hacked_state_root = match witness.chain_id {
-                    // cloak-xen-sequencer.sepolia
-                    5343513301 => Some(B256::from_str(
-                        "0x0711f02d6f85b0597c4705298e01ee27159fdd8bd8bdeda670ae8b9073091246",
-                    )?),
-                    // cloak-etherfi-sequencer.sepolia
-                    5343513302 => Some(B256::from_str(
-                        "0x7b44ea23770dda8810801779eb6847d56be0399e35de7c56465ccf8b7578ddf6",
-                    )?),
-                    // cloak-shiga-sequencer.sepolia
-                    5343513303 => Some(B256::from_str(
-                        "0x05973227854ac82c22f164ed3d4510b7df516a0eecdfd9bed5f2446efc9994b9",
-                    )?),
-                    // cloak-xen-sequencer.mainnet
-                    5343523301 => Some(B256::from_str(
-                        "0x8da1aaf41660ddf7870ab5ff4f6a3ab4b2e652568d341ede87ada56aad5fb097",
-                    )?),
-                    _ => None,
-                };
-                if let Some(hacked_state_root) = hacked_state_root {
-                    witness.prev_state_root = hacked_state_root;
-                    tracing::warn!("hack genesis state root {:?} for cloak testnet to work around a wrong gensis configuration", witness.prev_state_root);
-                }
-            }
+            let witness = interpreter.try_fetch_block_witness(block_hash, block_witnesses.last())?;
             block_witnesses.push(witness);
         }
 

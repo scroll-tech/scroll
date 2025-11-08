@@ -14,7 +14,7 @@ edition = "2021"
 homepage = "https://scroll.io"
 readme = "README.md"
 repository = "https://github.com/scroll-tech/scroll"
-version = "4.5.47"
+version = "4.6.3"
 
 [workspace.dependencies]
 scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
