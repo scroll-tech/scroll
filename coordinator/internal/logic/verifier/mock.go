@@ -9,7 +9,7 @@ import (
 )
 
 // NewVerifier Sets up a mock verifier.
-func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+func NewVerifier(cfg *config.VerifierConfig, _ bool) (*Verifier, error) {
 	return &Verifier{
 		cfg:         cfg,
 		OpenVMVkMap: map[string]struct{}{"mock_vk": {}},
