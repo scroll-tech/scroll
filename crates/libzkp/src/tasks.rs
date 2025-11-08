@@ -24,8 +24,7 @@ fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>
 fn check_aggregation_proofs<Metadata: MultiVersionPublicInputs>(
     metadata: &[Metadata],
     version: Version,
-) -> eyre::Result<()>
-{
+) -> eyre::Result<()> {
     panic_catch(|| {
         for w in metadata.windows(2) {
             w[1].validate(&w[0], version);

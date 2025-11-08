@@ -33,7 +33,8 @@ impl TryFromWithInterpreter<ChunkTask> for ChunkProvingTask {
     ) -> Result<Self> {
         let mut block_witnesses = Vec::new();
         for block_hash in value.block_hashes {
-            let witness = interpreter.try_fetch_block_witness(block_hash, block_witnesses.last())?;
+            let witness =
+                interpreter.try_fetch_block_witness(block_hash, block_witnesses.last())?;
             block_witnesses.push(witness);
         }
 

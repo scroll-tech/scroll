@@ -237,20 +237,20 @@ impl BatchProvingTask {
 
         // patch: ensure block_hash field is ZERO for scroll domain
         let chunk_infos = self
-                .chunk_proofs
-                .iter()
-                .map(|p| 
-                    if version.domain == Domain::Scroll {
-                        ChunkInfo {
-                            prev_blockhash: B256::ZERO,
-                            post_blockhash: B256::ZERO,
-                            ..p.metadata.chunk_info.clone()
-                        }
-                    } else {
-                        p.metadata.chunk_info.clone()
+            .chunk_proofs
+            .iter()
+            .map(|p| {
+                if version.domain == Domain::Scroll {
+                    ChunkInfo {
+                        prev_blockhash: B256::ZERO,
+                        post_blockhash: B256::ZERO,
+                        ..p.metadata.chunk_info.clone()
                     }
-            ).collect();
-
+                } else {
+                    p.metadata.chunk_info.clone()
+                }
+            })
+            .collect();
 
         BatchWitness {
             version: version.as_version_byte(),
@@ -269,7 +269,10 @@ impl BatchProvingTask {
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BatchInfo::from(&witness);
-        super::check_aggregation_proofs(witness.chunk_infos.as_slice(), Version::from(self.version))?;
+        super::check_aggregation_proofs(
+            witness.chunk_infos.as_slice(),
+            Version::from(self.version),
+        )?;
 
         Ok(metadata)
     }

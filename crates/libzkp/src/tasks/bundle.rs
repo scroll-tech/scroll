@@ -63,7 +63,10 @@ impl BundleProvingTask {
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BundleInfo::from(&witness);
-        super::check_aggregation_proofs(witness.batch_infos.as_slice(), Version::from(self.version))?;
+        super::check_aggregation_proofs(
+            witness.batch_infos.as_slice(),
+            Version::from(self.version),
+        )?;
 
         Ok(metadata)
     }
