@@ -6,6 +6,7 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+axiom-sdk.workspace = true
 scroll-zkvm-types.workspace = true
 scroll-zkvm-prover.workspace = true
 scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "05648db" }
@@ -19,11 +20,12 @@ eyre.workspace = true
 futures = "0.3.30"
 futures-util = "0.3"
 
-reqwest = { version = "0.12.4", features = ["gzip", "stream"] }
+reqwest = { version = "0.12", features = ["gzip", "stream"] }
 reqwest-middleware = "0.3"
 reqwest-retry = "0.5"
 hex = "0.4.3"
 
+jiff.workspace = true
 rand = "0.8.5"
 tokio = "1.37.0"
 async-trait = "0.1"
