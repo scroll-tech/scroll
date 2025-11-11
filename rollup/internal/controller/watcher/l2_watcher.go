@@ -9,7 +9,6 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/eth"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -26,6 +25,7 @@ type L2WatcherClient struct {
 	event.Feed
 
 	*ethclient.Client
+	rpcCli *rpc.Client
 
 	l2BlockOrm *orm.L2Block
 
@@ -42,10 +42,11 @@ type L2WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, validiumMode bool, reg prometheus.Registerer) *L2WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *rpc.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, validiumMode bool, reg prometheus.Registerer) *L2WatcherClient {
 	return &L2WatcherClient{
 		ctx:    ctx,
-		Client: client,
+		Client: ethclient.NewClient(client),
+		rpcCli: client,
 
 		l2BlockOrm: orm.NewL2Block(db),
 
@@ -117,7 +118,7 @@ func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64
 
 			if count > 0 {
 				log.Info("Fetching encrypted messages in validium mode")
-				txs, err = w.GetL1MessagesInBlock(context.Background(), block.Hash(), eth.QueryModeSynced)
+				err = w.rpcCli.CallContext(ctx, &txs, "scroll_getL1MessagesInBlock", block.Hash(), "synced")
 				if err != nil {
 					return fmt.Errorf("failed to get L1 messages: %v, block hash: %v", err, block.Hash().Hex())
 				}

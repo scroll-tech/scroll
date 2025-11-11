@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rollup/l1"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
@@ -69,10 +70,11 @@ func action(ctx *cli.Context) error {
 	observability.Server(ctx, db)
 
 	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	l2client, err := rpc.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
+	l2ethClient := ethclient.NewClient(l2client)
 
 	genesisPath := ctx.String(utils.Genesis.Name)
 	genesis, err := utils.ReadGenesis(genesisPath)
@@ -100,7 +102,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.FusakaTimestamp must be set")
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2ethClient, db, cfg.L2Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
@@ -144,7 +146,7 @@ func action(ctx *cli.Context) error {
 
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2ethClient, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
