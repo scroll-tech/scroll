@@ -52,6 +52,7 @@ func action(ctx *cli.Context) error {
 
 	var db *gorm.DB
 	if dbCfg := cfg.ProxyManager.DB; dbCfg != nil {
+		log.Info("Apply persistent storage", "via", cfg.ProxyManager.DB.DSN)
 		db, err = database.InitDB(cfg.ProxyManager.DB)
 		if err != nil {
 			log.Crit("failed to init db connection", "err", err)
