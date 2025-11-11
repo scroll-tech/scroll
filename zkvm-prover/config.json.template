@@ -29,5 +29,12 @@
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/",
       "workspace_path": ".work/feynman"
     }
+  },
+  "axiom_api_key": "<axiom api key>",
+  "axiom_programs": {
+    "<vk hex string>": {
+      "program_id": "prg_<axiom program id>",
+      "config_id": "cfg_<axiom config id>",
+    }
   }
 }

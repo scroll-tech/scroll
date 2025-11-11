@@ -24,10 +24,12 @@ use std::{collections::HashMap, fs::File, path::Path};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AxiomProverConfig {
+    #[serde(rename = "axiom_api_key")]
     pub api_key: String,
     pub sdk_config: SdkConfig,
     // vk to program mapping
-    pub program: HashMap<String, AxiomProgram>,
+    #[serde(rename = "axiom_programs")]
+    pub programs: HashMap<String, AxiomProgram>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -119,7 +121,7 @@ impl AxiomProver {
     fn get_program(&self, vk: &[u8]) -> eyre::Result<AxiomProgram> {
         let vk = hex::encode(vk);
         self.config
-            .program
+            .programs
             .get(vk.as_str())
             .cloned()
             .ok_or_else(|| eyre::eyre!("no axiom program configured for vk: {vk}"))
