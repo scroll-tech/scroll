@@ -18,13 +18,12 @@ type DABatch interface {
 }
 
 type daBatchValidiumV1 struct {
-	Version           CodecVersion `json:"version"`
-	BatchIndex        uint64       `json:"batch_index"`
-	BlobVersionedHash common.Hash  `json:"blob_versioned_hash"`
-	ParentBatchHash   common.Hash  `json:"parent_batch_hash"`
-	PostStateRoot     common.Hash  `json:"post_state_root"`
-	WithDrawRoot      common.Hash  `json:"withdraw_root"`
-	Commitment        common.Hash  `json:"commitment"`
+	Version         CodecVersion `json:"version"`
+	BatchIndex      uint64       `json:"batch_index"`
+	ParentBatchHash common.Hash  `json:"parent_batch_hash"`
+	PostStateRoot   common.Hash  `json:"post_state_root"`
+	WithDrawRoot    common.Hash  `json:"withdraw_root"`
+	Commitment      common.Hash  `json:"commitment"`
 }
 
 type daBatchValidium struct {

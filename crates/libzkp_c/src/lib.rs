@@ -159,7 +159,13 @@ pub unsafe extern "C" fn gen_universal_task(
         let pre_task_str = c_char_to_str(task);
         let cli = l2geth::get_client();
         let decryption_key = if decryption_key_len > 0 {
-            assert_eq!(decryption_key_len, 32, "len(decryption_key) != 32");
+            if decryption_key_len != 32 {
+                tracing::error!(
+                    "gen_universal_task received {}-byte decryption key; expected 32",
+                    decryption_key_len
+                );
+                return failed_handling_result();
+            }
             Some(std::slice::from_raw_parts(
                 decryption_key,
                 decryption_key_len,
