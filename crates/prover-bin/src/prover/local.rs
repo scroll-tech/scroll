@@ -135,7 +135,7 @@ impl LocalProverConfig {
         serde_json::from_reader(reader).map_err(|e| eyre::eyre!(e))
     }
 
-    pub fn from_file(file_name: String) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(file_name: P) -> Result<Self> {
         let file = File::open(file_name)?;
         Self::from_reader(&file)
     }
@@ -225,7 +225,7 @@ impl ProvingService for LocalProver {
 
 static GLOBAL_ASSET_URLS: LazyLock<HashMap<String, HashMap<String, url::Url>>> =
     LazyLock::new(|| {
-        const ASSETS_JSON: &str = include_str!("../assets_url_preset.json");
+        const ASSETS_JSON: &str = include_str!("../../assets_url_preset.json");
         serde_json::from_str(ASSETS_JSON).expect("Failed to parse assets_url_preset.json")
     });
 

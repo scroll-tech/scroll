@@ -20,7 +20,7 @@ use scroll_proving_sdk::{
 };
 use scroll_zkvm_types::proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fs::File, path::Path};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AxiomProverConfig {
@@ -37,7 +37,21 @@ pub struct AxiomProgram {
 }
 
 pub struct AxiomProver {
-    config: Arc<AxiomProverConfig>,
+    config: AxiomProverConfig,
+}
+
+impl AxiomProverConfig {
+    pub fn from_reader<R>(reader: R) -> eyre::Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| eyre::eyre!(e))
+    }
+
+    pub fn from_file<P: AsRef<Path>>(file_name: P) -> eyre::Result<Self> {
+        let file = File::open(file_name)?;
+        Self::from_reader(&file)
+    }
 }
 
 #[async_trait]
@@ -78,10 +92,8 @@ impl ProvingService for AxiomProver {
 }
 
 impl AxiomProver {
-    pub fn new(config: impl Into<Arc<AxiomProverConfig>>) -> Self {
-        Self {
-            config: config.into(),
-        }
+    pub fn new(config: AxiomProverConfig) -> Self {
+        Self { config }
     }
 
     async fn make_axiom_request<R: Send + 'static>(

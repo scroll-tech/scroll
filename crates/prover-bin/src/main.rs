@@ -2,20 +2,28 @@ mod prover;
 mod types;
 mod zk_circuits_handler;
 
+use crate::prover::ProverKind;
 use clap::{ArgAction, Parser, Subcommand};
-use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::{types::ProofType, ProverBuilder},
     utils::{get_version, init_tracing},
 };
-use std::{fs::File, io::BufReader, path::Path};
+use std::{
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
 struct Args {
+    /// Prover kind
+    #[arg(long = "prover.kind", value_enum, default_value_t = ProverKind::Local)]
+    prover_kind: ProverKind,
+
     /// Path of config file
     #[arg(long = "config", default_value = "conf/config.json")]
-    config_file: String,
+    config_file: PathBuf,
 
     #[arg(long = "forkname")]
     fork_name: Option<String>,
@@ -58,9 +66,7 @@ async fn main() -> eyre::Result<()> {
         std::process::exit(0);
     }
 
-    let cfg = LocalProverConfig::from_file(args.config_file)?;
-    let sdk_config = cfg.sdk_config.clone();
-    let local_prover = LocalProver::new(cfg.clone());
+    let (sdk_config, prover) = args.prover_kind.create_from_file(&args.config_file)?;
 
     match args.command {
         Some(Commands::Handle { task_path }) => {
@@ -68,7 +74,7 @@ async fn main() -> eyre::Result<()> {
             let reader = BufReader::new(file);
             let handle_set: HandleSet = serde_json::from_reader(reader)?;
 
-            let prover = ProverBuilder::new(sdk_config, local_prover)
+            let prover = ProverBuilder::new(sdk_config, prover)
                 .build()
                 .await
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
@@ -98,7 +104,7 @@ async fn main() -> eyre::Result<()> {
             println!("All done!");
         }
         None => {
-            let prover = ProverBuilder::new(sdk_config, local_prover)
+            let prover = ProverBuilder::new(sdk_config, prover)
                 .build()
                 .await
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
