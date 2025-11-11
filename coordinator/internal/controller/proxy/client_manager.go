@@ -11,6 +11,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/version"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/types"
 )
@@ -193,7 +195,7 @@ func (cliMgr *ClientManager) genLoginParam(challenge string) (*types.LoginParame
 		Message: types.Message{
 			Challenge:          challenge,
 			ProverName:         cliMgr.cliCfg.ProxyName,
-			ProverVersion:      cliMgr.cliCfg.ProxyVersion,
+			ProverVersion:      version.Version,
 			ProverProviderType: types.ProverProviderTypeProxy,
 			ProverTypes:        []types.ProverType{}, // Default empty
 			VKs:                []string{},           // Default empty
