@@ -18,8 +18,6 @@ pub(crate) fn witness_use_legacy_mode() -> bool {
     unsafe { LEGACY_WITNESS_ENCODING }
 }
 
-pub const VALIDIUM_VERSION: u8 = 0b01000001;
-
 pub fn set_dynamic_feature(feats: &str) {
     for feat_s in feats.split(':') {
         match feat_s.trim().to_lowercase().as_str() {

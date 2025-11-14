@@ -38,6 +38,16 @@ pub enum BatchHeaderV {
     V7_8(BatchHeaderV7),
 }
 
+impl core::fmt::Display for BatchHeaderV {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BatchHeaderV::V6(_) => write!(f, "V6"),
+            BatchHeaderV::V7_8(_) => write!(f, "V7_8"),
+            BatchHeaderV::Validium(_) => write!(f, "Validium"),
+        }
+    }
+}
+
 impl BatchHeaderV {
     pub fn batch_hash(&self) -> B256 {
         match self {
@@ -50,28 +60,28 @@ impl BatchHeaderV {
     pub fn must_v6_header(&self) -> &BatchHeaderV6 {
         match self {
             BatchHeaderV::V6(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v6", self),
         }
     }
 
     pub fn must_v7_header(&self) -> &BatchHeaderV7 {
         match self {
             BatchHeaderV::V7_8(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v7", self),
         }
     }
 
     pub fn must_v8_header(&self) -> &BatchHeaderV8 {
         match self {
             BatchHeaderV::V7_8(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v8", self),
         }
     }
 
     pub fn must_validium_header(&self) -> &BatchHeaderValidium {
         match self {
             BatchHeaderV::Validium(h) => &h.header,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be validium", self),
         }
     }
 }
