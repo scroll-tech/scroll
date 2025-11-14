@@ -1,15 +1,24 @@
 .PHONY: clean setup_db test_tool all check_vars
 
+include conf/.make.env
 GOOSE_CMD?=goose
-BEGIN_BLOCK?=10973711
-END_BLOCK?=10973721
+ifndef BEGIN_BLOCK
+$(error BEGIN_BLOCK is not set. Define it in .make.env or pass BEGIN_BLOCK=<start_block>)
+endif
+ifndef END_BLOCK
+$(error END_BLOCK is not set. Define it in .make.env or pass END_BLOCK=<end_block>)
+endif
 
 all: setup_db test_tool import_data
 
 clean:
 	docker compose down
 
-check_vars:
+conf:
+	@echo "Please link sepolia or cloak-xen as conf"
+	exit 1
+
+check_vars: | conf
 	@if [ -z "$(BEGIN_BLOCK)" ] || [ -z "$(END_BLOCK)" ]; then \
         echo "Error: BEGIN_BLOCK and END_BLOCK must be defined"; \
         echo "Usage: make import_data BEGIN_BLOCK=<start_block> END_BLOCK=<end_block>"; \
@@ -33,7 +42,7 @@ setup_db: clean
         fi; \
     done	
 	${GOOSE_CMD} up
-	GOOSE_MIGRATION_DIR=./ ${GOOSE_CMD} up-to 100
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
@@ -41,7 +50,11 @@ test_tool:
 build/bin/e2e_tool: test_tool
 
 import_data_euclid: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config ./config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
+	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
 
 import_data: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config ./config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}    
+	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}
+
+coordinator_setup:
+	$(MAKE) -C ../../coordinator localsetup
+	cp -f conf/genesis.json ../../coordinator/build/bin/conf

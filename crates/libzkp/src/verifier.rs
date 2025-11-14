@@ -41,6 +41,7 @@ pub trait ProofVerifier {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
+    pub version: u8,
     pub fork_name: String,
     pub assets_path: String,
 }
@@ -61,14 +62,18 @@ pub fn init(config: VerifierConfig) {
     for cfg in &config.circuits {
         let canonical_fork_name = cfg.fork_name.to_lowercase();
 
-        let verifier = Verifier::new(&cfg.assets_path, canonical_fork_name.as_str().into());
+        let verifier = Verifier::new(&cfg.assets_path, cfg.version);
         let ret = verifiers.insert(canonical_fork_name, Arc::new(Mutex::new(verifier)));
         assert!(
             ret.is_none(),
             "DO NOT init the same fork {} twice",
             cfg.fork_name
         );
-        tracing::info!("load verifier config for fork {}", cfg.fork_name);
+        tracing::info!(
+            "load verifier config for fork {} (ver {})",
+            cfg.fork_name,
+            cfg.version
+        );
     }
 
     let ret = VERIFIERS.set(verifiers).is_ok();

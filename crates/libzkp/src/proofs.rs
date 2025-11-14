@@ -8,9 +8,10 @@ use scroll_zkvm_types::{
     bundle::BundleInfo,
     chunk::ChunkInfo,
     proof::{EvmProof, OpenVmEvmProof, ProofEnum, StarkProof},
-    public_inputs::{ForkName, MultiVersionPublicInputs},
+    public_inputs::MultiVersionPublicInputs,
     types_agg::AggregationInput,
     utils::{serialize_vk, vec_as_base64},
+    version,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -181,13 +182,13 @@ impl<Metadata: ProofMetadata> WrappedProof<Metadata> {
     /// Sanity checks on the wrapped proof:
     ///
     /// - pi_hash computed in host does in fact match pi_hash computed in guest
-    pub fn pi_hash_check(&self, fork_name: ForkName) -> bool {
+    pub fn pi_hash_check(&self, ver: version::Version) -> bool {
         let proof_pi = self.proof.public_values();
 
         let expected_pi = self
             .metadata
             .pi_hash_info()
-            .pi_hash_by_fork(fork_name)
+            .pi_hash_by_version(ver)
             .0
             .as_ref()
             .iter()
@@ -252,6 +253,7 @@ mod tests {
                 batch_hash: B256::repeat_byte(4),
                 withdraw_root: B256::repeat_byte(5),
                 msg_queue_hash: B256::repeat_byte(6),
+                encryption_key: None,
             };
             let bundle_pi_hash = bundle_info.pi_hash(ForkName::EuclidV1);
             BundleProofMetadata {

@@ -1049,7 +1049,15 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
 
-	version := encoding.CodecVersion(batch.Batch.CodecVersion)
+	var version uint8
+	if encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV8 {
+		// Validium version line starts with v1,
+		// but rollup-relayer behavior follows v8.
+		version = 1
+	} else {
+		return nil, 0, 0, fmt.Errorf("unexpected codec version %d for validium mode", batch.Batch.CodecVersion)
+	}
+
 	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)

@@ -8,6 +8,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -27,6 +28,7 @@ var (
 
 	// l2geth client
 	l2Cli *ethclient.Client
+	l2Rpc *rpc.Client
 
 	// block trace
 	block1 *encoding.Block
@@ -62,8 +64,9 @@ func setupEnv(t *testing.T) (err error) {
 	}
 
 	// Create l2geth client.
-	l2Cli, err = testApps.GetL2GethClient()
+	l2Rpc, err = testApps.GetL2Client()
 	assert.NoError(t, err)
+	l2Cli = ethclient.NewClient(l2Rpc)
 
 	block1 = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
 	block2 = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")

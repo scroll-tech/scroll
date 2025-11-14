@@ -8,6 +8,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
@@ -138,6 +139,26 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 	// TODO: This is a temporary solution, we might use a larger commitment in the future
 	lastBlock := b.Blocks[len(b.Blocks)-1]
 	commitment := lastBlock.Header.Hash()
+	stateRoot := b.StateRoot()
+
+	// Temporary workaround for the wrong genesis state root configuration issue.
+	if lastBlock.Header.Number.Uint64() == 0 {
+		if commitment == common.HexToHash("0x76a8e1359fe1a51ec3917ca98dec95ba005f1a73bcdbc2c7f87c7683e828fbb1") && stateRoot == common.HexToHash("0x08d535cc60f40af5dd3b31e0998d7567c2d568b224bed2ba26070aeb078d1339") {
+			// cloak-xen/sepolia
+			stateRoot = common.HexToHash("0x0711f02d6f85b0597c4705298e01ee27159fdd8bd8bdeda670ae8b9073091246")
+		} else if commitment == common.HexToHash("0x8005a02271085eaded2565f3e252013cd9d3cd0a4775d89f9ba4224289671276") && stateRoot == common.HexToHash("0x08d535cc60f40af5dd3b31e0998d7567c2d568b224bed2ba26070aeb078d1339") {
+			// cloak-xen/mainnet
+			stateRoot = common.HexToHash("0x8da1aaf41660ddf7870ab5ff4f6a3ab4b2e652568d341ede87ada56aad5fb097")
+		} else if commitment == common.HexToHash("0xa7e50dfc812039410c2009c74cdcb0c0797aa5485dec062985eaa43b17d333ea") && stateRoot == common.HexToHash("0x08d535cc60f40af5dd3b31e0998d7567c2d568b224bed2ba26070aeb078d1339") {
+			// cloak-etherfi/sepolia
+			stateRoot = common.HexToHash("0x7b44ea23770dda8810801779eb6847d56be0399e35de7c56465ccf8b7578ddf6")
+		} else if commitment == common.HexToHash("0xeccf4fab24f8b5dd3b72667c6bf5e28b17ccffdea01e3e5c08f393edaa9e7657") && stateRoot == common.HexToHash("0x08d535cc60f40af5dd3b31e0998d7567c2d568b224bed2ba26070aeb078d1339") {
+			// cloak-shiga/sepolia
+			stateRoot = common.HexToHash("0x05973227854ac82c22f164ed3d4510b7df516a0eecdfd9bed5f2446efc9994b9")
+		}
+
+		log.Warn("Using genesis state root", "stateRoot", stateRoot.Hex())
+	}
 
 	// Batch header field sizes
 	const (
@@ -164,10 +185,22 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		commitmentOffset   = withdrawRootOffset + withdrawRootSize
 	)
 
-	batchBytes[versionOffset] = uint8(codecVersion)                                                                        // version
+	var version uint8
+	if codecVersion == encoding.CodecV8 {
+		// Validium version line starts with v1,
+		// but rollup-relayer behavior follows v8.
+		version = 1
+	} else if codecVersion == encoding.CodecV0 {
+		// Special case for genesis batch
+		version = 0
+	} else {
+		return nil, common.Hash{}, fmt.Errorf("unexpected codec version %d for batch %v in validium mode", codecVersion, b.Index)
+	}
+
+	batchBytes[versionOffset] = version                                                                                    // version
 	binary.BigEndian.PutUint64(batchBytes[indexOffset:indexOffset+indexSize], b.Index)                                     // batch index
 	copy(batchBytes[parentHashOffset:parentHashOffset+parentHashSize], b.ParentBatchHash[0:parentHashSize])                // parentBatchHash
-	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], b.StateRoot().Bytes()[0:stateRootSize])                // postStateRoot
+	copy(batchBytes[stateRootOffset:stateRootOffset+stateRootSize], stateRoot.Bytes()[0:stateRootSize])                    // postStateRoot
 	copy(batchBytes[withdrawRootOffset:withdrawRootOffset+withdrawRootSize], b.WithdrawRoot().Bytes()[0:withdrawRootSize]) // postWithdrawRoot
 	copy(batchBytes[commitmentOffset:commitmentOffset+commitmentSize], commitment[0:commitmentSize])                       // data commitment
 
