@@ -14,7 +14,11 @@ all: setup_db test_tool import_data
 clean:
 	docker compose down
 
-check_vars:
+conf:
+	@echo "Please link sepolia or cloak-xen as conf"
+	exit 1
+
+check_vars: | conf
 	@if [ -z "$(BEGIN_BLOCK)" ] || [ -z "$(END_BLOCK)" ]; then \
         echo "Error: BEGIN_BLOCK and END_BLOCK must be defined"; \
         echo "Usage: make import_data BEGIN_BLOCK=<start_block> END_BLOCK=<end_block>"; \
@@ -49,4 +53,8 @@ import_data_euclid: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
 
 import_data: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}    
+	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}
+
+coordinator_setup:
+	$(MAKE) -C ../../coordinator localsetup
+	cp -f conf/genesis.json ../../coordinator/build/bin/conf
