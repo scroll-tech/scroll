@@ -24,6 +24,8 @@ impl UniversalHandler {
             path_app_config,
             path_app_exe,
             segment_len,
+            //TODO:
+            is_openvm_v13: true,
         };
 
         let prover = Prover::setup(config, None)?;
