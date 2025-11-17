@@ -20,7 +20,7 @@ import (
 
 var app *cli.App
 var cfg *config
-var codecCfg encoding.CodecVersion = encoding.CodecV8
+var codecCfg encoding.CodecVersion = encoding.CodecV9
 
 var outputNumFlag = cli.StringFlag{
 	Name:  "counts",
@@ -144,6 +144,8 @@ func action(ctx *cli.Context) error {
 			codecCfg = encoding.CodecV7
 		case 8:
 			codecCfg = encoding.CodecV8
+		case 9:
+			codecCfg = encoding.CodecV9
 		default:
 			return fmt.Errorf("invalid codec version %d", codecFl)
 		}
