@@ -18,7 +18,10 @@ require (
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
 
-replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20251017081611-2bc7a5482dcc // It's a hotfix for the header hash incompatibility issue, pls change this with caution
+// Hotfix for header hash incompatibility issue.
+// PR: https://github.com/scroll-tech/go-ethereum/pull/1133/
+// CAUTION: Requires careful handling. When upgrading go-ethereum, ensure this fix remains up-to-date in this branch.
+replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20251117071111-47c22325665e
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
