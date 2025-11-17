@@ -11,11 +11,11 @@
       "verifiers": [
         {
           "assets_path": "assets",
-          "fork_name": "euclidV2"
+          "fork_name": "feynman"
         },        
         {
           "assets_path": "assets",
-          "fork_name": "feynman"
+          "fork_name": "galileo"
         }
       ]
     }

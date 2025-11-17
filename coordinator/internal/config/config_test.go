@@ -23,7 +23,7 @@ func TestConfig(t *testing.T) {
 				"min_prover_version": "v4.4.45",
 				"verifiers": [{
 					"assets_path": "assets",
-					"fork_name": "feynman"
+					"fork_name": "galileo",
 				}]
 			},
 			"max_verifier_workers": 4

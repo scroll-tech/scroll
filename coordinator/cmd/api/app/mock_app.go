@@ -91,11 +91,13 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		ProversPerSession: 1,
 		Verifier: &coordinatorConfig.VerifierConfig{
 			MinProverVersion: "v4.4.89",
-			Verifiers: []coordinatorConfig.AssetConfig{{
-				AssetsPath: "",
-				ForkName:   "feynman",
+			Verifiers: []coordinatorConfig.AssetConfig{
+				{
+					AssetsPath: "",
+					ForkName:   "galileo",
+				},
 			},
-			}},
+		},
 		BatchCollectionTimeSec: 60,
 		ChunkCollectionTimeSec: 60,
 		SessionAttempts:        10,
