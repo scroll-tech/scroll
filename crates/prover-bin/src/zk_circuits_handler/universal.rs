@@ -3,12 +3,18 @@ use std::path::Path;
 use super::CircuitsHandler;
 use async_trait::async_trait;
 use eyre::Result;
-use scroll_proving_sdk::prover::ProofType;
 use scroll_zkvm_prover::{Prover, ProverConfig};
 use scroll_zkvm_types::ProvingTask;
+use libzkp::ProvintTaskExt;
 use tokio::sync::Mutex;
 pub struct UniversalHandler {
     prover: Prover,
+}
+
+// additional config dispatched with proving task
+#[derive(Debug, Default)]
+pub(crate) struct TaskConfig {
+    pub is_openvm_v13: bool
 }
 
 /// Safe for current usage as `CircuitsHandler` trait (protected inside of Mutex and NEVER extract
@@ -16,7 +22,7 @@ pub struct UniversalHandler {
 unsafe impl Send for UniversalHandler {}
 
 impl UniversalHandler {
-    pub fn new(workspace_path: impl AsRef<Path>, _proof_type: ProofType) -> Result<Self> {
+    pub fn new(workspace_path: impl AsRef<Path>, cfg: &TaskConfig) -> Result<Self> {
         let path_app_exe = workspace_path.as_ref().join("app.vmexe");
         let path_app_config = workspace_path.as_ref().join("openvm.toml");
         let segment_len = Some((1 << 22) - 100);
@@ -24,8 +30,7 @@ impl UniversalHandler {
             path_app_config,
             path_app_exe,
             segment_len,
-            //TODO:
-            is_openvm_v13: true,
+            is_openvm_v13: cfg.is_openvm_v13,
         };
 
         let prover = Prover::setup(config, None)?;
@@ -38,8 +43,13 @@ impl UniversalHandler {
         &mut self.prover
     }
 
-    pub fn get_task_from_input(input: &str) -> Result<ProvingTask> {
-        Ok(serde_json::from_str(input)?)
+    pub fn get_task_from_input(input: &str) -> Result<(ProvingTask, TaskConfig)> {
+        let task_ext : ProvintTaskExt = serde_json::from_str(input)?;
+        let cfg = TaskConfig {
+            is_openvm_v13: task_ext.use_openvm_13,
+        };
+
+        Ok((task_ext.into(), cfg))
     }
 }
 

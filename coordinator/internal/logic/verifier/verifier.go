@@ -82,9 +82,6 @@ func NewVerifier(cfg *config.VerifierConfig, useValidiumMode bool) (*Verifier, e
 		return nil, err
 	}
 
-	if cfg.Features != "" {
-		libzkp.SetDynamicFeature(cfg.Features)
-	}
 	libzkp.InitVerifier(string(configBytes))
 
 	v := &Verifier{

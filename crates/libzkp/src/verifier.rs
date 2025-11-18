@@ -44,6 +44,7 @@ pub struct CircuitConfig {
     pub version: u8,
     pub fork_name: String,
     pub assets_path: String,
+    pub features: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +52,7 @@ pub struct VerifierConfig {
     pub circuits: Vec<CircuitConfig>,
 }
 
-type HardForkName = String;
+pub(crate) type HardForkName = String;
 
 type VerifierType = Arc<Mutex<dyn ProofVerifier + Send>>;
 static VERIFIERS: OnceLock<HashMap<HardForkName, VerifierType>> = OnceLock::new();

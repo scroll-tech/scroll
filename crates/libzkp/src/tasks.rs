@@ -35,6 +35,29 @@ fn check_aggregation_proofs<Metadata: MultiVersionPublicInputs>(
     Ok(())
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ProvintTaskExt {
+    #[serde(flatten)]
+    task: ProvingTask,
+    #[serde(default)]
+    pub use_openvm_13: bool,
+}
+
+impl From<ProvintTaskExt> for ProvingTask {
+    fn from(wrap_t: ProvintTaskExt) -> Self {
+        wrap_t.task
+    }
+}
+
+impl ProvintTaskExt {
+    pub fn new(task: ProvingTask) -> Self {
+        Self {
+            task,
+            use_openvm_13: false,
+        }
+    }
+}
+
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(
     task: ChunkProvingTask,

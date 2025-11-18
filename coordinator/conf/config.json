@@ -10,6 +10,7 @@
       "min_prover_version": "v4.4.45",
       "verifiers": [
         {
+          "features": "legacy_witness:openvm_13",
           "assets_path": "assets",
           "fork_name": "feynman"
         },        

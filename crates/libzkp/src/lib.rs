@@ -1,36 +1,56 @@
 pub mod proofs;
 pub mod tasks;
+pub use tasks::ProvintTaskExt;
 pub mod verifier;
 pub use verifier::{TaskType, VerifierConfig};
+use verifier::HardForkName;
 mod utils;
 
 use sbv_primitives::B256;
 use scroll_zkvm_types::utils::vec_as_base64;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
-use std::path::Path;
+use std::{path::Path, sync::OnceLock, collections::HashMap};
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
-/// global features: use legacy encoding for witness
-static mut LEGACY_WITNESS_ENCODING: bool = false;
-
-pub(crate) fn witness_use_legacy_mode() -> bool {
-    unsafe { LEGACY_WITNESS_ENCODING }
+pub(crate) fn witness_use_legacy_mode(fork_name: &str) -> eyre::Result<bool> {
+    ADDITIONAL_FEATURES.get().and_then(
+            |features|features.get(fork_name)
+        ).map(|cfg|cfg.legacy_witness_encoding)
+        .ok_or_else(||eyre::eyre!("can not found features setting for unrecognized fork {}", fork_name))
 }
 
-pub fn set_dynamic_feature(feats: &str) {
-    for feat_s in feats.split(':') {
-        match feat_s.trim().to_lowercase().as_str() {
-            "legacy_witness" => {
-                tracing::info!("set witness encoding for legacy mode");
-                unsafe {
-                    // the function is only called while initialize step
-                    LEGACY_WITNESS_ENCODING = true;
+#[derive(Debug, Default, Clone)]
+struct FeatureOptions {
+    legacy_witness_encoding: bool,
+    for_openvm_13_prover: bool,
+}
+
+static ADDITIONAL_FEATURES: OnceLock<HashMap<HardForkName, FeatureOptions>> = OnceLock::new();
+
+impl FeatureOptions {
+    pub fn new(feats: &str) -> Self {
+        let mut ret : Self = Default::default();
+
+        for feat_s in feats.split(':') {
+            match feat_s.trim().to_lowercase().as_str() {
+                "legacy_witness" => {
+                    tracing::info!("set witness encoding for legacy mode");
+                    ret.legacy_witness_encoding = true;
                 }
+                "openvm_13" => {
+                    tracing::info!("set prover should use openvm 13");
+                    ret.for_openvm_13_prover = true;
+                }
+                s => tracing::warn!("unrecognized dynamic feature: {s}"),
             }
-            s => tracing::warn!("unrecognized dynamic feature: {s}"),
         }
+        ret
     }
+}
+
+pub fn set_dynamic_feature(_: &str) {
+    tracing::error!("call deprecated method");
 }
 
 /// Turn the coordinator's chunk task into a json string for formal chunk proving
@@ -148,11 +168,22 @@ pub fn gen_universal_task(
     };
 
     u_task.vk = Vec::from(expected_vk);
+    let fork_name = u_task.fork_name.clone();
+    let mut u_task_ext = ProvintTaskExt::new(u_task);
+
+    // set additional settings from global features
+    if let Some(cfg) = ADDITIONAL_FEATURES.get().and_then(
+            |features|features.get(&fork_name)
+        ){
+        u_task_ext.use_openvm_13 = cfg.for_openvm_13_prover;        
+    } else {
+        tracing::warn!("can not found features setting for unrecognized fork {}", fork_name);
+    }
 
     Ok((
         pi_hash,
         serde_json::to_string(&metadata)?,
-        serde_json::to_string(&u_task)?,
+        serde_json::to_string(&u_task_ext)?,
     ))
 }
 
@@ -183,7 +214,16 @@ pub fn gen_wrapped_proof(proof_json: &str, metadata: &str, vk: &[u8]) -> eyre::R
 /// init verifier
 pub fn verifier_init(config: &str) -> eyre::Result<()> {
     let cfg: VerifierConfig = serde_json::from_str(config)?;
-    verifier::init(cfg);
+    ADDITIONAL_FEATURES.set(
+        HashMap::from_iter(cfg.circuits.iter().map(|config|{
+            tracing::info!("start setting features [{}] for fork {}", config.features, config.fork_name);
+            (config.fork_name.to_lowercase(), FeatureOptions::new(&config.features))
+            },
+        )),
+    ).map_err(|c|eyre::eyre!("Fail to init additional features: {c:?}"))?;
+
+    verifier::init(cfg); 
+
     Ok(())
 }
 

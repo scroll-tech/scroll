@@ -99,7 +99,7 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
 
     fn try_from(value: ChunkProvingTask) -> Result<Self> {
         let witness = value.build_guest_input();
-        let serialized_witness = if crate::witness_use_legacy_mode() {
+        let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
             let legacy_witness = LegacyChunkWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
         } else {
