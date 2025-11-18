@@ -29,6 +29,7 @@ type rustCircuitConfig struct {
 	Version    uint   `json:"version"`
 	ForkName   string `json:"fork_name"`
 	AssetsPath string `json:"assets_path"`
+	Features   string `json:"features,omitempty"`
 }
 
 var validiumMode bool
@@ -47,6 +48,7 @@ func newRustCircuitConfig(cfg config.AssetConfig) *rustCircuitConfig {
 		Version:    uint(ver),
 		AssetsPath: cfg.AssetsPath,
 		ForkName:   cfg.ForkName,
+		Features:   cfg.Features,
 	}
 }
 

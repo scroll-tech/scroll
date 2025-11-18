@@ -227,13 +227,15 @@ pub fn verifier_init(config: &str) -> eyre::Result<()> {
     ADDITIONAL_FEATURES
         .set(HashMap::from_iter(cfg.circuits.iter().map(|config| {
             tracing::info!(
-                "start setting features [{}] for fork {}",
+                "start setting features [{:?}] for fork {}",
                 config.features,
                 config.fork_name
             );
             (
                 config.fork_name.to_lowercase(),
-                FeatureOptions::new(&config.features),
+                config.features.as_ref()
+                .map(|features| FeatureOptions::new(features.as_str()))
+                .unwrap_or_default()
             )
         })))
         .map_err(|c| eyre::eyre!("Fail to init additional features: {c:?}"))?;
