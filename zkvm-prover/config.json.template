@@ -8,11 +8,7 @@
       "retry_wait_time_sec": 10,
       "connection_timeout_sec": 1800
     },
-    "l2geth": {
-      "endpoint": "<the url of rpc endpoint>"
-    },
     "prover": {
-      "circuit_type": 2,
       "supported_proof_types": [
         1,
         2,
