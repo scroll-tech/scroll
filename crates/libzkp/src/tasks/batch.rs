@@ -252,9 +252,8 @@ impl BatchProvingTask {
             //
             // We handle the different STF versions here however build the same batch header since
             // that type does not change. The batch header's version byte constructed in the
-            // coordinator actually defines the STF version (v8 or v9) and we can derive the
-            // hard-fork (feynman or galileo) and the codec (simply v8 in this case) from the
-            // version byte.
+            // coordinator actually defines the STF version (v7, v8 or v9) and we can derive the
+            // hard-fork (feynman or galileo) and the codec from the version byte.
             //
             // Refer [`scroll_zkvm_types::public_inputs::Version`].
             (Domain::Scroll, STFVersion::V8) | (Domain::Scroll, STFVersion::V9) => {
