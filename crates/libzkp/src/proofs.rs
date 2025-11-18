@@ -140,8 +140,6 @@ impl ProofMetadata for ChunkProofMetadata {
 pub struct BatchProofMetadata {
     /// The batch information describing the list of chunks.
     pub batch_info: BatchInfo,
-    /// The [`scroll_zkvm_types::batch::BatchHeader`]'s digest.
-    pub batch_hash: B256,
 }
 
 impl ProofMetadata for BatchProofMetadata {

@@ -3,9 +3,9 @@ use sbv_core::BlockWitness;
 use sbv_primitives::{types::consensus::BlockHeader, B256};
 use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
+    public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    public_inputs::{Version, MultiVersionPublicInputs},
 };
 
 use super::chunk_interpreter::*;

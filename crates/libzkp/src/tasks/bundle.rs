@@ -2,7 +2,7 @@ use eyre::Result;
 use sbv_primitives::B256;
 use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
-    public_inputs::{Version, MultiVersionPublicInputs},
+    public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -33,11 +33,13 @@ impl BundleProvingTask {
                 .first()
                 .expect(BUNDLE_SANITY_MSG)
                 .metadata
+                .batch_info
                 .batch_hash,
             self.batch_proofs
                 .last()
                 .expect(BUNDLE_SANITY_MSG)
                 .metadata
+                .batch_info
                 .batch_hash,
         );
 

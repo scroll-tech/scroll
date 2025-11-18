@@ -7,7 +7,7 @@ pub use verifier::{TaskType, VerifierConfig};
 mod utils;
 
 use sbv_primitives::B256;
-use scroll_zkvm_types::utils::vec_as_base64;
+use scroll_zkvm_types::{utils::vec_as_base64, version::Version};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use std::{collections::HashMap, path::Path, sync::OnceLock};
@@ -138,35 +138,56 @@ pub fn gen_universal_task(
             let mut task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
             // normailze fork name field in task
             task.fork_name = task.fork_name.to_lowercase();
+            let version = Version::from(task.version);
             // always respect the fork_name_str (which has been normalized) being passed
             // if the fork_name wrapped in task is not match, consider it a malformed task
             if fork_name_str != task.fork_name.as_str() {
                 eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
             }
+            if fork_name_str != version.fork.as_str() {
+                eyre::bail!(
+                    "given task version, expected fork={fork_name_str}, got={version_fork}",
+                    version_fork = version.fork.as_str()
+                );
+            }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_chunk_task(task, fork_name_str.into()))
+                utils::panic_catch(move || gen_universal_chunk_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
         x if x == TaskType::Batch as i32 => {
             let mut task = serde_json::from_str::<BatchProvingTask>(task_json)?;
             task.fork_name = task.fork_name.to_lowercase();
+            let version = Version::from(task.version);
             if fork_name_str != task.fork_name.as_str() {
                 eyre::bail!("fork name in batch task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
             }
+            if fork_name_str != version.fork.as_str() {
+                eyre::bail!(
+                    "given task version, expected fork={fork_name_str}, got={version_fork}",
+                    version_fork = version.fork.as_str()
+                );
+            }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_batch_task(task, fork_name_str.into()))
+                utils::panic_catch(move || gen_universal_batch_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
         x if x == TaskType::Bundle as i32 => {
             let mut task = serde_json::from_str::<BundleProvingTask>(task_json)?;
             task.fork_name = task.fork_name.to_lowercase();
+            let version = Version::from(task.version);
             if fork_name_str != task.fork_name.as_str() {
                 eyre::bail!("fork name in bundle task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
             }
+            if fork_name_str != version.fork.as_str() {
+                eyre::bail!(
+                    "given task version, expected fork={fork_name_str}, got={version_fork}",
+                    version_fork = version.fork.as_str()
+                );
+            }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_bundle_task(task, fork_name_str.into()))
+                utils::panic_catch(move || gen_universal_bundle_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
@@ -233,9 +254,11 @@ pub fn verifier_init(config: &str) -> eyre::Result<()> {
             );
             (
                 config.fork_name.to_lowercase(),
-                config.features.as_ref()
-                .map(|features| FeatureOptions::new(features.as_str()))
-                .unwrap_or_default()
+                config
+                    .features
+                    .as_ref()
+                    .map(|features| FeatureOptions::new(features.as_str()))
+                    .unwrap_or_default(),
             )
         })))
         .map_err(|c| eyre::eyre!("Fail to init additional features: {c:?}"))?;
