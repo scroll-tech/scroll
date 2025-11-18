@@ -10,9 +10,11 @@ import (
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/database"
+	ctypes "scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -46,6 +48,7 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	if err != nil {
 		return nil, err
 	}
+
 	ret := &importRecord{}
 	// Create a new random source with the provided seed
 	source := rand.NewSource(seed)
@@ -62,6 +65,9 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	log.Info("separated chunk", "border", chkSep)
 	head := beginBlk
 	lastMsgHash := common.Hash{}
+	if err := initLeadingChunk(ctx, db, beginBlk, endBlk, lastMsgHash); err != nil {
+		return nil, err
+	}
 
 	ormChks := make([]*orm.Chunk, 0, chkNum)
 	encChks := make([]*encoding.Chunk, 0, chkNum)
@@ -116,6 +122,73 @@ func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, 
 	}
 
 	return ret, nil
+}
+
+func initLeadingChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64, prevMsgQueueHash common.Hash) error {
+	blockOrm := orm.NewL2Block(db)
+	if beginBlk <= 1 {
+		log.Info("start from genesis, no need to insert leading chunk")
+		return nil
+	}
+
+	var l1MsgPoppedBefore uint64
+	blks, err := blockOrm.GetL2BlocksGEHeight(ctx, beginBlk, int(endBlk-beginBlk+1))
+	if err != nil {
+		return err
+	}
+	for i, block := range blks {
+		for _, tx := range block.Transactions {
+			if tx.Type == types.L1MessageTxType {
+				l1MsgPoppedBefore = tx.Nonce
+				log.Info("search first l1 nonce", "index", l1MsgPoppedBefore, "blk", beginBlk+uint64(i))
+				break
+			}
+		}
+		if l1MsgPoppedBefore != 0 {
+			break
+		}
+	}
+
+	if l1MsgPoppedBefore == 0 {
+		log.Info("no l1 message in target blks, no need for leading chunk")
+		return nil
+	}
+
+	prevBlks, err := blockOrm.GetL2BlocksGEHeight(ctx, beginBlk-1, 1)
+	if err != nil {
+		log.Error("get prev block fail, we also need at least 1 block before selected range", "need block", beginBlk-1, "err", err)
+		return err
+	}
+
+	// we use InsertTestChunkForProposerTool to insert leading chunk, which do not calculate l1 message
+	// so we simply exclude l1 in this hacked chunk
+	prevBlk := prevBlks[0]
+	var trimLen int
+	for _, tx := range prevBlk.Transactions {
+		if tx.Type != types.L1MessageTxType {
+			prevBlk.Transactions[trimLen] = tx
+			trimLen++
+		}
+	}
+	prevBlk.Transactions = prevBlk.Transactions[:trimLen]
+
+	postHash, err := encoding.MessageQueueV2ApplyL1MessagesFromBlocks(prevMsgQueueHash, prevBlks)
+	if err != nil {
+		return err
+	}
+	chunkOrm := orm.NewChunk(db)
+
+	log.Info("Insert leading chunk with prev block", "msgPoppedBefore", l1MsgPoppedBefore)
+	leadingChunk, err := chunkOrm.InsertTestChunkForProposerTool(ctx, &encoding.Chunk{
+		Blocks:                 prevBlks,
+		PrevL1MessageQueueHash: prevMsgQueueHash,
+		PostL1MessageQueueHash: postHash,
+	}, codecCfg, l1MsgPoppedBefore)
+	if err != nil {
+		return err
+	}
+
+	return chunkOrm.UpdateProvingStatus(ctx, leadingChunk.Hash, ctypes.ProvingTaskProvedDEPRECATED)
 }
 
 func importChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64, prevMsgQueueHash common.Hash) (*orm.Chunk, *encoding.Chunk, error) {
@@ -183,9 +256,13 @@ func importBatch(ctx context.Context, db *gorm.DB, chks []*orm.Chunk, encChks []
 		ParentBatchHash:            parentHash,
 		Chunks:                     encChks,
 		Blocks:                     blks,
+		PrevL1MessageQueueHash:     encChks[0].PrevL1MessageQueueHash,
+		PostL1MessageQueueHash:     encChks[len(encChks)-1].PostL1MessageQueueHash,
 	}
 
-	dbBatch, err := batchOrm.InsertBatch(ctx, batch, codecCfg, utils.BatchMetrics{})
+	dbBatch, err := batchOrm.InsertBatch(ctx, batch, codecCfg, utils.BatchMetrics{
+		ValidiumMode: cfg.ValidiumMode,
+	})
 	if err != nil {
 		return nil, err
 	}

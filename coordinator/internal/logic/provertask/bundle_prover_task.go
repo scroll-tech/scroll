@@ -273,7 +273,14 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		batchProofs = append(batchProofs, &proof)
 	}
 
+	// Get the version byte.
+	version, err := bp.version(hardForkName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode version byte: %w", err)
+	}
+
 	taskDetail := message.BundleTaskDetail{
+		Version:     version,
 		BatchProofs: batchProofs,
 		ForkName:    hardForkName,
 	}

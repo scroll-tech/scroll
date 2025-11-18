@@ -14,13 +14,12 @@ edition = "2021"
 homepage = "https://scroll.io"
 readme = "README.md"
 repository = "https://github.com/scroll-tech/scroll"
-version = "4.5.47"
+version = "4.6.3"
 
 [workspace.dependencies]
-# include compatiblity fixing from "fix/coordinator"
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", branch = "feat/axiom_cli_sdk" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", branch = "feat/axiom_cli_sdk" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", branch = "feat/axiom_cli_sdk", features = ["scroll"] }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master" }

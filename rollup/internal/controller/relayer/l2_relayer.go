@@ -488,7 +488,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV7, encoding.CodecV8:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
 		if r.cfg.ValidiumMode {
 			if len(batchesToSubmit) != 1 {
 				log.Error("validium mode only supports committing one batch at a time", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "batches count", len(batchesToSubmit))
@@ -747,7 +747,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV7, encoding.CodecV8:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
 		if r.cfg.ValidiumMode {
 			calldata, err = r.constructFinalizeBundlePayloadValidium(dbBatch, endChunk, aggProof)
 			if err != nil {
@@ -1049,7 +1049,15 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 	lastChunk := batch.Chunks[len(batch.Chunks)-1]
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
 
-	version := encoding.CodecVersion(batch.Batch.CodecVersion)
+	var version uint8
+	if encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV8 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV9 {
+		// Validium version line starts with v1,
+		// but rollup-relayer behavior follows v8.
+		version = 1
+	} else {
+		return nil, 0, 0, fmt.Errorf("unexpected codec version %d for validium mode", batch.Batch.CodecVersion)
+	}
+
 	calldata, err := r.validiumABI.Pack("commitBatch", version, common.HexToHash(batch.Batch.ParentBatchHash), common.HexToHash(batch.Batch.StateRoot), common.HexToHash(batch.Batch.WithdrawRoot), commitment[:])
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to pack commitBatch: %w", err)

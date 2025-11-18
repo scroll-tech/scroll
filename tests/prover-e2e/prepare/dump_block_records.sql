@@ -25,7 +25,7 @@ SELECT 'INSERT INTO l2_block (number, hash, parent_hash, header, withdraw_root,
        quote_literal(transactions) ||
        ');'
 FROM l2_block 
-WHERE number >= 10973700 and number <= 10973730
+WHERE number >= 1 and number <= 49
 ORDER BY number ASC;
 
 -- Write footer

@@ -1,6 +1,7 @@
 package provertask
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"scroll-tech/coordinator/internal/logic/libzkp"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	"scroll-tech/coordinator/internal/utils"
 )
 
 var (
@@ -64,6 +66,17 @@ type proverTaskContext struct {
 	batchTask       *orm.Batch
 	bundleTask      *orm.Bundle
 	hasAssignedTask *orm.ProverTask
+}
+
+func (b *BaseProverTask) version(hardForkName string) (uint8, error) {
+	return utils.Version(hardForkName, b.validiumMode())
+}
+
+// validiumMode induce different behavior in task generation:
+// + skip the point_evaluation part in batch task
+// + encode batch header with codec in utils instead of da-codec
+func (b *BaseProverTask) validiumMode() bool {
+	return b.cfg.L2.ValidiumMode
 }
 
 // hardForkName get the chunk/batch/bundle hard fork name
@@ -193,7 +206,16 @@ func (b *BaseProverTask) applyUniversal(schema *coordinatorType.GetTaskSchema) (
 		return nil, nil, fmt.Errorf("no expectedVk found from hardfork %s", schema.HardForkName)
 	}
 
-	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk)
+	var decryptionKey []byte
+	if b.cfg.L2.ValidiumMode {
+		var err error
+		decryptionKey, err = hex.DecodeString(b.cfg.Sequencer.DecryptionKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("sequencer decryption key hex-decoding failed")
+		}
+	}
+
+	ok, uTaskData, metadata, _ := libzkp.GenerateUniversalTask(schema.TaskType, schema.TaskData, schema.HardForkName, expectedVk, decryptionKey)
 	if !ok {
 		return nil, nil, fmt.Errorf("can not generate universal task, see coordinator log for the reason")
 	}

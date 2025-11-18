@@ -20,7 +20,7 @@ import (
 
 var app *cli.App
 var cfg *config
-var codecCfg encoding.CodecVersion = encoding.CodecV8
+var codecCfg encoding.CodecVersion = encoding.CodecV9
 
 var outputNumFlag = cli.StringFlag{
 	Name:  "counts",
@@ -86,7 +86,8 @@ func parseThreeIntegers(value string) (int, int, int, error) {
 
 // load a comptabile type of config for rollup
 type config struct {
-	DBConfig *database.Config `json:"db_config"`
+	DBConfig     *database.Config `json:"db_config"`
+	ValidiumMode bool             `json:"validium_mode"`
 }
 
 func init() {
@@ -143,6 +144,8 @@ func action(ctx *cli.Context) error {
 			codecCfg = encoding.CodecV7
 		case 8:
 			codecCfg = encoding.CodecV8
+		case 9:
+			codecCfg = encoding.CodecV9
 		default:
 			return fmt.Errorf("invalid codec version %d", codecFl)
 		}

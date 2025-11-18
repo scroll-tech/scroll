@@ -1,20 +1,30 @@
-use crate::proofs::ChunkProof;
 use c_kzg::Bytes48;
 use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
         build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8,
-        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8, LegacyBatchWitness,
-        ReferenceHeader, N_BLOB_BYTES,
+        BatchHeaderValidium, BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8,
+        LegacyBatchWitness, ReferenceHeader, N_BLOB_BYTES,
     },
-    public_inputs::ForkName,
+    chunk::ChunkInfo,
+    public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
+    version::{Domain, STFVersion},
 };
+
+use crate::proofs::ChunkProof;
 
 mod utils;
 use utils::{base64, point_eval};
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+pub struct BatchHeaderValidiumWithHash {
+    #[serde(flatten)]
+    header: BatchHeaderValidium,
+    batch_hash: B256,
+}
 
 /// Define variable batch header type, since BatchHeaderV6 can not
 /// be decoded as V7 we can always has correct deserialization
@@ -23,8 +33,19 @@ use utils::{base64, point_eval};
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum BatchHeaderV {
+    Validium(BatchHeaderValidiumWithHash),
     V6(BatchHeaderV6),
     V7_8(BatchHeaderV7),
+}
+
+impl core::fmt::Display for BatchHeaderV {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            BatchHeaderV::V6(_) => write!(f, "V6"),
+            BatchHeaderV::V7_8(_) => write!(f, "V7_8"),
+            BatchHeaderV::Validium(_) => write!(f, "Validium"),
+        }
+    }
 }
 
 impl BatchHeaderV {
@@ -32,27 +53,35 @@ impl BatchHeaderV {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
             BatchHeaderV::V7_8(h) => h.batch_hash(),
+            BatchHeaderV::Validium(h) => h.header.batch_hash(),
         }
     }
 
     pub fn must_v6_header(&self) -> &BatchHeaderV6 {
         match self {
             BatchHeaderV::V6(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v6", self),
         }
     }
 
     pub fn must_v7_header(&self) -> &BatchHeaderV7 {
         match self {
             BatchHeaderV::V7_8(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v7", self),
         }
     }
 
     pub fn must_v8_header(&self) -> &BatchHeaderV8 {
         match self {
             BatchHeaderV::V7_8(h) => h,
-            _ => panic!("try to pick other header type"),
+            _ => unreachable!("A header of {} is considered to be v8", self),
+        }
+    }
+
+    pub fn must_validium_header(&self) -> &BatchHeaderValidium {
+        match self {
+            BatchHeaderV::Validium(h) => &h.header,
+            _ => unreachable!("A header of {} is considered to be validium", self),
         }
     }
 }
@@ -61,6 +90,8 @@ impl BatchHeaderV {
 /// is compatible with both pre-euclidv2 and euclidv2
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct BatchProvingTask {
+    /// The version of the chunks in the batch, as per [`Version`].
+    pub version: u8,
     /// Chunk proofs for the contiguous list of chunks within the batch.
     pub chunk_proofs: Vec<ChunkProof>,
     /// The [`BatchHeaderV6/V7`], as computed on-chain for this batch.
@@ -107,85 +138,135 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 
 impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
-        let fork_name = self.fork_name.to_lowercase().as_str().into();
+        let version = Version::from(self.version);
 
-        // sanity check: calculate point eval needed and compare with task input
-        let (kzg_commitment, kzg_proof, challenge_digest) = {
-            let blob = point_eval::to_blob(&self.blob_bytes);
-            let commitment = point_eval::blob_to_kzg_commitment(&blob);
-            let versioned_hash = point_eval::get_versioned_hash(&commitment);
-            let challenge_digest = match &self.batch_header {
-                BatchHeaderV::V6(_) => {
-                    assert_eq!(
-                        fork_name,
-                        ForkName::EuclidV1,
-                        "hardfork mismatch for da-codec@v6 header: found={fork_name:?}, expected={:?}",
-                        ForkName::EuclidV1,
-                    );
-                    EnvelopeV6::from_slice(self.blob_bytes.as_slice())
-                        .challenge_digest(versioned_hash)
-                }
-                BatchHeaderV::V7_8(_) => {
-                    let padded_blob_bytes = {
-                        let mut padded_blob_bytes = self.blob_bytes.to_vec();
-                        padded_blob_bytes.resize(N_BLOB_BYTES, 0);
-                        padded_blob_bytes
-                    };
-
-                    match fork_name {
-                        ForkName::EuclidV2 => {
-                            <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                                .challenge_digest(versioned_hash)
-                        }
-                        ForkName::Feynman => {
-                            <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                                .challenge_digest(versioned_hash)
-                        }
-                        f => unreachable!(
-                            "hardfork mismatch for da-codec@v7 header: found={}, expected={:?}",
-                            f,
-                            [ForkName::EuclidV2, ForkName::Feynman],
-                        ),
+        let point_eval_witness = if !version.is_validium() {
+            // sanity check: calculate point eval needed and compare with task input
+            let (kzg_commitment, kzg_proof, challenge_digest) = {
+                let blob = point_eval::to_blob(&self.blob_bytes);
+                let commitment = point_eval::blob_to_kzg_commitment(&blob);
+                let versioned_hash = point_eval::get_versioned_hash(&commitment);
+                let challenge_digest = match &self.batch_header {
+                    BatchHeaderV::V6(_) => {
+                        assert_eq!(
+                            version.fork,
+                            ForkName::EuclidV1,
+                            "hardfork mismatch for da-codec@v6 header: found={:?}, expected={:?}",
+                            version.fork,
+                            ForkName::EuclidV1,
+                        );
+                        EnvelopeV6::from_slice(self.blob_bytes.as_slice())
+                            .challenge_digest(versioned_hash)
                     }
-                }
+                    BatchHeaderV::V7_8(_) => {
+                        let padded_blob_bytes = {
+                            let mut padded_blob_bytes = self.blob_bytes.to_vec();
+                            padded_blob_bytes.resize(N_BLOB_BYTES, 0);
+                            padded_blob_bytes
+                        };
+
+                        match version.fork {
+                            ForkName::EuclidV2 => {
+                                <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                                    .challenge_digest(versioned_hash)
+                            }
+                            ForkName::Feynman => {
+                                <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                                    .challenge_digest(versioned_hash)
+                            }
+                            fork_name => unreachable!(
+                                "hardfork mismatch for da-codec@v7 header: found={}, expected={:?}",
+                                fork_name,
+                                [ForkName::EuclidV2, ForkName::Feynman],
+                            ),
+                        }
+                    }
+                    BatchHeaderV::Validium(_) => unreachable!("version!=validium"),
+                };
+
+                let (proof, _) = point_eval::get_kzg_proof(&blob, challenge_digest);
+
+                (commitment.to_bytes(), proof.to_bytes(), challenge_digest)
             };
 
-            let (proof, _) = point_eval::get_kzg_proof(&blob, challenge_digest);
+            if let Some(k) = self.kzg_commitment {
+                assert_eq!(k, kzg_commitment);
+            }
 
-            (commitment.to_bytes(), proof.to_bytes(), challenge_digest)
+            if let Some(c) = self.challenge_digest {
+                assert_eq!(c, U256::from_be_bytes(challenge_digest.0));
+            }
+
+            if let Some(p) = self.kzg_proof {
+                assert_eq!(p, kzg_proof);
+            }
+
+            Some(build_point_eval_witness(
+                kzg_commitment.into_inner(),
+                kzg_proof.into_inner(),
+            ))
+        } else {
+            assert!(self.kzg_proof.is_none(), "domain=validium has no blob-da");
+            assert!(
+                self.kzg_commitment.is_none(),
+                "domain=validium has no blob-da"
+            );
+            assert!(
+                self.challenge_digest.is_none(),
+                "domain=validium has no blob-da"
+            );
+
+            match &self.batch_header {
+                BatchHeaderV::Validium(h) => assert_eq!(
+                    h.header.batch_hash(),
+                    h.batch_hash,
+                    "calculated batch hash match which from coordinator"
+                ),
+                _ => panic!("unexpected header type"),
+            }
+            None
         };
 
-        if let Some(k) = self.kzg_commitment {
-            assert_eq!(k, kzg_commitment);
-        }
-
-        if let Some(c) = self.challenge_digest {
-            assert_eq!(c, U256::from_be_bytes(challenge_digest.0));
-        }
-
-        if let Some(p) = self.kzg_proof {
-            assert_eq!(p, kzg_proof);
-        }
-
-        let point_eval_witness = Some(build_point_eval_witness(
-            kzg_commitment.into_inner(),
-            kzg_proof.into_inner(),
-        ));
-
-        let reference_header = match fork_name {
-            ForkName::EuclidV1 => ReferenceHeader::V6(*self.batch_header.must_v6_header()),
-            ForkName::EuclidV2 => ReferenceHeader::V7(*self.batch_header.must_v7_header()),
-            ForkName::Feynman => ReferenceHeader::V8(*self.batch_header.must_v8_header()),
+        let reference_header = match (version.domain, version.stf_version) {
+            (Domain::Scroll, STFVersion::V6) => {
+                ReferenceHeader::V6(*self.batch_header.must_v6_header())
+            }
+            (Domain::Scroll, STFVersion::V7) => {
+                ReferenceHeader::V7(*self.batch_header.must_v7_header())
+            }
+            (Domain::Scroll, STFVersion::V8) => {
+                ReferenceHeader::V8(*self.batch_header.must_v8_header())
+            }
+            (Domain::Validium, STFVersion::V1) => {
+                ReferenceHeader::Validium(*self.batch_header.must_validium_header())
+            }
+            (domain, stf_version) => {
+                unreachable!("unsupported domain={domain:?},stf-version={stf_version:?}")
+            }
         };
+
+        // patch: ensure block_hash field is ZERO for scroll domain
+        let chunk_infos = self
+            .chunk_proofs
+            .iter()
+            .map(|p| {
+                if version.domain == Domain::Scroll {
+                    ChunkInfo {
+                        prev_blockhash: B256::ZERO,
+                        post_blockhash: B256::ZERO,
+                        ..p.metadata.chunk_info.clone()
+                    }
+                } else {
+                    p.metadata.chunk_info.clone()
+                }
+            })
+            .collect();
 
         BatchWitness {
-            fork_name,
+            version: version.as_version_byte(),
+            fork_name: version.fork,
             chunk_proofs: self.chunk_proofs.iter().map(|proof| proof.into()).collect(),
-            chunk_infos: self
-                .chunk_proofs
-                .iter()
-                .map(|p| p.metadata.chunk_info.clone())
-                .collect(),
+            chunk_infos,
             blob_bytes: self.blob_bytes.clone(),
             reference_header,
             point_eval_witness,
@@ -193,15 +274,81 @@ impl BatchProvingTask {
     }
 
     pub fn precheck_and_build_metadata(&self) -> Result<BatchInfo> {
-        let fork_name = ForkName::from(self.fork_name.as_str());
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
         let witness = self.build_guest_input();
         let metadata = BatchInfo::from(&witness);
-
-        super::check_aggregation_proofs(self.chunk_proofs.as_slice(), fork_name)?;
+        super::check_aggregation_proofs(
+            witness.chunk_infos.as_slice(),
+            Version::from(self.version),
+        )?;
 
         Ok(metadata)
+    }
+}
+
+#[test]
+fn test_deserde_batch_header_v_validium() {
+    use std::str::FromStr;
+
+    // Top-level JSON: flattened enum tag "V1" + batch_hash
+    let json = r#"{
+        "V1": {
+        "version": 1,
+        "batch_index": 42,
+        "parent_batch_hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "post_state_root": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "withdraw_root": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "commitment": "0x4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        "batch_hash": "0x5555555555555555555555555555555555555555555555555555555555555555"
+    }"#;
+
+    let parsed: BatchHeaderV = serde_json::from_str(json).expect("deserialize BatchHeaderV");
+
+    match parsed {
+        BatchHeaderV::Validium(v) => {
+            // Check the batch_hash field
+            let expected_batch_hash = B256::from_str(
+                "0x5555555555555555555555555555555555555555555555555555555555555555",
+            )
+            .unwrap();
+            assert_eq!(v.batch_hash, expected_batch_hash);
+
+            // Check the inner header variant and fields
+            match v.header {
+                BatchHeaderValidium::V1(h) => {
+                    assert_eq!(h.version, 1);
+                    assert_eq!(h.batch_index, 42);
+
+                    let p = B256::from_str(
+                        "0x1111111111111111111111111111111111111111111111111111111111111111",
+                    )
+                    .unwrap();
+                    let s = B256::from_str(
+                        "0x2222222222222222222222222222222222222222222222222222222222222222",
+                    )
+                    .unwrap();
+                    let w = B256::from_str(
+                        "0x3333333333333333333333333333333333333333333333333333333333333333",
+                    )
+                    .unwrap();
+                    let c = B256::from_str(
+                        "0x4444444444444444444444444444444444444444444444444444444444444444",
+                    )
+                    .unwrap();
+
+                    assert_eq!(h.parent_batch_hash, p);
+                    assert_eq!(h.post_state_root, s);
+                    assert_eq!(h.withdraw_root, w);
+                    assert_eq!(h.commitment, c);
+
+                    // Sanity: computed batch hash equals the provided one (if method available)
+                    // assert_eq!(v.header.batch_hash(), expected_batch_hash);
+                }
+            }
+        }
+        _ => panic!("expected validium header variant"),
     }
 }
