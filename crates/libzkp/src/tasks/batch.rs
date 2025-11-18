@@ -3,9 +3,9 @@ use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
-        build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderV8,
-        BatchHeaderValidium, BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, EnvelopeV8,
-        LegacyBatchWitness, ReferenceHeader, N_BLOB_BYTES,
+        build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderValidium,
+        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, LegacyBatchWitness,
+        ReferenceHeader, N_BLOB_BYTES,
     },
     chunk::ChunkInfo,
     public_inputs::{ForkName, Version},
@@ -34,17 +34,18 @@ pub struct BatchHeaderValidiumWithHash {
 /// defination, i.e. v6- v8 (current), and validium
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
+#[allow(non_camel_case_types)]
 pub enum BatchHeaderV {
     Validium(BatchHeaderValidiumWithHash),
     V6(BatchHeaderV6),
-    V7_8_9(BatchHeaderV7),
+    V7_V8_V9(BatchHeaderV7),
 }
 
 impl core::fmt::Display for BatchHeaderV {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BatchHeaderV::V6(_) => write!(f, "V6"),
-            BatchHeaderV::V7_8_9(_) => write!(f, "V7_8_9"),
+            BatchHeaderV::V7_V8_V9(_) => write!(f, "V7_V8_V9"),
             BatchHeaderV::Validium(_) => write!(f, "Validium"),
         }
     }
@@ -54,7 +55,7 @@ impl BatchHeaderV {
     pub fn batch_hash(&self) -> B256 {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
-            BatchHeaderV::V7_8_9(h) => h.batch_hash(),
+            BatchHeaderV::V7_V8_V9(h) => h.batch_hash(),
             BatchHeaderV::Validium(h) => h.header.batch_hash(),
         }
     }
@@ -66,17 +67,10 @@ impl BatchHeaderV {
         }
     }
 
-    pub fn must_v7_header(&self) -> &BatchHeaderV7 {
+    pub fn must_v7_v8_v9_header(&self) -> &BatchHeaderV7 {
         match self {
-            BatchHeaderV::V7_8_9(h) => h,
-            _ => unreachable!("A header of {} is considered to be v7", self),
-        }
-    }
-
-    pub fn must_v8_header(&self) -> &BatchHeaderV8 {
-        match self {
-            BatchHeaderV::V7_8_9(h) => h,
-            _ => unreachable!("A header of {} is considered to be v8", self),
+            BatchHeaderV::V7_V8_V9(h) => h,
+            _ => unreachable!("A header of {} is considered to be in [v7, v8, v9]", self),
         }
     }
 
@@ -157,10 +151,8 @@ impl BatchProvingTask {
                 version.fork,
                 ForkName::EuclidV1,
             ),
-            BatchHeaderV::V7_8_9(_) => assert!(
-                version.fork == ForkName::EuclidV2 ||
-                version.fork == ForkName::Feynman ||
-                version.fork == ForkName::Galileo,
+            BatchHeaderV::V7_V8_V9(_) => assert!(
+                matches!(version.fork, ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo),
                 "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
                 version.fork,
                 [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
@@ -186,8 +178,6 @@ impl BatchProvingTask {
                             .challenge_digest(versioned_hash)
                     }
                     Codec::V7 => <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                        .challenge_digest(versioned_hash),
-                    Codec::V8 => <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
                         .challenge_digest(versioned_hash),
                 };
                 let (proof, _) = point_eval::get_kzg_proof(&blob, challenge_digest);
@@ -237,11 +227,13 @@ impl BatchProvingTask {
             (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
-            (Domain::Scroll, STFVersion::V7) => {
-                ReferenceHeader::V7(*self.batch_header.must_v7_header())
-            }
-            (Domain::Scroll, STFVersion::V8) | (Domain::Scroll, STFVersion::V9) => {
-                ReferenceHeader::V8(*self.batch_header.must_v8_header())
+            (Domain::Scroll, stf_version)
+                if matches!(
+                    stf_version,
+                    STFVersion::V7 | STFVersion::V8 | STFVersion::V9
+                ) =>
+            {
+                ReferenceHeader::V7_V8_V9(*self.batch_header.must_v7_v8_v9_header())
             }
             (Domain::Validium, STFVersion::V1) => {
                 ReferenceHeader::Validium(*self.batch_header.must_validium_header())
