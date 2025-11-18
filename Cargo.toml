@@ -17,13 +17,13 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.6.3"
 
 [workspace.dependencies]
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "360f364" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "90e7ede" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "90e7ede" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "90e7ede" }
 
-sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = ["scroll", "rkyv"] }
-sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master" }
-sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = ["scroll"] }
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91", features = ["scroll", "rkyv"] }
+sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91" }
+sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91", features = ["scroll"] }
 axiom-sdk = { git = "https://github.com/axiom-crypto/axiom-api-cli.git", branch = "feat/upload-exe-raw" }
 
 metrics = "0.23.0"
@@ -49,20 +49,18 @@ once_cell = "1.20"
 base64 = "0.22"
 
 [patch.crates-io]
-revm = { git = "https://github.com/scroll-tech/revm" }
-revm-bytecode = { git = "https://github.com/scroll-tech/revm" }
-revm-context = { git = "https://github.com/scroll-tech/revm" }
-revm-context-interface = { git = "https://github.com/scroll-tech/revm" }
-revm-database = { git = "https://github.com/scroll-tech/revm" }
-revm-database-interface = { git = "https://github.com/scroll-tech/revm" }
-revm-handler = { git = "https://github.com/scroll-tech/revm" }
-revm-inspector = { git = "https://github.com/scroll-tech/revm" }
-revm-interpreter = { git = "https://github.com/scroll-tech/revm" }
-revm-precompile = { git = "https://github.com/scroll-tech/revm" }
-revm-primitives = { git = "https://github.com/scroll-tech/revm" }
-revm-state = { git = "https://github.com/scroll-tech/revm" }
-
-alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "feat/rkyv" }
+revm = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-bytecode = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-context = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-context-interface = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-database = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-database-interface = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-handler = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-inspector = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-interpreter = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-precompile = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-primitives = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
+revm-state = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
 
 [profile.maxperf]
 inherits = "release"
