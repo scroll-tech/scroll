@@ -298,10 +298,8 @@ impl LocalProver {
                 .location_data
                 .get_asset(&vk, &url_base, &base_config.workspace_path)
                 .await?;
-            let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(
-                &asset_path,
-                &task_cfg,
-            )?));
+            let circuits_handler =
+                Arc::new(Mutex::new(UniversalHandler::new(&asset_path, &task_cfg)?));
             self.handlers.insert(vk, circuits_handler.clone());
             circuits_handler
         };

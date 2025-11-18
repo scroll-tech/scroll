@@ -11,7 +11,7 @@ use scroll_zkvm_types::{
     public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    version::{Domain, STFVersion, Codec},
+    version::{Codec, Domain, STFVersion},
 };
 
 use crate::proofs::ChunkProof;
@@ -28,7 +28,7 @@ pub struct BatchHeaderValidiumWithHash {
 
 /// Parse header types passed from golang side and adapt to the
 /// defination in zkvm-prover's types
-/// We distinguish the header type in golang side according to the codec 
+/// We distinguish the header type in golang side according to the codec
 /// version, i.e. v6 - v9 (current), and validium
 /// And adapt it to different header version used in zkvm-prover's witness
 /// defination, i.e. v6- v8 (current), and validium
@@ -141,7 +141,11 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
         let version = Version::from(self.version);
-        tracing::info!("Handling batch task for input, version byte {}, Version data: {:?}", self.version, version);
+        tracing::info!(
+            "Handling batch task for input, version byte {}, Version data: {:?}",
+            self.version,
+            version
+        );
         // sanity check for if result of header type parsing match to version
         match &self.batch_header {
             BatchHeaderV::Validium(_) => assert!(
@@ -160,7 +164,7 @@ impl BatchProvingTask {
                 "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
                 version.fork,
                 [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
-            ),            
+            ),
         }
 
         let point_eval_witness = if !version.is_validium() {
@@ -169,7 +173,7 @@ impl BatchProvingTask {
                 let blob = point_eval::to_blob(&self.blob_bytes);
                 let commitment = point_eval::blob_to_kzg_commitment(&blob);
                 let versioned_hash = point_eval::get_versioned_hash(&commitment);
-                
+
                 let padded_blob_bytes = {
                     let mut padded_blob_bytes = self.blob_bytes.to_vec();
                     padded_blob_bytes.resize(N_BLOB_BYTES, 0);
@@ -181,14 +185,10 @@ impl BatchProvingTask {
                         <EnvelopeV6 as Envelope>::from_slice(self.blob_bytes.as_slice())
                             .challenge_digest(versioned_hash)
                     }
-                    Codec::V7 => {
-                        <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                            .challenge_digest(versioned_hash)
-                    }
-                    Codec::V8 => {
-                        <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                            .challenge_digest(versioned_hash)
-                    }
+                    Codec::V7 => <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                        .challenge_digest(versioned_hash),
+                    Codec::V8 => <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                        .challenge_digest(versioned_hash),
                 };
                 let (proof, _) = point_eval::get_kzg_proof(&blob, challenge_digest);
 
@@ -240,7 +240,7 @@ impl BatchProvingTask {
             (Domain::Scroll, STFVersion::V7) => {
                 ReferenceHeader::V7(*self.batch_header.must_v7_header())
             }
-            (Domain::Scroll, STFVersion::V8) | (Domain::Scroll, STFVersion::V9)=> {
+            (Domain::Scroll, STFVersion::V8) | (Domain::Scroll, STFVersion::V9) => {
                 ReferenceHeader::V8(*self.batch_header.must_v8_header())
             }
             (Domain::Validium, STFVersion::V1) => {

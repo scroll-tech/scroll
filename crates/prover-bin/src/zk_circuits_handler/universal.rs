@@ -3,9 +3,9 @@ use std::path::Path;
 use super::CircuitsHandler;
 use async_trait::async_trait;
 use eyre::Result;
+use libzkp::ProvintTaskExt;
 use scroll_zkvm_prover::{Prover, ProverConfig};
 use scroll_zkvm_types::ProvingTask;
-use libzkp::ProvintTaskExt;
 use tokio::sync::Mutex;
 pub struct UniversalHandler {
     prover: Prover,
@@ -14,7 +14,7 @@ pub struct UniversalHandler {
 // additional config dispatched with proving task
 #[derive(Debug, Default)]
 pub(crate) struct TaskConfig {
-    pub is_openvm_v13: bool
+    pub is_openvm_v13: bool,
 }
 
 /// Safe for current usage as `CircuitsHandler` trait (protected inside of Mutex and NEVER extract
@@ -44,7 +44,7 @@ impl UniversalHandler {
     }
 
     pub fn get_task_from_input(input: &str) -> Result<(ProvingTask, TaskConfig)> {
-        let task_ext : ProvintTaskExt = serde_json::from_str(input)?;
+        let task_ext: ProvintTaskExt = serde_json::from_str(input)?;
         let cfg = TaskConfig {
             is_openvm_v13: task_ext.use_openvm_13,
         };

@@ -2,22 +2,28 @@ pub mod proofs;
 pub mod tasks;
 pub use tasks::ProvintTaskExt;
 pub mod verifier;
-pub use verifier::{TaskType, VerifierConfig};
 use verifier::HardForkName;
+pub use verifier::{TaskType, VerifierConfig};
 mod utils;
 
 use sbv_primitives::B256;
 use scroll_zkvm_types::utils::vec_as_base64;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
-use std::{path::Path, sync::OnceLock, collections::HashMap};
+use std::{collections::HashMap, path::Path, sync::OnceLock};
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
 pub(crate) fn witness_use_legacy_mode(fork_name: &str) -> eyre::Result<bool> {
-    ADDITIONAL_FEATURES.get().and_then(
-            |features|features.get(fork_name)
-        ).map(|cfg|cfg.legacy_witness_encoding)
-        .ok_or_else(||eyre::eyre!("can not found features setting for unrecognized fork {}", fork_name))
+    ADDITIONAL_FEATURES
+        .get()
+        .and_then(|features| features.get(fork_name))
+        .map(|cfg| cfg.legacy_witness_encoding)
+        .ok_or_else(|| {
+            eyre::eyre!(
+                "can not found features setting for unrecognized fork {}",
+                fork_name
+            )
+        })
 }
 
 #[derive(Debug, Default, Clone)]
@@ -30,7 +36,7 @@ static ADDITIONAL_FEATURES: OnceLock<HashMap<HardForkName, FeatureOptions>> = On
 
 impl FeatureOptions {
     pub fn new(feats: &str) -> Self {
-        let mut ret : Self = Default::default();
+        let mut ret: Self = Default::default();
 
         for feat_s in feats.split(':') {
             match feat_s.trim().to_lowercase().as_str() {
@@ -172,12 +178,16 @@ pub fn gen_universal_task(
     let mut u_task_ext = ProvintTaskExt::new(u_task);
 
     // set additional settings from global features
-    if let Some(cfg) = ADDITIONAL_FEATURES.get().and_then(
-            |features|features.get(&fork_name)
-        ){
-        u_task_ext.use_openvm_13 = cfg.for_openvm_13_prover;        
+    if let Some(cfg) = ADDITIONAL_FEATURES
+        .get()
+        .and_then(|features| features.get(&fork_name))
+    {
+        u_task_ext.use_openvm_13 = cfg.for_openvm_13_prover;
     } else {
-        tracing::warn!("can not found features setting for unrecognized fork {}", fork_name);
+        tracing::warn!(
+            "can not found features setting for unrecognized fork {}",
+            fork_name
+        );
     }
 
     Ok((
@@ -214,15 +224,21 @@ pub fn gen_wrapped_proof(proof_json: &str, metadata: &str, vk: &[u8]) -> eyre::R
 /// init verifier
 pub fn verifier_init(config: &str) -> eyre::Result<()> {
     let cfg: VerifierConfig = serde_json::from_str(config)?;
-    ADDITIONAL_FEATURES.set(
-        HashMap::from_iter(cfg.circuits.iter().map(|config|{
-            tracing::info!("start setting features [{}] for fork {}", config.features, config.fork_name);
-            (config.fork_name.to_lowercase(), FeatureOptions::new(&config.features))
-            },
-        )),
-    ).map_err(|c|eyre::eyre!("Fail to init additional features: {c:?}"))?;
+    ADDITIONAL_FEATURES
+        .set(HashMap::from_iter(cfg.circuits.iter().map(|config| {
+            tracing::info!(
+                "start setting features [{}] for fork {}",
+                config.features,
+                config.fork_name
+            );
+            (
+                config.fork_name.to_lowercase(),
+                FeatureOptions::new(&config.features),
+            )
+        })))
+        .map_err(|c| eyre::eyre!("Fail to init additional features: {c:?}"))?;
 
-    verifier::init(cfg); 
+    verifier::init(cfg);
 
     Ok(())
 }
