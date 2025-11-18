@@ -151,7 +151,7 @@ pub fn gen_universal_task(
                 );
             }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_chunk_task(task, version))
+                utils::panic_catch(move || gen_universal_chunk_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Chunk(metadata), u_task)
         }
@@ -169,7 +169,7 @@ pub fn gen_universal_task(
                 );
             }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_batch_task(task, version))
+                utils::panic_catch(move || gen_universal_batch_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Batch(metadata), u_task)
         }
@@ -187,7 +187,7 @@ pub fn gen_universal_task(
                 );
             }
             let (pi_hash, metadata, u_task) =
-                utils::panic_catch(move || gen_universal_bundle_task(task, version))
+                utils::panic_catch(move || gen_universal_bundle_task(task))
                     .map_err(|e| eyre::eyre!("caught panic in chunk task{e}"))??;
             (pi_hash, AnyMetaData::Bundle(metadata), u_task)
         }
@@ -248,13 +248,17 @@ pub fn verifier_init(config: &str) -> eyre::Result<()> {
     ADDITIONAL_FEATURES
         .set(HashMap::from_iter(cfg.circuits.iter().map(|config| {
             tracing::info!(
-                "start setting features [{}] for fork {}",
+                "start setting features [{:?}] for fork {}",
                 config.features,
                 config.fork_name
             );
             (
                 config.fork_name.to_lowercase(),
-                FeatureOptions::new(&config.features),
+                config
+                    .features
+                    .as_ref()
+                    .map(|features| FeatureOptions::new(features.as_str()))
+                    .unwrap_or_default(),
             )
         })))
         .map_err(|c| eyre::eyre!("Fail to init additional features: {c:?}"))?;
