@@ -227,12 +227,7 @@ impl BatchProvingTask {
             (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
-            (Domain::Scroll, stf_version)
-                if matches!(
-                    stf_version,
-                    STFVersion::V7 | STFVersion::V8 | STFVersion::V9
-                ) =>
-            {
+            (Domain::Scroll, STFVersion::V7 | STFVersion::V8 | STFVersion::V9) => {
                 ReferenceHeader::V7_V8_V9(*self.batch_header.must_v7_v8_v9_header())
             }
             (Domain::Validium, STFVersion::V1) => {
