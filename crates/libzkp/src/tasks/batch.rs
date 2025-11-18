@@ -11,7 +11,7 @@ use scroll_zkvm_types::{
     public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    version::{Domain, Codec},
+    version::{Domain, STFVersion, Codec},
 };
 
 use crate::proofs::ChunkProof;
@@ -26,23 +26,25 @@ pub struct BatchHeaderValidiumWithHash {
     batch_hash: B256,
 }
 
-/// Define variable batch header type, since BatchHeaderV6 can not
-/// be decoded as V7 we can always has correct deserialization
-/// Notice: V6 header MUST be put above V7 since untagged enum
-/// try to decode each defination in order
+/// Parse header types passed from golang side and adapt to the
+/// defination in zkvm-prover's types
+/// We distinguish the header type in golang side according to the codec 
+/// version, i.e. v6 - v9 (current), and validium
+/// And adapt it to different header version used in zkvm-prover's witness
+/// defination, i.e. v6- v8 (current), and validium
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum BatchHeaderV {
     Validium(BatchHeaderValidiumWithHash),
     V6(BatchHeaderV6),
-    V7_8(BatchHeaderV7),
+    V7_8_9(BatchHeaderV7),
 }
 
 impl core::fmt::Display for BatchHeaderV {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BatchHeaderV::V6(_) => write!(f, "V6"),
-            BatchHeaderV::V7_8(_) => write!(f, "V7_8"),
+            BatchHeaderV::V7_8_9(_) => write!(f, "V7_8_9"),
             BatchHeaderV::Validium(_) => write!(f, "Validium"),
         }
     }
@@ -52,7 +54,7 @@ impl BatchHeaderV {
     pub fn batch_hash(&self) -> B256 {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
-            BatchHeaderV::V7_8(h) => h.batch_hash(),
+            BatchHeaderV::V7_8_9(h) => h.batch_hash(),
             BatchHeaderV::Validium(h) => h.header.batch_hash(),
         }
     }
@@ -66,14 +68,14 @@ impl BatchHeaderV {
 
     pub fn must_v7_header(&self) -> &BatchHeaderV7 {
         match self {
-            BatchHeaderV::V7_8(h) => h,
+            BatchHeaderV::V7_8_9(h) => h,
             _ => unreachable!("A header of {} is considered to be v7", self),
         }
     }
 
     pub fn must_v8_header(&self) -> &BatchHeaderV8 {
         match self {
-            BatchHeaderV::V7_8(h) => h,
+            BatchHeaderV::V7_8_9(h) => h,
             _ => unreachable!("A header of {} is considered to be v8", self),
         }
     }
@@ -140,6 +142,26 @@ impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
         let version = Version::from(self.version);
         tracing::info!("Handling batch task for input, version byte {}, Version data: {:?}", self.version, version);
+        // sanity check for if result of header type parsing match to version
+        match &self.batch_header {
+            BatchHeaderV::Validium(_) => assert!(
+                version.is_validium(),
+                "version {:?} is not match with parsed header, get validium header but version is not validium", version,
+            ),
+            BatchHeaderV::V6(_) => assert_eq!(version.fork, ForkName::EuclidV1,
+                "hardfork mismatch for da-codec@v6 header: found={:?}, expected={:?}",
+                version.fork,
+                ForkName::EuclidV1,
+            ),
+            BatchHeaderV::V7_8_9(_) => assert!(
+                version.fork == ForkName::EuclidV2 ||
+                version.fork == ForkName::Feynman ||
+                version.fork == ForkName::Galileo,
+                "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
+                version.fork,
+                [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
+            ),            
+        }
 
         let point_eval_witness = if !version.is_validium() {
             // sanity check: calculate point eval needed and compare with task input
@@ -147,48 +169,27 @@ impl BatchProvingTask {
                 let blob = point_eval::to_blob(&self.blob_bytes);
                 let commitment = point_eval::blob_to_kzg_commitment(&blob);
                 let versioned_hash = point_eval::get_versioned_hash(&commitment);
-                let challenge_digest = match &self.batch_header {
-                    BatchHeaderV::V6(_) => {
-                        assert_eq!(
-                            version.fork,
-                            ForkName::EuclidV1,
-                            "hardfork mismatch for da-codec@v6 header: found={:?}, expected={:?}",
-                            version.fork,
-                            ForkName::EuclidV1,
-                        );
-                        EnvelopeV6::from_slice(self.blob_bytes.as_slice())
+                
+                let padded_blob_bytes = {
+                    let mut padded_blob_bytes = self.blob_bytes.to_vec();
+                    padded_blob_bytes.resize(N_BLOB_BYTES, 0);
+                    padded_blob_bytes
+                };
+                let challenge_digest = match version.codec {
+                    Codec::V6 => {
+                        // notice v6 do not use padded blob bytes
+                        <EnvelopeV6 as Envelope>::from_slice(self.blob_bytes.as_slice())
                             .challenge_digest(versioned_hash)
                     }
-                    BatchHeaderV::V7_8(_) => {
-                        let padded_blob_bytes = {
-                            let mut padded_blob_bytes = self.blob_bytes.to_vec();
-                            padded_blob_bytes.resize(N_BLOB_BYTES, 0);
-                            padded_blob_bytes
-                        };
-
-                        match version.fork {
-                            ForkName::EuclidV2 => {
-                                <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                                    .challenge_digest(versioned_hash)
-                            }
-                            ForkName::Feynman => {
-                                <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                                    .challenge_digest(versioned_hash)
-                            }
-                            ForkName::Galileo => {
-                                <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
-                                    .challenge_digest(versioned_hash)
-                            }
-                            fork_name => unreachable!(
-                                "hardfork mismatch for da-codec@v7/8 header: found={}, expected={:?}",
-                                fork_name,
-                                [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
-                            ),
-                        }
+                    Codec::V7 => {
+                        <EnvelopeV7 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                            .challenge_digest(versioned_hash)
                     }
-                    BatchHeaderV::Validium(_) => unreachable!("version!=validium"),
+                    Codec::V8 => {
+                        <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                            .challenge_digest(versioned_hash)
+                    }
                 };
-
                 let (proof, _) = point_eval::get_kzg_proof(&blob, challenge_digest);
 
                 (commitment.to_bytes(), proof.to_bytes(), challenge_digest)
@@ -232,18 +233,21 @@ impl BatchProvingTask {
             None
         };
 
-        let reference_header = match (version.domain, version.codec) {
-            (Domain::Scroll, Codec::V6) => {
+        let reference_header = match (version.domain, version.stf_version) {
+            (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
-            (Domain::Scroll, Codec::V7) => {
+            (Domain::Scroll, STFVersion::V7) => {
                 ReferenceHeader::V7(*self.batch_header.must_v7_header())
             }
-            (Domain::Scroll, Codec::V8) => {
+            (Domain::Scroll, STFVersion::V8) | (Domain::Scroll, STFVersion::V9)=> {
                 ReferenceHeader::V8(*self.batch_header.must_v8_header())
             }
-            (Domain::Validium, _) => {
+            (Domain::Validium, STFVersion::V1) => {
                 ReferenceHeader::Validium(*self.batch_header.must_validium_header())
+            }
+            (domain, stf_version) => {
+                unreachable!("unsupported domain={domain:?},stf-version={stf_version:?}")
             }
         };
 

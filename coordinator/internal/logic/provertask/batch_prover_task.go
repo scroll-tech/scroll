@@ -325,6 +325,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
 		}
+		log.Info("Decode batchheader bytes to canonical header", "version", batchHeader.Version())
 		taskDetail.BatchHeader = batchHeader
 
 		taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
@@ -335,7 +336,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 		taskDetail.KzgProof = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
 		taskDetail.KzgCommitment = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
 	} else {
-		log.Debug("Apply validium mode for batch proving task")
+		log.Info("Apply validium mode for batch proving task")
 		codec := cutils.FromVersion(version)
 		batchHeader, decodeErr := codec.DABatchForTaskFromBytes(dbBatch.BatchHeader)
 		if decodeErr != nil {
