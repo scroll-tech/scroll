@@ -9,7 +9,7 @@ ifndef END_BLOCK
 $(error END_BLOCK is not set. Define it in .make.env or pass END_BLOCK=<end_block>)
 endif
 
-all: setup_db test_tool import_data
+all: setup_db test_tool prepare_db import_data
 
 clean:
 	docker compose down
@@ -42,6 +42,9 @@ setup_db: clean
         fi; \
     done	
 	${GOOSE_CMD} up
+
+prepare_db:
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} down
 	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
 test_tool:
@@ -52,8 +55,16 @@ build/bin/e2e_tool: test_tool
 import_data_euclid: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
 
-import_data: build/bin/e2e_tool check_vars
+import_data_feynman: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}
+
+import_data_galileo: build/bin/e2e_tool check_vars
+	build/bin/e2e_tool --config conf/config.json --codec 9 ${BEGIN_BLOCK} ${END_BLOCK}
+
+import_data: build/bin/e2e_tool check_vars
+	build/bin/e2e_tool --config conf/config.json --codec ${CODEC_VERSION} ${BEGIN_BLOCK} ${END_BLOCK}
+
+reimport_data: prepare_db import_data
 
 coordinator_setup:
 	$(MAKE) -C ../../coordinator localsetup
