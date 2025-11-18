@@ -215,7 +215,7 @@ impl<Metadata: ProofMetadata> PersistableProof for WrappedProof<Metadata> {
 mod tests {
     use base64::{prelude::BASE64_STANDARD, Engine};
     use sbv_primitives::B256;
-    use scroll_zkvm_types::{bundle::BundleInfo, proof::EvmProof, public_inputs::ForkName};
+    use scroll_zkvm_types::{bundle::BundleInfo, proof::EvmProof};
 
     use super::*;
 
@@ -253,7 +253,7 @@ mod tests {
                 msg_queue_hash: B256::repeat_byte(6),
                 encryption_key: None,
             };
-            let bundle_pi_hash = bundle_info.pi_hash(ForkName::EuclidV1);
+            let bundle_pi_hash = bundle_info.pi_hash_euclidv1();
             BundleProofMetadata {
                 bundle_info,
                 bundle_pi_hash,
