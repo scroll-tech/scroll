@@ -313,7 +313,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 		switch dbBatchCodecVersion {
 		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8:
 		default:
-			return taskDetail, nil
+			return nil, fmt.Errorf("Unsupported codec version <%d>", dbBatchCodecVersion)
 		}
 
 		codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))

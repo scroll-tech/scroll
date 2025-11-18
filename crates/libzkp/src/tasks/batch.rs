@@ -11,7 +11,7 @@ use scroll_zkvm_types::{
     public_inputs::{ForkName, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    version::{Domain, STFVersion},
+    version::{Domain, Codec},
 };
 
 use crate::proofs::ChunkProof;
@@ -139,6 +139,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 impl BatchProvingTask {
     fn build_guest_input(&self) -> BatchWitness {
         let version = Version::from(self.version);
+        tracing::info!("Handling batch task for input, version byte {}, Version data: {:?}", self.version, version);
 
         let point_eval_witness = if !version.is_validium() {
             // sanity check: calculate point eval needed and compare with task input
@@ -174,10 +175,14 @@ impl BatchProvingTask {
                                 <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
                                     .challenge_digest(versioned_hash)
                             }
+                            ForkName::Galileo => {
+                                <EnvelopeV8 as Envelope>::from_slice(padded_blob_bytes.as_slice())
+                                    .challenge_digest(versioned_hash)
+                            }
                             fork_name => unreachable!(
-                                "hardfork mismatch for da-codec@v7 header: found={}, expected={:?}",
+                                "hardfork mismatch for da-codec@v7/8 header: found={}, expected={:?}",
                                 fork_name,
-                                [ForkName::EuclidV2, ForkName::Feynman],
+                                [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
                             ),
                         }
                     }
@@ -227,21 +232,18 @@ impl BatchProvingTask {
             None
         };
 
-        let reference_header = match (version.domain, version.stf_version) {
-            (Domain::Scroll, STFVersion::V6) => {
+        let reference_header = match (version.domain, version.codec) {
+            (Domain::Scroll, Codec::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
-            (Domain::Scroll, STFVersion::V7) => {
+            (Domain::Scroll, Codec::V7) => {
                 ReferenceHeader::V7(*self.batch_header.must_v7_header())
             }
-            (Domain::Scroll, STFVersion::V8) => {
+            (Domain::Scroll, Codec::V8) => {
                 ReferenceHeader::V8(*self.batch_header.must_v8_header())
             }
-            (Domain::Validium, STFVersion::V1) => {
+            (Domain::Validium, _) => {
                 ReferenceHeader::Validium(*self.batch_header.must_validium_header())
-            }
-            (domain, stf_version) => {
-                unreachable!("unsupported domain={domain:?},stf-version={stf_version:?}")
             }
         };
 
