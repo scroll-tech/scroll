@@ -8,7 +8,7 @@ use scroll_zkvm_types::{
         LegacyBatchWitness, ReferenceHeader, N_BLOB_BYTES,
     },
     chunk::ChunkInfo,
-    public_inputs::{ForkName, Version},
+    public_inputs::{ForkName, Version, MultiVersionPublicInputs},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
     version::{Codec, Domain, STFVersion},
@@ -116,7 +116,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
     type Error = eyre::Error;
 
     fn try_from(value: BatchProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input();
+        let witness = value.build_guest_input(value.version.into());
         let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
             let legacy_witness = LegacyBatchWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
@@ -139,8 +139,7 @@ impl TryFrom<BatchProvingTask> for ProvingTask {
 }
 
 impl BatchProvingTask {
-    fn build_guest_input(&self) -> BatchWitness {
-        let version = Version::from(self.version);
+    fn build_guest_input(&self, version: Version) -> BatchWitness {
         tracing::info!(
             "Handling batch task for input, version byte {}, Version data: {:?}",
             self.version,
@@ -279,18 +278,20 @@ impl BatchProvingTask {
         }
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<BatchInfo> {
+    pub fn precheck_and_build_metadata(&self) -> Result<(BatchInfo, B256)> {
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
-        let witness = self.build_guest_input();
+        let version = Version::from(self.version);
+        let witness = self.build_guest_input(version);
         let metadata = BatchInfo::from(&witness);
         super::check_aggregation_proofs(
             witness.chunk_infos.as_slice(),
             Version::from(self.version),
         )?;
+        let pi_hash = metadata.pi_hash_by_version(version);
 
-        Ok(metadata)
+        Ok((metadata, pi_hash))
     }
 }
 

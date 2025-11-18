@@ -5,7 +5,7 @@ use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    version::Version,
+    public_inputs::{Version, MultiVersionPublicInputs},
 };
 
 use super::chunk_interpreter::*;
@@ -98,7 +98,7 @@ impl TryFrom<ChunkProvingTask> for ProvingTask {
     type Error = eyre::Error;
 
     fn try_from(value: ChunkProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input();
+        let witness = value.build_guest_input(value.version.into());
         let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
             let legacy_witness = LegacyChunkWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
@@ -156,9 +156,7 @@ impl ChunkProvingTask {
         format!("{first}-{last}")
     }
 
-    fn build_guest_input(&self) -> ChunkWitness {
-        let version = Version::from(self.version);
-
+    fn build_guest_input(&self, version: Version) -> ChunkWitness {
         if version.is_validium() {
             assert!(self.validium_inputs.is_some());
             ChunkWitness::new(
@@ -182,11 +180,13 @@ impl ChunkProvingTask {
         self.block_witnesses[0].states.push(node);
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
-        let witness = self.build_guest_input();
+    pub fn precheck_and_build_metadata(&self) -> Result<(ChunkInfo, B256)> {
+        let version = Version::from(self.version);
+        let witness = self.build_guest_input(version);
         let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
         assert_eq!(ret.post_msg_queue_hash, self.post_msg_queue_hash);
-        Ok(ret)
+        let pi_hash = ret.pi_hash_by_version(version);
+        Ok((ret, pi_hash))
     }
 
     /// this method check the validate of current task (there may be missing storage node)
@@ -214,7 +214,7 @@ impl ChunkProvingTask {
         let err_parse_re = regex::Regex::new(pattern)?;
         let mut attempts = 0;
         loop {
-            let witness = self.build_guest_input();
+            let witness = self.build_guest_input(Version::euclid_v2());
 
             match execute(witness) {
                 Ok(_) => return Ok(()),
