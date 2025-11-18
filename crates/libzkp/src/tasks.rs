@@ -61,14 +61,13 @@ impl ProvintTaskExt {
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(
     task: ChunkProvingTask,
-    fork_name: ForkName,
+    _: ForkName,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
     let chunk_total_gas = task.stats().total_gas_used;
-    let chunk_info = task.precheck_and_build_metadata()?;
+    let (chunk_info, pi_hash) = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;
-    let expected_pi_hash = chunk_info.pi_hash_by_fork(fork_name);
     Ok((
-        expected_pi_hash,
+        pi_hash,
         ChunkProofMetadata {
             chunk_info,
             chunk_total_gas,
@@ -80,17 +79,16 @@ pub fn gen_universal_chunk_task(
 /// Generate required staff for batch proving
 pub fn gen_universal_batch_task(
     task: BatchProvingTask,
-    fork_name: ForkName,
+    _: ForkName,
 ) -> eyre::Result<(B256, BatchProofMetadata, ProvingTask)> {
-    let batch_info = task.precheck_and_build_metadata()?;
+    let (batch_info, batch_hash) = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;
-    let expected_pi_hash = batch_info.pi_hash_by_fork(fork_name);
 
     Ok((
-        expected_pi_hash,
+        batch_hash,
         BatchProofMetadata {
             batch_info,
-            batch_hash: expected_pi_hash,
+            batch_hash,
         },
         proving_task,
     ))
@@ -99,17 +97,16 @@ pub fn gen_universal_batch_task(
 /// Generate required staff for bundle proving
 pub fn gen_universal_bundle_task(
     task: BundleProvingTask,
-    fork_name: ForkName,
+    _: ForkName,
 ) -> eyre::Result<(B256, BundleProofMetadata, ProvingTask)> {
-    let bundle_info = task.precheck_and_build_metadata()?;
+    let (bundle_info, bundle_pi_hash) = task.precheck_and_build_metadata()?;
     let proving_task = task.try_into()?;
-    let expected_pi_hash = bundle_info.pi_hash_by_fork(fork_name);
 
     Ok((
-        expected_pi_hash,
+        bundle_pi_hash,
         BundleProofMetadata {
             bundle_info,
-            bundle_pi_hash: expected_pi_hash,
+            bundle_pi_hash,
         },
         proving_task,
     ))

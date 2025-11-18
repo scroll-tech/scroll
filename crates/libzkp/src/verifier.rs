@@ -44,7 +44,8 @@ pub struct CircuitConfig {
     pub version: u8,
     pub fork_name: String,
     pub assets_path: String,
-    pub features: String,
+    #[serde(default)]
+    pub features: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

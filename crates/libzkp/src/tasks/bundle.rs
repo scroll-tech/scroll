@@ -1,7 +1,8 @@
 use eyre::Result;
+use sbv_primitives::B256;
 use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
-    public_inputs::Version,
+    public_inputs::{Version, MultiVersionPublicInputs},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -43,8 +44,7 @@ impl BundleProvingTask {
         format!("{first}-{last}")
     }
 
-    fn build_guest_input(&self) -> BundleWitness {
-        let version = Version::from(self.version);
+    fn build_guest_input(&self, version: Version) -> BundleWitness {
         BundleWitness {
             version: version.as_version_byte(),
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
@@ -57,18 +57,20 @@ impl BundleProvingTask {
         }
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<BundleInfo> {
+    pub fn precheck_and_build_metadata(&self) -> Result<(BundleInfo, B256)> {
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
-        let witness = self.build_guest_input();
+        let version = Version::from(self.version);
+        let witness = self.build_guest_input(version);
         let metadata = BundleInfo::from(&witness);
         super::check_aggregation_proofs(
             witness.batch_infos.as_slice(),
             Version::from(self.version),
         )?;
+        let pi_hash = metadata.pi_hash_by_version(version);
 
-        Ok(metadata)
+        Ok((metadata, pi_hash))
     }
 }
 
@@ -76,7 +78,7 @@ impl TryFrom<BundleProvingTask> for ProvingTask {
     type Error = eyre::Error;
 
     fn try_from(value: BundleProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input();
+        let witness = value.build_guest_input(value.version.into());
         let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
             let legacy = LegacyBundleWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
