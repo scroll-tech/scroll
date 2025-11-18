@@ -311,7 +311,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 	if !bp.validiumMode() {
 		dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 		switch dbBatchCodecVersion {
-		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8:
+		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
 		default:
 			return nil, fmt.Errorf("Unsupported codec version <%d>", dbBatchCodecVersion)
 		}
