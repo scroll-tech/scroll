@@ -36,8 +36,14 @@ pub struct BatchHeaderValidiumWithHash {
 #[serde(untagged)]
 #[allow(non_camel_case_types)]
 pub enum BatchHeaderV {
+    /// Header for validium mode.
     Validium(BatchHeaderValidiumWithHash),
+    /// Header for scroll's STF version v6.
     V6(BatchHeaderV6),
+    /// Header for scroll's STF versions v7, v8, v9.
+    ///
+    /// Since the codec essentially is unchanged for the above STF versions, we do not define new
+    /// variants, instead re-using the [`BatchHeaderV7`] variant.
     V7_V8_V9(BatchHeaderV7),
 }
 
@@ -226,6 +232,16 @@ impl BatchProvingTask {
             (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.must_v6_header())
             }
+            // The da-codec for STF versions v7, v8, v9 is identical. In zkvm-prover we do not
+            // create additional variants to indicate the identical behaviour of codec. Instead we
+            // add a separate variant for the STF version.
+            //
+            // We handle the different STF versions here however build the same batch header since
+            // that type does not change. The batch header's version byte constructed in the
+            // coordinator actually defines the STF version (v7, v8 or v9) and we can derive the
+            // hard-fork (feynman or galileo) and the codec from the version byte.
+            //
+            // Refer [`scroll_zkvm_types::public_inputs::Version`].
             (Domain::Scroll, STFVersion::V7 | STFVersion::V8 | STFVersion::V9) => {
                 ReferenceHeader::V7_V8_V9(*self.batch_header.must_v7_v8_v9_header())
             }
