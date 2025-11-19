@@ -311,6 +311,9 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 	if !bp.validiumMode() {
 		dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 		switch dbBatchCodecVersion {
+		case 0:
+			log.Warn("the codec version is 0, if it is not under integration test we have encountered an error here")
+			return taskDetail, nil
 		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
 		default:
 			return nil, fmt.Errorf("Unsupported codec version <%d>", dbBatchCodecVersion)
