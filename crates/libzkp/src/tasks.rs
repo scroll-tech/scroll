@@ -63,10 +63,9 @@ pub fn gen_universal_chunk_task(
     task: ChunkProvingTask,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
     let chunk_total_gas = task.stats().total_gas_used;
-    let (chunk_info, pi_hash) = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
+    let (proving_task, chunk_info, chunk_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
-        pi_hash,
+        chunk_pi_hash,
         ChunkProofMetadata {
             chunk_info,
             chunk_total_gas,
@@ -79,8 +78,7 @@ pub fn gen_universal_chunk_task(
 pub fn gen_universal_batch_task(
     task: BatchProvingTask,
 ) -> eyre::Result<(B256, BatchProofMetadata, ProvingTask)> {
-    let (batch_info, batch_pi_hash) = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
+    let (proving_task, batch_info, batch_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
         batch_pi_hash,
         BatchProofMetadata { batch_info },
@@ -92,8 +90,7 @@ pub fn gen_universal_batch_task(
 pub fn gen_universal_bundle_task(
     task: BundleProvingTask,
 ) -> eyre::Result<(B256, BundleProofMetadata, ProvingTask)> {
-    let (bundle_info, bundle_pi_hash) = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
+    let (proving_task, bundle_info, bundle_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
         bundle_pi_hash,
         BundleProofMetadata {

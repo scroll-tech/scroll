@@ -25,6 +25,30 @@ pub struct BundleProvingTask {
 }
 
 impl BundleProvingTask {
+    pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, BundleInfo, B256)> {
+        let (witness, bundle_info, bundle_pi_hash) = self.precheck()?;
+        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
+            let legacy = LegacyBundleWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
+
+        let proving_task = ProvingTask {
+            identifier: self.identifier(),
+            fork_name: self.fork_name,
+            aggregated_proofs: self
+                .batch_proofs
+                .into_iter()
+                .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
+                .collect(),
+            serialized_witness: vec![serialized_witness],
+            vk: Vec::new(),
+        };
+
+        Ok((proving_task, bundle_info, bundle_pi_hash))
+    }
+
     fn identifier(&self) -> String {
         assert!(!self.batch_proofs.is_empty(), "{BUNDLE_SANITY_MSG}",);
 
@@ -59,7 +83,7 @@ impl BundleProvingTask {
         }
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<(BundleInfo, B256)> {
+    fn precheck(&self) -> Result<(BundleWitness, BundleInfo, B256)> {
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
@@ -72,32 +96,6 @@ impl BundleProvingTask {
         )?;
         let pi_hash = metadata.pi_hash_by_version(version);
 
-        Ok((metadata, pi_hash))
-    }
-}
-
-impl TryFrom<BundleProvingTask> for ProvingTask {
-    type Error = eyre::Error;
-
-    fn try_from(value: BundleProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input(value.version.into());
-        let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
-            let legacy = LegacyBundleWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
-
-        Ok(ProvingTask {
-            identifier: value.identifier(),
-            fork_name: value.fork_name,
-            aggregated_proofs: value
-                .batch_proofs
-                .into_iter()
-                .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
-                .collect(),
-            serialized_witness: vec![serialized_witness],
-            vk: Vec::new(),
-        })
+        Ok((witness, metadata, pi_hash))
     }
 }
