@@ -52,7 +52,7 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
 			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(),
-			"fallback gas limit", "error", err)
+			"error", err)
 		return nil, err
 	}
 

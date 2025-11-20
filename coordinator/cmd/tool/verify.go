@@ -36,7 +36,7 @@ func verify(cCtx *cli.Context) error {
 		return fmt.Errorf("error reading file: %w", err)
 	}
 
-	vf, err := verifier.NewVerifier(cfg.ProverManager.Verifier)
+	vf, err := verifier.NewVerifier(cfg.ProverManager.Verifier, cfg.L2.ValidiumMode)
 	if err != nil {
 		return err
 	}

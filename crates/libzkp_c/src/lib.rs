@@ -152,11 +152,28 @@ pub unsafe extern "C" fn gen_universal_task(
     fork_name: *const c_char,
     expected_vk: *const u8,
     expected_vk_len: usize,
+    decryption_key: *const u8,
+    decryption_key_len: usize,
 ) -> HandlingResult {
     let task_json = if task_type == TaskType::Chunk as i32 {
         let pre_task_str = c_char_to_str(task);
         let cli = l2geth::get_client();
-        match libzkp::checkout_chunk_task(pre_task_str, cli) {
+        let decryption_key = if decryption_key_len > 0 {
+            if decryption_key_len != 32 {
+                tracing::error!(
+                    "gen_universal_task received {}-byte decryption key; expected 32",
+                    decryption_key_len
+                );
+                return failed_handling_result();
+            }
+            Some(std::slice::from_raw_parts(
+                decryption_key,
+                decryption_key_len,
+            ))
+        } else {
+            None
+        };
+        match libzkp::checkout_chunk_task(pre_task_str, decryption_key, cli) {
             Ok(str) => str,
             Err(e) => {
                 tracing::error!("gen_universal_task failed at pre interpret step, error: {e}");

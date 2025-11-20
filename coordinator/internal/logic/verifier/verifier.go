@@ -19,20 +19,34 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/libzkp"
+	"scroll-tech/coordinator/internal/utils"
 )
 
 // This struct maps to `CircuitConfig` in libzkp/src/verifier.rs
 // Define a brand new struct here is to eliminate side effects in case fields
 // in `*config.CircuitConfig` being changed
 type rustCircuitConfig struct {
+	Version    uint   `json:"version"`
 	ForkName   string `json:"fork_name"`
 	AssetsPath string `json:"assets_path"`
 }
 
+var validiumMode bool
+
 func newRustCircuitConfig(cfg config.AssetConfig) *rustCircuitConfig {
+	ver := cfg.Version
+	if ver == 0 {
+		var err error
+		ver, err = utils.Version(cfg.ForkName, validiumMode)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return &rustCircuitConfig{
-		ForkName:   cfg.ForkName,
+		Version:    uint(ver),
 		AssetsPath: cfg.AssetsPath,
+		ForkName:   cfg.ForkName,
 	}
 }
 
@@ -60,7 +74,8 @@ type rustVkDump struct {
 }
 
 // NewVerifier Sets up a rust ffi to call verify.
-func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+func NewVerifier(cfg *config.VerifierConfig, useValidiumMode bool) (*Verifier, error) {
+	validiumMode = useValidiumMode
 	verifierConfig := newRustVerifierConfig(cfg)
 	configBytes, err := json.Marshal(verifierConfig)
 	if err != nil {

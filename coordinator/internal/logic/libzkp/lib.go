@@ -13,6 +13,7 @@ import "C" //nolint:typecheck
 import (
 	"fmt"
 	"os"
+	"scroll-tech/common/types/message"
 	"strings"
 	"unsafe"
 )
@@ -70,6 +71,31 @@ func VerifyBundleProof(proofData, forkName string) bool {
 
 	result := C.verify_bundle_proof(cProof, cForkName)
 	return result != 0
+}
+
+// TaskType enum values matching the Rust enum
+const (
+	TaskTypeChunk  = 0
+	TaskTypeBatch  = 1
+	TaskTypeBundle = 2
+)
+
+func fromMessageTaskType(taskType int) int {
+	switch message.ProofType(taskType) {
+	case message.ProofTypeChunk:
+		return TaskTypeChunk
+	case message.ProofTypeBatch:
+		return TaskTypeBatch
+	case message.ProofTypeBundle:
+		return TaskTypeBundle
+	default:
+		panic(fmt.Sprintf("unsupported proof type: %d", taskType))
+	}
+}
+
+// Generate a universal task
+func GenerateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName), expectedVk, decryptionKey)
 }
 
 // Generate wrapped proof

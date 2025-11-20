@@ -237,14 +237,21 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%v", task.TaskID, dbErr)
 	}
 
+	// Get the version byte.
+	version, err := cp.version(hardForkName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode version byte: %w", err)
+	}
+
 	var taskDetailBytes []byte
 	taskDetail := message.ChunkTaskDetail{
+		Version:          version,
 		BlockHashes:      blockHashes,
 		PrevMsgQueueHash: common.HexToHash(chunk.PrevL1MessageQueueHash),
+		PostMsgQueueHash: common.HexToHash(chunk.PostL1MessageQueueHash),
 		ForkName:         hardForkName,
 	}
 
-	var err error
 	taskDetailBytes, err = json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)

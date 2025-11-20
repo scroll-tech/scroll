@@ -24,7 +24,9 @@ var (
 
 // InitController inits Controller with database
 func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) {
-	vf, err := verifier.NewVerifier(cfg.ProverManager.Verifier)
+	validiumMode := cfg.L2.ValidiumMode
+
+	vf, err := verifier.NewVerifier(cfg.ProverManager.Verifier, validiumMode)
 	if err != nil {
 		panic("proof receiver new verifier failure")
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -24,6 +25,7 @@ type L2WatcherClient struct {
 	event.Feed
 
 	*ethclient.Client
+	rpcCli *rpc.Client
 
 	l2BlockOrm *orm.L2Block
 
@@ -32,16 +34,19 @@ type L2WatcherClient struct {
 	messageQueueAddress  common.Address
 	withdrawTrieRootSlot common.Hash
 
+	validiumMode bool
+
 	metrics *l2WatcherMetrics
 
 	chainCfg *params.ChainConfig
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *rpc.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, validiumMode bool, reg prometheus.Registerer) *L2WatcherClient {
 	return &L2WatcherClient{
 		ctx:    ctx,
-		Client: client,
+		Client: ethclient.NewClient(client),
+		rpcCli: client,
 
 		l2BlockOrm: orm.NewL2Block(db),
 
@@ -49,6 +54,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 		messageQueueAddress:  messageQueueAddress,
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
+
+		validiumMode: validiumMode,
 
 		metrics: initL2WatcherMetrics(reg),
 
@@ -95,13 +102,43 @@ func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64
 			return fmt.Errorf("failed to BlockByNumber: %v. number: %v", err, number)
 		}
 
+		blockTxs := block.Transactions()
+
 		var count int
-		for _, tx := range block.Transactions() {
+		for _, tx := range blockTxs {
 			if tx.IsL1MessageTx() {
 				count++
 			}
 		}
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String(), "L1 message count", count)
+
+		// use original (encrypted) L1 message txs in validium mode
+		if w.validiumMode {
+			var txs []*types.Transaction
+
+			if count > 0 {
+				log.Info("Fetching encrypted messages in validium mode")
+				err = w.rpcCli.CallContext(ctx, &txs, "scroll_getL1MessagesInBlock", block.Hash(), "synced")
+				if err != nil {
+					return fmt.Errorf("failed to get L1 messages: %v, block hash: %v", err, block.Hash().Hex())
+				}
+			}
+
+			// sanity check
+			if len(txs) != count {
+				return fmt.Errorf("L1 message count mismatch: expected %d, got %d", count, len(txs))
+			}
+
+			for ii := 0; ii < count; ii++ {
+				// sanity check
+				if blockTxs[ii].AsL1MessageTx().QueueIndex != txs[ii].AsL1MessageTx().QueueIndex {
+					return fmt.Errorf("L1 message queue index mismatch at index %d: expected %d, got %d", ii, blockTxs[ii].AsL1MessageTx().QueueIndex, txs[ii].AsL1MessageTx().QueueIndex)
+				}
+
+				log.Info("Replacing L1 message tx in validium mode", "index", ii, "queueIndex", txs[ii].AsL1MessageTx().QueueIndex, "decryptedTxHash", blockTxs[ii].Hash().Hex(), "originalTxHash", txs[ii].Hash().Hex())
+				blockTxs[ii] = txs[ii]
+			}
+		}
 
 		withdrawRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {
@@ -109,7 +146,7 @@ func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64
 		}
 		blocks = append(blocks, &encoding.Block{
 			Header:       block.Header(),
-			Transactions: encoding.TxsToTxsData(block.Transactions()),
+			Transactions: encoding.TxsToTxsData(blockTxs),
 			WithdrawRoot: common.BytesToHash(withdrawRoot),
 		})
 	}

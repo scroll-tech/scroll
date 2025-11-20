@@ -40,7 +40,9 @@ HandlingResult gen_universal_task(
     char* task,
     char* fork_name,
     const unsigned char* expected_vk,
-    size_t expected_vk_len
+    size_t expected_vk_len,
+    const unsigned char* decryption_key,
+    size_t decryption_key_len
 );
 
 // Release memory allocated for a HandlingResult returned by gen_universal_task
