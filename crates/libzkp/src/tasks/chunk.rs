@@ -94,28 +94,6 @@ pub struct ChunkDetails {
     pub total_gas_used: u64,
 }
 
-impl TryFrom<ChunkProvingTask> for ProvingTask {
-    type Error = eyre::Error;
-
-    fn try_from(value: ChunkProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input(value.version.into());
-        let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
-            let legacy_witness = LegacyChunkWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
-
-        Ok(ProvingTask {
-            identifier: value.identifier(),
-            fork_name: value.fork_name,
-            aggregated_proofs: Vec::new(),
-            serialized_witness: vec![serialized_witness],
-            vk: Vec::new(),
-        })
-    }
-}
-
 impl ChunkProvingTask {
     pub fn stats(&self) -> ChunkDetails {
         let num_blocks = self.block_witnesses.len();
@@ -135,6 +113,26 @@ impl ChunkProvingTask {
             num_txs,
             total_gas_used,
         }
+    }
+
+    pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, ChunkInfo, B256)> {
+        let (witness, chunk_info, chunk_pi_hash) = self.precheck()?;
+        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
+            let legacy_witness = LegacyChunkWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
+
+        let proving_task = ProvingTask {
+            identifier: self.identifier(),
+            fork_name: self.fork_name,
+            aggregated_proofs: Vec::new(),
+            serialized_witness: vec![serialized_witness],
+            vk: Vec::new(),
+        };
+
+        Ok((proving_task, chunk_info, chunk_pi_hash))
     }
 
     fn identifier(&self) -> String {
@@ -180,13 +178,13 @@ impl ChunkProvingTask {
         self.block_witnesses[0].states.push(node);
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<(ChunkInfo, B256)> {
+    fn precheck(&self) -> Result<(ChunkWitness, ChunkInfo, B256)> {
         let version = Version::from(self.version);
         let witness = self.build_guest_input(version);
-        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
-        assert_eq!(ret.post_msg_queue_hash, self.post_msg_queue_hash);
-        let pi_hash = ret.pi_hash_by_version(version);
-        Ok((ret, pi_hash))
+        let chunk_info = ChunkInfo::try_from(witness.clone()).map_err(|e| eyre::eyre!("{e}"))?;
+        assert_eq!(chunk_info.post_msg_queue_hash, self.post_msg_queue_hash);
+        let chunk_pi_hash = chunk_info.pi_hash_by_version(version);
+        Ok((witness, chunk_info, chunk_pi_hash))
     }
 
     /// this method check the validate of current task (there may be missing storage node)

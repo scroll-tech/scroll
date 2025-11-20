@@ -112,33 +112,31 @@ pub struct BatchProvingTask {
     pub fork_name: String,
 }
 
-impl TryFrom<BatchProvingTask> for ProvingTask {
-    type Error = eyre::Error;
-
-    fn try_from(value: BatchProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input(value.version.into());
-        let serialized_witness = if crate::witness_use_legacy_mode(&value.fork_name)? {
+impl BatchProvingTask {
+    pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, BatchInfo, B256)> {
+        let (witness, metadata, batch_pi_hash) = self.precheck()?;
+        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
             let legacy_witness = LegacyBatchWitness::from(witness);
             to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
         } else {
             super::encode_task_to_witness(&witness)?
         };
 
-        Ok(ProvingTask {
-            identifier: value.batch_header.batch_hash().to_string(),
-            fork_name: value.fork_name,
-            aggregated_proofs: value
+        let proving_task = ProvingTask {
+            identifier: self.batch_header.batch_hash().to_string(),
+            fork_name: self.fork_name,
+            aggregated_proofs: self
                 .chunk_proofs
                 .into_iter()
                 .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
                 .collect(),
             serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
-        })
-    }
-}
+        };
 
-impl BatchProvingTask {
+        Ok((proving_task, metadata, batch_pi_hash))
+    }
+
     fn build_guest_input(&self, version: Version) -> BatchWitness {
         tracing::info!(
             "Handling batch task for input, version byte {}, Version data: {:?}",
@@ -281,7 +279,7 @@ impl BatchProvingTask {
         }
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<(BatchInfo, B256)> {
+    pub fn precheck(&self) -> Result<(BatchWitness, BatchInfo, B256)> {
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
@@ -294,7 +292,7 @@ impl BatchProvingTask {
         )?;
         let pi_hash = metadata.pi_hash_by_version(version);
 
-        Ok((metadata, pi_hash))
+        Ok((witness, metadata, pi_hash))
     }
 }
 
