@@ -90,6 +90,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 	v, ok := data.(types.LoginParameter)
 	if !ok {
+		log.Error("PayloadFunc received unexpected type", "type", fmt.Sprintf("%T", data))
 		return jwt.MapClaims{}
 	}
 

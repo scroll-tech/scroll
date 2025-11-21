@@ -49,7 +49,7 @@ func (m *ProverManager) Get(userKey string) (ret *proverSession) {
 			if err != nil {
 				log.Error("Get persistent layer for prover tokens fail", "error", err)
 			} else if ret != nil {
-				fmt.Println("restore record from persistent", userKey, ret.proverToken)
+				log.Debug("restore record from persistent", "key", userKey, "token", ret.proverToken)
 				ret.persistent = m.persistent
 			}
 		}
@@ -288,7 +288,7 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 
 	newToken, err := c.maintainLogin(ctx, cliMgr, up, loginParam, token.phase)
 	if err != nil {
-		return nil, fmt.Errorf("update prover token fail: %V", err)
+		return nil, fmt.Errorf("update prover token fail: %v", err)
 	}
 
 	return cli.SubmitProof(ctx, param, newToken.Token)

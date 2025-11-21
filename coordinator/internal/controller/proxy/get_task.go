@@ -83,7 +83,7 @@ func (p *PriorityUpstreamManager) Get(key string) (string, bool) {
 func (p *PriorityUpstreamManager) Set(key, value string) {
 	defer func() {
 		if err := p.proverPriorityPersist.Update(key, value); err != nil {
-			log.Error("persistent priority record failure", "error", err, "key", key, "value", value)
+			log.Error("update priority record failure", "error", err, "key", key, "value", value)
 		}
 	}()
 	p.Lock()
@@ -93,6 +93,11 @@ func (p *PriorityUpstreamManager) Set(key, value string) {
 
 // Delete removes the priority upstream for a given key
 func (p *PriorityUpstreamManager) Delete(key string) {
+	defer func() {
+		if err := p.proverPriorityPersist.Del(key); err != nil {
+			log.Error("delete priority record failure", "error", err, "key", key)
+		}
+	}()
 	p.Lock()
 	defer p.Unlock()
 	delete(p.data, key)
