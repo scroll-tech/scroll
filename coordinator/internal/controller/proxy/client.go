@@ -18,12 +18,25 @@ import (
 	"scroll-tech/coordinator/internal/types"
 )
 
+type ProxyCli interface {
+	Login(ctx context.Context, genLogin func(string) (*types.LoginParameter, error)) (*ctypes.Response, error)
+	ProxyLogin(ctx context.Context, param *types.LoginParameter) (*ctypes.Response, error)
+	Token() string
+	Reset()
+}
+
+type ProverCli interface {
+	GetTask(ctx context.Context, param *types.GetTaskParameter) (*ctypes.Response, error)
+	SubmitProof(ctx context.Context, param *types.SubmitProofParameter) (*ctypes.Response, error)
+}
+
 // Client wraps an http client with a preset host for coordinator API calls
 type upClient struct {
 	httpClient      *http.Client
 	baseURL         string
 	loginToken      string
 	compatibileMode bool
+	resetFromMgr    func()
 }
 
 // NewClient creates a new Client with the specified host
@@ -34,6 +47,12 @@ func newUpClient(cfg *config.UpStream) *upClient {
 		},
 		baseURL:         cfg.BaseUrl,
 		compatibileMode: cfg.CompatibileMode,
+	}
+}
+
+func (c *upClient) Reset() {
+	if c.resetFromMgr != nil {
+		c.resetFromMgr()
 	}
 }
 
@@ -175,7 +194,7 @@ func (c *upClient) ProxyLogin(ctx context.Context, param *types.LoginParameter) 
 }
 
 // GetTask makes a POST request to /v1/get_task with GetTaskParameter
-func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, token string) (*ctypes.Response, error) {
+func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter) (*ctypes.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/get_task", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -189,8 +208,8 @@ func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, t
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if c.loginToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.loginToken)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -201,7 +220,7 @@ func (c *upClient) GetTask(ctx context.Context, param *types.GetTaskParameter, t
 }
 
 // SubmitProof makes a POST request to /v1/submit_proof with SubmitProofParameter
-func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofParameter, token string) (*ctypes.Response, error) {
+func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofParameter) (*ctypes.Response, error) {
 	url := fmt.Sprintf("%s/coordinator/v1/submit_proof", c.baseURL)
 
 	jsonData, err := json.Marshal(param)
@@ -215,8 +234,8 @@ func (c *upClient) SubmitProof(ctx context.Context, param *types.SubmitProofPara
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	if c.loginToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.loginToken)
 	}
 
 	resp, err := c.httpClient.Do(req)

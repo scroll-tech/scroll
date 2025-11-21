@@ -149,7 +149,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 
 	log.Debug("start proxy login process", "upstream", up, "cli", param.Message.ProverName)
 
-	cli := cliMgr.Client(ctx)
+	cli := cliMgr.ClientAsProxy(ctx)
 	if cli == nil {
 		nerr = fmt.Errorf("get upstream cli fail")
 		return
@@ -163,8 +163,8 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 
 	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
 		log.Info("up stream has expired, renew upstream connection", "up", up)
-		cliMgr.Reset(cli)
-		cli = cliMgr.Client(ctx)
+		cli.Reset()
+		cli = cliMgr.ClientAsProxy(ctx)
 		if cli == nil {
 			nerr = fmt.Errorf("get upstream cli fail (secondary try)")
 			return
@@ -226,13 +226,8 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 	token := c.proverToken[up]
 	c.RUnlock()
 
-	cli := cliMgr.Client(ctx)
-	if cli == nil {
-		return nil, fmt.Errorf("get upstream cli fail")
-	}
-
 	if token.LoginSchema != nil {
-		resp, err := cli.GetTask(ctx, param, token.Token)
+		resp, err := cliMgr.Client(token.Token).GetTask(ctx, param)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +248,7 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 		return nil, fmt.Errorf("update prover token fail: %v", err)
 	}
 
-	return cli.GetTask(ctx, param, newToken.Token)
+	return cliMgr.Client(newToken.Token).GetTask(ctx, param)
 
 }
 
@@ -264,13 +259,8 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 	token := c.proverToken[up]
 	c.RUnlock()
 
-	cli := cliMgr.Client(ctx)
-	if cli == nil {
-		return nil, fmt.Errorf("get upstream cli fail")
-	}
-
 	if token.LoginSchema != nil {
-		resp, err := cli.SubmitProof(ctx, param, token.Token)
+		resp, err := cliMgr.Client(token.Token).SubmitProof(ctx, param)
 		if err != nil {
 			return nil, err
 		}
@@ -291,5 +281,5 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 		return nil, fmt.Errorf("update prover token fail: %v", err)
 	}
 
-	return cli.SubmitProof(ctx, param, newToken.Token)
+	return cliMgr.Client(newToken.Token).SubmitProof(ctx, param)
 }

@@ -18,8 +18,11 @@ import (
 )
 
 type Client interface {
-	Client(context.Context) *upClient
-	Reset(cli *upClient)
+	// a client to access upstream coordinator with specified identity
+	// so prover can contact with coordinator as itself
+	Client(string) ProverCli
+	// the client to access upstream as proxy itself
+	ClientAsProxy(context.Context) ProxyCli
 	Name() string
 }
 
@@ -122,20 +125,17 @@ func (cliMgr *ClientManager) doLogin(ctx context.Context, loginCli *upClient) {
 	}
 }
 
-func (cliMgr *ClientManager) Reset(cli *upClient) {
-	cliMgr.cachedCli.Lock()
-	if cliMgr.cachedCli.cli == cli {
-		log.Info("cached client cleared", "name", cliMgr.name)
-		cliMgr.cachedCli.cli = nil
-	}
-	cliMgr.cachedCli.Unlock()
-}
-
 func (cliMgr *ClientManager) Name() string {
 	return cliMgr.name
 }
 
-func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
+func (cliMgr *ClientManager) Client(token string) ProverCli {
+	loginCli := newUpClient(cliMgr.cfg)
+	loginCli.loginToken = token
+	return loginCli
+}
+
+func (cliMgr *ClientManager) ClientAsProxy(ctx context.Context) ProxyCli {
 	cliMgr.cachedCli.RLock()
 	if cliMgr.cachedCli.cli != nil {
 		defer cliMgr.cachedCli.RUnlock()
@@ -157,6 +157,14 @@ func (cliMgr *ClientManager) Client(ctx context.Context) *upClient {
 		// Set new completion context and launch login goroutine
 		ctx, completionDone := context.WithCancel(context.TODO())
 		loginCli := newUpClient(cliMgr.cfg)
+		loginCli.resetFromMgr = func() {
+			cliMgr.cachedCli.Lock()
+			if cliMgr.cachedCli.cli == loginCli {
+				log.Info("cached client cleared", "name", cliMgr.name)
+				cliMgr.cachedCli.cli = nil
+			}
+			cliMgr.cachedCli.Unlock()
+		}
 		completionCtx = context.WithValue(ctx, loginCliKey, loginCli)
 		cliMgr.cachedCli.completionCtx = completionCtx
 

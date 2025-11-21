@@ -63,7 +63,7 @@ func testProxyClient(t *testing.T) {
 	defer cancel()
 
 	// Test Client method
-	client := clientManager.Client(ctx)
+	client := clientManager.ClientAsProxy(ctx)
 
 	// Client should not be nil if login succeeds
 	// Note: This might be nil if the coordinator is not properly set up for proxy authentication
