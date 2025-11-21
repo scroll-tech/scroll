@@ -69,8 +69,21 @@ func testProxyClient(t *testing.T) {
 	// Note: This might be nil if the coordinator is not properly set up for proxy authentication
 	// but the test validates that the Client method completes without panic
 	assert.NotNil(t, client)
-	assert.NotEmpty(t, client.Token())
-	t.Logf("Client token: %s (%v)", client.Token(), client)
+	token1 := client.Token()
+	assert.NotEmpty(t, token1)
+	t.Logf("Client token: %s (%v)", token1, client)
+
+	if !upCfg.CompatibileMode {
+		time.Sleep(time.Second * 2)
+		client.Reset()
+		client = clientManager.ClientAsProxy(ctx)
+		assert.NotNil(t, client)
+		token2 := client.Token()
+		assert.NotEmpty(t, token2)
+		t.Logf("Client token (sec): %s (%v)", token2, client)
+		assert.NotEqual(t, token1, token2, "token should not be identical")
+	}
+
 }
 
 func testProxyHandshake(t *testing.T) {
