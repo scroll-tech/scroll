@@ -12,6 +12,7 @@ use scroll_proving_sdk::{
         ProvingService,
     },
 };
+use scroll_zkvm_types::ProvingTask;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -272,7 +273,9 @@ impl LocalProver {
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
-        let (prover_task, task_cfg) = UniversalHandler::get_task_from_input(&req.input)?;
+        let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
+        let is_openvm_13 = prover_task.use_openvm_13;
+        let prover_task: ProvingTask = prover_task.into();
         let vk = hex::encode(&prover_task.vk);
         let handler = if let Some(handler) = self.handlers.get(&vk) {
             handler.clone()
@@ -298,8 +301,10 @@ impl LocalProver {
                 .location_data
                 .get_asset(&vk, &url_base, &base_config.workspace_path)
                 .await?;
-            let circuits_handler =
-                Arc::new(Mutex::new(UniversalHandler::new(&asset_path, &task_cfg)?));
+            let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(
+                &asset_path,
+                is_openvm_13,
+            )?));
             self.handlers.insert(vk, circuits_handler.clone());
             circuits_handler
         };

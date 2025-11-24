@@ -36,20 +36,20 @@ fn check_aggregation_proofs<Metadata: MultiVersionPublicInputs>(
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct ProvintTaskExt {
+pub struct ProvingTaskExt {
     #[serde(flatten)]
     task: ProvingTask,
     #[serde(default)]
     pub use_openvm_13: bool,
 }
 
-impl From<ProvintTaskExt> for ProvingTask {
-    fn from(wrap_t: ProvintTaskExt) -> Self {
+impl From<ProvingTaskExt> for ProvingTask {
+    fn from(wrap_t: ProvingTaskExt) -> Self {
         wrap_t.task
     }
 }
 
-impl ProvintTaskExt {
+impl ProvingTaskExt {
     pub fn new(task: ProvingTask) -> Self {
         Self {
             task,

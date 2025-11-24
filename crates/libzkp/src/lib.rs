@@ -1,6 +1,6 @@
 pub mod proofs;
 pub mod tasks;
-pub use tasks::ProvintTaskExt;
+pub use tasks::ProvingTaskExt;
 pub mod verifier;
 use verifier::HardForkName;
 pub use verifier::{TaskType, VerifierConfig};
@@ -20,7 +20,7 @@ pub(crate) fn witness_use_legacy_mode(fork_name: &str) -> eyre::Result<bool> {
         .map(|cfg| cfg.legacy_witness_encoding)
         .ok_or_else(|| {
             eyre::eyre!(
-                "can not found features setting for unrecognized fork {}",
+                "can not find features setting for unrecognized fork {}",
                 fork_name
             )
         })
@@ -53,10 +53,6 @@ impl FeatureOptions {
         }
         ret
     }
-}
-
-pub fn set_dynamic_feature(_: &str) {
-    tracing::error!("call deprecated method");
 }
 
 /// Turn the coordinator's chunk task into a json string for formal chunk proving
@@ -196,7 +192,7 @@ pub fn gen_universal_task(
 
     u_task.vk = Vec::from(expected_vk);
     let fork_name = u_task.fork_name.clone();
-    let mut u_task_ext = ProvintTaskExt::new(u_task);
+    let mut u_task_ext = ProvingTaskExt::new(u_task);
 
     // set additional settings from global features
     if let Some(cfg) = ADDITIONAL_FEATURES

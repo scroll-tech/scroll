@@ -27,11 +27,11 @@ pub struct BatchHeaderValidiumWithHash {
 }
 
 /// Parse header types passed from golang side and adapt to the
-/// defination in zkvm-prover's types
+/// definition in zkvm-prover's types
 /// We distinguish the header type in golang side according to the codec
-/// version, i.e. v6 - v9 (current), and validium
-/// And adapt it to different header version used in zkvm-prover's witness
-/// defination, i.e. v6- v8 (current), and validium
+/// version, i.e. v7 - v9 (current), and validium
+/// And adapt it to the corresponding header version used in zkvm-prover's witness
+/// definition, i.e. v7- v8 (current), and validium
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 #[allow(non_camel_case_types)]

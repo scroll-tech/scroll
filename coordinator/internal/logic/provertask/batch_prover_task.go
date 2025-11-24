@@ -328,7 +328,6 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
 		}
-		log.Info("Decode batchheader bytes to canonical header", "version", batchHeader.Version())
 		taskDetail.BatchHeader = batchHeader
 
 		taskDetail.ChallengeDigest = common.HexToHash(dbBatch.ChallengeDigest)
