@@ -6,6 +6,9 @@ if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
   exit 1
 fi
 
+# default fork name from env or "galileo"
+SCROLL_FORK_NAME="${SCROLL_FORK_NAME:-galileo}"
+
 # set ASSET_DIR by reading from config.json
 CONFIG_FILE="bin/conf/config.template.json"
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -28,7 +31,13 @@ for ((i=0; i<$VERIFIER_COUNT; i++)); do
   # extract assets_path for current verifier
   ASSETS_PATH=$(jq -r ".prover_manager.verifier.verifiers[$i].assets_path" "$CONFIG_FILE")
   FORK_NAME=$(jq -r ".prover_manager.verifier.verifiers[$i].fork_name" "$CONFIG_FILE")
-  
+
+  # skip if this verifier's fork doesn't match the target fork
+  if [ "$FORK_NAME" != "$SCROLL_FORK_NAME" ]; then
+    echo "Expect $SCROLL_FORK_NAME, skip current fork ($FORK_NAME)"
+    continue
+  fi
+
   if [ "$ASSETS_PATH" = "null" ]; then
     echo "Warning: Could not find assets_path for verifier $i, skipping..."
     continue

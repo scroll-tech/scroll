@@ -8,11 +8,7 @@
       "retry_wait_time_sec": 10,
       "connection_timeout_sec": 1800
     },
-    "l2geth": {
-      "endpoint": "<the url of rpc endpoint>"
-    },
     "prover": {
-      "circuit_type": 2,
       "supported_proof_types": [
         1,
         2,
@@ -28,6 +24,11 @@
       "hard_fork_name": "feynman",
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/",
       "workspace_path": ".work/feynman"
-    }
+    },
+    "galileo": {
+      "hard_fork_name": "galileo",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/",
+      "workspace_path": ".work/galileo"
+    }    
   }
 }

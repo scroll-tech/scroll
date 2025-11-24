@@ -311,9 +311,12 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 	if !bp.validiumMode() {
 		dbBatchCodecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 		switch dbBatchCodecVersion {
+		case 0:
+			log.Warn("the codec version is 0, if it is not under integration test we have encountered an error here")
+			return taskDetail, nil
 		case encoding.CodecV3, encoding.CodecV4, encoding.CodecV6, encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
 		default:
-			return taskDetail, nil
+			return nil, fmt.Errorf("Unsupported codec version <%d>", dbBatchCodecVersion)
 		}
 
 		codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
@@ -335,7 +338,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkProofs []
 		taskDetail.KzgProof = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[112:160]))}
 		taskDetail.KzgCommitment = &message.Byte48{Big: hexutil.Big(*new(big.Int).SetBytes(dbBatch.BlobDataProof[64:112]))}
 	} else {
-		log.Debug("Apply validium mode for batch proving task")
+		log.Info("Apply validium mode for batch proving task")
 		codec := cutils.FromVersion(version)
 		batchHeader, decodeErr := codec.DABatchForTaskFromBytes(dbBatch.BatchHeader)
 		if decodeErr != nil {

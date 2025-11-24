@@ -275,10 +275,3 @@ pub unsafe extern "C" fn release_string(ptr: *mut c_char) {
         let _ = CString::from_raw(ptr);
     }
 }
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn set_dynamic_feature(feats: *const c_char) {
-    let feats_str = c_char_to_str(feats);
-    libzkp::set_dynamic_feature(feats_str);
-}

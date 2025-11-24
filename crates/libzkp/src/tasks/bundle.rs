@@ -1,7 +1,8 @@
 use eyre::Result;
+use sbv_primitives::B256;
 use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
-    public_inputs::Version,
+    public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
 };
@@ -24,6 +25,30 @@ pub struct BundleProvingTask {
 }
 
 impl BundleProvingTask {
+    pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, BundleInfo, B256)> {
+        let (witness, bundle_info, bundle_pi_hash) = self.precheck()?;
+        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
+            let legacy = LegacyBundleWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
+
+        let proving_task = ProvingTask {
+            identifier: self.identifier(),
+            fork_name: self.fork_name,
+            aggregated_proofs: self
+                .batch_proofs
+                .into_iter()
+                .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
+                .collect(),
+            serialized_witness: vec![serialized_witness],
+            vk: Vec::new(),
+        };
+
+        Ok((proving_task, bundle_info, bundle_pi_hash))
+    }
+
     fn identifier(&self) -> String {
         assert!(!self.batch_proofs.is_empty(), "{BUNDLE_SANITY_MSG}",);
 
@@ -32,19 +57,20 @@ impl BundleProvingTask {
                 .first()
                 .expect(BUNDLE_SANITY_MSG)
                 .metadata
+                .batch_info
                 .batch_hash,
             self.batch_proofs
                 .last()
                 .expect(BUNDLE_SANITY_MSG)
                 .metadata
+                .batch_info
                 .batch_hash,
         );
 
         format!("{first}-{last}")
     }
 
-    fn build_guest_input(&self) -> BundleWitness {
-        let version = Version::from(self.version);
+    fn build_guest_input(&self, version: Version) -> BundleWitness {
         BundleWitness {
             version: version.as_version_byte(),
             batch_proofs: self.batch_proofs.iter().map(|proof| proof.into()).collect(),
@@ -57,43 +83,19 @@ impl BundleProvingTask {
         }
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<BundleInfo> {
+    fn precheck(&self) -> Result<(BundleWitness, BundleInfo, B256)> {
         // for every aggregation task, there are two steps needed to build the metadata:
         // 1. generate data for metadata from the witness
         // 2. validate every adjacent proof pair
-        let witness = self.build_guest_input();
+        let version = Version::from(self.version);
+        let witness = self.build_guest_input(version);
         let metadata = BundleInfo::from(&witness);
         super::check_aggregation_proofs(
             witness.batch_infos.as_slice(),
             Version::from(self.version),
         )?;
+        let pi_hash = metadata.pi_hash_by_version(version);
 
-        Ok(metadata)
-    }
-}
-
-impl TryFrom<BundleProvingTask> for ProvingTask {
-    type Error = eyre::Error;
-
-    fn try_from(value: BundleProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input();
-        let serialized_witness = if crate::witness_use_legacy_mode() {
-            let legacy = LegacyBundleWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
-
-        Ok(ProvingTask {
-            identifier: value.identifier(),
-            fork_name: value.fork_name,
-            aggregated_proofs: value
-                .batch_proofs
-                .into_iter()
-                .map(|w_proof| w_proof.proof.into_stark_proof().expect("expect root proof"))
-                .collect(),
-            serialized_witness: vec![serialized_witness],
-            vk: Vec::new(),
-        })
+        Ok((witness, metadata, pi_hash))
     }
 }

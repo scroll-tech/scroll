@@ -44,6 +44,12 @@ setup_db: clean
 	${GOOSE_CMD} up
 	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
+reset_db:
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} down
+	${GOOSE_CMD} down-to 0
+	${GOOSE_CMD} up
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
+
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
 
@@ -52,9 +58,17 @@ build/bin/e2e_tool: test_tool
 import_data_euclid: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
 
-import_data: build/bin/e2e_tool check_vars
+import_data_feynman: build/bin/e2e_tool check_vars
 	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}
 
+import_data_galileo: build/bin/e2e_tool check_vars
+	build/bin/e2e_tool --config conf/config.json --codec 9 ${BEGIN_BLOCK} ${END_BLOCK}
+
+import_data: build/bin/e2e_tool check_vars
+	build/bin/e2e_tool --config conf/config.json --codec ${CODEC_VERSION} ${BEGIN_BLOCK} ${END_BLOCK}
+
+reimport_data: reset_db import_data
+
 coordinator_setup:
-	$(MAKE) -C ../../coordinator localsetup
+	SCROLL_FORK_NAME=${SCROLL_FORK_NAME} $(MAKE) -C ../../coordinator localsetup
 	cp -f conf/genesis.json ../../coordinator/build/bin/conf
