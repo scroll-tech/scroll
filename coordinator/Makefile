@@ -37,7 +37,12 @@ coordinator_tool:
 localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, and setup releases
 	mkdir -p build/bin/conf
 	@echo "Copying configuration files..."
-	cp -fL $(CURDIR)/conf/config.json $(CURDIR)/build/bin/conf/config.template.json
+	@if [ -f "$(PWD)/conf/config.template.json" ]; then \
+		SRC="$(PWD)/conf/config.template.json"; \
+	else \
+		SRC="$(CURDIR)/conf/config.json"; \
+	fi; \
+	cp -fL "$$SRC" "$(CURDIR)/build/bin/conf/config.template.json"
 	@echo "Setting up releases..."
 	cd $(CURDIR)/build && bash setup_releases.sh
 

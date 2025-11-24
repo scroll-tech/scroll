@@ -141,13 +141,6 @@ func DumpVk(forkName, filePath string) error {
 	return nil
 }
 
-// Set dynamic feature flags that control libzkp runtime behavior
-func SetDynamicFeature(feats string) {
-	cFeats := goToCString(feats)
-	defer freeCString(cFeats)
-	C.set_dynamic_feature(cFeats)
-}
-
 // UnivTaskCompatibilityFix calls the universal task compatibility fix function
 func UniversalTaskCompatibilityFix(taskJSON string) (string, error) {
 	cTaskJSON := goToCString(taskJSON)

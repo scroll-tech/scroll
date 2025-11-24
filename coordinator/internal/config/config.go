@@ -69,12 +69,12 @@ type AssetConfig struct {
 	ForkName         string `json:"fork_name"`
 	Vkfile           string `json:"vk_file,omitempty"`
 	MinProverVersion string `json:"min_prover_version,omitempty"`
+	Features         string `json:"features,omitempty"`
 }
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
 	MinProverVersion string        `json:"min_prover_version"`
-	Features         string        `json:"features,omitempty"`
 	Verifiers        []AssetConfig `json:"verifiers"`
 }
 

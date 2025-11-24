@@ -14,7 +14,7 @@ use crate::{
     utils::panic_catch,
 };
 use sbv_primitives::B256;
-use scroll_zkvm_types::public_inputs::{ForkName, MultiVersionPublicInputs, Version};
+use scroll_zkvm_types::public_inputs::{MultiVersionPublicInputs, Version};
 
 fn encode_task_to_witness<T: serde::Serialize>(task: &T) -> eyre::Result<Vec<u8>> {
     let config = bincode::config::standard();
@@ -35,17 +35,37 @@ fn check_aggregation_proofs<Metadata: MultiVersionPublicInputs>(
     Ok(())
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ProvingTaskExt {
+    #[serde(flatten)]
+    task: ProvingTask,
+    #[serde(default)]
+    pub use_openvm_13: bool,
+}
+
+impl From<ProvingTaskExt> for ProvingTask {
+    fn from(wrap_t: ProvingTaskExt) -> Self {
+        wrap_t.task
+    }
+}
+
+impl ProvingTaskExt {
+    pub fn new(task: ProvingTask) -> Self {
+        Self {
+            task,
+            use_openvm_13: false,
+        }
+    }
+}
+
 /// Generate required staff for chunk proving
 pub fn gen_universal_chunk_task(
     task: ChunkProvingTask,
-    fork_name: ForkName,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
     let chunk_total_gas = task.stats().total_gas_used;
-    let chunk_info = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
-    let expected_pi_hash = chunk_info.pi_hash_by_fork(fork_name);
+    let (proving_task, chunk_info, chunk_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
-        expected_pi_hash,
+        chunk_pi_hash,
         ChunkProofMetadata {
             chunk_info,
             chunk_total_gas,
@@ -57,18 +77,11 @@ pub fn gen_universal_chunk_task(
 /// Generate required staff for batch proving
 pub fn gen_universal_batch_task(
     task: BatchProvingTask,
-    fork_name: ForkName,
 ) -> eyre::Result<(B256, BatchProofMetadata, ProvingTask)> {
-    let batch_info = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
-    let expected_pi_hash = batch_info.pi_hash_by_fork(fork_name);
-
+    let (proving_task, batch_info, batch_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
-        expected_pi_hash,
-        BatchProofMetadata {
-            batch_info,
-            batch_hash: expected_pi_hash,
-        },
+        batch_pi_hash,
+        BatchProofMetadata { batch_info },
         proving_task,
     ))
 }
@@ -76,17 +89,13 @@ pub fn gen_universal_batch_task(
 /// Generate required staff for bundle proving
 pub fn gen_universal_bundle_task(
     task: BundleProvingTask,
-    fork_name: ForkName,
 ) -> eyre::Result<(B256, BundleProofMetadata, ProvingTask)> {
-    let bundle_info = task.precheck_and_build_metadata()?;
-    let proving_task = task.try_into()?;
-    let expected_pi_hash = bundle_info.pi_hash_by_fork(fork_name);
-
+    let (proving_task, bundle_info, bundle_pi_hash) = task.into_proving_task_with_precheck()?;
     Ok((
-        expected_pi_hash,
+        bundle_pi_hash,
         BundleProofMetadata {
             bundle_info,
-            bundle_pi_hash: expected_pi_hash,
+            bundle_pi_hash,
         },
         proving_task,
     ))
