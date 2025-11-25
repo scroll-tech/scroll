@@ -242,8 +242,8 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		break
 	}
 
-	// disable this check to upload blobs before it's committed. This is to 
-	// alleviate the case nodes try to fetch the blob from s3 before its uploaded. 
+	// disable this check to upload blobs before it's committed. This is to
+	// alleviate the case nodes try to fetch the blob from s3 before its uploaded.
 	// if len(batch.CommitTxHash) == 0 {
 	// 	log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
 	// 	return nil, nil
