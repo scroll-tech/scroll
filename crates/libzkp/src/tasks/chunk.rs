@@ -3,9 +3,9 @@ use sbv_core::BlockWitness;
 use sbv_primitives::{types::consensus::BlockHeader, B256};
 use scroll_zkvm_types::{
     chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
+    public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
     utils::{to_rkyv_bytes, RancorError},
-    version::Version,
 };
 
 use super::chunk_interpreter::*;
@@ -94,28 +94,6 @@ pub struct ChunkDetails {
     pub total_gas_used: u64,
 }
 
-impl TryFrom<ChunkProvingTask> for ProvingTask {
-    type Error = eyre::Error;
-
-    fn try_from(value: ChunkProvingTask) -> Result<Self> {
-        let witness = value.build_guest_input();
-        let serialized_witness = if crate::witness_use_legacy_mode() {
-            let legacy_witness = LegacyChunkWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
-
-        Ok(ProvingTask {
-            identifier: value.identifier(),
-            fork_name: value.fork_name,
-            aggregated_proofs: Vec::new(),
-            serialized_witness: vec![serialized_witness],
-            vk: Vec::new(),
-        })
-    }
-}
-
 impl ChunkProvingTask {
     pub fn stats(&self) -> ChunkDetails {
         let num_blocks = self.block_witnesses.len();
@@ -137,6 +115,26 @@ impl ChunkProvingTask {
         }
     }
 
+    pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, ChunkInfo, B256)> {
+        let (witness, chunk_info, chunk_pi_hash) = self.precheck()?;
+        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
+            let legacy_witness = LegacyChunkWitness::from(witness);
+            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
+        } else {
+            super::encode_task_to_witness(&witness)?
+        };
+
+        let proving_task = ProvingTask {
+            identifier: self.identifier(),
+            fork_name: self.fork_name,
+            aggregated_proofs: Vec::new(),
+            serialized_witness: vec![serialized_witness],
+            vk: Vec::new(),
+        };
+
+        Ok((proving_task, chunk_info, chunk_pi_hash))
+    }
+
     fn identifier(&self) -> String {
         assert!(!self.block_witnesses.is_empty(), "{CHUNK_SANITY_MSG}",);
 
@@ -156,9 +154,7 @@ impl ChunkProvingTask {
         format!("{first}-{last}")
     }
 
-    fn build_guest_input(&self) -> ChunkWitness {
-        let version = Version::from(self.version);
-
+    fn build_guest_input(&self, version: Version) -> ChunkWitness {
         if version.is_validium() {
             assert!(self.validium_inputs.is_some());
             ChunkWitness::new(
@@ -182,11 +178,13 @@ impl ChunkProvingTask {
         self.block_witnesses[0].states.push(node);
     }
 
-    pub fn precheck_and_build_metadata(&self) -> Result<ChunkInfo> {
-        let witness = self.build_guest_input();
-        let ret = ChunkInfo::try_from(witness).map_err(|e| eyre::eyre!("{e}"))?;
-        assert_eq!(ret.post_msg_queue_hash, self.post_msg_queue_hash);
-        Ok(ret)
+    fn precheck(&self) -> Result<(ChunkWitness, ChunkInfo, B256)> {
+        let version = Version::from(self.version);
+        let witness = self.build_guest_input(version);
+        let chunk_info = ChunkInfo::try_from(witness.clone()).map_err(|e| eyre::eyre!("{e}"))?;
+        assert_eq!(chunk_info.post_msg_queue_hash, self.post_msg_queue_hash);
+        let chunk_pi_hash = chunk_info.pi_hash_by_version(version);
+        Ok((witness, chunk_info, chunk_pi_hash))
     }
 
     /// this method check the validate of current task (there may be missing storage node)
@@ -214,7 +212,7 @@ impl ChunkProvingTask {
         let err_parse_re = regex::Regex::new(pattern)?;
         let mut attempts = 0;
         loop {
-            let witness = self.build_guest_input();
+            let witness = self.build_guest_input(Version::euclid_v2());
 
             match execute(witness) {
                 Ok(_) => return Ok(()),

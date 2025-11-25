@@ -12,6 +12,7 @@ use scroll_proving_sdk::{
         ProvingService,
     },
 };
+use scroll_zkvm_types::ProvingTask;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -135,7 +136,7 @@ impl LocalProverConfig {
         serde_json::from_reader(reader).map_err(|e| eyre::eyre!(e))
     }
 
-    pub fn from_file<P: AsRef<Path>>(file_name: P) -> Result<Self> {
+    pub fn from_file(file_name: String) -> Result<Self> {
         let file = File::open(file_name)?;
         Self::from_reader(&file)
     }
@@ -175,11 +176,14 @@ impl ProvingService for LocalProver {
         }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        self.do_prove(req).await.unwrap_or_else(|e| ProveResponse {
-            status: TaskStatus::Failed,
-            error: Some(format!("failed to request proof: {}", e)),
-            ..Default::default()
-        })
+        match self.do_prove(req).await {
+            Ok(resp) => resp,
+            Err(e) => ProveResponse {
+                status: TaskStatus::Failed,
+                error: Some(format!("failed to request proof: {}", e)),
+                ..Default::default()
+            },
+        }
     }
 
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
@@ -270,6 +274,8 @@ impl LocalProver {
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
+        let is_openvm_13 = prover_task.use_openvm_13;
+        let prover_task: ProvingTask = prover_task.into();
         let vk = hex::encode(&prover_task.vk);
         let handler = if let Some(handler) = self.handlers.get(&vk) {
             handler.clone()
@@ -297,7 +303,7 @@ impl LocalProver {
                 .await?;
             let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(
                 &asset_path,
-                req.proof_type,
+                is_openvm_13,
             )?));
             self.handlers.insert(vk, circuits_handler.clone());
             circuits_handler
