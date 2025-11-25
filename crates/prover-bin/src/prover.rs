@@ -202,12 +202,20 @@ impl ProvingService for LocalProver {
                         error: Some(format!("proving task failed: {}", e)),
                         ..Default::default()
                     },
-                    Err(e) => QueryTaskResponse {
-                        task_id: req.task_id,
-                        status: TaskStatus::Failed,
-                        error: Some(format!("proving task panicked: {}", e)),
-                        ..Default::default()
-                    },
+                    Err(e) => {
+                        if e.is_panic() {
+                            // simply re-throw panic for any panicking in proving prrocess,
+                            // cause worker loop and the whole prover exit
+                            std::panic::resume_unwind(e.into_panic());
+                        }
+
+                        QueryTaskResponse {
+                            task_id: req.task_id,
+                            status: TaskStatus::Failed,
+                            error: Some(format!("proving task panicked: {}", e)),
+                            ..Default::default()
+                        }
+                    }
                 };
             } else {
                 return QueryTaskResponse {
