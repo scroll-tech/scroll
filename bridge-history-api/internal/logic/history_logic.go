@@ -368,7 +368,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, err
 	}
 
-	if start > total {
+	if start >= total {
 		return nil, 0, false, nil
 	}
 
