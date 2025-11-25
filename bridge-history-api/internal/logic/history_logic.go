@@ -440,15 +440,11 @@ func (h *HistoryLogic) processAndCacheTxHistoryInfo(ctx context.Context, cacheKe
 		return nil, 0, err
 	}
 
-	pagedTxs, total, isHit, err := h.getCachedTxsInfo(ctx, cacheKey, page, pageSize)
+	pagedTxs, total, _, err := h.getCachedTxsInfo(ctx, cacheKey, page, pageSize)
 	if err != nil {
 		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", page, "page size", pageSize, "error", err)
 		return nil, 0, err
 	}
 
-	if !isHit {
-		log.Error("cache miss after write, expect hit", "cached key", cacheKey, "page", page, "page size", pageSize, "error", err)
-		return nil, 0, err
-	}
 	return pagedTxs, total, nil
 }
