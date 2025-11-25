@@ -361,18 +361,17 @@ func getTxHistoryInfoFromBridgeBatchDepositMessage(message *orm.BridgeBatchDepos
 func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pageNum, pageSize uint64) ([]*types.TxHistoryInfo, uint64, bool, error) {
 	start := int64((pageNum - 1) * pageSize)
 	end := start + int64(pageSize) - 1
-
 	total, err := h.redis.ZCard(ctx, cacheKey).Result()
 	if err != nil {
 		log.Error("failed to get zcard result", "error", err)
 		return nil, 0, false, err
 	}
 
-	if start >= total {
+	if total == 0 {
 		return nil, 0, false, nil
 	}
 
-	if total == 0 {
+	if start >= total {
 		return nil, 0, false, nil
 	}
 
