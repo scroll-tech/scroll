@@ -19,7 +19,7 @@ impl UniversalHandler {
     pub fn new(workspace_path: impl AsRef<Path>, is_openvm_v13: bool) -> Result<Self> {
         let path_app_exe = workspace_path.as_ref().join("app.vmexe");
         let path_app_config = workspace_path.as_ref().join("openvm.toml");
-        let segment_len = Some((1 << 21) - 100);
+        let segment_len = Some((1 << 22) - 100);
         let config = ProverConfig {
             path_app_config,
             path_app_exe,
