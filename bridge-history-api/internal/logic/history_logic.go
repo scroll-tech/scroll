@@ -97,6 +97,11 @@ func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, a
 		return nil, 0, errors.New("unexpected error")
 	}
 
+	if len(txHistoryInfos) == 0 {
+		log.Error("failed to get L2 claimable withdrawals by address len = 0", "address", address)
+		return nil, 0, errors.New("unexpected error")
+	}
+
 	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, txHistoryInfos, page, pageSize)
 }
 
