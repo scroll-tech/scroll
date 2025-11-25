@@ -346,14 +346,6 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		return ErrValidatorFailureProofMsgStatusNotOk
 	}
 
-	// if prover task FailureType is SessionInfoFailureTimeout, the submit proof is timeout, need skip it
-	if types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
-		m.validateFailureProverTaskTimeout.Inc()
-		log.Info("proof submit proof have timeout, skip this submit proof", "hash", proofParameter.TaskID, "taskType", proverTask.TaskType,
-			"proverName", proverTask.ProverName, "proverPublicKey", pk, "proofTime", proofTimeSec)
-		return ErrValidatorFailureProofTimeout
-	}
-
 	// store the proof to prover task
 	if updateTaskProofErr := m.updateProverTaskProof(ctx, proverTask, proofParameter); updateTaskProofErr != nil {
 		log.Warn("update prover task proof failure", "hash", proofParameter.TaskID, "proverPublicKey", pk,
@@ -368,6 +360,14 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "proverPublicKey", pk)
 		return ErrValidatorFailureTaskHaveVerifiedSuccess
 	}
+
+	// if prover task FailureType is SessionInfoFailureTimeout, the submit proof is timeout, but we still accept it
+	if types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
+		m.validateFailureProverTaskTimeout.Inc()
+		log.Warn("proof submit proof have timeout", "hash", proofParameter.TaskID, "taskType", proverTask.TaskType,
+			"proverName", proverTask.ProverName, "proverPublicKey", pk, "proofTime", proofTimeSec)
+	}
+
 	return nil
 }
 
