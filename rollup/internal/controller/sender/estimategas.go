@@ -82,6 +82,7 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *types
 
 	gasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
 	blobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFee))
+	log.Warn("estimateBlobGas", "blobBaseFee", blobBaseFee, "blobGasFeeCap", blobGasFeeCap.String())
 	gasLimit, accessList, err := s.estimateGasLimit(to, data, sidecar, nil, gasTipCap, gasFeeCap, blobGasFeeCap)
 	if err != nil {
 		log.Error("estimateBlobGas estimateGasLimit failure",

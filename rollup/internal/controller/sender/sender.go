@@ -834,14 +834,18 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 		return 0, 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
 
+	log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "number", header.Number.Uint64())
+
 	var baseFee uint64
 	if header.BaseFee != nil {
 		baseFee = header.BaseFee.Uint64()
+		log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "baseFee", header.BaseFee.String(), "baseFeeUint64", baseFee)
 	}
 
 	var blobBaseFee uint64
 	if excess := header.ExcessBlobGas; excess != nil {
 		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
+		log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "blobBaseFee", misc.CalcBlobFee(*excess).String(), "blobBaseFeeUint64", blobBaseFee)
 	}
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
