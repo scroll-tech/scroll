@@ -150,7 +150,7 @@ impl AxiomProver {
         let mut response = ProveResponse {
             proof_type: req.proof_type,
             created_at: Timestamp::now().as_duration().as_secs_f64(),
-            status: TaskStatus::Queued,
+            status: TaskStatus::Proving,
             ..Default::default()
         };
 
@@ -209,7 +209,7 @@ impl AxiomProver {
         // Queued, Executing, Executed, AppProving, AppProvingDone, PostProcessing, Failed,
         // Succeeded
         response.status = match status.state.as_str() {
-            "Queued" => TaskStatus::Queued,
+            "Queued" => TaskStatus::Proving,
             "Executing" | "Executed" | "AppProving" | "AppProvingDone" | "PostProcessing" => {
                 TaskStatus::Proving
             }
