@@ -62,12 +62,10 @@ impl AxiomProverConfig {
 
 #[async_trait]
 impl ProvingService for AxiomProver {
-    #[instrument(skip(self), ret)]
     fn is_local(&self) -> bool {
         true
     }
 
-    #[instrument(skip(self), ret)]
     async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
         // get vk has been deprecated in new prover with dynamic asset loading scheme
         GetVkResponse {
@@ -76,7 +74,7 @@ impl ProvingService for AxiomProver {
         }
     }
 
-    #[instrument(skip(self, req), ret)]
+    #[instrument(skip(self, req))]
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
         self.prove_inner(req)
             .await
@@ -87,7 +85,7 @@ impl ProvingService for AxiomProver {
             })
     }
 
-    #[instrument(skip(self), ret)]
+    #[instrument(skip(self))]
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
         let task_id = req.task_id.clone();
         self.query_task_inner(req)
