@@ -94,7 +94,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	l1Client, err := testApps.GetPoSL1Client()
+	_, l1Client, err := testApps.GetPoSL1Client()
 	assert.NoError(t, err)
 
 	chainID, err := l1Client.ChainID(context.Background())

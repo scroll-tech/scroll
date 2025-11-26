@@ -67,7 +67,7 @@ type FeeData struct {
 // Sender Transaction sender to send transaction to l1/l2
 type Sender struct {
 	config            *config.SenderConfig
-	rpcClient         *rpc.Client         // Raw RPC Client
+	rpcClient         *rpc.Client         // Raw RPC client
 	gethClient        *gethclient.Client  // Client to use for CreateAccessList
 	client            *ethclient.Client   // The client to retrieve on chain data (read-only)
 	writeClients      []*ethclient.Client // The clients to send transactions to (write operations)
@@ -844,6 +844,8 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 	// Leave it up to the L1 node to return the correct blob base fee.
 	// Previously we would compute it locally using `CalcBlobFee`, but
 	// that needs to be in sync with the L1 node's configuration.
+	// Note: The fetched blob base fee might not correspond to the block
+	// that we fetched in the previous step, but this is acceptable.
 	var hex hexutil.Big
 	if err := s.rpcClient.CallContext(ctx, &hex, "eth_blobBaseFee"); err != nil {
 		return 0, 0, 0, 0, fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)

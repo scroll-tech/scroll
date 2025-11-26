@@ -3,13 +3,15 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/consensus/misc"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -20,7 +22,8 @@ import (
 // L1WatcherClient will listen for smart contract events from Eth L1.
 type L1WatcherClient struct {
 	ctx        context.Context
-	client     *ethclient.Client
+	rpcClient  *rpc.Client       // Raw RPC client
+	client     *ethclient.Client // Go SDK RPC client
 	l1BlockOrm *orm.L1Block
 
 	// The height of the block that the watcher has retrieved header rlp
@@ -30,7 +33,7 @@ type L1WatcherClient struct {
 }
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
+func NewL1WatcherClient(ctx context.Context, rpcClient *rpc.Client, startHeight uint64, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
 	l1BlockOrm := orm.NewL1Block(db)
 	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(ctx)
 	if err != nil {
@@ -43,7 +46,8 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 
 	return &L1WatcherClient{
 		ctx:        ctx,
-		client:     client,
+		rpcClient:  rpcClient,
+		client:     ethclient.NewClient(rpcClient),
 		l1BlockOrm: l1BlockOrm,
 
 		processedBlockHeight: savedL1BlockHeight,
@@ -78,10 +82,16 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 		baseFee = block.BaseFee.Uint64()
 	}
 
-	var blobBaseFee uint64
-	if excess := block.ExcessBlobGas; excess != nil {
-		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
+	// Leave it up to the L1 node to return the correct blob base fee.
+	// Previously we would compute it locally using `CalcBlobFee`, but
+	// that needs to be in sync with the L1 node's configuration.
+	// Note: The fetched blob base fee might not correspond to the block
+	// that we fetched in the previous step, but this is acceptable.
+	var hex hexutil.Big
+	if err := w.rpcClient.CallContext(w.ctx, &hex, "eth_blobBaseFee"); err != nil {
+		return fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
 	}
+	blobBaseFee := hex.ToInt().Uint64()
 
 	l1Block := orm.L1Block{
 		Number:          blockHeight,

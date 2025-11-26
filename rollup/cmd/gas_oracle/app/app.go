@@ -66,12 +66,13 @@ func action(ctx *cli.Context) error {
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
 
-	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+	l1RpcClient, err := rpc.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		log.Crit("failed to dial raw RPC client to L1 endpoint", "endpoint", cfg.L1Config.Endpoint, "error", err)
 	}
+	l1client := ethclient.NewClient(l1RpcClient)
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, db, registry)
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1RpcClient, cfg.L1Config.StartHeight, db, registry)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, relayer.ServiceTypeL1GasOracle, registry)
 	if err != nil {

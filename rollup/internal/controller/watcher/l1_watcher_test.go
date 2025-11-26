@@ -21,10 +21,10 @@ import (
 
 func setupL1Watcher(t *testing.T) (*L1WatcherClient, *gorm.DB) {
 	db := setupDB(t)
-	client, err := testApps.GetPoSL1Client()
+	rawClient, _, err := testApps.GetPoSL1Client()
 	assert.NoError(t, err)
 	l1Cfg := cfg.L1Config
-	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, db, nil)
+	watcher := NewL1WatcherClient(context.Background(), rawClient, l1Cfg.StartHeight, db, nil)
 	return watcher, db
 }
 

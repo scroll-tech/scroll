@@ -32,7 +32,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	endpoint, err = testApps.GetL2GethEndPoint()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, endpoint)
-	ethclient, err = testApps.GetL2GethClient()
+	_, ethclient, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 	assert.NotNil(t, ethclient)
 
@@ -40,7 +40,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	endpoint, err = testApps.GetPoSL1EndPoint()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, endpoint)
-	ethclient, err = testApps.GetPoSL1Client()
+	_, ethclient, err = testApps.GetPoSL1Client()
 	assert.NoError(t, err)
 	assert.NotNil(t, ethclient)
 
