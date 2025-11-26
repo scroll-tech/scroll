@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
+        ProvingService,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse,
         },
-        ProvingService,
     },
 };
 use serde::{Deserialize, Serialize};

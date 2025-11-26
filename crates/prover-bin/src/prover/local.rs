@@ -1,15 +1,15 @@
-use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
+use crate::zk_circuits_handler::{CircuitsHandler, universal::UniversalHandler};
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
+        ProvingService,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
         types::ProofType,
-        ProvingService,
     },
 };
 use scroll_zkvm_types::ProvingTask;
@@ -78,21 +78,19 @@ impl AssetsLocationData {
             // Check if file already exists
             if local_file_path.exists() {
                 // Get file metadata to check size
-                if let Ok(metadata) = std::fs::metadata(&local_file_path) {
-                    // Make a HEAD request to get remote file size
-
-                    if let Ok(head_resp) = client.head(download_url.clone()).send().await {
-                        if let Some(content_length) = head_resp.headers().get("content-length") {
-                            if let Ok(remote_size) =
-                                content_length.to_str().unwrap_or("0").parse::<u64>()
-                            {
-                                // If sizes match, skip download
-                                if metadata.len() == remote_size {
-                                    println!("File {} already exists with matching size, skipping download", filename);
-                                    continue;
-                                }
-                            }
-                        }
+                // Make a HEAD request to get remote file size
+                if let Ok(metadata) = std::fs::metadata(&local_file_path)
+                    && let Ok(head_resp) = client.head(download_url.clone()).send().await
+                    && let Some(content_length) = head_resp.headers().get("content-length")
+                    && let Ok(remote_size) = content_length.to_str().unwrap_or("0").parse::<u64>()
+                {
+                    // If sizes match, skip download
+                    if metadata.len() == remote_size {
+                        println!(
+                            "File {} already exists with matching size, skipping download",
+                            filename
+                        );
+                        continue;
                     }
                 }
             }

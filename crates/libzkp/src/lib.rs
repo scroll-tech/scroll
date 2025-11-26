@@ -138,7 +138,10 @@ pub fn gen_universal_task(
             // always respect the fork_name_str (which has been normalized) being passed
             // if the fork_name wrapped in task is not match, consider it a malformed task
             if fork_name_str != task.fork_name.as_str() {
-                eyre::bail!("fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+                eyre::bail!(
+                    "fork name in chunk task not match the calling arg, expected {fork_name_str}, get {}",
+                    task.fork_name
+                );
             }
             if fork_name_str != version.fork.as_str() {
                 eyre::bail!(
@@ -156,7 +159,10 @@ pub fn gen_universal_task(
             task.fork_name = task.fork_name.to_lowercase();
             let version = Version::from(task.version);
             if fork_name_str != task.fork_name.as_str() {
-                eyre::bail!("fork name in batch task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+                eyre::bail!(
+                    "fork name in batch task not match the calling arg, expected {fork_name_str}, get {}",
+                    task.fork_name
+                );
             }
             if fork_name_str != version.fork.as_str() {
                 eyre::bail!(
@@ -174,7 +180,10 @@ pub fn gen_universal_task(
             task.fork_name = task.fork_name.to_lowercase();
             let version = Version::from(task.version);
             if fork_name_str != task.fork_name.as_str() {
-                eyre::bail!("fork name in bundle task not match the calling arg, expected {fork_name_str}, get {}", task.fork_name);
+                eyre::bail!(
+                    "fork name in bundle task not match the calling arg, expected {fork_name_str}, get {}",
+                    task.fork_name
+                );
             }
             if fork_name_str != version.fork.as_str() {
                 eyre::bail!(

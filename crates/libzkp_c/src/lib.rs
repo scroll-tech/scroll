@@ -1,6 +1,6 @@
 mod utils;
 
-use std::ffi::{c_char, CString};
+use std::ffi::{CString, c_char};
 
 use libzkp::TaskType;
 use utils::{c_char_to_str, c_char_to_vec};
@@ -20,7 +20,7 @@ fn enable_dump() -> bool {
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn init_tracing() {
     use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
@@ -47,14 +47,14 @@ pub unsafe extern "C" fn init_tracing() {
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn init_verifier(config: *const c_char) {
     let config_str = c_char_to_str(config);
     libzkp::verifier_init(config_str).unwrap();
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn init_l2geth(config: *const c_char) {
     let config_str = c_char_to_str(config);
     l2geth::init(config_str).unwrap();
@@ -92,7 +92,7 @@ fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskT
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn verify_chunk_proof(
     proof: *const c_char,
     fork_name: *const c_char,
@@ -101,7 +101,7 @@ pub unsafe extern "C" fn verify_chunk_proof(
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn verify_batch_proof(
     proof: *const c_char,
     fork_name: *const c_char,
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn verify_batch_proof(
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn verify_bundle_proof(
     proof: *const c_char,
     fork_name: *const c_char,
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn verify_bundle_proof(
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn dump_vk(fork_name: *const c_char, file: *const c_char) {
     let fork_name_str = c_char_to_str(fork_name);
     let file_str = c_char_to_str(file);
@@ -145,7 +145,7 @@ fn failed_handling_result() -> HandlingResult {
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn gen_universal_task(
     task_type: i32,
     task: *const c_char,
@@ -166,10 +166,7 @@ pub unsafe extern "C" fn gen_universal_task(
                 );
                 return failed_handling_result();
             }
-            Some(std::slice::from_raw_parts(
-                decryption_key,
-                decryption_key_len,
-            ))
+            Some(unsafe { std::slice::from_raw_parts(decryption_key, decryption_key_len) })
         } else {
             None
         };
@@ -185,7 +182,7 @@ pub unsafe extern "C" fn gen_universal_task(
     };
 
     let expected_vk = if expected_vk_len > 0 {
-        std::slice::from_raw_parts(expected_vk, expected_vk_len)
+        unsafe { std::slice::from_raw_parts(expected_vk, expected_vk_len) }
     } else {
         &[]
     };
@@ -224,18 +221,18 @@ pub unsafe extern "C" fn gen_universal_task(
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn release_task_result(result: HandlingResult) {
     if !result.universal_task.is_null() {
-        let _ = CString::from_raw(result.universal_task);
+        let _ = unsafe { CString::from_raw(result.universal_task) };
     }
     if !result.metadata.is_null() {
-        let _ = CString::from_raw(result.metadata);
+        let _ = unsafe { CString::from_raw(result.metadata) };
     }
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn gen_wrapped_proof(
     proof: *const c_char,
     metadata: *const c_char,
@@ -244,7 +241,7 @@ pub unsafe extern "C" fn gen_wrapped_proof(
 ) -> *mut c_char {
     let proof_str = c_char_to_str(proof);
     let metadata_str = c_char_to_str(metadata);
-    let vk_data = std::slice::from_raw_parts(vk as *const u8, vk_len);
+    let vk_data = unsafe { std::slice::from_raw_parts(vk as *const u8, vk_len) };
 
     match libzkp::gen_wrapped_proof(proof_str, metadata_str, vk_data) {
         Ok(result) => CString::new(result).unwrap().into_raw(),
@@ -256,7 +253,7 @@ pub unsafe extern "C" fn gen_wrapped_proof(
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn univ_task_compatibility_fix(task_json: *const c_char) -> *mut c_char {
     let task_json_str = c_char_to_str(task_json);
     match libzkp::univ_task_compatibility_fix(task_json_str) {
@@ -269,9 +266,9 @@ pub unsafe extern "C" fn univ_task_compatibility_fix(task_json: *const c_char) -
 }
 
 /// # Safety
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn release_string(ptr: *mut c_char) {
     if !ptr.is_null() {
-        let _ = CString::from_raw(ptr);
+        let _ = unsafe { CString::from_raw(ptr) };
     }
 }

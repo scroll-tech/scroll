@@ -8,7 +8,7 @@ mod zk_circuits_handler;
 use crate::prover::ProverKind;
 use clap::{ArgAction, Parser, Subcommand};
 use scroll_proving_sdk::{
-    prover::{types::ProofType, ProverBuilder},
+    prover::{ProverBuilder, types::ProofType},
     utils::{get_version, init_tracing},
 };
 use std::{

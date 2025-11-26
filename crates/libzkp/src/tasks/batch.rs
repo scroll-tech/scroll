@@ -3,14 +3,14 @@ use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
-        build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderValidium,
-        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, LegacyBatchWitness,
-        ReferenceHeader, N_BLOB_BYTES,
+        BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderValidium, BatchInfo, BatchWitness,
+        Envelope, EnvelopeV6, EnvelopeV7, LegacyBatchWitness, N_BLOB_BYTES, ReferenceHeader,
+        build_point_eval_witness,
     },
     chunk::ChunkInfo,
     public_inputs::{ForkName, MultiVersionPublicInputs, Version},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
+    utils::{RancorError, to_rkyv_bytes},
     version::{Codec, Domain, STFVersion},
 };
 
@@ -147,15 +147,21 @@ impl BatchProvingTask {
         match &self.batch_header {
             BatchHeaderV::Validium(_) => assert!(
                 version.is_validium(),
-                "version {:?} is not match with parsed header, get validium header but version is not validium", version,
+                "version {:?} is not match with parsed header, get validium header but version is not validium",
+                version,
             ),
-            BatchHeaderV::V6(_) => assert_eq!(version.fork, ForkName::EuclidV1,
+            BatchHeaderV::V6(_) => assert_eq!(
+                version.fork,
+                ForkName::EuclidV1,
                 "hardfork mismatch for da-codec@v6 header: found={:?}, expected={:?}",
                 version.fork,
                 ForkName::EuclidV1,
             ),
             BatchHeaderV::V7_V8_V9(_) => assert!(
-                matches!(version.fork, ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo),
+                matches!(
+                    version.fork,
+                    ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo
+                ),
                 "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
                 version.fork,
                 [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
