@@ -74,7 +74,7 @@ impl ProvingService for AxiomProver {
         }
     }
 
-    #[instrument(skip(self, req))]
+    #[instrument(skip(self), ret)]
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
         self.prove_inner(req)
             .await
@@ -85,7 +85,7 @@ impl ProvingService for AxiomProver {
             })
     }
 
-    #[instrument(skip(self))]
+    #[instrument(skip(self), ret)]
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
         let task_id = req.task_id.clone();
         self.query_task_inner(req)
