@@ -76,7 +76,7 @@ impl ProvingService for AxiomProver {
         }
     }
 
-    #[instrument(skip(self), ret)]
+    #[instrument(skip(self, req), ret)]
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
         self.prove_inner(req)
             .await
