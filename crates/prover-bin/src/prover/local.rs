@@ -136,7 +136,7 @@ impl LocalProverConfig {
         serde_json::from_reader(reader).map_err(|e| eyre::eyre!(e))
     }
 
-    pub fn from_file(file_name: String) -> Result<Self> {
+    pub fn from_file<P: AsRef<Path>>(file_name: P) -> Result<Self> {
         let file = File::open(file_name)?;
         Self::from_reader(&file)
     }

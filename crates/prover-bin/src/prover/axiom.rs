@@ -18,7 +18,10 @@ use scroll_proving_sdk::{
         ProofType, ProvingService,
     },
 };
-use scroll_zkvm_types::proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum};
+use scroll_zkvm_types::{
+    proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum},
+    ProvingTask,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, path::Path};
 
@@ -129,6 +132,11 @@ impl AxiomProver {
 
     async fn prove_inner(&mut self, req: ProveRequest) -> eyre::Result<ProveResponse> {
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
+        if prover_task.use_openvm_13 {
+            eyre::bail!("axiom prover does not support openvm v1.3 tasks");
+        }
+
+        let prover_task: ProvingTask = prover_task.into();
 
         let program = self.get_program(&prover_task.vk)?;
 
