@@ -64,7 +64,7 @@ impl AxiomProverConfig {
 impl ProvingService for AxiomProver {
     #[instrument(skip(self), ret)]
     fn is_local(&self) -> bool {
-        false
+        true
     }
 
     #[instrument(skip(self), ret)]
