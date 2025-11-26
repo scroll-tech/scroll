@@ -8979,7 +8979,7 @@ dependencies = [
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=fb78bfc#fb78bfc8ad92bfe3f572d0fb7c4fffe7c2512e5b"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=9a59852#9a59852d9ea7b66b79e794aa2c9086ecf7c75fd6"
 dependencies = [
  "anyhow",
  "async-trait",

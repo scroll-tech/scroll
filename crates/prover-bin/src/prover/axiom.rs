@@ -24,6 +24,7 @@ use scroll_zkvm_types::{
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, path::Path};
+use tracing::Level;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomProverConfig {
@@ -74,7 +75,7 @@ impl ProvingService for AxiomProver {
         }
     }
 
-    #[instrument(skip(self), ret)]
+    #[instrument(skip(self), ret, level = Level::DEBUG)]
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
         self.prove_inner(req)
             .await
@@ -85,7 +86,7 @@ impl ProvingService for AxiomProver {
             })
     }
 
-    #[instrument(skip(self), ret)]
+    #[instrument(skip(self), ret, level = Level::DEBUG)]
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
         let task_id = req.task_id.clone();
         self.query_task_inner(req)
@@ -124,7 +125,7 @@ impl AxiomProver {
         .flatten()
     }
 
-    #[instrument(skip_all, ret, err)]
+    #[instrument(skip_all, ret, err, level = Level::DEBUG)]
     fn get_program(&self, vk: &[u8]) -> eyre::Result<AxiomProgram> {
         let vk = hex::encode(vk);
         info!(vk = %vk, "looking up axiom program for vk");
@@ -135,7 +136,7 @@ impl AxiomProver {
             .ok_or_else(|| eyre::eyre!("no axiom program configured for vk: {vk}"))
     }
 
-    #[instrument(skip_all, err)]
+    #[instrument(skip_all, err, level = Level::DEBUG)]
     async fn prove_inner(&mut self, req: ProveRequest) -> eyre::Result<ProveResponse> {
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
         if prover_task.use_openvm_13 {
@@ -176,7 +177,7 @@ impl AxiomProver {
         Ok(response)
     }
 
-    #[instrument(skip_all, err)]
+    #[instrument(skip_all, err, level = Level::DEBUG)]
     async fn query_task_inner(&mut self, req: QueryTaskRequest) -> eyre::Result<QueryTaskResponse> {
         let mut response = QueryTaskResponse {
             task_id: req.task_id.clone(),
@@ -228,7 +229,7 @@ impl AxiomProver {
                 return Err(eyre::eyre!("unrecognized axiom task status: {other}"));
             }
         };
-        info!(status = ?response.status, "mapped axiom task status");
+        debug!(status = ?response.status, "mapped axiom task status");
 
         response.proof_type = proof_type;
 
@@ -256,6 +257,12 @@ impl AxiomProver {
                     )
                 })?;
                 response.compute_time_sec = Some(duration.as_secs_f64());
+                info!(
+                    started_at = %started_at,
+                    finished_at = %finished_at,
+                    compute_time_sec = %duration,
+                    "axiom task completed"
+                );
             }
         }
 

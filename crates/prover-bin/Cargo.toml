@@ -10,7 +10,7 @@ axiom-sdk.workspace = true
 scroll-zkvm-types.workspace = true
 scroll-zkvm-prover.workspace = true
 libzkp = { path = "../libzkp"}
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "fb78bfc" }
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "9a59852" }
 serde.workspace = true
 serde_json.workspace = true
 once_cell.workspace =true
