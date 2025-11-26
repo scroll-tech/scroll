@@ -25,7 +25,7 @@ use scroll_zkvm_types::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, path::Path};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomProverConfig {
     #[serde(rename = "axiom_api_key")]
     pub api_key: String,
@@ -41,6 +41,7 @@ pub struct AxiomProgram {
     pub config_id: String,
 }
 
+#[derive(Debug)]
 pub struct AxiomProver {
     config: AxiomProverConfig,
 }

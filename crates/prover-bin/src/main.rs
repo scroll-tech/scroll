@@ -71,7 +71,7 @@ async fn main() -> eyre::Result<()> {
     info!(version = %get_version(), "Starting prover");
 
     let (sdk_config, prover) = args.prover_kind.create_from_file(&args.config_file)?;
-    debug!(sdk_config = ?sdk_config, "Loaded SDK config");
+    info!(prover = ?prover, "Loaded prover");
 
     match args.command {
         Some(Commands::Handle { task_path }) => {

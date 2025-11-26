@@ -16,6 +16,7 @@ use scroll_zkvm_types::ProvingTask;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fmt,
     fs::File,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
@@ -23,7 +24,7 @@ use std::{
 };
 use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssetsLocationData {
     /// the base url to form a general downloading url for an asset, MUST HAVE A TRAILING SLASH
     pub base_url: url::Url,
@@ -122,7 +123,7 @@ impl AssetsLocationData {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProverConfig {
     pub sdk_config: SdkConfig,
     pub circuits: HashMap<String, CircuitConfig>,
@@ -142,7 +143,7 @@ impl LocalProverConfig {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub hard_fork_name: String,
     /// The path to save assets for a specified hard fork phase
@@ -161,6 +162,15 @@ pub struct LocalProver {
     current_task: Option<JoinHandle<Result<String>>>,
 
     handlers: HashMap<String, Arc<dyn CircuitsHandler>>,
+}
+
+impl fmt::Debug for LocalProver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LocalProver")
+            .field("config", &self.config)
+            .field("next_task_id", &self.next_task_id)
+            .finish()
+    }
 }
 
 #[async_trait]

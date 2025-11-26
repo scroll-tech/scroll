@@ -18,6 +18,7 @@ pub use local::{LocalProver, LocalProverConfig};
 mod axiom;
 pub use axiom::{AxiomProver, AxiomProverConfig};
 
+#[derive(Debug)]
 pub enum Prover {
     Local(LocalProver),
     Axiom(AxiomProver),
