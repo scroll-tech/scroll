@@ -836,12 +836,9 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 		return 0, 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
 
-	log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "number", header.Number.Uint64())
-
 	var baseFee uint64
 	if header.BaseFee != nil {
 		baseFee = header.BaseFee.Uint64()
-		log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "baseFee", header.BaseFee.String(), "baseFeeUint64", baseFee)
 	}
 
 	// Leave it up to the L1 node to return the correct blob base fee.
@@ -852,8 +849,6 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 		return 0, 0, 0, 0, fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
 	}
 	blobBaseFee := hex.ToInt().Uint64()
-
-	log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "blobBaseFeeUint64", blobBaseFee)
 
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
