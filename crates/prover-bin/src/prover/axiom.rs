@@ -1,26 +1,26 @@
 use crate::zk_circuits_handler::universal::UniversalHandler;
 use async_trait::async_trait;
 use axiom_sdk::{
+    AxiomConfig, AxiomSdk, ProofType as AxiomProofType, SaveOption,
     build::BuildSdk,
     input::Input as AxiomInput,
     prove::{ProveArgs, ProveSdk},
-    AxiomConfig, AxiomSdk, ProofType as AxiomProofType, SaveOption,
 };
 use eyre::Context;
 use jiff::Timestamp;
 use scroll_proving_sdk::{
     config::Config as SdkConfig,
     prover::{
+        ProofType, ProvingService,
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
-        ProofType, ProvingService,
     },
 };
 use scroll_zkvm_types::{
-    proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum},
     ProvingTask,
+    proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, path::Path};
@@ -137,7 +137,7 @@ impl AxiomProver {
             .ok_or_else(|| eyre::eyre!("no axiom program configured for vk: {vk}"))
     }
 
-    #[instrument(skip_all, fields(proof_type = ?req.proof_type), err)]
+    #[instrument(skip_all, err)]
     async fn prove_inner(&mut self, req: ProveRequest) -> eyre::Result<ProveResponse> {
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
         if prover_task.use_openvm_13 {
@@ -178,7 +178,7 @@ impl AxiomProver {
         Ok(response)
     }
 
-    #[instrument(skip_all, fields(task_id = %req.task_id), err)]
+    #[instrument(skip_all, err)]
     async fn query_task_inner(&mut self, req: QueryTaskRequest) -> eyre::Result<QueryTaskResponse> {
         let mut response = QueryTaskResponse {
             task_id: req.task_id.clone(),
@@ -220,7 +220,7 @@ impl AxiomProver {
         // Queued, Executing, Executed, AppProving, AppProvingDone, PostProcessing, Failed,
         // Succeeded
         response.status = match status.state.as_str() {
-            "Queued" => TaskStatus::Proving,
+            "Queued" => TaskStatus::Queued,
             "Executing" | "Executed" | "AppProving" | "AppProvingDone" | "PostProcessing" => {
                 TaskStatus::Proving
             }
@@ -236,12 +236,16 @@ impl AxiomProver {
 
         let created_at: Timestamp = status.created_at.parse()?;
         response.created_at = created_at.as_duration().as_secs_f64();
-        if let Some(launched_at) = status.launched_at {
+        if let Some(launched_at) = status.launched_at
+            && !launched_at.is_empty()
+        {
             let started_at: Timestamp = launched_at.parse()?;
             let started_at = started_at.as_duration();
             response.started_at = Some(started_at.as_secs_f64());
 
-            if let Some(terminated_at) = status.terminated_at {
+            if let Some(terminated_at) = status.terminated_at
+                && !terminated_at.is_empty()
+            {
                 let finished_at: Timestamp = terminated_at.parse()?;
                 let finished_at = finished_at.as_duration();
                 response.finished_at = Some(finished_at.as_secs_f64());

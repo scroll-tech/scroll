@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Scroll developers"]
-edition = "2021"
+edition = "2024"
 homepage = "https://scroll.io"
 readme = "README.md"
 repository = "https://github.com/scroll-tech/scroll"
