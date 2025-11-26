@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate tracing;
+
 mod prover;
 mod types;
 mod zk_circuits_handler;

@@ -6859,6 +6859,7 @@ dependencies = [
  "sled",
  "tiny-keccak",
  "tokio",
+ "tracing",
  "url",
 ]
 

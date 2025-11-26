@@ -35,7 +35,7 @@ pub struct AxiomProverConfig {
     pub programs: HashMap<String, AxiomProgram>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomProgram {
     pub program_id: String,
     pub config_id: String,
@@ -121,8 +121,10 @@ impl AxiomProver {
         .flatten()
     }
 
+    #[instrument(skip_all, ret, err)]
     fn get_program(&self, vk: &[u8]) -> eyre::Result<AxiomProgram> {
         let vk = hex::encode(vk);
+        info!(vk = %vk, "looking up axiom program for vk");
         self.config
             .programs
             .get(vk.as_str())
@@ -130,6 +132,7 @@ impl AxiomProver {
             .ok_or_else(|| eyre::eyre!("no axiom program configured for vk: {vk}"))
     }
 
+    #[instrument(skip_all, fields(proof_type = ?req.proof_type), err)]
     async fn prove_inner(&mut self, req: ProveRequest) -> eyre::Result<ProveResponse> {
         let prover_task = UniversalHandler::get_task_from_input(&req.input)?;
         if prover_task.use_openvm_13 {
@@ -165,10 +168,12 @@ impl AxiomProver {
                 })
             })
             .await?;
+        info!(task_id = %response.task_id, "submitted axiom proving task");
 
         Ok(response)
     }
 
+    #[instrument(skip_all, fields(task_id = %req.task_id), err)]
     async fn query_task_inner(&mut self, req: QueryTaskRequest) -> eyre::Result<QueryTaskResponse> {
         let mut response = QueryTaskResponse {
             task_id: req.task_id.clone(),
@@ -180,6 +185,7 @@ impl AxiomProver {
         let (status, proof_type, proof) = self
             .make_axiom_request(None, move |sdk| {
                 let status = sdk.get_proof_status(&task_id)?;
+                debug!(status = ?status, "fetched axiom task status");
 
                 let program_status = sdk.get_build_status(&status.program_uuid)?;
                 let proof_type = match program_status.name.as_str() {
@@ -219,6 +225,7 @@ impl AxiomProver {
                 return Err(eyre::eyre!("unrecognized axiom task status: {other}"));
             }
         };
+        info!(status = ?response.status, "mapped axiom task status");
 
         response.proof_type = proof_type;
 

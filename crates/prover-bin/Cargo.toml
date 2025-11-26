@@ -17,6 +17,7 @@ once_cell.workspace =true
 base64.workspace = true
 tiny-keccak = { workspace = true, features = ["sha3", "keccak"] }
 eyre.workspace = true
+tracing.workspace = true
 
 futures = "0.3.30"
 futures-util = "0.3"
