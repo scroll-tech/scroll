@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/holiman/uint256"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/consensus/misc"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -67,7 +67,8 @@ type FeeData struct {
 // Sender Transaction sender to send transaction to l1/l2
 type Sender struct {
 	config            *config.SenderConfig
-	gethClient        *gethclient.Client
+	rpcClient         *rpc.Client         // Raw RPC Client
+	gethClient        *gethclient.Client  // Client to use for CreateAccessList
 	client            *ethclient.Client   // The client to retrieve on chain data (read-only)
 	writeClients      []*ethclient.Client // The clients to send transactions to (write operations)
 	transactionSigner *TransactionSigner
@@ -141,6 +142,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 	sender := &Sender{
 		ctx:                   ctx,
 		config:                config,
+		rpcClient:             rpcClient,
 		gethClient:            gethclient.New(rpcClient),
 		client:                client,
 		writeClients:          writeClients,
@@ -842,11 +844,17 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 		log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "baseFee", header.BaseFee.String(), "baseFeeUint64", baseFee)
 	}
 
-	var blobBaseFee uint64
-	if excess := header.ExcessBlobGas; excess != nil {
-		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
-		log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "blobBaseFee", misc.CalcBlobFee(*excess).String(), "blobBaseFeeUint64", blobBaseFee)
+	// Leave it up to the L1 node to return the correct blob base fee.
+	// Previously we would compute it locally using `CalcBlobFee`, but
+	// that needs to be in sync with the L1 node's configuration.
+	var hex hexutil.Big
+	if err := s.rpcClient.CallContext(ctx, &hex, "eth_blobBaseFee"); err != nil {
+		return 0, 0, 0, 0, fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
 	}
+	blobBaseFee := hex.ToInt().Uint64()
+
+	log.Warn("getBlockNumberAndTimestampAndBaseFeeAndBlobFee", "blobBaseFeeUint64", blobBaseFee)
+
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
 }
