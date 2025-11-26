@@ -10,9 +10,9 @@ link the staff dir as "conf" from one of the dir with staff set, currently we ha
 
 Steps:
 1. run `make all` under `tests/prover-e2e`, it would launch a postgreSql db in local docker container, which is ready to be used by coordinator (include some chunks/batches/bundles waiting to be proven)
-2. setup assets by run `make coordinator_setup`, `SCROLL_ZKVM_VERSION` must be sepcified, for example:
+2. setup assets by run `make coordinator_setup`, `SCROLL_ZKVM_VERSION` must be sepcified, and if we do e2e test for other forking than `Galileo`, `SCROLL_FORK_NAME` is also required, example:
 ~~~
-   SCROLL_ZKVM_VERSION=v0.7.0 make coordinator_setup
+   SCROLL_FORK_NAME=feynman SCROLL_ZKVM_VERSION=v0.7.0 make coordinator_setup
 ~~~
 3. in `coordinator/build/bin/conf`, update necessary items in `config.template.json` and rename it as `config.json`
 4. build and launch `coordinator_api` service locally
