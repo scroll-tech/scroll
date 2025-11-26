@@ -68,8 +68,10 @@ async fn main() -> eyre::Result<()> {
         println!("version is {}", get_version());
         std::process::exit(0);
     }
+    info!(version = %get_version(), "Starting prover");
 
     let (sdk_config, prover) = args.prover_kind.create_from_file(&args.config_file)?;
+    debug!(sdk_config = ?sdk_config, "Loaded SDK config");
 
     match args.command {
         Some(Commands::Handle { task_path }) => {
@@ -83,28 +85,28 @@ async fn main() -> eyre::Result<()> {
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
 
             let prover = std::sync::Arc::new(prover);
-            println!("Handling task set 1: chunks ...");
+            info!("Handling task set 1: chunks ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.chunks, ProofType::Chunk)
                     .await
             );
-            println!("Done! Handling task set 2: batches ...");
+            info!("Done! Handling task set 2: batches ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.batches, ProofType::Batch)
                     .await
             );
-            println!("Done! Handling task set 3: bundles ...");
+            info!("Done! Handling task set 3: bundles ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.bundles, ProofType::Bundle)
                     .await
             );
-            println!("All done!");
+            info!("All done!");
         }
         None => {
             let prover = ProverBuilder::new(sdk_config, prover)
