@@ -128,7 +128,7 @@ impl AxiomProver {
     #[instrument(skip_all, ret, err, level = Level::DEBUG)]
     fn get_program(&self, vk: &[u8]) -> eyre::Result<AxiomProgram> {
         let vk = hex::encode(vk);
-        info!(vk = %vk, "looking up axiom program for vk");
+        debug!(vk = %vk);
         self.config
             .programs
             .get(vk.as_str())
