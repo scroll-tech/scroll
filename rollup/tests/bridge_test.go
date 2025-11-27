@@ -40,7 +40,6 @@ var (
 	// clients
 	l1RawClient *rpc.Client
 	l1Client    *ethclient.Client
-	l2RawClient *rpc.Client
 	l2Client    *ethclient.Client
 
 	l1Auth *bind.TransactOpts
@@ -96,7 +95,7 @@ func setupEnv(t *testing.T) {
 
 	l1RawClient, l1Client, err = testApps.GetPoSL1Client()
 	assert.NoError(t, err)
-	l2RawClient, l2Client, err = testApps.GetL2GethClient()
+	_, l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 	l1GethChainID, err = l1Client.ChainID(context.Background())
 	assert.NoError(t, err)

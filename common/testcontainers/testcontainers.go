@@ -225,7 +225,6 @@ func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
 
 // GetL2GethClient returns a ethclient by dialing running L2Geth
 func (t *TestcontainerApps) GetL2GethClient() (*rpc.Client, *ethclient.Client, error) {
-
 	rpcCli, err := t.GetL2Client()
 	if err != nil {
 		return nil, nil, err
