@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -82,9 +82,9 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 		baseFee = block.BaseFee.Uint64()
 	}
 
-	// Leave it up to the L1 node to return the correct blob base fee.
+	// Leave it up to the L1 node to compute the correct blob base fee.
 	// Previously we would compute it locally using `CalcBlobFee`, but
-	// that needs to be in sync with the L1 node's configuration.
+	// that approach requires syncing any future L1 configuration changes.
 	// Note: The fetched blob base fee might not correspond to the block
 	// that we fetched in the previous step, but this is acceptable.
 	var hex hexutil.Big
