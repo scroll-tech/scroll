@@ -173,16 +173,17 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			} else if err != nil {
 				return
 			}
-			// set limit
-			if baseFee > r.cfg.GasOracleConfig.L1BaseFeeLimit {
-				log.Error("L1 base fee exceed max limit, set to max limit", "baseFee", baseFee, "maxLimit", r.cfg.GasOracleConfig.L1BaseFeeLimit)
+			// Cap base fee update at the configured upper limit
+			if limit := r.cfg.GasOracleConfig.L1BaseFeeLimit; limit > 0 && baseFee > limit {
+				log.Error("L1 base fee exceed max limit, set to max limit", "baseFee", baseFee, "maxLimit", limit)
 				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
-				baseFee = r.cfg.GasOracleConfig.L1BaseFeeLimit
+				baseFee = limit
 			}
-			if blobBaseFee > r.cfg.GasOracleConfig.L1BlobBaseFeeLimit {
-				log.Error("L1 blob base fee exceed max limit, set to max limit", "blobBaseFee", blobBaseFee, "maxLimit", r.cfg.GasOracleConfig.L1BlobBaseFeeLimit)
+			// Cap blob base fee update at the configured upper limit
+			if limit := r.cfg.GasOracleConfig.L1BlobBaseFeeLimit; limit > 0 && blobBaseFee > limit {
+				log.Error("L1 blob base fee exceed max limit, set to max limit", "blobBaseFee", blobBaseFee, "maxLimit", limit)
 				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
-				blobBaseFee = r.cfg.GasOracleConfig.L1BlobBaseFeeLimit
+				blobBaseFee = limit
 			}
 			data, err := r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
 			if err != nil {

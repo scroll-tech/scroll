@@ -109,7 +109,7 @@ type GasOracleConfig struct {
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
 
-	// Limit values for gas oracle updates
+	// Upper limit values for gas oracle updates
 	L1BaseFeeLimit     uint64 `json:"l1_base_fee_limit"`
 	L1BlobBaseFeeLimit uint64 `json:"l1_blob_base_fee_limit"`
 
