@@ -53,8 +53,11 @@ enum Commands {
 
 #[derive(Debug, serde::Deserialize)]
 struct HandleSet {
+    #[serde(default)]
     chunks: Vec<String>,
+    #[serde(default)]
     batches: Vec<String>,
+    #[serde(default)]
     bundles: Vec<String>,
 }
 

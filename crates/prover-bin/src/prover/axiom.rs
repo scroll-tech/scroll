@@ -167,12 +167,17 @@ impl AxiomProver {
                     program_id: Some(program.program_id.clone()),
                     input: Some(AxiomInput::Value(input)),
                     proof_type: Some(proof_type),
-                    num_gpus: None,
+                    num_gpus: Some(16),
                     priority: None,
                 })
             })
             .await?;
-        info!(task_id = %response.task_id, "submitted axiom proving task");
+        info!(
+            proof_type = ?req.proof_type,
+            identifier = %prover_task.identifier,
+            task_id = %response.task_id,
+            "submitted axiom proving task"
+        );
 
         Ok(response)
     }
@@ -258,11 +263,28 @@ impl AxiomProver {
                 })?;
                 response.compute_time_sec = Some(duration.as_secs_f64());
                 info!(
-                    started_at = %started_at,
-                    finished_at = %finished_at,
-                    compute_time_sec = %duration,
-                    "axiom task completed"
+                    task_id = %req.task_id,
+                    launched_at = %format_args!("{launched_at:#}"),
+                    terminated_at = %format_args!("{terminated_at:#}"),
+                    duration = %format_args!("{duration:#}"),
+                    priority = %status.priority,
+                    "completed"
                 );
+                info!(
+                    task_id = %req.task_id,
+                    cells_used = %status.cells_used,
+                    num_gpus = %status.num_gpus,
+                    "resource usage"
+                );
+                if let Some(num_instructions) = status.num_instructions {
+                    let mhz = num_instructions as f64 / (duration.as_secs_f64() * 1_000_000.0);
+                    info!(
+                        task_id = %req.task_id,
+                        cycles = %num_instructions,
+                        MHz = %format_args!("{mhz:.2}"),
+                        "performance"
+                    );
+                }
             }
         }
 

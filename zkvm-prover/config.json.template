@@ -14,7 +14,10 @@
         2,
         3
       ],
-      "circuit_version": "v0.13.1"
+      "circuit_version": "v0.13.1",
+      "n_workers": 1,
+      "poll_interval_sec": 20,
+      "suppress_empty_task_error": false
     },
     "health_listener_addr": "127.0.0.1:10080",
     "db_path": ".work/db"
@@ -35,7 +38,7 @@
   "axiom_programs": {
     "<vk hex string>": {
       "program_id": "prg_<axiom program id>",
-      "config_id": "cfg_<axiom config id>",
+      "config_id": "cfg_<axiom config id>"
     }
   }
 }

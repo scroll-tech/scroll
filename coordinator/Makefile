@@ -49,6 +49,8 @@ localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, 
 	@echo "Setting up releases..."
 	cd $(CURDIR)/build && bash setup_releases.sh
 
+run_coordinator_api: coordinator_api
+	cd build/bin && ./coordinator_api
 
 #coordinator_api_skip_libzkp:
 #	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
