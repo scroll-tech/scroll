@@ -67,3 +67,6 @@ test_axiom_e2e_run: ${E2E_HANDLE_SET}
 
 test_work_run:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --prover.kind axiom --config ./config.json
+
+test_work_run_raw:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} ../target/release/prover --prover.kind axiom --config ./config.json
