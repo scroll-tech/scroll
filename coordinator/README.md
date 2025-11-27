@@ -10,8 +10,9 @@ See [monorepo prerequisites](../README.md#prerequisites).
 
 ## Build
 
+Using Go version 1.22
+
 ```bash
-# gvm use go1.22 # if your global Go version is not 1.22
 make clean
 make coordinator_api
 make coordinator_cron

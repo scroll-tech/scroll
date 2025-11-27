@@ -12,7 +12,7 @@ fmt:
 
 clean:
 	@cargo clean --release -p libzkp -p libzkp-c -p l2geth
-	@rm -f lib/libzkp.so
+	@rm -f lib/$(LIB_ZKP_NAME)
 
 clippy:
 	@cargo check --release --all-features
