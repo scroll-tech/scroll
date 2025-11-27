@@ -1,4 +1,4 @@
-FROM ethereum/client-go:v1.16.7
+FROM ethereum/client-go:v1.14.0
 
 COPY password /l1geth/
 COPY genesis.json /l1geth/
