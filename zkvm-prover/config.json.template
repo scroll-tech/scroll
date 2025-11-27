@@ -17,6 +17,7 @@
       "circuit_version": "v0.13.1",
       "n_workers": 1,
       "poll_interval_sec": 20,
+      "randomized_delay_sec": 0,
       "suppress_empty_task_error": false
     },
     "health_listener_addr": "127.0.0.1:10080",
