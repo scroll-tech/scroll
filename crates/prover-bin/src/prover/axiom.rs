@@ -64,7 +64,7 @@ impl AxiomProverConfig {
 #[async_trait]
 impl ProvingService for AxiomProver {
     fn is_local(&self) -> bool {
-        true
+        false
     }
 
     async fn get_vks(&self, _: GetVkRequest) -> GetVkResponse {
