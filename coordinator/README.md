@@ -10,6 +10,8 @@ See [monorepo prerequisites](../README.md#prerequisites).
 
 ## Build
 
+Using Go version 1.22
+
 ```bash
 make clean
 make coordinator_api
