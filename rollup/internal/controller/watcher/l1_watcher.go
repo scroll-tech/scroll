@@ -87,11 +87,12 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	// that approach requires syncing any future L1 configuration changes.
 	// Note: The fetched blob base fee might not correspond to the block
 	// that we fetched in the previous step, but this is acceptable.
-	var hex hexutil.Big
-	if err := w.rpcClient.CallContext(w.ctx, &hex, "eth_blobBaseFee"); err != nil {
+	var blobBaseFeeHex hexutil.Big
+	if err := w.rpcClient.CallContext(w.ctx, &blobBaseFeeHex, "eth_blobBaseFee"); err != nil {
 		return fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
 	}
-	blobBaseFee := hex.ToInt().Uint64()
+	// A correct L1 node could not return a value that overflows uint64
+	blobBaseFee := blobBaseFeeHex.ToInt().Uint64()
 
 	l1Block := orm.L1Block{
 		Number:          blockHeight,

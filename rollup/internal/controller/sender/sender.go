@@ -846,11 +846,12 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 	// that approach requires syncing any future L1 configuration changes.
 	// Note: The fetched blob base fee might not correspond to the block
 	// that we fetched in the previous step, but this is acceptable.
-	var hex hexutil.Big
-	if err := s.rpcClient.CallContext(ctx, &hex, "eth_blobBaseFee"); err != nil {
+	var blobBaseFeeHex hexutil.Big
+	if err := s.rpcClient.CallContext(ctx, &blobBaseFeeHex, "eth_blobBaseFee"); err != nil {
 		return 0, 0, 0, 0, fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
 	}
-	blobBaseFee := hex.ToInt().Uint64()
+	// A correct L1 node could not return a value that overflows uint64
+	blobBaseFee := blobBaseFeeHex.ToInt().Uint64()
 
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
