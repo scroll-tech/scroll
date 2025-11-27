@@ -8645,7 +8645,7 @@ dependencies = [
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=d2a3f59#d2a3f596c0d1df99d0a046db19ff4fda16782e92"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=9c00b76#9c00b766f59b5a4c7eb4beb76b3198c0b1d664da"
 dependencies = [
  "async-trait",
  "axum",
