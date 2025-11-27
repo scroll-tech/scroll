@@ -44,14 +44,14 @@ pub enum BatchHeaderV {
     ///
     /// Since the codec essentially is unchanged for the above STF versions, we do not define new
     /// variants, instead re-using the [`BatchHeaderV7`] variant.
-    V7_V8_V9(BatchHeaderV7),
+    V7_V8_V9_V10(BatchHeaderV7),
 }
 
 impl core::fmt::Display for BatchHeaderV {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             BatchHeaderV::V6(_) => write!(f, "V6"),
-            BatchHeaderV::V7_V8_V9(_) => write!(f, "V7_V8_V9"),
+            BatchHeaderV::V7_V8_V9_V10(_) => write!(f, "V7_V8_V9_V10"),
             BatchHeaderV::Validium(_) => write!(f, "Validium"),
         }
     }
@@ -61,7 +61,7 @@ impl BatchHeaderV {
     pub fn batch_hash(&self) -> B256 {
         match self {
             BatchHeaderV::V6(h) => h.batch_hash(),
-            BatchHeaderV::V7_V8_V9(h) => h.batch_hash(),
+            BatchHeaderV::V7_V8_V9_V10(h) => h.batch_hash(),
             BatchHeaderV::Validium(h) => h.header.batch_hash(),
         }
     }
@@ -73,9 +73,9 @@ impl BatchHeaderV {
         }
     }
 
-    pub fn must_v7_v8_v9_header(&self) -> &BatchHeaderV7 {
+    pub fn must_v7_v8_v9_v10header(&self) -> &BatchHeaderV7 {
         match self {
-            BatchHeaderV::V7_V8_V9(h) => h,
+            BatchHeaderV::V7_V8_V9_V10(h) => h,
             _ => unreachable!("A header of {} is considered to be in [v7, v8, v9]", self),
         }
     }
@@ -154,8 +154,8 @@ impl BatchProvingTask {
                 version.fork,
                 ForkName::EuclidV1,
             ),
-            BatchHeaderV::V7_V8_V9(_) => assert!(
-                matches!(version.fork, ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo),
+            BatchHeaderV::V7_V8_V9_V10(_) => assert!(
+                matches!(version.fork, ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo | ForkName::GalileoV2),
                 "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
                 version.fork,
                 [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo],
@@ -240,9 +240,10 @@ impl BatchProvingTask {
             // hard-fork (feynman or galileo) and the codec from the version byte.
             //
             // Refer [`scroll_zkvm_types::public_inputs::Version`].
-            (Domain::Scroll, STFVersion::V7 | STFVersion::V8 | STFVersion::V9) => {
-                ReferenceHeader::V7_V8_V9(*self.batch_header.must_v7_v8_v9_header())
-            }
+            (
+                Domain::Scroll,
+                STFVersion::V7 | STFVersion::V8 | STFVersion::V9 | STFVersion::V10,
+            ) => ReferenceHeader::V7_V8_V9(*self.batch_header.must_v7_v8_v9_v10header()),
             (Domain::Validium, STFVersion::V1) => {
                 ReferenceHeader::Validium(*self.batch_header.must_validium_header())
             }
