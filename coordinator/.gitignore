@@ -2,3 +2,4 @@
 .idea
 internal/logic/verifier/lib
 internal/libzkp/lib/libzkp.so
+internal/libzkp/lib/libzkp.dylib
