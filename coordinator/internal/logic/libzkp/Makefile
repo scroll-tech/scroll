@@ -1,6 +1,8 @@
 include ../../../../build/common.mk
 
-.PHONY: help fmt clippy test test-ci test-all
+.PHONY: help fmt clippy test test-ci test-all clean build
+
+all: build
 
 build:
 	@cargo build --release -p libzkp-c
