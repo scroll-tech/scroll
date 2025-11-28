@@ -10,8 +10,8 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.9.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20251113125950-906b730d541d
+	github.com/scroll-tech/da-codec v0.10.0
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.11.0
@@ -21,7 +21,7 @@ require (
 // Hotfix for header hash incompatibility issue.
 // PR: https://github.com/scroll-tech/go-ethereum/pull/1133/
 // CAUTION: Requires careful handling. When upgrading go-ethereum, ensure this fix remains up-to-date in this branch.
-replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20251117071111-47c22325665e
+replace github.com/scroll-tech/go-ethereum => github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092359-25d5bf6b817b
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

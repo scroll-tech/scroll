@@ -151,6 +151,8 @@ func action(ctx *cli.Context) error {
 			codecCfg = encoding.CodecV8
 		case 9:
 			codecCfg = encoding.CodecV9
+		case 10:
+			codecCfg = encoding.CodecV10
 		default:
 			return fmt.Errorf("invalid codec version %d", cfg.CodecVersion)
 		}

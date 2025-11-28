@@ -2427,7 +2427,7 @@ dependencies = [
 [[package]]
 name = "encoder-standard"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/da-codec#7a92e859b55094ba5b5c7d556c49c4dbd3f47ddb"
+source = "git+https://github.com/scroll-tech/da-codec#afa161a4487fe3ba600bfdb792daeb3dcc21fa25"
 dependencies = [
  "zstd",
 ]
