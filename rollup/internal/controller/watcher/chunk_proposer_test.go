@@ -19,6 +19,8 @@ import (
 	"scroll-tech/rollup/internal/utils"
 )
 
+func newUint64(val uint64) *uint64 { return &val }
+
 func testChunkProposerLimitsCodecV7(t *testing.T) {
 	tests := []struct {
 		name                       string
@@ -26,6 +28,7 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 		chunkTimeoutSec            uint64
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
+		GalileoTime                *uint64
 	}{
 		{
 			name:              "NoLimitReached",
@@ -62,6 +65,14 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
+		{
+			name:                       "SingleBlockByForkBoundary",
+			maxL2Gas:                   20_000_000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+			GalileoTime:                newUint64(1669364525), // timestamp of `block2`
+		},
 	}
 
 	for _, tt := range tests {
@@ -78,11 +89,26 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			_, err = chunkOrm.InsertChunk(context.Background(), &encoding.Chunk{Blocks: []*encoding.Block{{Header: &gethTypes.Header{Number: big.NewInt(0)}}}}, encoding.CodecV0, utils.ChunkMetrics{})
 			assert.NoError(t, err)
 
+			// Initialize the chunk proposer.
+			chainConfig := &params.ChainConfig{
+				LondonBlock:    big.NewInt(0),
+				BernoulliBlock: big.NewInt(0),
+				CurieBlock:     big.NewInt(0),
+				DarwinTime:     new(uint64),
+				DarwinV2Time:   new(uint64),
+				EuclidTime:     new(uint64),
+				EuclidV2Time:   new(uint64),
+				FeynmanTime:    new(uint64),
+				GalileoTime:    tt.GalileoTime,
+			}
+
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxL2GasPerChunk:              tt.maxL2Gas,
 				ChunkTimeoutSec:               tt.chunkTimeoutSec,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
-			}, encoding.CodecV7, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64)}, db, nil)
+			}, encoding.CodecV7, chainConfig, db, nil)
+
+			// Run one round of chunk proposing.
 			cp.TryProposeChunk()
 
 			chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 1, 0)

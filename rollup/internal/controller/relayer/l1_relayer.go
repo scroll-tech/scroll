@@ -173,6 +173,18 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			} else if err != nil {
 				return
 			}
+			// Cap base fee update at the configured upper limit
+			if limit := r.cfg.GasOracleConfig.L1BaseFeeLimit; baseFee > limit {
+				log.Error("L1 base fee exceed max limit, set to max limit", "baseFee", baseFee, "maxLimit", limit)
+				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
+				baseFee = limit
+			}
+			// Cap blob base fee update at the configured upper limit
+			if limit := r.cfg.GasOracleConfig.L1BlobBaseFeeLimit; blobBaseFee > limit {
+				log.Error("L1 blob base fee exceed max limit, set to max limit", "blobBaseFee", blobBaseFee, "maxLimit", limit)
+				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
+				blobBaseFee = limit
+			}
 			data, err := r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
 			if err != nil {
 				log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
