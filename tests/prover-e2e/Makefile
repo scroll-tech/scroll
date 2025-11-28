@@ -9,6 +9,9 @@ ifndef END_BLOCK
 $(error END_BLOCK is not set. Define it in .make.env or pass END_BLOCK=<end_block>)
 endif
 
+BLOCK_PRE_MIGRATIONS := $(wildcard conf/*.sql)
+.OPTIONAL: $(BLOCK_PRE_MIGRATIONS)
+
 all: setup_db test_tool import_data
 
 clean:
@@ -24,6 +27,11 @@ check_vars: | conf
         echo "Usage: make import_data BEGIN_BLOCK=<start_block> END_BLOCK=<end_block>"; \
         exit 1; \
     fi
+
+migration_blocks: $(BLOCK_PRE_MIGRATIONS)
+ifneq ($(strip $(BLOCK_PRE_MIGRATIONS)),)
+	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
+endif
 
 setup_db: clean
 	docker compose up --detach
@@ -42,30 +50,18 @@ setup_db: clean
         fi; \
     done	
 	${GOOSE_CMD} up
-	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
 reset_db:
-	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} down
 	${GOOSE_CMD} down-to 0
 	${GOOSE_CMD} up
-	GOOSE_MIGRATION_DIR=conf ${GOOSE_CMD} up-to 100
 
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
 
 build/bin/e2e_tool: test_tool
 
-import_data_euclid: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config conf/config.json --codec 7 ${BEGIN_BLOCK} ${END_BLOCK}
-
-import_data_feynman: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config conf/config.json --codec 8 ${BEGIN_BLOCK} ${END_BLOCK}
-
-import_data_galileo: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config conf/config.json --codec 9 ${BEGIN_BLOCK} ${END_BLOCK}
-
-import_data: build/bin/e2e_tool check_vars
-	build/bin/e2e_tool --config conf/config.json --codec ${CODEC_VERSION} ${BEGIN_BLOCK} ${END_BLOCK}
+import_data: build/bin/e2e_tool check_vars migration_blocks
+	build/bin/e2e_tool --config conf/config.json ${BEGIN_BLOCK} ${END_BLOCK}
 
 reimport_data: reset_db import_data
 

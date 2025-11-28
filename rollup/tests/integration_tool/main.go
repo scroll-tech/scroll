@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -37,12 +38,6 @@ var outputPathFlag = cli.StringFlag{
 var seedFlag = cli.Int64Flag{
 	Name:  "seed",
 	Usage: "random seed, 0 to use random selected seed",
-	Value: 0,
-}
-
-var codecFlag = cli.IntFlag{
-	Name:  "codec",
-	Usage: "codec version, valid from 6, default(auto) is 0",
 	Value: 0,
 }
 
@@ -84,10 +79,21 @@ func parseThreeIntegers(value string) (int, int, int, error) {
 	return values[0], values[1], values[2], nil
 }
 
+type fetchConfig struct {
+	// node url.
+	Endpoint string `json:"endpoint"`
+	// The L2MessageQueue contract address deployed on layer 2 chain.
+	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
+	// The WithdrawTrieRootSlot in L2MessageQueue contract.
+	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
+}
+
 // load a comptabile type of config for rollup
 type config struct {
 	DBConfig     *database.Config `json:"db_config"`
+	FetchConfig  *fetchConfig     `json:"fetch_config,omitempty"`
 	ValidiumMode bool             `json:"validium_mode"`
+	CodecVersion int              `json:"codec_version"`
 }
 
 func init() {
@@ -97,7 +103,7 @@ func init() {
 	app.Name = "integration-test-tool"
 	app.Usage = "The Scroll L2 Integration Test Tool"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, &codecFlag, &seedFlag, &outputNumFlag, &outputPathFlag)
+	app.Flags = append(app.Flags, &seedFlag, &outputNumFlag, &outputPathFlag)
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
 		if err := utils.LogSetup(ctx); err != nil {
@@ -135,9 +141,8 @@ func action(ctx *cli.Context) error {
 		return fmt.Errorf("specify begin and end block number")
 	}
 
-	codecFl := ctx.Int(codecFlag.Name)
-	if codecFl != 0 {
-		switch codecFl {
+	if cfg.CodecVersion != 0 {
+		switch cfg.CodecVersion {
 		case 6:
 			codecCfg = encoding.CodecV6
 		case 7:
@@ -147,7 +152,7 @@ func action(ctx *cli.Context) error {
 		case 9:
 			codecCfg = encoding.CodecV9
 		default:
-			return fmt.Errorf("invalid codec version %d", codecFl)
+			return fmt.Errorf("invalid codec version %d", cfg.CodecVersion)
 		}
 		log.Info("set codec", "version", codecCfg)
 	}
@@ -159,6 +164,14 @@ func action(ctx *cli.Context) error {
 	endBlk, err := strconv.ParseUint(ctx.Args().Get(1), 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid begin block number: %w", err)
+	}
+
+	var import_blocks []*encoding.Block
+	if cfg.FetchConfig != nil {
+		import_blocks, err = fetchAndStoreBlocks(ctx.Context, beginBlk, endBlk)
+		if err != nil {
+			return err
+		}
 	}
 
 	chkNum, batchNum, bundleNum, err := parseThreeIntegers(ctx.String(outputNumFlag.Name))
@@ -174,7 +187,7 @@ func action(ctx *cli.Context) error {
 
 	outputPath := ctx.String(outputPathFlag.Name)
 	log.Info("output", "Seed", seed, "file", outputPath)
-	ret, err := importData(ctx.Context, beginBlk, endBlk, chkNum, batchNum, bundleNum, seed)
+	ret, err := importData(ctx.Context, beginBlk, endBlk, import_blocks, chkNum, batchNum, bundleNum, seed)
 	if err != nil {
 		return err
 	}
