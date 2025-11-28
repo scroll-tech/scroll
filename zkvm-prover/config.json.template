@@ -6,7 +6,8 @@
       "base_url": "<the url of coordinator>",
       "retry_count": 10,
       "retry_wait_time_sec": 10,
-      "connection_timeout_sec": 1800
+      "connection_timeout_sec": 1800,
+      "suppress_empty_task_error": false
     },
     "prover": {
       "supported_proof_types": [
@@ -17,8 +18,7 @@
       "circuit_version": "v0.13.1",
       "n_workers": 1,
       "poll_interval_sec": 20,
-      "randomized_delay_sec": 0,
-      "suppress_empty_task_error": false
+      "randomized_delay_sec": 0
     },
     "health_listener_addr": "127.0.0.1:10080",
     "db_path": ".work/db"
