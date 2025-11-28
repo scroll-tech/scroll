@@ -22,8 +22,8 @@
         "l1_base_fee_default": 15000000000,
         "l1_blob_base_fee_default": 1,
         "l1_blob_base_fee_threshold": 0,
-        "l1_base_fee_limit": 10000000000,
-        "l1_blob_base_fee_limit": 10000000000
+        "l1_base_fee_limit": 20000000000,
+        "l1_blob_base_fee_limit": 20000000000
       },
       "gas_oracle_sender_signer_config": {
         "signer_type": "PrivateKey",
