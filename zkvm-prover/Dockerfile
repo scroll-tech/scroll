@@ -1,7 +1,7 @@
 FROM rust:1 AS builder
-
+WORKDIR /app
 COPY . .
-RUN cd /scroll/zkvm-prover && make cpu_prover
+RUN cd /app/zkvm-prover && make cpu_prover
 
 FROM debian:trixie-slim AS runtime
 WORKDIR app
