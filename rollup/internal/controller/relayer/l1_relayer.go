@@ -174,13 +174,13 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			// Cap base fee update at the configured upper limit
-			if limit := r.cfg.GasOracleConfig.L1BaseFeeLimit; limit > 0 && baseFee > limit {
+			if limit := r.cfg.GasOracleConfig.L1BaseFeeLimit; baseFee > limit {
 				log.Error("L1 base fee exceed max limit, set to max limit", "baseFee", baseFee, "maxLimit", limit)
 				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
 				baseFee = limit
 			}
 			// Cap blob base fee update at the configured upper limit
-			if limit := r.cfg.GasOracleConfig.L1BlobBaseFeeLimit; limit > 0 && blobBaseFee > limit {
+			if limit := r.cfg.GasOracleConfig.L1BlobBaseFeeLimit; blobBaseFee > limit {
 				log.Error("L1 blob base fee exceed max limit, set to max limit", "blobBaseFee", blobBaseFee, "maxLimit", limit)
 				r.metrics.rollupL1RelayerGasPriceOracleFeeOverLimitTotal.Inc()
 				blobBaseFee = limit
