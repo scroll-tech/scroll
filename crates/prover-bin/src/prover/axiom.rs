@@ -167,7 +167,7 @@ impl AxiomProver {
                     program_id: Some(program.program_id.clone()),
                     input: Some(AxiomInput::Value(input)),
                     proof_type: Some(proof_type),
-                    num_gpus: Some(16),
+                    num_gpus: Some(4),
                     priority: None,
                 })
             })
@@ -235,6 +235,14 @@ impl AxiomProver {
             }
         };
         debug!(status = ?response.status, "mapped axiom task status");
+
+        if response.status == TaskStatus::Failed {
+            response.error = Some(
+                status
+                    .error_message
+                    .unwrap_or_else(|| "unknown error".to_string()),
+            );
+        }
 
         response.proof_type = proof_type;
 

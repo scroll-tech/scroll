@@ -9,7 +9,7 @@ use crate::prover::ProverKind;
 use clap::{ArgAction, Parser, Subcommand};
 use scroll_proving_sdk::{
     prover::{ProverBuilder, types::ProofType},
-    utils::{get_version, init_tracing},
+    utils::{VERSION, init_tracing},
 };
 use std::{
     fs::File,
@@ -68,10 +68,10 @@ async fn main() -> eyre::Result<()> {
     let args = Args::parse();
 
     if args.version {
-        println!("version is {}", get_version());
+        println!("version is {VERSION}");
         std::process::exit(0);
     }
-    info!(version = %get_version(), "Starting prover");
+    info!(version = %VERSION, "Starting prover");
 
     let (sdk_config, prover) = args.prover_kind.create_from_file(&args.config_file)?;
     info!(prover = ?prover, "Loaded prover");

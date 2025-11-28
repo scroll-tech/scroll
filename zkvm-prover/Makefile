@@ -35,6 +35,9 @@ ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
 E2E_HANDLE_SET ?= ../tests/prover-e2e/testset.json
 DUMP_DIR ?= .work
 
+cpu_prover:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
+
 prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
 
@@ -65,8 +68,3 @@ test_e2e_run: ${E2E_HANDLE_SET}
 test_axiom_e2e_run: ${E2E_HANDLE_SET}
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --prover.kind axiom --config ./config.json handle ${E2E_HANDLE_SET}
 
-test_work_run:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --prover.kind axiom --config ./config.json
-
-test_work_run_raw:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} ../target/release/prover --prover.kind axiom --config ./config.json
