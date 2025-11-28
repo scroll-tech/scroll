@@ -89,11 +89,26 @@ func testChunkProposerLimitsCodecV7(t *testing.T) {
 			_, err = chunkOrm.InsertChunk(context.Background(), &encoding.Chunk{Blocks: []*encoding.Block{{Header: &gethTypes.Header{Number: big.NewInt(0)}}}}, encoding.CodecV0, utils.ChunkMetrics{})
 			assert.NoError(t, err)
 
+			// Initialize the chunk proposer.
+			chainConfig := &params.ChainConfig{
+				LondonBlock:    big.NewInt(0),
+				BernoulliBlock: big.NewInt(0),
+				CurieBlock:     big.NewInt(0),
+				DarwinTime:     new(uint64),
+				DarwinV2Time:   new(uint64),
+				EuclidTime:     new(uint64),
+				EuclidV2Time:   new(uint64),
+				FeynmanTime:    new(uint64),
+				GalileoTime:    tt.GalileoTime,
+			}
+
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxL2GasPerChunk:              tt.maxL2Gas,
 				ChunkTimeoutSec:               tt.chunkTimeoutSec,
 				MaxUncompressedBatchBytesSize: math.MaxUint64,
-			}, encoding.CodecV7, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64), EuclidTime: new(uint64), EuclidV2Time: new(uint64), FeynmanTime: new(uint64), GalileoTime: tt.GalileoTime}, db, nil)
+			}, encoding.CodecV7, chainConfig, db, nil)
+
+			// Run one round of chunk proposing.
 			cp.TryProposeChunk()
 
 			chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 1, 0)
