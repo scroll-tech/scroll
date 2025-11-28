@@ -79,7 +79,7 @@ func testCoordinatorProverInteraction(t *testing.T) {
 	l2BlockOrm := orm.NewL2Block(db)
 
 	// Connect to l2geth client
-	_, l2Client, err := testApps.GetL2GethClient()
+	l2Client, err := testApps.GetL2GethClient()
 	if err != nil {
 		log.Fatalf("Failed to connect to the l2geth client: %v", err)
 	}

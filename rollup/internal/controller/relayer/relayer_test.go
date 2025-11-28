@@ -74,7 +74,7 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
 	// Create l2geth client.
-	_, l2Cli, err = testApps.GetL2GethClient()
+	l2Cli, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")

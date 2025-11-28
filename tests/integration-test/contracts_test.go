@@ -24,7 +24,7 @@ func testERC20(t *testing.T) {
 	assert.NoError(t, testApps.StartL2GethContainer())
 	time.Sleep(time.Second * 3)
 
-	_, l2Cli, err := testApps.GetL2GethClient()
+	l2Cli, err := testApps.GetL2GethClient()
 	assert.Nil(t, err)
 
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
@@ -63,7 +63,7 @@ func testERC20(t *testing.T) {
 
 func testGreeter(t *testing.T) {
 	assert.NoError(t, testApps.StartL2GethContainer())
-	_, l2Cli, err := testApps.GetL2GethClient()
+	l2Cli, err := testApps.GetL2GethClient()
 	assert.Nil(t, err)
 
 	chainID, err := l2Cli.ChainID(context.Background())

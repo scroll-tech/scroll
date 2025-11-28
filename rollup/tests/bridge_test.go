@@ -93,9 +93,10 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, testApps.StartPoSL1Container())
 	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 
-	l1RawClient, l1Client, err = testApps.GetPoSL1Client()
+	l1RawClient, err = testApps.GetPoSL1Client()
+	l1Client = ethclient.NewClient(l1RawClient)
 	assert.NoError(t, err)
-	_, l2Client, err = testApps.GetL2GethClient()
+	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 	l1GethChainID, err = l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
