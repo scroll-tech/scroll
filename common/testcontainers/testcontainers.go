@@ -173,11 +173,7 @@ func (t *TestcontainerApps) GetPoSL1Client() (*rpc.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawClient, err := rpc.Dial(endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial L1 rpc endpoint, endpoint: %s, err: %w", endpoint, err)
-	}
-	return rawClient, nil
+	return rpc.Dial(endpoint)
 }
 
 // GetDBEndPoint returns the endpoint of the running postgres container

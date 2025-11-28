@@ -46,7 +46,7 @@ func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 			}),
 			rollupL1RelayerGasPriceOracleFeeOverLimitTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer1_gas_price_oracle_fee_over_limit_total",
-				Help: "The total number of layer1 gas price oracle fee over limit",
+				Help: "The total number of times when a gas price oracle fee update went over the configured limit",
 			}),
 		}
 	})
