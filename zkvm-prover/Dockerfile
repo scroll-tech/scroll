@@ -5,5 +5,12 @@ RUN cd /app/zkvm-prover && make cpu_prover
 
 FROM debian:trixie-slim AS runtime
 WORKDIR app
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV RUST_LOG='off,scroll_proving_sdk=info,prover=info'
+
 COPY --from=builder /app/target/release/prover ./prover
 ENTRYPOINT ["./prover"]
