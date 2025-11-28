@@ -19,6 +19,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -37,8 +38,9 @@ var (
 	rollupApp *bcmd.MockApp
 
 	// clients
-	l1Client *ethclient.Client
-	l2Client *ethclient.Client
+	l1RawClient *rpc.Client
+	l1Client    *ethclient.Client
+	l2Client    *ethclient.Client
 
 	l1Auth *bind.TransactOpts
 	l2Auth *bind.TransactOpts
@@ -91,8 +93,9 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, testApps.StartPoSL1Container())
 	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 
-	l1Client, err = testApps.GetPoSL1Client()
+	l1RawClient, err = testApps.GetPoSL1Client()
 	assert.NoError(t, err)
+	l1Client = ethclient.NewClient(l1RawClient)
 	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 	l1GethChainID, err = l1Client.ChainID(context.Background())

@@ -2,6 +2,7 @@ package sender
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum"
@@ -118,7 +119,7 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 
 	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, msg)
 	if err != nil {
-		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err)
+		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err, "msg", fmt.Sprintf("%+v", msg))
 		return 0, nil, err
 	}
 

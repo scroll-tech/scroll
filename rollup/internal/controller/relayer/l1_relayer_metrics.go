@@ -8,11 +8,12 @@ import (
 )
 
 type l1RelayerMetrics struct {
-	rollupL1RelayerGasPriceOraclerRunTotal      prometheus.Counter
-	rollupL1RelayerLatestBaseFee                prometheus.Gauge
-	rollupL1RelayerLatestBlobBaseFee            prometheus.Gauge
-	rollupL1UpdateGasOracleConfirmedTotal       prometheus.Counter
-	rollupL1UpdateGasOracleConfirmedFailedTotal prometheus.Counter
+	rollupL1RelayerGasPriceOraclerRunTotal         prometheus.Counter
+	rollupL1RelayerLatestBaseFee                   prometheus.Gauge
+	rollupL1RelayerLatestBlobBaseFee               prometheus.Gauge
+	rollupL1UpdateGasOracleConfirmedTotal          prometheus.Counter
+	rollupL1UpdateGasOracleConfirmedFailedTotal    prometheus.Counter
+	rollupL1RelayerGasPriceOracleFeeOverLimitTotal prometheus.Counter
 }
 
 var (
@@ -42,6 +43,10 @@ func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 			rollupL1UpdateGasOracleConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer1_update_gas_oracle_confirmed_failed_total",
 				Help: "The total number of updating layer1 gas oracle confirmed failed",
+			}),
+			rollupL1RelayerGasPriceOracleFeeOverLimitTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer1_gas_price_oracle_fee_over_limit_total",
+				Help: "The total number of times when a gas price oracle fee update went over the configured limit",
 			}),
 		}
 	})

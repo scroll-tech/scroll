@@ -167,13 +167,13 @@ func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
 }
 
-// GetPoSL1Client returns a ethclient by dialing running PoS L1 client
-func (t *TestcontainerApps) GetPoSL1Client() (*ethclient.Client, error) {
+// GetPoSL1Client returns a raw rpc client by dialing the L1 node
+func (t *TestcontainerApps) GetPoSL1Client() (*rpc.Client, error) {
 	endpoint, err := t.GetPoSL1EndPoint()
 	if err != nil {
 		return nil, err
 	}
-	return ethclient.Dial(endpoint)
+	return rpc.Dial(endpoint)
 }
 
 // GetDBEndPoint returns the endpoint of the running postgres container
@@ -221,7 +221,6 @@ func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
 
 // GetL2GethClient returns a ethclient by dialing running L2Geth
 func (t *TestcontainerApps) GetL2GethClient() (*ethclient.Client, error) {
-
 	rpcCli, err := t.GetL2Client()
 	if err != nil {
 		return nil, err

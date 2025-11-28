@@ -13,7 +13,7 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/consensus/misc"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -67,7 +67,8 @@ type FeeData struct {
 // Sender Transaction sender to send transaction to l1/l2
 type Sender struct {
 	config            *config.SenderConfig
-	gethClient        *gethclient.Client
+	rpcClient         *rpc.Client         // Raw RPC client
+	gethClient        *gethclient.Client  // Client to use for CreateAccessList
 	client            *ethclient.Client   // The client to retrieve on chain data (read-only)
 	writeClients      []*ethclient.Client // The clients to send transactions to (write operations)
 	transactionSigner *TransactionSigner
@@ -141,6 +142,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 	sender := &Sender{
 		ctx:                   ctx,
 		config:                config,
+		rpcClient:             rpcClient,
 		gethClient:            gethclient.New(rpcClient),
 		client:                client,
 		writeClients:          writeClients,
@@ -841,8 +843,19 @@ func (s *Sender) getBlockNumberAndTimestampAndBaseFeeAndBlobFee(ctx context.Cont
 
 	var blobBaseFee uint64
 	if excess := header.ExcessBlobGas; excess != nil {
-		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
+		// Leave it up to the L1 node to compute the correct blob base fee.
+		// Previously we would compute it locally using `CalcBlobFee`, but
+		// that approach requires syncing any future L1 configuration changes.
+		// Note: The fetched blob base fee might not correspond to the block
+		// that we fetched in the previous step, but this is acceptable.
+		var blobBaseFeeHex hexutil.Big
+		if err := s.rpcClient.CallContext(ctx, &blobBaseFeeHex, "eth_blobBaseFee"); err != nil {
+			return 0, 0, 0, 0, fmt.Errorf("failed to call eth_blobBaseFee, err: %w", err)
+		}
+		// A correct L1 node could not return a value that overflows uint64
+		blobBaseFee = blobBaseFeeHex.ToInt().Uint64()
 	}
+
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, header.Time, baseFee, blobBaseFee, nil
 }
