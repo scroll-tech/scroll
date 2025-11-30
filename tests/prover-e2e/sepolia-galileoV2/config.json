@@ -10,6 +10,6 @@
     "l2_message_queue_address": "0x5300000000000000000000000000000000000000"
   },
   "validium_mode": false,
-  "codec_version": 9
+  "codec_version": 10
 
 }
