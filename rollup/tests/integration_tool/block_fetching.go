@@ -20,6 +20,7 @@ func fetchAndStoreBlocks(ctx context.Context, from, to uint64) ([]*encoding.Bloc
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect l2 geth, endpoint %s, err %v", cfg.Endpoint, err)
 	}
+	defer client.Close()
 
 	ethCli := ethclient.NewClient(client)
 	var blocks []*encoding.Block

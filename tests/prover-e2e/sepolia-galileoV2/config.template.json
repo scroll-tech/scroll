@@ -26,7 +26,7 @@
     "validium_mode": false,
     "chain_id": 534351,
     "l2geth": {
-      "endpoint": "<serach a public rpc endpoint like alchemy>"
+      "endpoint": "<serach for a public rpc endpoint like alchemy>"
     }
   },
   "auth": {

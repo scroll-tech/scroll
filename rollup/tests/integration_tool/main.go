@@ -126,13 +126,13 @@ func newConfig(file string) (*config, error) {
 		return nil, err
 	}
 
-	cfg := &config{}
-	err = json.Unmarshal(buf, cfg)
+	loadCfg := &config{}
+	err = json.Unmarshal(buf, loadCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return loadCfg, nil
 }
 
 func action(ctx *cli.Context) error {
