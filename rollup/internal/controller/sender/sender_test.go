@@ -21,6 +21,7 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
@@ -94,8 +95,9 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	l1Client, err := testApps.GetPoSL1Client()
+	l1RawClient, err := testApps.GetPoSL1Client()
 	assert.NoError(t, err)
+	l1Client := ethclient.NewClient(l1RawClient)
 
 	chainID, err := l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
