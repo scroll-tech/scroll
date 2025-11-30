@@ -17,7 +17,11 @@
         {
           "assets_path": "assets",
           "fork_name": "galileo"
-        }
+        },
+        {
+          "assets_path": "assets_v2",
+          "fork_name": "galileoV2"
+        }        
       ]
     }
   },

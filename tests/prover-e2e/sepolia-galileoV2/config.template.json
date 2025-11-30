@@ -11,7 +11,7 @@
       "verifiers": [
         {
           "assets_path": "assets",
-          "fork_name": "galileo"
+          "fork_name": "galileoV2"
         }
       ]
     }

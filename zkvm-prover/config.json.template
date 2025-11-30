@@ -20,9 +20,13 @@
     "db_path": ".work/db"
   },
   "circuits": {
+    "feynman": {
+      "workspace_path": ".work/feynman",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/"
+    },    
     "galileo": {
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/",
-      "workspace_path": ".work/galileo"
+      "workspace_path": ".work/galileo",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/"
     },
     "galileoV2": {
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileov2/",
