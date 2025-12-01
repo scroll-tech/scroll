@@ -251,3 +251,32 @@ func (o *PendingTransaction) GetMaxNonceBySenderAddress(ctx context.Context, sen
 
 	return result.Nonce, nil
 }
+
+// GetTransactionByHash retrieves a transaction by its hash.
+func (o *PendingTransaction) GetTransactionByHash(ctx context.Context, hash common.Hash) (*PendingTransaction, error) {
+	var transaction PendingTransaction
+	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("hash = ?", hash.String())
+	if err := db.First(&transaction).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("transaction not found with hash: %s", hash.String())
+		}
+		return nil, fmt.Errorf("failed to get transaction by hash, hash: %v, err: %w", hash, err)
+	}
+	return &transaction, nil
+}
+
+// CountTransactionsByContextIDAndNonce counts the number of transactions with the same context_id and nonce.
+// This is useful for tracking how many times a transaction has been resent.
+func (o *PendingTransaction) CountTransactionsByContextIDAndNonce(ctx context.Context, contextID string, nonce uint64) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("context_id = ?", contextID)
+	db = db.Where("nonce = ?", nonce)
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("failed to count transactions by context_id and nonce, context_id: %s, nonce: %d, err: %w", contextID, nonce, err)
+	}
+	return count, nil
+}

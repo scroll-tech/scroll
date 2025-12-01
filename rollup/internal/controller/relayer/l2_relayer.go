@@ -123,18 +123,19 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 	switch serviceType {
 	case ServiceTypeL2RollupRelayer:
-		commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
-		}
-		finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
-		}
-		if commitSenderAddr == finalizeSenderAddr {
-			return nil, fmt.Errorf("commit and finalize sender addresses must be different. Got: Commit=%s, Finalize=%s", commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
-		}
+		// commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
+		// }
+		// finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
+		// }
+		// if commitSenderAddr == finalizeSenderAddr {
+		// 	return nil, fmt.Errorf("commit and finalize sender addresses must be different. Got: Commit=%s, Finalize=%s", commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
+		// }
 
+		var err error
 		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderSignerConfig, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
 		if err != nil {
 			return nil, fmt.Errorf("new commit sender failed, err: %w", err)
@@ -337,6 +338,28 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			return nil
 		}
 	}
+}
+
+func (r *Layer2Relayer) RevertBatch(batchIndex uint64) error {
+	batch, err := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
+	if err != nil {
+		return fmt.Errorf("failed to get batch header by index: %v", err)
+	}
+
+	calldata, packErr := r.l1RollupABI.Pack("revertBatch", batch.BatchHeader)
+	if packErr != nil {
+		return fmt.Errorf("failed to pack rollup revertBatch with batch header: %v. error: %v", common.Bytes2Hex(batch.BatchHeader), packErr)
+	}
+
+	// submit genesis batch to L1 rollup contract
+	log.Info("--------------Morty------------", "calldata", common.Bytes2Hex(calldata))
+	txHash, _, err := r.commitSender.SendTransaction("revertBatch_"+batch.Hash, &r.cfg.RollupContractAddress, calldata, nil)
+	if err != nil {
+		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
+	}
+	log.Info("RevertBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchIndex", batch.Index, "validium", r.cfg.ValidiumMode)
+
+	return nil
 }
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.

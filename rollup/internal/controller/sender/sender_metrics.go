@@ -19,6 +19,8 @@ type senderMetrics struct {
 	currentGasPrice                    *prometheus.GaugeVec
 	currentBlobGasFeeCap               *prometheus.GaugeVec
 	currentGasLimit                    *prometheus.GaugeVec
+	txConfirmationLatency              *prometheus.HistogramVec
+	txResendCount                      *prometheus.HistogramVec
 }
 
 var (

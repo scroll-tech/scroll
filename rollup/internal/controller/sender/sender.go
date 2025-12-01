@@ -28,6 +28,7 @@ import (
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
+	cutils "scroll-tech/common/utils"
 )
 
 const (
@@ -320,6 +321,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 			version = gethTypes.BlobSidecarVersion1
 		}
 
+		versionedBlobHash, err := cutils.CalculateVersionedBlobHash(*blobs[0])
+		if err != nil {
+			log.Error("failed to calculate versioned blob hash", "err", err)
+			return common.Hash{}, 0, fmt.Errorf("failed to calculate versioned blob hash, err: %w", err)
+		}
+		log.Info("--------------Morty------------", "versionedBlobHash", common.Bytes2Hex(versionedBlobHash[:]))
+
 		sidecar, err = makeSidecar(version, blobs)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)
@@ -347,6 +355,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		log.Error("failed to insert transaction", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
 		return common.Hash{}, 0, fmt.Errorf("failed to insert transaction, err: %w", err)
 	}
+
+	rawTx, err := signedTx.MarshalBinary()
+	if err != nil {
+		log.Error("failed to marshal signed tx", "err", err)
+		return common.Hash{}, 0, fmt.Errorf("failed to marshal signed tx, err: %w", err)
+	}
+	log.Info("--------------Morty------------", "rawTx", common.Bytes2Hex(rawTx))
 
 	if err := s.sendTransactionToMultipleClients(signedTx); err != nil {
 		// Delete the transaction from the pending transaction table if it fails to send.
@@ -586,6 +601,7 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 
 			// but don't exceed maxGasPrice
 			if gasFeeCap.Cmp(maxGasPrice) > 0 {
+				log.Info("adjusted gas fee cap to max gas price", "original", originalGasFeeCap.Uint64(), "gasFeeCap", gasFeeCap.Uint64(), "maxGasPrice", maxGasPrice.Uint64())
 				gasFeeCap = maxGasPrice
 			}
 
@@ -602,6 +618,7 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 
 			// but don't exceed maxBlobGasPrice
 			if blobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
+				log.Info("adjusted blob gas fee cap to max blob gas price", "original", originalBlobGasFeeCap.Uint64(), "blobGasFeeCap", blobGasFeeCap.Uint64(), "maxBlobGasPrice", maxBlobGasPrice.Uint64())
 				blobGasFeeCap = maxBlobGasPrice
 			}
 
@@ -678,6 +695,8 @@ func (s *Sender) checkPendingTransaction() {
 		receipt, err := s.client.TransactionReceipt(s.ctx, originalTx.Hash())
 		if err == nil { // tx confirmed.
 			if receipt.BlockNumber.Uint64() <= confirmed {
+				// Record metrics before updating the database
+
 				if dbTxErr := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the transaction to TxStatusConfirmed.
 					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmed, dbTX); updateErr != nil {

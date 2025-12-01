@@ -144,6 +144,14 @@ func action(ctx *cli.Context) error {
 		return nil
 	}
 
+	if ctx.Bool(utils.RevertFlag.Name) {
+		err = l2relayer.RevertBatch(7)
+		if err != nil {
+			log.Crit("failed to revert batch", "error", err)
+		}
+		os.Exit(0)
+	}
+
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
 		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2ethClient, cfg.L2Config.Confirmations)

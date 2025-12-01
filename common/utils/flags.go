@@ -17,6 +17,7 @@ var (
 		&MetricsPort,
 		&ServicePortFlag,
 		&Genesis,
+		&RevertFlag,
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
@@ -25,6 +26,10 @@ var (
 	// ProposerToolFlags contains flags only used in proposer tool
 	ProposerToolFlags = []cli.Flag{
 		&StartL2BlockFlag,
+	}
+	RevertFlag = cli.BoolFlag{
+		Name:  "revert",
+		Usage: "To revert the batch",
 	}
 	// ConfigFileFlag load json type config file.
 	ConfigFileFlag = cli.StringFlag{

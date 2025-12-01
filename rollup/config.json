@@ -1,0 +1,86 @@
+{
+    "l2_config": {
+      "confirmations": "0x1",
+      "endpoint": "http://localhost:8545",
+      "l2_message_queue_address": "0x5300000000000000000000000000000000000000",
+      "relayer_config": {
+        "validium_mode": false,
+        "rollup_contract_address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+        "sender_config": {
+          "endpoint": "http://localhost:8544",
+          "escalate_blocks": 1,
+          "confirmations": "0x0",
+          "escalate_multiple_num": 2,
+          "escalate_multiple_den": 1,
+          "max_gas_price": 1000000000000,
+          "max_blob_gas_price": 10000000000000,
+          "tx_type": "DynamicFeeTx",
+          "check_pending_time": 1,
+          "min_gas_tip": 100000000,
+          "max_pending_blob_txs": 3,
+          "fusaka_timestamp": 9999999999999
+        },
+        "batch_submission": {
+          "min_batches": 1,
+          "max_batches": 1,
+          "timeout": 8400,
+          "backlog_max": 0
+        },
+        "gas_oracle_config": {
+          "min_gas_price": 0,
+          "gas_price_diff": 50000
+        },
+        "chain_monitor": {
+          "enabled": false,
+          "timeout": 3,
+          "try_times": 5,
+          "base_url": "http://localhost:8750"
+        },
+        "enable_test_env_bypass_features": true,
+        "test_env_bypass_only_until_fork_boundary": false,
+        "finalize_batch_without_proof_timeout_sec": 200,
+        "finalize_bundle_without_proof_timeout_sec": 1000000,
+        "gas_oracle_sender_signer_config": {
+          "signer_type": "PrivateKey",
+          "private_key_signer_config": {
+            "private_key": "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+          }
+        },
+        "commit_sender_signer_config": {
+          "signer_type": "PrivateKey",
+          "private_key_signer_config": {
+            "private_key": "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+          }
+        },
+        "finalize_sender_signer_config": {
+          "signer_type": "PrivateKey",
+          "private_key_signer_config": {
+            "private_key": "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+          }
+        }
+      },
+      "chunk_proposer_config": {
+        "propose_interval_milliseconds": 100,
+        "max_l2_gas_per_chunk": 20000000,
+        "chunk_timeout_sec": 30,
+        "max_uncompressed_batch_bytes_size": 4194304
+      },
+      "batch_proposer_config": {
+        "propose_interval_milliseconds": 1000,
+        "batch_timeout_sec": 300,
+        "max_chunks_per_batch": 1,
+        "max_uncompressed_batch_bytes_size": 4194304
+      },
+      "bundle_proposer_config": {
+        "max_batch_num_per_bundle": 1,
+        "bundle_timeout_sec": 300
+      }
+    },
+    "db_config": {
+      "driver_name": "postgres",
+      "dsn": "postgres://postgres:postgres@localhost:5432/scroll?sslmode=disable",
+      "maxOpenNum": 200,
+      "maxIdleNum": 20
+    }
+  }
+  
