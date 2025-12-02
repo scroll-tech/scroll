@@ -29,7 +29,7 @@ pub struct BatchHeaderValidiumWithHash {
 /// Parse header types passed from golang side and adapt to the
 /// definition in zkvm-prover's types
 /// We distinguish the header type in golang side according to the STF
-/// version, i.e. v6 - v10 (current), and validium
+/// version, i.e. v6, v7-v10 (current), and validium
 /// And adapt it to the corresponding batch header type used in zkvm-prover's witness
 /// definition, i.e. v6, v7 (current), and validium
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -40,7 +40,7 @@ pub enum BatchHeaderV {
     Validium(BatchHeaderValidiumWithHash),
     /// Header for scroll's STF version v6.
     V6(BatchHeaderV6),
-    /// Header for scroll's STF versions v7 - V10.
+    /// Header for scroll's STF versions v7 - v10.
     ///
     /// Since the codec essentially is unchanged for the above STF versions, we do not define new
     /// variants, instead re-using the [`BatchHeaderV7`] variant.
@@ -73,7 +73,7 @@ impl BatchHeaderV {
         }
     }
 
-    pub fn to_zkvm_batch_header_v7_to_v9(&self) -> &BatchHeaderV7 {
+    pub fn to_zkvm_batch_header_v7_to_v10(&self) -> &BatchHeaderV7 {
         match self {
             BatchHeaderV::V7_to_V10(h) => h,
             _ => unreachable!(
@@ -159,7 +159,7 @@ impl BatchProvingTask {
             ),
             BatchHeaderV::V7_to_V10(_) => assert!(
                 matches!(version.fork, ForkName::EuclidV2 | ForkName::Feynman | ForkName::Galileo | ForkName::GalileoV2),
-                "hardfork mismatch for da-codec@v7/8/9 header: found={}, expected={:?}",
+                "hardfork mismatch for da-codec@v7/8/9/10 header: found={}, expected={:?}",
                 version.fork,
                 [ForkName::EuclidV2, ForkName::Feynman, ForkName::Galileo, ForkName::GalileoV2],
             ),
@@ -233,20 +233,20 @@ impl BatchProvingTask {
             (Domain::Scroll, STFVersion::V6) => {
                 ReferenceHeader::V6(*self.batch_header.to_zkvm_batch_header_v6())
             }
-            // The da-codec for STF versions v7, v8, v9 is identical. In zkvm-prover we do not
+            // The da-codec for STF versions v7, v8, v9, v10 is identical. In zkvm-prover we do not
             // create additional variants to indicate the identical behaviour of codec. Instead we
             // add a separate variant for the STF version.
             //
             // We handle the different STF versions here however build the same batch header since
             // that type does not change. The batch header's version byte constructed in the
-            // coordinator actually defines the STF version (v7, v8 or v9) and we can derive the
-            // hard-fork (feynman or galileo) and the codec from the version byte.
+            // coordinator actually defines the STF version (v7, v8 or v9, v10) and we can derive the
+            // hard-fork (e.g. feynman or galileo) and the codec from the version byte.
             //
             // Refer [`scroll_zkvm_types::public_inputs::Version`].
             (
                 Domain::Scroll,
                 STFVersion::V7 | STFVersion::V8 | STFVersion::V9 | STFVersion::V10,
-            ) => ReferenceHeader::V7_V8_V9(*self.batch_header.to_zkvm_batch_header_v7_to_v9()),
+            ) => ReferenceHeader::V7_V8_V9(*self.batch_header.to_zkvm_batch_header_v7_to_v10()),
             (Domain::Validium, STFVersion::V1) => {
                 ReferenceHeader::Validium(*self.batch_header.to_zkvm_batch_header_validium())
             }
