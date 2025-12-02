@@ -21,13 +21,15 @@
   },
   "circuits": {
     "feynman": {
-      "hard_fork_name": "feynman",
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/",
-      "workspace_path": ".work/feynman"
-    },
+      "workspace_path": ".work/feynman",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/"
+    },    
     "galileo": {
-      "hard_fork_name": "galileo",
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/",
+      "workspace_path": ".work/galileo",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/"
+    },
+    "galileoV2": {
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileov2/",
       "workspace_path": ".work/galileo"
     }    
   }

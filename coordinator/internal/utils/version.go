@@ -31,6 +31,8 @@ func Version(hardForkName string, ValidiumMode bool) (uint8, error) {
 			stfVersion = 8
 		case "galileo":
 			stfVersion = 9
+		case "galileov2":
+			stfVersion = 10
 		default:
 			return 0, errors.New("unknown fork name " + canonicalName)
 		}

@@ -7,7 +7,7 @@ if [ -z "${SCROLL_ZKVM_VERSION}" ]; then
 fi
 
 # default fork name from env or "galileo"
-SCROLL_FORK_NAME="${SCROLL_FORK_NAME:-galileo}"
+SCROLL_FORK_NAME="${SCROLL_FORK_NAME:-galileov2}"
 
 # set ASSET_DIR by reading from config.json
 CONFIG_FILE="bin/conf/config.template.json"

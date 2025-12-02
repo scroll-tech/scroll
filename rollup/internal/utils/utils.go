@@ -186,7 +186,7 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 	)
 
 	var version uint8
-	if codecVersion == encoding.CodecV8 || codecVersion == encoding.CodecV9 {
+	if codecVersion == encoding.CodecV8 || codecVersion == encoding.CodecV9 || codecVersion == encoding.CodecV10 {
 		// Validium version line starts with v1,
 		// but rollup-relayer behavior follows v8.
 		version = 1

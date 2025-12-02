@@ -167,7 +167,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 			Chunks:                     chunks,
 		}
 
-	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9, encoding.CodecV10:
 		encodingBatch = &encoding.Batch{
 			Index:                  dbBatch.Index,
 			ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
