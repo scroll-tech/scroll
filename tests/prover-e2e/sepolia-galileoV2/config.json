@@ -1,0 +1,15 @@
+{
+    "db_config": {
+    "driver_name": "postgres",
+    "dsn": "postgres://dev:dev@localhost:5432/scroll?sslmode=disable",
+    "maxOpenNum": 5,
+    "maxIdleNum": 1
+  },
+  "fetch_config": {
+    "endpoint": "http://l2-sequencer-galileo-6.devnet.scroll.tech:8545",
+    "l2_message_queue_address": "0x5300000000000000000000000000000000000000"
+  },
+  "validium_mode": false,
+  "codec_version": 10
+
+}

@@ -144,7 +144,6 @@ impl LocalProverConfig {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CircuitConfig {
-    pub hard_fork_name: String,
     /// The path to save assets for a specified hard fork phase
     pub workspace_path: String,
     #[serde(flatten)]
