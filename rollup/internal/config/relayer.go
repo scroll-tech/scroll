@@ -48,6 +48,10 @@ type BatchSubmission struct {
 	TimeoutSec int64 `json:"timeout"`
 	// The maximum number of pending batches to keep in the backlog.
 	BacklogMax int64 `json:"backlog_max"`
+	// BlobFeeTolerance is the absolute tolerance (in wei) added to the target blob fee.
+	// If the current fee is below target + tolerance, we proceed with submission.
+	// This prevents skipping submission when the price difference is negligible.
+	BlobFeeTolerance uint64 `json:"blob_fee_tolerance"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
