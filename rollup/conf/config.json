@@ -59,7 +59,7 @@
         "max_batches": 6,
         "timeout": 7200,
         "backlog_max": 75,
-        "blob_fee_tolerance": 10000000000
+        "blob_fee_tolerance": 500000000
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
