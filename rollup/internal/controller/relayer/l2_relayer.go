@@ -1256,7 +1256,7 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 	current := hist[len(hist)-1]
 
 	// apply absolute tolerance offset to target
-	tolerance := new(big.Int).SetUint64(r.cfg.BatchSubmission.BlobFeeToleranceWei)
+	tolerance := new(big.Int).SetUint64(r.cfg.BatchSubmission.BlobFeeTolerance)
 	threshold := new(big.Int).Add(target, tolerance)
 
 	currentFloat, _ := current.Float64()
