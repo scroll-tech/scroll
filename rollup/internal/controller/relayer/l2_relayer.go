@@ -452,6 +452,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// The next call of ProcessPendingBatches will then start with the batch with the different codec version.
 		batchesToSubmitLen := len(batchesToSubmit)
 		if batchesToSubmitLen > 0 && batchesToSubmit[batchesToSubmitLen-1].Batch.CodecVersion != dbBatch.CodecVersion {
+			forceSubmit = true
 			break
 		}
 

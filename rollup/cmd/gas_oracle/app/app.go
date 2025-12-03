@@ -66,17 +66,26 @@ func action(ctx *cli.Context) error {
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
 
-	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+	// Init L1 connection
+	l1RpcClient, err := rpc.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		log.Crit("failed to dial raw RPC client to L1 endpoint", "endpoint", cfg.L1Config.Endpoint, "error", err)
+	}
+	l1client := ethclient.NewClient(l1RpcClient)
+
+	// sanity check config
+	if cfg.L1Config.RelayerConfig.GasOracleConfig.L1BaseFeeLimit == 0 || cfg.L1Config.RelayerConfig.GasOracleConfig.L1BlobBaseFeeLimit == 0 {
+		log.Crit("gas-oracle `l1_base_fee_limit` and `l1_blob_base_fee_limit` configs must be set")
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, db, registry)
+	// Init watcher and relayer
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1RpcClient, cfg.L1Config.StartHeight, db, registry)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, relayer.ServiceTypeL1GasOracle, registry)
 	if err != nil {
 		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 	}
+
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
 		// Fetch the latest block number to decrease the delay when fetching gas prices
