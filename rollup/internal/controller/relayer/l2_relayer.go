@@ -1255,16 +1255,20 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
 	current := hist[len(hist)-1]
 
+	// apply absolute tolerance offset to target
+	tolerance := new(big.Int).SetUint64(r.cfg.BatchSubmission.BlobFeeToleranceWei)
+	threshold := new(big.Int).Add(target, tolerance)
+
 	currentFloat, _ := current.Float64()
 	targetFloat, _ := target.Float64()
 	metrics.rollupL2RelayerCurrentBlobPrice.Set(currentFloat)
 	metrics.rollupL2RelayerTargetBlobPrice.Set(targetFloat)
 
-	// if current fee > target and still inside the timeout window, skip
-	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
+	// if current fee > threshold (target + tolerance) and still inside the timeout window, skip
+	if current.Cmp(threshold) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
 		return true, fmt.Errorf(
-			"blob-fee above target & window not yet passed; current=%s target=%s age=%s",
-			current.String(), target.String(), time.Since(oldest),
+			"blob-fee above threshold & window not yet passed; current=%s target=%s threshold=%s tolerance=%s age=%s",
+			current.String(), target.String(), threshold.String(), tolerance.String(), time.Since(oldest),
 		)
 	}
 
