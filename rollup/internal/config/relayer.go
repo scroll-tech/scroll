@@ -50,8 +50,7 @@ type BatchSubmission struct {
 	BacklogMax int64 `json:"backlog_max"`
 	// BlobFeeTolerance is the absolute tolerance (in wei) added to the target blob fee.
 	// If the current fee is below target + tolerance, we proceed with submission.
-	// This prevents skipping submission when the price difference is negligible (e.g., 1 wei).
-	// Recommended value: 10 gwei (10000000000 wei).
+	// This prevents skipping submission when the price difference is negligible.
 	BlobFeeTolerance uint64 `json:"blob_fee_tolerance"`
 }
 
