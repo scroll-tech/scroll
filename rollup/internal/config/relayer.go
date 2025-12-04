@@ -48,6 +48,10 @@ type BatchSubmission struct {
 	TimeoutSec int64 `json:"timeout"`
 	// The maximum number of pending batches to keep in the backlog.
 	BacklogMax int64 `json:"backlog_max"`
+	// BlobFeeTolerance is the absolute tolerance (in wei) added to the target blob fee.
+	// If the current fee is below target + tolerance, we proceed with submission.
+	// This prevents skipping submission when the price difference is negligible.
+	BlobFeeTolerance uint64 `json:"blob_fee_tolerance"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
@@ -108,6 +112,10 @@ type GasOracleConfig struct {
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
+
+	// Upper limit values for gas oracle updates
+	L1BaseFeeLimit     uint64 `json:"l1_base_fee_limit"`
+	L1BlobBaseFeeLimit uint64 `json:"l1_blob_base_fee_limit"`
 
 	// L1BlobBaseFeeThreshold the threshold of L1 blob base fee to enter the default gas price mode
 	L1BlobBaseFeeThreshold uint64 `json:"l1_blob_base_fee_threshold"`

@@ -34,7 +34,7 @@ services:
 
   # Sets up the genesis configuration for the go-ethereum client from a JSON file.
   geth-genesis:
-    image: "ethereum/client-go:v1.13.14"
+    image: "ethereum/client-go:v1.14.0"
     command: --datadir=/data/execution init /data/execution/genesis.json
     volumes:
       - data:/data
@@ -80,7 +80,7 @@ services:
   # Runs the go-ethereum execution client with the specified, unlocked account and necessary
   # APIs to allow for proof-of-stake consensus via Prysm.
   geth:
-    image: "ethereum/client-go:v1.13.14"
+    image: "ethereum/client-go:v1.14.0"
     command:
       - --http
       - --http.api=eth,net,web3

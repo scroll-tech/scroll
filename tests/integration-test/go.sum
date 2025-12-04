@@ -93,10 +93,10 @@ github.com/rjeczalik/notify v0.9.1 h1:CLCKso/QK1snAlnhNR/CNvNiFU2saUtjV0bx3EwNeC
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
-github.com/scroll-tech/da-codec v0.9.0 h1:UvHNdSJuVhi/j9pOH7SXkRck52/zeE8T35Fx6qTPW70=
-github.com/scroll-tech/da-codec v0.9.0/go.mod h1:w+vwIvNiWdiNHVE9yIY2Klx6G4s+SQhEJVSmVG/IsEQ=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20251117065849-b5c3dd1aa975 h1:KluZffkRRJ4K9UyvH/r2g8Lp16/NSK8j26MR33hHmoQ=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20251117065849-b5c3dd1aa975/go.mod h1:6BVek7YliYh+YeHOSjguPw9GT9BhVBfThArxzVlpqdQ=
+github.com/scroll-tech/da-codec v0.10.0 h1:IPHxyTyXTWPV0Q+DZ08cod2fWkhUvrfysmj/VBpB+WU=
+github.com/scroll-tech/da-codec v0.10.0/go.mod h1:MBlIP4wCXPcUDZ/Ci2B7n/2IbVU1WBo9OTFTZ5ffE0U=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f h1:j6SjP98MoWFFX9TwB1/nFYEkayqHQsrtE66Ll2C+oT0=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f/go.mod h1:Aa/kD1XB+OV/7rRxMQrjcPCB4b0pKyLH0gsTrtuHi38=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=

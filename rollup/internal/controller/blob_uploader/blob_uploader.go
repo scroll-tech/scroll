@@ -167,7 +167,7 @@ func (b *BlobUploader) constructBlobCodec(dbBatch *orm.Batch) (*kzg4844.Blob, er
 			Chunks:                     chunks,
 		}
 
-	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9, encoding.CodecV10:
 		encodingBatch = &encoding.Batch{
 			Index:                  dbBatch.Index,
 			ParentBatchHash:        common.HexToHash(dbBatch.ParentBatchHash),
@@ -242,10 +242,12 @@ func (b *BlobUploader) GetFirstUnuploadedBatchByPlatform(ctx context.Context, st
 		break
 	}
 
-	if len(batch.CommitTxHash) == 0 {
-		log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
-		return nil, nil
-	}
+	// disable this check to upload blobs before it's committed. This is to
+	// alleviate the case nodes try to fetch the blob from s3 before its uploaded.
+	// if len(batch.CommitTxHash) == 0 {
+	// 	log.Debug("got batch not committed for blob uploading", "batch_index", batchIndex, "platform", platform.String())
+	// 	return nil, nil
+	// }
 
 	return batch, nil
 }

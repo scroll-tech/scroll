@@ -17,13 +17,13 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.7.1"
 
 [workspace.dependencies]
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.0" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.0" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.0" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
 
-sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91", features = ["scroll", "rkyv"] }
-sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91" }
-sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91", features = ["scroll"] }
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll", "rkyv"] }
+sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2" }
+sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll"] }
 
 metrics = "0.23.0"
 metrics-util = "0.17"

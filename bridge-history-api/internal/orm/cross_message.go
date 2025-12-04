@@ -157,7 +157,7 @@ func (c *CrossMessage) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, s
 	db = db.Where("tx_status in (?)", []types.TxStatusType{types.TxStatusTypeSent, types.TxStatusTypeFailedRelayed, types.TxStatusTypeRelayTxReverted})
 	db = db.Where("sender = ?", sender)
 	db = db.Order("block_timestamp desc")
-	db = db.Limit(500)
+	db = db.Limit(10000)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 claimable withdrawal messages by sender address, sender: %v, error: %w", sender, err)
 	}

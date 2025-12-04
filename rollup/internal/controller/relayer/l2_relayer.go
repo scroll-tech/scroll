@@ -452,6 +452,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// The next call of ProcessPendingBatches will then start with the batch with the different codec version.
 		batchesToSubmitLen := len(batchesToSubmit)
 		if batchesToSubmitLen > 0 && batchesToSubmit[batchesToSubmitLen-1].Batch.CodecVersion != dbBatch.CodecVersion {
+			forceSubmit = true
 			break
 		}
 
@@ -488,7 +489,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9, encoding.CodecV10:
 		if r.cfg.ValidiumMode {
 			if len(batchesToSubmit) != 1 {
 				log.Error("validium mode only supports committing one batch at a time", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "batches count", len(batchesToSubmit))
@@ -747,7 +748,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	var calldata []byte
 	switch encoding.CodecVersion(bundle.CodecVersion) {
-	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9:
+	case encoding.CodecV7, encoding.CodecV8, encoding.CodecV9, encoding.CodecV10:
 		if r.cfg.ValidiumMode {
 			calldata, err = r.constructFinalizeBundlePayloadValidium(dbBatch, endChunk, aggProof)
 			if err != nil {
@@ -1050,7 +1051,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 	commitment := common.HexToHash(lastChunk.EndBlockHash)
 
 	var version uint8
-	if encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV8 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV9 {
+	if encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV8 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV9 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV10 {
 		// Validium version line starts with v1,
 		// but rollup-relayer behavior follows v8.
 		version = 1
@@ -1254,16 +1255,20 @@ func (r *Layer2Relayer) skipSubmitByFee(oldest time.Time, metrics *l2RelayerMetr
 	target := calculateTargetPrice(windowSec, r.batchStrategy, oldest, hist)
 	current := hist[len(hist)-1]
 
+	// apply absolute tolerance offset to target
+	tolerance := new(big.Int).SetUint64(r.cfg.BatchSubmission.BlobFeeTolerance)
+	threshold := new(big.Int).Add(target, tolerance)
+
 	currentFloat, _ := current.Float64()
 	targetFloat, _ := target.Float64()
 	metrics.rollupL2RelayerCurrentBlobPrice.Set(currentFloat)
 	metrics.rollupL2RelayerTargetBlobPrice.Set(targetFloat)
 
-	// if current fee > target and still inside the timeout window, skip
-	if current.Cmp(target) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
+	// if current fee > threshold (target + tolerance) and still inside the timeout window, skip
+	if current.Cmp(threshold) > 0 && time.Since(oldest) < time.Duration(windowSec)*time.Second {
 		return true, fmt.Errorf(
-			"blob-fee above target & window not yet passed; current=%s target=%s age=%s",
-			current.String(), target.String(), time.Since(oldest),
+			"blob-fee above threshold & window not yet passed; current=%s target=%s threshold=%s tolerance=%s age=%s",
+			current.String(), target.String(), threshold.String(), tolerance.String(), time.Since(oldest),
 		)
 	}
 
