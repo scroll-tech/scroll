@@ -7,39 +7,34 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
-      "min_prover_version": "v4.4.45",
+      "min_prover_version": "v4.4.33",
       "verifiers": [
         {
-          "features": "legacy_witness:openvm_13",
-          "assets_path": "assets_feynman",
-          "fork_name": "feynman"
-        },        
-        {
           "assets_path": "assets",
-          "fork_name": "galileo"
-        },
-        {
-          "assets_path": "assets_v2",
           "fork_name": "galileoV2"
-        }        
+        }
       ]
     }
   },
   "db": {
     "driver_name": "postgres",
-    "dsn": "postgres://localhost/scroll?sslmode=disable",
+    "dsn": "postgres://dev:dev@localhost/scroll?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
   "l2": {
-    "chain_id": 111,
+    "validium_mode": false,
+    "chain_id": 534351,
     "l2geth": {
-      "endpoint": "not need to specified for mocking"
+      "endpoint": "<serach for a public rpc endpoint like alchemy>"
     }
   },
   "auth": {
     "secret": "prover secret key",
     "challenge_expire_duration_sec": 3600,
     "login_expire_duration_sec": 3600
+  },
+  "sequencer": {
+    "decryption_key": "not need"
   }
 }
