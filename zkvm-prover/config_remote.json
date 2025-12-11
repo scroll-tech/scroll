@@ -1,0 +1,36 @@
+{
+  "sdk_config": {
+    "prover_name_prefix": "test-prover",
+    "keys_dir": ".work",
+    "coordinator": {
+      "base_url": "https://coordinator.scroll.io",
+      "retry_count": 10,
+      "retry_wait_time_sec": 10,
+      "connection_timeout_sec": 1800
+    },
+    "prover": {
+      "supported_proof_types": [
+        1,2,3
+      ],
+      "circuit_version": "v0.13.1"
+    },
+    "health_listener_addr": "127.0.0.1:10080"
+  },
+  "circuits": {
+    "feynman": {
+      "hard_fork_name": "feynman",
+      "workspace_path": ".work/feynman",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/"
+    },
+    "galileo": {
+      "hard_fork_name": "galileo",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileov2/",
+      "asset_detours": {
+        "ccc571171bc204071573675bc048f43513ece7671474b7691b12061b44bf37556618ea25a7991845bbc5fd571670ee47379ba31ace92d345bca59702a0d4112d": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.7.0/chunk/",
+        "a150d62e1cab9659b2a3b966c2f49655d36e40695b5fbf1c25eebd5020979948f2be2f4468d1ac4a70e7682babb1c60417e21c7633d4b55b58f44703ec82b05a": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.7.0/batch/",
+        "4eb5e2372539235db88ffe305f032164b2be5f26439e5262c29ecd0a968e1f0f22c0e5294bcb1b3a9def836f8d0f18612a9860629b9497292976ca11844b7e73": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.7.0/bundle/"
+      },
+      "workspace_path": ".work/galileo"
+    }   
+  }
+}

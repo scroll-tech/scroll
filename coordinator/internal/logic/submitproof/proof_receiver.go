@@ -400,7 +400,7 @@ func (m *ProofReceiverLogic) closeProofTask(ctx context.Context, proverTask *orm
 	log.Info("proof close task update proof status", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey,
 		"taskType", message.ProofType(proverTask.TaskType).String(), "status", types.ProvingTaskVerified.String())
 
-	if err := m.updateProofStatus(ctx, proverTask, proofParameter, types.ProverProofValid, types.ProverTaskFailureTypeUndefined, proofTimeSec); err != nil {
+	if err := m.updateProofStatus(ctx, proverTask, proofParameter, types.ProverProofValid, types.ProverTaskFailureType(proverTask.FailureType), proofTimeSec); err != nil {
 		log.Error("failed to updated proof status ProvingTaskVerified", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "error", err)
 		return err
 	}

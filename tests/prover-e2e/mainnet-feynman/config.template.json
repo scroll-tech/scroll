@@ -1,0 +1,41 @@
+{
+  "prover_manager": {
+    "provers_per_session": 1,
+    "session_attempts": 5,
+    "external_prover_threshold": 32,
+    "bundle_collection_time_sec": 180,
+    "batch_collection_time_sec": 180,
+    "chunk_collection_time_sec": 180,
+    "verifier": {
+      "min_prover_version": "v4.4.33",
+      "verifiers": [
+        {
+          "features": "legacy_witness:openvm_13",
+          "assets_path": "assets_feynman",
+          "fork_name": "feynman"
+        }
+      ]
+    }
+  },
+  "db": {
+    "driver_name": "postgres",
+    "dsn": "postgres://dev:dev@localhost/scroll?sslmode=disable",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "l2": {
+    "validium_mode": false,
+    "chain_id": 534352,
+    "l2geth": {
+      "endpoint": "<serach a public rpc endpoint like alchemy>"
+    }
+  },
+  "auth": {
+    "secret": "prover secret key",
+    "challenge_expire_duration_sec": 3600,
+    "login_expire_duration_sec": 3600
+  },
+  "sequencer": {
+    "decryption_key": "not need"
+  }
+}
