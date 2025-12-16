@@ -17,10 +17,9 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.7.1"
 
 [workspace.dependencies]
-# v0.7.1 plus openvm feature for performance elevating
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "9fb016f" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "9fb016f" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "9fb016f" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "228beec" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "228beec" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "228beec" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2" }

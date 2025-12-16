@@ -4,13 +4,11 @@ use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
     batch::{
         build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderValidium,
-        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, LegacyBatchWitness,
-        ReferenceHeader, N_BLOB_BYTES,
+        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, ReferenceHeader, N_BLOB_BYTES,
     },
     chunk::ChunkInfo,
     public_inputs::{ForkName, MultiVersionPublicInputs, Version},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
     version::{Codec, Domain, STFVersion},
 };
 
@@ -118,12 +116,7 @@ pub struct BatchProvingTask {
 impl BatchProvingTask {
     pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, BatchInfo, B256)> {
         let (witness, metadata, batch_pi_hash) = self.precheck()?;
-        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
-            let legacy_witness = LegacyBatchWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
+        let serialized_witness = super::encode_task_to_witness(&witness)?;
 
         let proving_task = ProvingTask {
             identifier: self.batch_header.batch_hash().to_string(),

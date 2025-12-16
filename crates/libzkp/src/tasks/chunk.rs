@@ -2,10 +2,9 @@ use eyre::Result;
 use sbv_core::BlockWitness;
 use sbv_primitives::{types::consensus::BlockHeader, B256};
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
+    chunk::{execute, ChunkInfo, ChunkWitness, ValidiumInputs},
     public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
 };
 
 use super::chunk_interpreter::*;
@@ -117,12 +116,7 @@ impl ChunkProvingTask {
 
     pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, ChunkInfo, B256)> {
         let (witness, chunk_info, chunk_pi_hash) = self.precheck()?;
-        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
-            let legacy_witness = LegacyChunkWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy_witness)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
+        let serialized_witness = super::encode_task_to_witness(&witness)?;
 
         let proving_task = ProvingTask {
             identifier: self.identifier(),
