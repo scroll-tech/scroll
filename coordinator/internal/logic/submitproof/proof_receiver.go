@@ -155,7 +155,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, chainCfg *params.Cha
 // HandleZkProof handle a ZkProof submitted from a prover.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coordinatorType.SubmitProofParameter) error {
+func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coordinatorType.SubmitProofParameter) (rerr error) {
 	m.proofReceivedTotal.Inc()
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
@@ -171,6 +171,18 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		log.Error("get none prover task for the proof", "uuid", proofParameter.UUID, "key", pk, "taskID", proofParameter.TaskID, "error", err)
 		return ErrValidatorFailureProverTaskEmpty
 	}
+
+	defer func() {
+		if rerr != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverAssigned {
+			// trigger a last-chance closing of current task if some routine had missed it
+			log.Warn("last chance proof recover triggerred",
+				"proofID", proofParameter.TaskID,
+				"err", rerr,
+			)
+			m.proofRecover(ctx.Copy(), proverTask, types.ProverTaskFailureTypeUndefined, proofParameter)
+		}
+
+	}()
 
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
@@ -311,6 +323,20 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		}
 	}()
 
+	// Internally we overide the timeout failure:
+	// if prover task FailureType is SessionInfoFailureTimeout, the submit proof is timeout, but we still accept it
+	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid &&
+		types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
+		m.validateFailureProverTaskTimeout.Inc()
+		proverTask.ProvingStatus = int16(types.ProverAssigned)
+
+		proofTime := time.Since(proverTask.CreatedAt)
+		proofTimeSec := uint64(proofTime.Seconds())
+		log.Warn("proof submit proof have timeout", "hash", proofParameter.TaskID, "taskType", proverTask.TaskType,
+			"proverName", proverTask.ProverName, "proverPublicKey", pk, "proofTime", proofTimeSec)
+
+	}
+
 	// Ensure this prover is eligible to participate in the prover task.
 	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid ||
 		types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
@@ -328,9 +354,6 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		return ErrValidatorFailureProverTaskCannotSubmitTwice
 	}
 
-	proofTime := time.Since(proverTask.CreatedAt)
-	proofTimeSec := uint64(proofTime.Seconds())
-
 	if proofParameter.Status != int(coordinatorType.StatusOk) {
 		// Temporarily replace "panic" with "pa-nic" to prevent triggering the alert based on logs.
 		failureMsg := strings.Replace(proofParameter.FailureMsg, "panic", "pa-nic", -1)
@@ -344,14 +367,6 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 			"proverVersion", proverTask.ProverVersion, "proverPublicKey", pk, "failureType", proofParameter.FailureType,
 			"failureMessage", failureMsg)
 		return ErrValidatorFailureProofMsgStatusNotOk
-	}
-
-	// if prover task FailureType is SessionInfoFailureTimeout, the submit proof is timeout, need skip it
-	if types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
-		m.validateFailureProverTaskTimeout.Inc()
-		log.Info("proof submit proof have timeout, skip this submit proof", "hash", proofParameter.TaskID, "taskType", proverTask.TaskType,
-			"proverName", proverTask.ProverName, "proverPublicKey", pk, "proofTime", proofTimeSec)
-		return ErrValidatorFailureProofTimeout
 	}
 
 	// store the proof to prover task
@@ -368,6 +383,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "proverPublicKey", pk)
 		return ErrValidatorFailureTaskHaveVerifiedSuccess
 	}
+
 	return nil
 }
 
@@ -384,7 +400,7 @@ func (m *ProofReceiverLogic) closeProofTask(ctx context.Context, proverTask *orm
 	log.Info("proof close task update proof status", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey,
 		"taskType", message.ProofType(proverTask.TaskType).String(), "status", types.ProvingTaskVerified.String())
 
-	if err := m.updateProofStatus(ctx, proverTask, proofParameter, types.ProverProofValid, types.ProverTaskFailureTypeUndefined, proofTimeSec); err != nil {
+	if err := m.updateProofStatus(ctx, proverTask, proofParameter, types.ProverProofValid, types.ProverTaskFailureType(proverTask.FailureType), proofTimeSec); err != nil {
 		log.Error("failed to updated proof status ProvingTaskVerified", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "error", err)
 		return err
 	}
@@ -445,6 +461,9 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, proverTask *
 	if err != nil {
 		return err
 	}
+	// sync status and failture type into proverTask
+	proverTask.ProvingStatus = int16(status)
+	proverTask.FailureType = int16(failureType)
 
 	if status == types.ProverProofValid && message.ProofType(proofParameter.TaskType) == message.ProofTypeChunk {
 		if checkReadyErr := m.checkAreAllChunkProofsReady(ctx, proverTask.TaskID); checkReadyErr != nil {
