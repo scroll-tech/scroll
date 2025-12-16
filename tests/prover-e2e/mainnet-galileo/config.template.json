@@ -10,9 +10,8 @@
       "min_prover_version": "v4.4.33",
       "verifiers": [
         {
-          "features": "legacy_witness:openvm_13",
-          "assets_path": "assets_feynman",
-          "fork_name": "feynman"
+          "assets_path": "assets_galileo",
+          "fork_name": "galileo"
         }
       ]
     }
@@ -25,7 +24,7 @@
   },
   "l2": {
     "validium_mode": false,
-    "chain_id": 534351,
+    "chain_id": 534352,
     "l2geth": {
       "endpoint": "<serach a public rpc endpoint like alchemy>"
     }
