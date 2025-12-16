@@ -30,6 +30,9 @@ pub struct AssetsLocationData {
     #[serde(default)]
     /// a altered url for specififed vk
     pub asset_detours: HashMap<String, url::Url>,
+    /// when asset file existed, do not verify from network, help for debugging stuffs
+    #[serde(default)]
+    pub debug_mode: bool,
 }
 
 impl AssetsLocationData {
@@ -79,6 +82,13 @@ impl AssetsLocationData {
                 // Get file metadata to check size
                 if let Ok(metadata) = std::fs::metadata(&local_file_path) {
                     // Make a HEAD request to get remote file size
+                    if self.debug_mode {
+                        println!(
+                            "File {} already exists, skipping download under debugmode",
+                            filename
+                        );
+                        continue;
+                    }
 
                     if let Ok(head_resp) = client.head(download_url.clone()).send().await {
                         if let Some(content_length) = head_resp.headers().get("content-length") {
@@ -203,7 +213,7 @@ impl ProvingService for LocalProver {
                     },
                     Err(e) => {
                         if e.is_panic() {
-                            // simply re-throw panic for any panicking in proving prrocess,
+                            // simply re-throw panic for any panicking in proving process,
                             // cause worker loop and the whole prover exit
                             std::panic::resume_unwind(e.into_panic());
                         }
@@ -211,7 +221,7 @@ impl ProvingService for LocalProver {
                         QueryTaskResponse {
                             task_id: req.task_id,
                             status: TaskStatus::Failed,
-                            error: Some(format!("proving task panicked: {}", e)),
+                            error: Some(format!("proving task failed: {}", e)),
                             ..Default::default()
                         }
                     }
