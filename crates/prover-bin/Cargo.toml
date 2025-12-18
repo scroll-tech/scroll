@@ -34,7 +34,7 @@ clap = { version = "4.5", features = ["derive"] }
 ctor = "0.2.8"
 url = { version = "2.5.4", features = ["serde",] }
 serde_bytes = "0.11.15"
-bincode = { version = "2.0" }
+bincode = { version = "2.0", features = ["serde",] }
 
 [features]
 default = []

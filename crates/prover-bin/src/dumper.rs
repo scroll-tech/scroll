@@ -23,7 +23,7 @@ impl Dumper {
         // stream-encode serialized_witness to input_task.bin using bincode 2.0
         let input_file = std::fs::File::create("input_task.bin")?;
         let mut input_writer = std::io::BufWriter::new(input_file);
-        bincode::serde::encode_into_std_write(
+        bincode::encode_into_std_write(
             &task.serialized_witness,
             &mut input_writer,
             bincode::config::standard(),
@@ -32,11 +32,13 @@ impl Dumper {
         // stream-encode aggregated_proofs to agg_proofs.bin using bincode 2.0
         let agg_file = std::fs::File::create("agg_proofs.bin")?;
         let mut agg_writer = std::io::BufWriter::new(agg_file);
-        bincode::serde::encode_into_std_write(
-            &task.aggregated_proofs,
-            &mut agg_writer,
-            bincode::config::standard(),
-        )?;
+        for proof in &task.aggregated_proofs {
+            bincode::serde::encode_into_std_write(
+                &proof.proofs,
+                &mut agg_writer,
+                bincode::config::standard(),
+            )?;
+        }
 
         Ok(())
     }
@@ -71,7 +73,8 @@ impl ProvingService for Dumper {
     async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
         QueryTaskResponse {
             task_id: req.task_id,
-            status: TaskStatus::Queued,
+            status: TaskStatus::Failed,
+            error: Some("dump file finished but need a fail return to exit".to_string()),
             ..Default::default()
         }
     }
