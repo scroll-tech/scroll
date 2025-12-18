@@ -57,6 +57,8 @@ enum Commands {
         task_path: String,
     },
     Dump {
+        #[arg(long = "json", default_value = "false")]
+        json_mode: bool,
         task_type: TaskType,
         task_id: String,
     },
@@ -85,11 +87,21 @@ async fn main() -> eyre::Result<()> {
     let local_prover = LocalProver::new(cfg.clone());
 
     match args.command {
-        Some(Commands::Dump { task_type, task_id }) => {
-            let prover = ProverBuilder::new(sdk_config, dumper::Dumper::default())
-                .build()
-                .await
-                .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
+        Some(Commands::Dump {
+            json_mode,
+            task_type,
+            task_id,
+        }) => {
+            let prover = ProverBuilder::new(
+                sdk_config,
+                dumper::Dumper {
+                    json_mode,
+                    ..Default::default()
+                },
+            )
+            .build()
+            .await
+            .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
 
             std::sync::Arc::new(prover)
                 .one_shot(&[task_id], task_type.into())

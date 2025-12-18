@@ -12,7 +12,8 @@ use scroll_zkvm_types::ProvingTask;
 #[derive(Default)]
 pub struct Dumper {
     #[allow(dead_code)]
-    target_path: String,
+    pub target_path: String,
+    pub json_mode: bool,
 }
 
 impl Dumper {
@@ -20,24 +21,30 @@ impl Dumper {
         let task: ProvingTaskExt = serde_json::from_str(input_string)?;
         let task = ProvingTask::from(task);
 
-        // stream-encode serialized_witness to input_task.bin using bincode 2.0
-        let input_file = std::fs::File::create("input_task.bin")?;
-        let mut input_writer = std::io::BufWriter::new(input_file);
-        bincode::encode_into_std_write(
-            &task.serialized_witness,
-            &mut input_writer,
-            bincode::config::standard(),
-        )?;
-
-        // stream-encode aggregated_proofs to agg_proofs.bin using bincode 2.0
-        let agg_file = std::fs::File::create("agg_proofs.bin")?;
-        let mut agg_writer = std::io::BufWriter::new(agg_file);
-        for proof in &task.aggregated_proofs {
-            bincode::serde::encode_into_std_write(
-                &proof.proofs,
-                &mut agg_writer,
+        if self.json_mode {
+            let file = std::fs::File::create("input_task.json")?;
+            serde_json::to_writer(std::io::BufWriter::new(file), &task)?;
+        } else {
+            // stream-encode serialized_witness to input_task.bin using bincode 2.0
+            let input_file = std::fs::File::create("input_task.bin")?;
+            let mut input_writer = std::io::BufWriter::new(input_file);
+            bincode::encode_into_std_write(
+                &task.serialized_witness,
+                &mut input_writer,
                 bincode::config::standard(),
             )?;
+
+            // stream-encode aggregated_proofs to agg_proofs.bin using bincode 2.0
+            let agg_file = std::fs::File::create("agg_proofs.bin")?;
+            let mut agg_writer = std::io::BufWriter::new(agg_file);
+            for proof in &task.aggregated_proofs {
+                let sz = bincode::serde::encode_into_std_write(
+                    &proof.proofs,
+                    &mut agg_writer,
+                    bincode::config::standard(),
+                )?;
+                println!("written {sz} bytes for proof");
+            }
         }
 
         Ok(())
