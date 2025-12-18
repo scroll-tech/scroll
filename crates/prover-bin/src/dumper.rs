@@ -68,7 +68,11 @@ impl ProvingService for Dumper {
         }
     }
 
-    async fn query_task(&mut self, _: QueryTaskRequest) -> QueryTaskResponse {
-        unreachable!("for one_shot routine, we should be returned in prove call");
+    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
+        QueryTaskResponse {
+            task_id: req.task_id,
+            status: TaskStatus::Queued,
+            ..Default::default()
+        }
     }
 }
