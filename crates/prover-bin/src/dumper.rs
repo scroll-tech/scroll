@@ -1,26 +1,42 @@
 use async_trait::async_trait;
 use libzkp::ProvingTaskExt;
-use scroll_zkvm_types::ProvingTask;
-use scroll_proving_sdk::{
-    prover::{
-        proving_service::{
-            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
-            QueryTaskResponse, TaskStatus,
-        },
-        ProvingService,
+use scroll_proving_sdk::prover::{
+    proving_service::{
+        GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
+        QueryTaskResponse, TaskStatus,
     },
+    ProvingService,
 };
+use scroll_zkvm_types::ProvingTask;
 
 #[derive(Default)]
 pub struct Dumper {
-    target_path: String
+    #[allow(dead_code)]
+    target_path: String,
 }
 
 impl Dumper {
-    fn dump(input_string: &str) -> eyre::Result<()> {
-        let task : ProvingTaskExt = serde_json::from_str(input_string)?;
+    fn dump(&self, input_string: &str) -> eyre::Result<()> {
+        let task: ProvingTaskExt = serde_json::from_str(input_string)?;
         let task = ProvingTask::from(task);
-        
+
+        // stream-encode serialized_witness to input_task.bin using bincode 2.0
+        let input_file = std::fs::File::create("input_task.bin")?;
+        let mut input_writer = std::io::BufWriter::new(input_file);
+        bincode::serde::encode_into_std_write(
+            &task.serialized_witness,
+            &mut input_writer,
+            bincode::config::standard(),
+        )?;
+
+        // stream-encode aggregated_proofs to agg_proofs.bin using bincode 2.0
+        let agg_file = std::fs::File::create("agg_proofs.bin")?;
+        let mut agg_writer = std::io::BufWriter::new(agg_file);
+        bincode::serde::encode_into_std_write(
+            &task.aggregated_proofs,
+            &mut agg_writer,
+            bincode::config::standard(),
+        )?;
 
         Ok(())
     }
@@ -39,24 +55,20 @@ impl ProvingService for Dumper {
         }
     }
     async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
-        
+        let error = if let Err(e) = self.dump(&req.input) {
+            Some(format!("failed to dump: {}", e))
+        } else {
+            None
+        };
 
-        // match self.do_prove(req).await {
-        //     Ok(resp) => resp,
-        //     Err(e) => ProveResponse {
-        //         status: TaskStatus::Failed,
-        //         error: Some(format!("failed to request proof: {}", e)),
-        //         ..Default::default()
-        //     },
-        // }
         ProveResponse {
             status: TaskStatus::Failed,
-            error: Some(format!("failed to request proof: {}", e)),
+            error,
             ..Default::default()
-        }  
+        }
     }
 
-    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
-        unreachable!("");
+    async fn query_task(&mut self, _: QueryTaskRequest) -> QueryTaskResponse {
+        unreachable!("for one_shot routine, we should be returned in prove call");
     }
 }

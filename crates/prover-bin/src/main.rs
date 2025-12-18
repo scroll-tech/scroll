@@ -1,8 +1,9 @@
+mod dumper;
 mod prover;
 mod types;
 mod zk_circuits_handler;
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::{types::ProofType, ProverBuilder},
@@ -32,11 +33,32 @@ struct Args {
     command: Option<Commands>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, ValueEnum)]
+enum TaskType {
+    Chunk,
+    Batch,
+    Bundle,
+}
+
+impl From<TaskType> for ProofType {
+    fn from(value: TaskType) -> Self {
+        match value {
+            TaskType::Chunk => ProofType::Chunk,
+            TaskType::Batch => ProofType::Batch,
+            TaskType::Bundle => ProofType::Bundle,
+        }
+    }
+}
+
 #[derive(Subcommand, Debug)]
 enum Commands {
     Handle {
         /// path to save the verifier's asset
         task_path: String,
+    },
+    Dump {
+        task_type: TaskType,
+        task_id: String,
     },
 }
 
@@ -63,6 +85,16 @@ async fn main() -> eyre::Result<()> {
     let local_prover = LocalProver::new(cfg.clone());
 
     match args.command {
+        Some(Commands::Dump { task_type, task_id }) => {
+            let prover = ProverBuilder::new(sdk_config, dumper::Dumper::default())
+                .build()
+                .await
+                .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
+
+            std::sync::Arc::new(prover)
+                .one_shot(&[task_id], task_type.into())
+                .await;
+        }
         Some(Commands::Handle { task_path }) => {
             let file = File::open(Path::new(&task_path))?;
             let reader = BufReader::new(file);
