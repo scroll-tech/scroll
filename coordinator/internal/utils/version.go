@@ -11,8 +11,6 @@ const (
 )
 
 // version get the version for the chain instance
-//
-// TODO: This is not foolproof and does not cover all scenarios.
 func Version(hardForkName string, ValidiumMode bool) (uint8, error) {
 
 	var domain, stfVersion uint8
