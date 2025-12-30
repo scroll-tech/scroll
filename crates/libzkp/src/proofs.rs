@@ -220,13 +220,8 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "requires testdata directory with chunk-proof.json, batch-proof.json, bundle-proof.json"]
     fn test_roundtrip() -> eyre::Result<()> {
-        let testdata_dir = std::path::Path::new("./testdata");
-if !testdata_dir.exists() {
-    eprintln!("Skipping test_roundtrip: missing testdata directory");
-    return Ok(());
-}
-
         macro_rules! assert_roundtrip {
             ($fd:expr, $proof:ident) => {
                 let proof_str_expected =
