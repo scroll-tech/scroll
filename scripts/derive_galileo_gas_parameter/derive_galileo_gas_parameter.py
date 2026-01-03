@@ -32,12 +32,15 @@ from multiprocessing import Pool, cpu_count
 # Read RPC endpoints from environment variables
 mainnet_url = os.getenv('MAINNET_URL', '')
 scroll_url = os.getenv('SCROLL_URL', 'https://rpc.scroll.io')
+beacon_url = os.getenv('BEACON_URL', '')
 
 # Validate that environment variables are set
 if not mainnet_url:
     raise ValueError("MAINNET_URL environment variable is not set. Please set it to your Ethereum mainnet RPC endpoint.")
 if not scroll_url:
     raise ValueError("SCROLL_URL environment variable is not set. Please set it to your Scroll RPC endpoint.")
+if not beacon_url:
+    raise ValueError("BEACON_URL environment variable is not set. Please set it to your Ethereum beacon chain RPC endpoint.")
 
 # EtherFi contract addresses (lowercase for comparison)
 ETHERFI_SPEND_ADDRESS = "0x7ca0b75e67e33c0014325b739a8d019c4fe445f0"
@@ -465,7 +468,7 @@ def collect_batch_data(n_batches=30, width=5, start_time=None):
     print("=" * 60)
 
     # Get L1 head
-    mainnet_beacon_url = "https://eth-mainnetbeacon.g.alchemy.com/v2/Lzj9QLupql91nuRFYAosy"
+    mainnet_beacon_url = beacon_url
     l1_head = latest_finalized_event_block(width)
     beacon_head_slot = beacon_head(l1_head, mainnet_beacon_url)
 
