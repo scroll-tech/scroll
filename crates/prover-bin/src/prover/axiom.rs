@@ -1,7 +1,7 @@
 use crate::zk_circuits_handler::universal::UniversalHandler;
 use async_trait::async_trait;
 use axiom_sdk::{
-    AxiomConfig, AxiomSdk, ProofType as AxiomProofType, SaveOption,
+    AxiomSdk, ProofType as AxiomProofType,
     build::BuildSdk,
     input::Input as AxiomInput,
     prove::{ProveArgs, ProveSdk},
@@ -23,17 +23,22 @@ use scroll_zkvm_types::{
     proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, path::Path};
+use std::{collections::HashMap, fs::File, io::Write, path::Path};
+use tempfile::NamedTempFile;
 use tracing::Level;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AxiomProverConfig {
-    #[serde(rename = "axiom_api_key")]
-    pub api_key: String,
+    pub axiom: AxiomConfig,
     pub sdk_config: SdkConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AxiomConfig {
+    pub api_key: String,
     // vk to program mapping
-    #[serde(rename = "axiom_programs")]
     pub programs: HashMap<String, AxiomProgram>,
+    pub num_gpus: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,9 +115,9 @@ impl AxiomProver {
         config_id: Option<String>,
         req: impl FnOnce(AxiomSdk) -> eyre::Result<R> + Send + 'static,
     ) -> eyre::Result<R> {
-        let api_key = self.config.api_key.clone();
+        let api_key = self.config.axiom.api_key.clone();
         tokio::task::spawn_blocking(move || {
-            let config = AxiomConfig {
+            let config = axiom_sdk::AxiomConfig {
                 api_key: Some(api_key),
                 config_id,
                 ..Default::default()
@@ -130,6 +135,7 @@ impl AxiomProver {
         let vk = hex::encode(vk);
         debug!(vk = %vk);
         self.config
+            .axiom
             .programs
             .get(vk.as_str())
             .cloned()
@@ -146,8 +152,13 @@ impl AxiomProver {
         let prover_task: ProvingTask = prover_task.into();
 
         let program = self.get_program(&prover_task.vk)?;
+        let num_gpus = self.config.axiom.num_gpus;
 
-        let input = serde_json::to_value(prover_task.build_openvm_input())?;
+        let mut input_file = NamedTempFile::new()?;
+        let input = prover_task.build_openvm_input();
+        serde_json::to_writer(&mut input_file, &input)?;
+        input_file.flush()?;
+
         let proof_type = if req.proof_type == ProofType::Bundle {
             AxiomProofType::Evm
         } else {
@@ -165,9 +176,9 @@ impl AxiomProver {
             .make_axiom_request(Some(program.config_id), move |sdk| {
                 sdk.generate_new_proof(ProveArgs {
                     program_id: Some(program.program_id.clone()),
-                    input: Some(AxiomInput::Value(input)),
+                    input: Some(AxiomInput::FilePath(input_file.path().to_path_buf())),
                     proof_type: Some(proof_type),
-                    num_gpus: Some(4),
+                    num_gpus,
                     priority: None,
                 })
             })
@@ -208,11 +219,13 @@ impl AxiomProver {
 
                 let axiom_proof_type: AxiomProofType = status.proof_type.parse()?;
                 let proof = if status.state == "Succeeded" {
-                    Some(sdk.get_generated_proof(
+                    let file = NamedTempFile::new()?;
+                    sdk.get_generated_proof(
                         &status.id,
                         &axiom_proof_type,
-                        SaveOption::DoNotSave,
-                    )?)
+                        Some(file.path().to_path_buf()),
+                    )?;
+                    Some(file)
                 } else {
                     None
                 };
@@ -296,14 +309,14 @@ impl AxiomProver {
             }
         }
 
-        if let Some(proof_bytes) = proof {
+        if let Some(proof_file) = proof {
             let proof = match proof_type {
                 ProofType::Bundle => {
-                    let proof: OpenVmEvmProof = serde_json::from_slice(&proof_bytes)?;
+                    let proof: OpenVmEvmProof = serde_json::from_reader(proof_file)?;
                     ProofEnum::Evm(proof.into())
                 }
                 _ => {
-                    let proof: OpenVmVersionedVmStarkProof = serde_json::from_slice(&proof_bytes)?;
+                    let proof: OpenVmVersionedVmStarkProof = serde_json::from_reader(proof_file)?;
                     ProofEnum::Stark(proof.try_into()?)
                 }
             };

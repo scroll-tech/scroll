@@ -24,7 +24,7 @@ scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", tag = 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2" }
 sbv-core = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll"] }
-axiom-sdk = { git = "https://github.com/axiom-crypto/axiom-api-cli.git", branch = "feat/upload-exe-raw" }
+axiom-sdk = { git = "https://github.com/axiom-crypto/axiom-api-cli.git", tag = "v1.0.9" }
 
 alloy = { version = "1", default-features = false }
 alloy-primitives = { version = "1.4.1", default-features = false, features = ["tiny-keccak"] }

@@ -1208,7 +1208,7 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "axiom-sdk"
 version = "1.0.7"
-source = "git+https://github.com/axiom-crypto/axiom-api-cli.git?branch=feat%2Fupload-exe-raw#d82ff355acf211335b820da59d30e6b71f3b324b"
+source = "git+https://github.com/axiom-crypto/axiom-api-cli.git?tag=v1.0.9#fe405bc8f30d0a145628abc61b97f1dec3984578"
 dependencies = [
  "cargo_metadata 0.21.0",
  "chrono",
@@ -6656,6 +6656,7 @@ dependencies = [
  "scroll-zkvm-types",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
  "url",
