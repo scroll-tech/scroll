@@ -42,11 +42,19 @@ func randomPickKfromN(n, k int, rng *rand.Rand) []int {
 	return ret
 }
 
-func importData(ctx context.Context, beginBlk, endBlk uint64, chkNum, batchNum, bundleNum int, seed int64) (*importRecord, error) {
+func importData(ctx context.Context, beginBlk, endBlk uint64, blocks []*encoding.Block, chkNum, batchNum, bundleNum int, seed int64) (*importRecord, error) {
 
 	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(blocks) > 0 {
+		log.Info("import block")
+		blockOrm := orm.NewL2Block(db)
+		if err := blockOrm.InsertL2Blocks(ctx, blocks); err != nil {
+			return nil, err
+		}
 	}
 
 	ret := &importRecord{}

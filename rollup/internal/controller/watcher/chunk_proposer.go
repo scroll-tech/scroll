@@ -245,11 +245,13 @@ func (p *ChunkProposer) ProposeChunk() error {
 	// Ensure all blocks in the same chunk use the same hardfork name
 	// If a different hardfork name is found, truncate the blocks slice at that point
 	hardforkName := encoding.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
+	hardforkBoundary := false
 	for i := 1; i < len(blocks); i++ {
 		currentHardfork := encoding.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
 		if currentHardfork != hardforkName {
-			blocks = blocks[:i]
 			// Truncate blocks at hardfork boundary
+			blocks = blocks[:i]
+			hardforkBoundary = true
 			break
 		}
 	}
@@ -321,6 +323,19 @@ func (p *ChunkProposer) ProposeChunk() error {
 		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 	}
 
+	// No breaking condition met, but hardfork boundary reached
+	if hardforkBoundary {
+		log.Info("hardfork boundary reached, proposing chunk",
+			"block count", len(chunk.Blocks),
+			"codec version", codecVersion,
+			"start block number", chunk.Blocks[0].Header.Number,
+			"end block number", chunk.Blocks[len(chunk.Blocks)-1].Header.Number)
+
+		p.recordAllChunkMetrics(metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
+	}
+
+	// No breaking condition met, check for timeout
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.cfg.ChunkTimeoutSec < currentTimeSec {
 		log.Info("first block timeout reached",

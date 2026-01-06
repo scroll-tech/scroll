@@ -15,8 +15,8 @@ require (
 	github.com/holiman/uint256 v1.3.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.9.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20251117065849-b5c3dd1aa975
+	github.com/scroll-tech/da-codec v0.10.0
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
@@ -51,7 +51,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/crate-crypto/go-eth-kzg v1.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/ethereum/c-kzg-4844/v2 v2.1.5 // indirect
 	github.com/fjl/memsize v0.0.2 // indirect

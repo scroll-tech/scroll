@@ -78,19 +78,24 @@ impl AssetsLocationData {
             // Check if file already exists
             if local_file_path.exists() {
                 // Get file metadata to check size
-                // Make a HEAD request to get remote file size
-                if let Ok(metadata) = std::fs::metadata(&local_file_path)
-                    && let Ok(head_resp) = client.head(download_url.clone()).send().await
-                    && let Some(content_length) = head_resp.headers().get("content-length")
-                    && let Ok(remote_size) = content_length.to_str().unwrap_or("0").parse::<u64>()
-                {
-                    // If sizes match, skip download
-                    if metadata.len() == remote_size {
-                        println!(
-                            "File {} already exists with matching size, skipping download",
-                            filename
-                        );
-                        continue;
+                if let Ok(metadata) = std::fs::metadata(&local_file_path) {
+                    // Make a HEAD request to get remote file size
+
+                    if let Ok(head_resp) = client.head(download_url.clone()).send().await {
+                        if let Some(content_length) = head_resp.headers().get("content-length") {
+                            if let Ok(remote_size) =
+                                content_length.to_str().unwrap_or("0").parse::<u64>()
+                            {
+                                // If sizes match, skip download
+                                if metadata.len() == remote_size {
+                                    println!(
+                                        "File {} already exists with matching size, skipping download",
+                                        filename
+                                    );
+                                    continue;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -143,7 +148,6 @@ impl LocalProverConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitConfig {
-    pub hard_fork_name: String,
     /// The path to save assets for a specified hard fork phase
     pub workspace_path: String,
     #[serde(flatten)]
