@@ -1,0 +1,102 @@
+name: Docker E2E Weekly
+
+on:
+  # Trigger every Friday at 00:00 UTC. You can adjust the cron expression as needed.
+  schedule:
+    - cron: '0 0 * * 5'
+  # Allow manual triggering from the Actions tab (useful for testing).
+  workflow_dispatch:
+
+env:
+  IMAGE_TAG: e2e-test
+
+jobs:
+  rollup_relayer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        env:
+          REPOSITORY: rollup-relayer
+        with:
+          context: .
+          file: ./build/dockerfiles/rollup_relayer.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+  coordinator-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        env:
+          REPOSITORY: coordinator-api
+        with:
+          context: .
+          file: ./build/dockerfiles/coordinator-api.Dockerfile
+          # platforms: linux/amd64,linux/arm64 #bugs for arm64
+          push: true
+          tags: |
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+  coordinator-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        env:
+          REPOSITORY: coordinator-cron
+        with:
+          context: .
+          file: ./build/dockerfiles/coordinator-cron.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
