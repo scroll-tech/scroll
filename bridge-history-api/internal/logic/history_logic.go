@@ -372,7 +372,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 	}
 
 	if start >= total {
-		return nil, 0, false, nil
+		return nil, 0, true, nil
 	}
 
 	values, err := h.redis.ZRevRange(ctx, cacheKey, start, end).Result()
