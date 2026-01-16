@@ -2,12 +2,15 @@ use c_kzg::Bytes48;
 use eyre::Result;
 use sbv_primitives::{B256, U256};
 use scroll_zkvm_types::{
-    batch::{
-        build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7, BatchHeaderValidium,
-        BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7, ReferenceHeader, N_BLOB_BYTES,
-    },
-    chunk::ChunkInfo,
     public_inputs::{ForkName, MultiVersionPublicInputs, Version},
+    scroll::{
+        batch::{
+            build_point_eval_witness, BatchHeader, BatchHeaderV6, BatchHeaderV7,
+            BatchHeaderValidium, BatchInfo, BatchWitness, Envelope, EnvelopeV6, EnvelopeV7,
+            ReferenceHeader, N_BLOB_BYTES,
+        },
+        chunk::ChunkInfo,
+    },
     task::ProvingTask,
     version::{Codec, Domain, STFVersion},
 };

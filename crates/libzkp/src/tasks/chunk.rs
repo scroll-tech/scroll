@@ -2,8 +2,8 @@ use eyre::Result;
 use sbv_core::BlockWitness;
 use sbv_primitives::{types::consensus::BlockHeader, B256};
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, ValidiumInputs},
     public_inputs::{MultiVersionPublicInputs, Version},
+    scroll::chunk::{execute, ChunkInfo, ChunkWitness, ValidiumInputs},
     task::ProvingTask,
 };
 

@@ -1,8 +1,8 @@
 use eyre::Result;
 use sbv_primitives::B256;
 use scroll_zkvm_types::{
-    bundle::{BundleInfo, BundleWitness},
     public_inputs::{MultiVersionPublicInputs, Version},
+    scroll::bundle::{BundleInfo, BundleWitness},
     task::ProvingTask,
 };
 
