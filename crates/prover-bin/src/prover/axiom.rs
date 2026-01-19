@@ -6,6 +6,7 @@ use axiom_sdk::{
     input::Input as AxiomInput,
     prove::{ProveArgs, ProveSdk},
 };
+use backon::{BlockingRetryable, ExponentialBuilder};
 use eyre::Context;
 use jiff::Timestamp;
 use scroll_proving_sdk::{
@@ -23,7 +24,7 @@ use scroll_zkvm_types::{
     proof::{OpenVmEvmProof, OpenVmVersionedVmStarkProof, ProofEnum},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, io::Write, path::Path};
+use std::{collections::HashMap, fs::File, io::Write, path::Path, time::Duration};
 use tempfile::NamedTempFile;
 use tracing::Level;
 
@@ -39,6 +40,8 @@ pub struct AxiomConfig {
     // vk to program mapping
     pub programs: HashMap<String, AxiomProgram>,
     pub num_gpus: Option<usize>,
+    #[serde(default)]
+    pub retry: RetryConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +53,47 @@ pub struct AxiomProgram {
 #[derive(Debug)]
 pub struct AxiomProver {
     config: AxiomProverConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RetryConfig {
+    jitter: bool,
+    factor: f32,
+    min_delay: Duration,
+    max_delay: Option<Duration>,
+    max_times: Option<usize>,
+    total_delay: Option<Duration>,
+}
+
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
+            jitter: false,
+            factor: 2.0,
+            min_delay: Duration::from_secs(1),
+            max_delay: Some(Duration::from_secs(60)),
+            max_times: Some(10),
+            total_delay: None,
+        }
+    }
+}
+
+impl From<&RetryConfig> for ExponentialBuilder {
+    fn from(cfg: &RetryConfig) -> Self {
+        let mut builder = ExponentialBuilder::default()
+            .with_factor(cfg.factor)
+            .with_total_delay(cfg.total_delay);
+        if cfg.jitter {
+            builder = builder.with_jitter();
+        }
+        if let Some(max_delay) = cfg.max_delay {
+            builder = builder.with_max_delay(max_delay);
+        }
+        if let Some(max_times) = cfg.max_times {
+            builder = builder.with_max_times(max_times);
+        }
+        builder
+    }
 }
 
 impl AxiomProverConfig {
@@ -113,9 +157,10 @@ impl AxiomProver {
     async fn make_axiom_request<R: Send + 'static>(
         &self,
         config_id: Option<String>,
-        req: impl FnOnce(AxiomSdk) -> eyre::Result<R> + Send + 'static,
+        req: impl Fn(&AxiomSdk) -> eyre::Result<R> + Send + 'static,
     ) -> eyre::Result<R> {
         let api_key = self.config.axiom.api_key.clone();
+        let retry_config = ExponentialBuilder::from(&self.config.axiom.retry);
         tokio::task::spawn_blocking(move || {
             let config = axiom_sdk::AxiomConfig {
                 api_key: Some(api_key),
@@ -123,7 +168,13 @@ impl AxiomProver {
                 ..Default::default()
             };
             let sdk = AxiomSdk::new(config);
-            req(sdk)
+            let req = || req(&sdk);
+            req.retry(retry_config)
+                .when(|e| e.to_string().contains("502"))
+                .notify(|e, duration| {
+                    tracing::warn!("request failed: {e}, retrying in {duration:?}")
+                })
+                .call()
         })
         .await
         .context("failed to join axiom request")
