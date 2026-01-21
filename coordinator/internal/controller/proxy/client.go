@@ -123,8 +123,8 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 }
 
 func handleHttpResp(resp *http.Response) (*ctypes.Response, error) {
+	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusUnauthorized {
-		defer resp.Body.Close()
 		var respWithData ctypes.Response
 		// Note: Body is consumed after decoding, caller should not read it again
 		if err := json.NewDecoder(resp.Body).Decode(&respWithData); err == nil {
