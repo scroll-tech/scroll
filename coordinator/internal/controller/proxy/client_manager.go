@@ -155,7 +155,7 @@ func (cliMgr *ClientManager) ClientAsProxy(ctx context.Context) ProxyCli {
 		completionCtx = cliMgr.cachedCli.completionCtx
 	} else {
 		// Set new completion context and launch login goroutine
-		ctx, completionDone := context.WithCancel(context.TODO())
+		ctx, completionDone := context.WithCancel(context.Background())
 		loginCli := newUpClient(cliMgr.cfg)
 		loginCli.resetFromMgr = func() {
 			cliMgr.cachedCli.Lock()

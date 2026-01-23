@@ -114,13 +114,12 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		waitctx := c.completionCtx
 		c.Unlock()
 		select {
+		case <-waitctx.Done():
+			return c.maintainLogin(ctx, cliMgr, up, param, phase)
 		case <-ctx.Done():
 			nerr = fmt.Errorf("ctx fail")
 			return
-		default:
 		}
-		<-waitctx.Done()
-		return c.maintainLogin(ctx, cliMgr, up, param, phase)
 	}
 
 	if phase < curPhase {
@@ -131,7 +130,7 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 	}
 
 	// occupy the update slot
-	completeCtx, cf := context.WithCancel(ctx)
+	completeCtx, cf := context.WithCancel(context.Background())
 	defer cf()
 	c.completionCtx = completeCtx
 	defer func() {
