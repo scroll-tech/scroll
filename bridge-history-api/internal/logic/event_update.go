@@ -15,7 +15,7 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
-// EventUpdateLogic the logic of insert/update the database
+// EventUpdateLogic contains logic for inserting and updating database records.
 type EventUpdateLogic struct {
 	db                         *gorm.DB
 	crossMessageOrm            *orm.CrossMessage
@@ -26,7 +26,7 @@ type EventUpdateLogic struct {
 	eventUpdateLogicL2MessageNonceUpdateHeight              prometheus.Gauge
 }
 
-// NewEventUpdateLogic creates a EventUpdateLogic instance
+// NewEventUpdateLogic creates a new EventUpdateLogic instance.
 func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 	b := &EventUpdateLogic{
 		db:                         db,
@@ -50,7 +50,7 @@ func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 	return b
 }
 
-// GetL1SyncHeight gets the l1 sync height from db
+// GetL1SyncHeight returns L1 sync heights from the database.
 func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, uint64, error) {
 	messageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, btypes.MessageTypeL1SentMessage)
 	if err != nil {
@@ -219,7 +219,7 @@ func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, he
 	return nil
 }
 
-// UpdateL2BridgeBatchDepositEvent update l2 bridge batch deposit status
+// UpdateL2BridgeBatchDepositEvent updates the status of L2 bridge batch deposit events.
 func (b *EventUpdateLogic) UpdateL2BridgeBatchDepositEvent(ctx context.Context, l2BatchDistributes []*orm.BridgeBatchDepositEvent) error {
 	distributeFailedMap := make(map[uint64][]string)
 	for _, l2BatchDistribute := range l2BatchDistributes {
