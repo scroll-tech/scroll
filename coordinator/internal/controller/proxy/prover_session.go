@@ -49,7 +49,7 @@ func (m *ProverManager) Get(userKey string) (ret *proverSession) {
 			if err != nil {
 				log.Error("Get persistent layer for prover tokens fail", "error", err)
 			} else if ret != nil {
-				log.Debug("restore record from persistent", "key", userKey, "token", ret.proverToken)
+				log.Debug("restore record from persistent", "key", userKey)
 				ret.persistent = m.persistent
 			}
 		}
@@ -161,8 +161,8 @@ func (c *proverSession) maintainLogin(ctx context.Context, cliMgr Client, up str
 		return
 	}
 
-	if resp.ErrCode == ctypes.ErrJWTTokenExpired {
-		log.Info("up stream has expired, renew upstream connection", "up", up)
+	if resp.ErrCode == ctypes.ErrJWTTokenExpired || resp.ErrCode == ctypes.ErrJWTCommonErr {
+		log.Info("up stream has expired, renew upstream connection", "up", up, "errcode", resp.ErrCode)
 		cli.Reset()
 		cli = cliMgr.ClientAsProxy(ctx)
 		if cli == nil {
@@ -231,9 +231,10 @@ func (c *proverSession) GetTask(ctx context.Context, param *types.GetTaskParamet
 		if err != nil {
 			return nil, err
 		}
-		if resp.ErrCode != ctypes.ErrJWTTokenExpired {
+		if resp.ErrCode != ctypes.ErrJWTTokenExpired && resp.ErrCode != ctypes.ErrJWTCommonErr {
 			return resp, nil
 		}
+		log.Debug("Get Task first-try failed for broken token", "up", up, "errcode", resp.ErrCode)
 	}
 
 	// like SDK, we would try one more time if the upstream token is expired
@@ -264,9 +265,10 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 		if err != nil {
 			return nil, err
 		}
-		if resp.ErrCode != ctypes.ErrJWTTokenExpired {
+		if resp.ErrCode != ctypes.ErrJWTTokenExpired && resp.ErrCode != ctypes.ErrJWTCommonErr {
 			return resp, nil
 		}
+		log.Debug("Get Task first-try failed for broken token", "up", up, "errcode", resp.ErrCode)
 	}
 
 	// like SDK, we would try one more time if the upstream token is expired

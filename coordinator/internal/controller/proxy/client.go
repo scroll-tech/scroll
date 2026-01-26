@@ -71,7 +71,7 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 	// Step 1: Get challenge
 	url := fmt.Sprintf("%s/coordinator/v1/challenge", c.baseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create challenge request: %w", err)
 	}
@@ -107,7 +107,7 @@ func (c *upClient) Login(ctx context.Context, genLogin func(string) (*types.Logi
 		return nil, fmt.Errorf("failed to marshal login parameter: %w", err)
 	}
 
-	req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err = http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create login request: %w", err)
 	}

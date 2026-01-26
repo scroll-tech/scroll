@@ -59,8 +59,9 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 
 	session := spc.proverMgr.Get(publicKey)
 	if session == nil {
-		nerr := fmt.Errorf("can not get session for prover %s", proverName)
-		types.RenderFailure(ctx, types.InternalServerError, nerr)
+		nerr := fmt.Errorf("Trigger re-login: can not get session for prover %s", proverName)
+		// has to trigger a login in proving-sdk side with ErrJWTTokenExpired error
+		types.RenderFailure(ctx, types.ErrJWTTokenExpired, nerr)
 		return
 	}
 
