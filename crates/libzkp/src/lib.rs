@@ -84,16 +84,16 @@ pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
 
     #[derive(Serialize)]
     struct CompatibleProvingTask {
-        /// seralized witness which should be written into stdin first
+        /// serialized witness which should be written into stdin first
         pub serialized_witness: Vec<Vec<u8>>,
         /// aggregated proof carried by babybear fields, should be written into stdin
         /// followed `serialized_witness`
         pub aggregated_proofs: Vec<VmInternalStarkProof>,
         /// Fork name specify
         pub fork_name: String,
-        /// The vk of app which is expcted to prove this task
+        /// The vk of app which is expected to prove this task
         pub vk: Vec<u8>,
-        /// An identifier assigned by coordinator, it should be kept identify for the
+        /// An identifier assigned by coordinator, it should be kept identical for the
         /// same task (for example, using chunk, batch and bundle hashes)
         pub identifier: String,
     }
@@ -109,7 +109,7 @@ pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
     Ok(serde_json::to_string(&compatible_u_task)?)
 }
 
-/// Generate required staff for proving tasks
+/// Generate required data for proving tasks
 /// return (pi_hash, metadata, task)
 pub fn gen_universal_task(
     task_type: i32,
@@ -132,7 +132,7 @@ pub fn gen_universal_task(
     let (pi_hash, metadata, mut u_task) = match task_type {
         x if x == TaskType::Chunk as i32 => {
             let mut task = serde_json::from_str::<ChunkProvingTask>(task_json)?;
-            // normailze fork name field in task
+            // normalize fork name field in task
             task.fork_name = task.fork_name.to_lowercase();
             let version = Version::from(task.version);
             // always respect the fork_name_str (which has been normalized) being passed

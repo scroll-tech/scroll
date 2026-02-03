@@ -58,7 +58,7 @@ impl ProvingTaskExt {
     }
 }
 
-/// Generate required staff for chunk proving
+/// Generate required data for chunk proving
 pub fn gen_universal_chunk_task(
     task: ChunkProvingTask,
 ) -> eyre::Result<(B256, ChunkProofMetadata, ProvingTask)> {
@@ -74,7 +74,7 @@ pub fn gen_universal_chunk_task(
     ))
 }
 
-/// Generate required staff for batch proving
+/// Generate required data for batch proving
 pub fn gen_universal_batch_task(
     task: BatchProvingTask,
 ) -> eyre::Result<(B256, BatchProofMetadata, ProvingTask)> {
@@ -86,7 +86,7 @@ pub fn gen_universal_batch_task(
     ))
 }
 
-/// Generate required staff for bundle proving
+/// Generate required data for bundle proving
 pub fn gen_universal_bundle_task(
     task: BundleProvingTask,
 ) -> eyre::Result<(B256, BundleProofMetadata, ProvingTask)> {
