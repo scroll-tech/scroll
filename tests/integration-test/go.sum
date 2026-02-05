@@ -93,8 +93,8 @@ github.com/rjeczalik/notify v0.9.1 h1:CLCKso/QK1snAlnhNR/CNvNiFU2saUtjV0bx3EwNeC
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
-github.com/scroll-tech/da-codec v0.10.0 h1:IPHxyTyXTWPV0Q+DZ08cod2fWkhUvrfysmj/VBpB+WU=
-github.com/scroll-tech/da-codec v0.10.0/go.mod h1:MBlIP4wCXPcUDZ/Ci2B7n/2IbVU1WBo9OTFTZ5ffE0U=
+github.com/scroll-tech/da-codec v0.10.1 h1:PhKP6ZhYRTZ6q8EgzCBy/a4yB8PGIDewBgXhRkTbFUw=
+github.com/scroll-tech/da-codec v0.10.1/go.mod h1:MBlIP4wCXPcUDZ/Ci2B7n/2IbVU1WBo9OTFTZ5ffE0U=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f h1:j6SjP98MoWFFX9TwB1/nFYEkayqHQsrtE66Ll2C+oT0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f/go.mod h1:Aa/kD1XB+OV/7rRxMQrjcPCB4b0pKyLH0gsTrtuHi38=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
