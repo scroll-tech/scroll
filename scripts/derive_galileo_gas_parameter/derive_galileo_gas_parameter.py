@@ -845,7 +845,7 @@ def collect_transaction_data(batch_df, start_time=None):
 
     # Use ThreadPoolExecutor for parallel RPC calls
     # With paid endpoint, can use more workers
-    max_workers = 20  # Higher limit for paid RPC endpoint
+    max_workers = 50  # Higher limit for paid RPC endpoint
     print(f"    Starting parallel fetch with {max_workers} workers...")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
