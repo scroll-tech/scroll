@@ -807,10 +807,6 @@ def collect_transaction_data(batch_df, start_time=None):
             - compressed_tx_size
             - l1_base_fee
             - l1_blob_base_fee
-            - L1_fee
-            - gas_price
-            - gas_used
-            - base_fee_per_gas
             - to
     """
     print("=" * 60)
@@ -923,65 +919,12 @@ def collect_transaction_data(batch_df, start_time=None):
     process_tx_elapsed = time.time() - start_process_tx
     print(f"\n  ✓ Transaction processing completed in {process_tx_elapsed:.1f}s")
 
-    # Fetch transaction receipts in parallel to get gas_used and L1_fee
-    print(f"\n  Fetching transaction receipts...")
-    tx_receipts = {}  # tx_hash -> receipt
-
-    def fetch_receipt(tx_hash_str):
-        """Fetch a single transaction receipt with retry"""
-        max_retries = 5
-        retry_delay = 2
-
-        for attempt in range(max_retries):
-            try:
-                return tx_hash_str, scroll_w3.eth.get_transaction_receipt(tx_hash_str)
-            except Exception as e:
-                if '429' in str(e) or 'Too Many Requests' in str(e):
-                    wait_time = retry_delay * (attempt + 1)
-                    if attempt < max_retries - 1:
-                        time.sleep(wait_time)
-                        continue
-                raise
-
-    start_fetch_receipts = time.time()
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        tx_hashes = [tx_dict['hash'].hex() if hasattr(tx_dict['hash'], 'hex') else tx_dict['hash']
-                     for _, tx_dict in all_txs]
-        futures = {executor.submit(fetch_receipt, tx_hash): tx_hash for tx_hash in tx_hashes}
-
-        completed = 0
-        for future in as_completed(futures):
-            tx_hash, receipt = future.result()
-            tx_receipts[tx_hash] = receipt
-            completed += 1
-
-            if completed % 500 == 0 or completed == len(tx_hashes):
-                print(f"    Fetched {completed}/{len(tx_hashes)} receipts ({completed*100//len(tx_hashes)}%)")
-
-    fetch_receipts_elapsed = time.time() - start_fetch_receipts
-    print(f"\n  ✓ Receipt fetching completed in {fetch_receipts_elapsed:.1f}s")
-
     # Build rows with oracle fee tracking
     print(f"\n  Building transaction dataframe...")
     rows = []
     for block_number, tx_dict in all_txs:
         tx_hash = tx_dict['hash'].hex() if hasattr(tx_dict['hash'], 'hex') else tx_dict['hash']
         size, compressed_tx_size = tx_sizes[tx_hash]
-
-        # Get receipt for gas_used and L1_fee
-        receipt = tx_receipts.get(tx_hash)
-        gas_used = receipt['gasUsed'] if receipt else 0
-        L1_fee = receipt.get('l1Fee', 0) if receipt else 0  # L1 fee from receipt (Scroll-specific field)
-
-        # Get gas_price from transaction
-        gas_price = tx_dict.get('gasPrice', 0)
-        if gas_price == 0 and 'maxFeePerGas' in tx_dict:
-            # For EIP-1559 transactions, use maxFeePerGas if gasPrice not available
-            gas_price = tx_dict.get('maxFeePerGas', 0)
-
-        # Get base_fee_per_gas from block
-        block = indexed_block[block_number]
-        base_fee_per_gas = block.get('baseFeePerGas', 0)
 
         # Get the 'to' address
         to_address = tx_dict.get('to', None)
@@ -995,10 +938,6 @@ def collect_transaction_data(batch_df, start_time=None):
             compressed_tx_size,
             l1_base_fee,
             l1_blob_base_fee,
-            L1_fee,
-            gas_price,
-            gas_used,
-            base_fee_per_gas,
             to_address
         ])
 
@@ -1009,8 +948,7 @@ def collect_transaction_data(batch_df, start_time=None):
                 l1_base_fee = int.from_bytes(bytes.fromhex(input_hex[2:])[-64:-32], 'big')
                 l1_blob_base_fee = int.from_bytes(bytes.fromhex(input_hex[2:])[-32:], 'big')
 
-    tx_df_columns = ['hash', 'block_number', 'size', 'compressed_tx_size', 'l1_base_fee', 'l1_blob_base_fee',
-                     'L1_fee', 'gas_price', 'gas_used', 'base_fee_per_gas', 'to']
+    tx_df_columns = ['hash', 'block_number', 'size', 'compressed_tx_size', 'l1_base_fee', 'l1_blob_base_fee', 'to']
     tx_df = pd.DataFrame(rows, columns=tx_df_columns)
 
     # Classify transaction types based on 'to' address
