@@ -86,6 +86,48 @@ fee_oracle_abi = [
         "inputs": [{"name": "l1BlobBaseFee","type": "uint256","indexed": False,"internalType": "uint256"}],
         "anonymous": False
     },
+    {
+        "type": "function",
+        "name": "l1BaseFee",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "l1BlobBaseFee",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "commitScalar",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "blobScalar",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "penaltyFactor",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "uint256", "internalType": "uint256"}],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "isGalileo",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "bool", "internalType": "bool"}],
+        "stateMutability": "view"
+    },
 ]
 
 # ============================================================================
@@ -100,6 +142,42 @@ rollup_contract = w3.eth.contract(address=rollup_contract_address, abi=rollup_ab
 
 l1_fee_oracle_contract_address = Web3.to_checksum_address("0x5300000000000000000000000000000000000002")
 l1_fee_oracle_contract = scroll_w3.eth.contract(address=l1_fee_oracle_contract_address, abi=fee_oracle_abi)
+
+
+def read_current_gas_parameters():
+    """Read and display current on-chain Galileo gas parameters from L1GasPriceOracle"""
+    print("=" * 60)
+    print("CURRENT ON-CHAIN GAS PARAMETERS (Galileo)")
+    print("=" * 60)
+
+    is_galileo = l1_fee_oracle_contract.functions.isGalileo().call()
+    l1_base_fee = l1_fee_oracle_contract.functions.l1BaseFee().call()
+    l1_blob_base_fee = l1_fee_oracle_contract.functions.l1BlobBaseFee().call()
+    commit_scalar_raw = l1_fee_oracle_contract.functions.commitScalar().call()
+    blob_scalar_raw = l1_fee_oracle_contract.functions.blobScalar().call()
+    penalty_factor = l1_fee_oracle_contract.functions.penaltyFactor().call()
+
+    commit_scalar = commit_scalar_raw / 1e9
+    blob_scalar = blob_scalar_raw / 1e9
+
+    print(f"  isGalileo:      {is_galileo}")
+    print(f"  l1BaseFee:      {l1_base_fee} wei ({l1_base_fee / 1e9:.2f} gwei)")
+    print(f"  l1BlobBaseFee:  {l1_blob_base_fee} wei ({l1_blob_base_fee / 1e9:.2f} gwei)")
+    print(f"  commitScalar:   {commit_scalar_raw} (decoded: {commit_scalar:.4f})")
+    print(f"  blobScalar:     {blob_scalar_raw} (decoded: {blob_scalar:.4f})")
+    print(f"  penaltyFactor:  {penalty_factor}")
+    print("=" * 60)
+
+    return {
+        'l1_base_fee': l1_base_fee,
+        'l1_blob_base_fee': l1_blob_base_fee,
+        'commit_scalar_raw': commit_scalar_raw,
+        'blob_scalar_raw': blob_scalar_raw,
+        'commit_scalar': commit_scalar,
+        'blob_scalar': blob_scalar,
+        'penalty_factor': penalty_factor,
+    }
+
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -1387,6 +1465,9 @@ def main():
     print("\n" + "=" * 60)
     print("GALILEO GAS PARAMETER DERIVATION")
     print("=" * 60)
+
+    # Step 0: Read current on-chain parameters
+    current_params = read_current_gas_parameters()
 
     # Step 1: Collect or load data
     if args.mode == 'collect':
