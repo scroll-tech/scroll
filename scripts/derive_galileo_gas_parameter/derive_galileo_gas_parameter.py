@@ -1375,6 +1375,218 @@ def analyze_etherfi_penalties(tx_df, penalty_multiplier):
 
 
 # ============================================================================
+# PARAMETER COMPARISON ANALYSIS
+# ============================================================================
+
+def compare_parameters(current_params, commit_scalar, blob_scalar, penalty_multiplier, tx_df, batch_df):
+    """
+    Compare derived parameters against current on-chain parameters.
+
+    Computes per-tx L1 fees under both old and new parameter sets using:
+        effective_size = compressed_tx_size + compressed_tx_size² / penalty_factor
+        L1_fee = (commit_scalar * l1_base_fee + blob_scalar * l1_blob_base_fee) * effective_size
+
+    Args:
+        current_params: Dict with current on-chain parameters from read_current_gas_parameters()
+        commit_scalar: Newly derived commit scalar
+        blob_scalar: Newly derived blob scalar
+        penalty_multiplier: Newly derived penalty multiplier
+        tx_df: Transaction DataFrame
+        batch_df: Batch DataFrame with L1 costs
+    """
+    print("\n" + "=" * 60)
+    print("PARAMETER COMPARISON ANALYSIS")
+    print("=" * 60)
+
+    # Extract current (old) parameters
+    old_commit_scalar = current_params['commit_scalar']
+    old_blob_scalar = current_params['blob_scalar']
+    old_penalty_factor = current_params['penalty_factor']
+
+    new_commit_scalar = commit_scalar
+    new_blob_scalar = blob_scalar
+    new_penalty_factor = penalty_multiplier
+
+    # --- Analysis 1: Fee Comparison (Old vs New) ---
+    print("\n" + "-" * 60)
+    print("Analysis 1: Fee Comparison (Old vs New)")
+    print("-" * 60)
+
+    print(f"\n  Parameter Comparison:")
+    print(f"  {'Parameter':<25} {'Current':>15} {'New':>15} {'Change':>15}")
+    print(f"  {'-'*25} {'-'*15} {'-'*15} {'-'*15}")
+    print(f"  {'commit_scalar':<25} {old_commit_scalar:>15.4f} {new_commit_scalar:>15.4f} {new_commit_scalar - old_commit_scalar:>+15.4f}")
+    print(f"  {'blob_scalar':<25} {old_blob_scalar:>15.4f} {new_blob_scalar:>15.4f} {new_blob_scalar - old_blob_scalar:>+15.4f}")
+    print(f"  {'penalty_factor':<25} {old_penalty_factor:>15.0f} {new_penalty_factor:>15.0f} {new_penalty_factor - old_penalty_factor:>+15.0f}")
+
+    # Calculate effective_size and fees under both parameter sets
+    df = tx_df.copy()
+
+    df['old_effective_size'] = df['compressed_tx_size'] + df['compressed_tx_size']**2 / old_penalty_factor
+    df['new_effective_size'] = df['compressed_tx_size'] + df['compressed_tx_size']**2 / new_penalty_factor
+
+    df['old_fee'] = (old_commit_scalar * df['l1_base_fee'] + old_blob_scalar * df['l1_blob_base_fee']) * df['old_effective_size']
+    df['new_fee'] = (new_commit_scalar * df['l1_base_fee'] + new_blob_scalar * df['l1_blob_base_fee']) * df['new_effective_size']
+
+    df['fee_change'] = df['new_fee'] - df['old_fee']
+    df['fee_change_pct'] = df['fee_change'] / df['old_fee'] * 100
+
+    print(f"\n  Per-Transaction Fee Change Statistics:")
+    print(f"    {'Metric':<20} {'Absolute (wei)':>20} {'Percentage':>15}")
+    print(f"    {'-'*20} {'-'*20} {'-'*15}")
+    print(f"    {'Mean':<20} {df['fee_change'].mean():>+20,.0f} {df['fee_change_pct'].mean():>+14.2f}%")
+    print(f"    {'Median':<20} {df['fee_change'].median():>+20,.0f} {df['fee_change_pct'].median():>+14.2f}%")
+    print(f"    {'P95':<20} {df['fee_change'].quantile(0.95):>+20,.0f} {df['fee_change_pct'].quantile(0.95):>+14.2f}%")
+    print(f"    {'P99':<20} {df['fee_change'].quantile(0.99):>+20,.0f} {df['fee_change_pct'].quantile(0.99):>+14.2f}%")
+
+    paying_more = (df['fee_change'] > 0).sum()
+    paying_less = (df['fee_change'] < 0).sum()
+    paying_same = (df['fee_change'] == 0).sum()
+    total_txs = len(df)
+
+    print(f"\n  Fee Direction:")
+    print(f"    Paying more: {paying_more:>8,} ({paying_more/total_txs*100:>6.2f}%)")
+    print(f"    Paying less: {paying_less:>8,} ({paying_less/total_txs*100:>6.2f}%)")
+    print(f"    No change:   {paying_same:>8,} ({paying_same/total_txs*100:>6.2f}%)")
+
+    total_old_fee = df['old_fee'].sum()
+    total_new_fee = df['new_fee'].sum()
+    total_change = total_new_fee - total_old_fee
+
+    print(f"\n  Aggregate Total Fee:")
+    print(f"    Old total: {total_old_fee:>25,.0f} wei ({total_old_fee/1e18:.6f} ETH)")
+    print(f"    New total: {total_new_fee:>25,.0f} wei ({total_new_fee/1e18:.6f} ETH)")
+    print(f"    Change:    {total_change:>+25,.0f} wei ({total_change/total_old_fee*100:>+.2f}%)")
+
+    # --- Analysis 2: Fee Change by Transaction Size Group ---
+    print("\n" + "-" * 60)
+    print("Analysis 2: Fee Change by Transaction Size Group")
+    print("-" * 60)
+
+    p50_size = df['compressed_tx_size'].quantile(0.50)
+    p95_size = df['compressed_tx_size'].quantile(0.95)
+
+    def size_group(size):
+        if size < p50_size:
+            return 'Small (< P50)'
+        elif size <= p95_size:
+            return 'Medium (P50-P95)'
+        else:
+            return 'Large (> P95)'
+
+    df['size_group'] = df['compressed_tx_size'].apply(size_group)
+
+    # Calculate penalty terms for both parameter sets
+    df['old_penalty_term'] = df['compressed_tx_size']**2 / old_penalty_factor
+    df['new_penalty_term'] = df['compressed_tx_size']**2 / new_penalty_factor
+
+    group_order = ['Small (< P50)', 'Medium (P50-P95)', 'Large (> P95)']
+    print(f"\n  Size thresholds: P50 = {p50_size:.0f} bytes, P95 = {p95_size:.0f} bytes\n")
+
+    for group_name in group_order:
+        g = df[df['size_group'] == group_name]
+        if len(g) == 0:
+            continue
+
+        print(f"  {group_name}:")
+        print(f"    Count:          {len(g):,}")
+        print(f"    Size range:     {g['compressed_tx_size'].min():.0f} - {g['compressed_tx_size'].max():.0f} bytes")
+        print(f"    Old fee:        mean={g['old_fee'].mean():,.0f}  median={g['old_fee'].median():,.0f} wei")
+        print(f"    New fee:        mean={g['new_fee'].mean():,.0f}  median={g['new_fee'].median():,.0f} wei")
+        print(f"    Fee change:     mean={g['fee_change'].mean():+,.0f}  median={g['fee_change'].median():+,.0f} wei")
+        print(f"    Fee change %%:   mean={g['fee_change_pct'].mean():+.2f}%%  median={g['fee_change_pct'].median():+.2f}%%")
+        print(f"    Old penalty/eff: mean={((g['old_penalty_term'] / g['old_effective_size']) * 100).mean():.2f}%%")
+        print(f"    New penalty/eff: mean={((g['new_penalty_term'] / g['new_effective_size']) * 100).mean():.2f}%%")
+        print()
+
+    # --- Analysis 3: Cost Recovery by Batch ---
+    print("-" * 60)
+    print("Analysis 3: Cost Recovery by Batch")
+    print("-" * 60)
+
+    batch_old_fees = df.groupby('batch_index')['old_fee'].sum()
+    batch_new_fees = df.groupby('batch_index')['new_fee'].sum()
+
+    batch_actual_cost = batch_df['commit_cost'] + batch_df['finalize_cost'] + batch_df['blob_cost']
+
+    # Align indices
+    common_idx = batch_old_fees.index.intersection(batch_actual_cost.index)
+    batch_old_fees = batch_old_fees.loc[common_idx]
+    batch_new_fees = batch_new_fees.loc[common_idx]
+    batch_actual_cost = batch_actual_cost.loc[common_idx]
+
+    old_recovery_rate = batch_old_fees / batch_actual_cost
+    new_recovery_rate = batch_new_fees / batch_actual_cost
+
+    print(f"\n  Recovery Rate Statistics:")
+    print(f"    {'Metric':<15} {'Old Params':>15} {'New Params':>15}")
+    print(f"    {'-'*15} {'-'*15} {'-'*15}")
+    print(f"    {'Mean':<15} {old_recovery_rate.mean():>14.4f}x {new_recovery_rate.mean():>14.4f}x")
+    print(f"    {'Median':<15} {old_recovery_rate.median():>14.4f}x {new_recovery_rate.median():>14.4f}x")
+    print(f"    {'Min':<15} {old_recovery_rate.min():>14.4f}x {new_recovery_rate.min():>14.4f}x")
+    print(f"    {'Max':<15} {old_recovery_rate.max():>14.4f}x {new_recovery_rate.max():>14.4f}x")
+
+    old_over = (old_recovery_rate > 1).sum()
+    old_under = (old_recovery_rate < 1).sum()
+    new_over = (new_recovery_rate > 1).sum()
+    new_under = (new_recovery_rate < 1).sum()
+
+    print(f"\n  Over/Under Recovery:")
+    print(f"    Old params: {old_over} over, {old_under} under (of {len(common_idx)} batches)")
+    print(f"    New params: {new_over} over, {new_under} under (of {len(common_idx)} batches)")
+
+    # Per-batch table (show all if <= 30 batches)
+    if len(common_idx) <= 30:
+        print(f"\n  Per-Batch Detail:")
+        print(f"    {'Batch':>8} {'Actual Cost':>18} {'Old Fees':>18} {'Old Rate':>10} {'New Fees':>18} {'New Rate':>10}")
+        print(f"    {'-'*8} {'-'*18} {'-'*18} {'-'*10} {'-'*18} {'-'*10}")
+        for idx in sorted(common_idx):
+            print(f"    {idx:>8} {batch_actual_cost.loc[idx]:>18,.0f} {batch_old_fees.loc[idx]:>18,.0f} {old_recovery_rate.loc[idx]:>9.4f}x {batch_new_fees.loc[idx]:>18,.0f} {new_recovery_rate.loc[idx]:>9.4f}x")
+
+    # Aggregate totals
+    total_actual = batch_actual_cost.sum()
+    total_old = batch_old_fees.sum()
+    total_new = batch_new_fees.sum()
+
+    print(f"\n  Aggregate Totals:")
+    print(f"    Actual L1 cost: {total_actual:>25,.0f} wei ({total_actual/1e18:.6f} ETH)")
+    print(f"    Old fee total:  {total_old:>25,.0f} wei ({total_old/1e18:.6f} ETH) ({total_old/total_actual:.4f}x)")
+    print(f"    New fee total:  {total_new:>25,.0f} wei ({total_new/1e18:.6f} ETH) ({total_new/total_actual:.4f}x)")
+
+    # --- Analysis 4: Penalty Proportion ---
+    print("\n" + "-" * 60)
+    print("Analysis 4: Penalty Proportion")
+    print("-" * 60)
+
+    df['old_penalty_pct'] = df['old_penalty_term'] / df['old_effective_size'] * 100
+    df['new_penalty_pct'] = df['new_penalty_term'] / df['new_effective_size'] * 100
+
+    print(f"\n  Overall Penalty Proportion (penalty_term / effective_size × 100):")
+    print(f"    {'Metric':<15} {'Old Params':>15} {'New Params':>15}")
+    print(f"    {'-'*15} {'-'*15} {'-'*15}")
+    print(f"    {'Mean':<15} {df['old_penalty_pct'].mean():>14.2f}% {df['new_penalty_pct'].mean():>14.2f}%")
+    print(f"    {'Median':<15} {df['old_penalty_pct'].median():>14.2f}% {df['new_penalty_pct'].median():>14.2f}%")
+    print(f"    {'P95':<15} {df['old_penalty_pct'].quantile(0.95):>14.2f}% {df['new_penalty_pct'].quantile(0.95):>14.2f}%")
+    print(f"    {'P99':<15} {df['old_penalty_pct'].quantile(0.99):>14.2f}% {df['new_penalty_pct'].quantile(0.99):>14.2f}%")
+
+    print(f"\n  Per Size Group:")
+    for group_name in group_order:
+        g = df[df['size_group'] == group_name]
+        if len(g) == 0:
+            continue
+
+        print(f"\n    {group_name} (n={len(g):,}):")
+        print(f"      {'Metric':<15} {'Old Params':>15} {'New Params':>15}")
+        print(f"      {'-'*15} {'-'*15} {'-'*15}")
+        print(f"      {'Mean':<15} {g['old_penalty_pct'].mean():>14.2f}% {g['new_penalty_pct'].mean():>14.2f}%")
+        print(f"      {'Median':<15} {g['old_penalty_pct'].median():>14.2f}% {g['new_penalty_pct'].median():>14.2f}%")
+        print(f"      {'P95':<15} {g['old_penalty_pct'].quantile(0.95):>14.2f}% {g['new_penalty_pct'].quantile(0.95):>14.2f}%")
+        print(f"      {'P99':<15} {g['old_penalty_pct'].quantile(0.99):>14.2f}% {g['new_penalty_pct'].quantile(0.99):>14.2f}%")
+
+    print("\n" + "=" * 60)
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -1454,6 +1666,9 @@ def main():
 
     # Step 6: Analyze EtherFi penalties
     etherfi_results = analyze_etherfi_penalties(tx_df, penalty_multiplier)
+
+    # Step 7: Compare with current on-chain parameters
+    compare_parameters(current_params, commit_scalar, blob_scalar, penalty_multiplier, tx_df, batch_df)
 
     # Final summary
     print("\n" + "=" * 60)
