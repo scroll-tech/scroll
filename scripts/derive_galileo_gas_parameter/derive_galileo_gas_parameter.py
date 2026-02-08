@@ -198,7 +198,7 @@ def kzg_to_versioned_hash(kzg_commitment):
     return "0x01"+sha256(bytes.fromhex(kzg_commitment[2:])).hexdigest()[2:]
 
 
-def latest_finalized_event_block(width=5):
+def latest_finalized_event_block(width=1000):
     """Find the latest L1 block with a FinalizeBatch event"""
     finalized_l1_head = -1
 
@@ -520,7 +520,7 @@ def parse_batch(blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block
 # DATA COLLECTION FUNCTIONS
 # ============================================================================
 
-def collect_batch_data(n_batches=30, width=5, start_time=None):
+def collect_batch_data(n_batches=30, width=1000, start_time=None):
     """
     Collect batch data from L1 (commits and finalizations)
 
@@ -686,19 +686,17 @@ def collect_batch_data(n_batches=30, width=5, start_time=None):
 
     # Step 2: Now collect commit data for these specific batches
     print(f"\nStep 2: Collecting commit data for finalized batches...")
-    batch_data_dict = {}  # batch_index -> [versioned_hash, initial_L2_block_number, num_blocks, commit_cost, blob_cost]
-    to_block = l1_head
-    from_block = to_block - width
-    cur_slot = beacon_head_slot
-    cur_block = l1_head
-    prev_batch_count = 0
 
-    # We need to find commits for all batches in finalized_batch_indices
+    # Phase 1: Scan all CommitBatch events and record metadata
+    print(f"  Phase 1: Scanning CommitBatch events...")
     target_batches = set(finalized_batch_indices)
+    batch_events = {}  # batch_index -> {tx_hash, blob_index}
     last_tx_hash = None
     blob_index = 0
+    to_block = l1_head
+    from_block = to_block - width
 
-    while len(batch_data_dict) < n_batches:
+    while len(batch_events) < n_batches:
         event_filter = rollup_contract.events.CommitBatch.create_filter(fromBlock=from_block, toBlock=to_block)
         events = event_filter.get_all_entries()
 
@@ -707,53 +705,77 @@ def collect_batch_data(n_batches=30, width=5, start_time=None):
             tx_hash = event.transactionHash
 
             # Track blob index for multiple batches in same transaction
-            # This must be done BEFORE filtering, so we count all batches in the tx
             if last_tx_hash == tx_hash:
                 blob_index += 1
             else:
                 last_tx_hash = tx_hash
                 blob_index = 0
 
-            # Only process if this batch is in our finalized list
-            if batch_index not in target_batches:
-                continue
-
-            # Skip if we already have this batch
-            if batch_index in batch_data_dict:
-                continue
-
-            tx = w3.eth.get_transaction(event.transactionHash)
-            receipt = w3.eth.get_transaction_receipt(event.transactionHash)
-
-            block_number = tx.blockNumber
-            num_batches_in_tx = len(tx.blobVersionedHashes)
-            blob_hash = tx.blobVersionedHashes[blob_index].hex()
-
-            # Calculate commit cost (execution gas only, amortized across all batches in this tx)
-            commit_cost = (receipt['gasUsed'] * receipt['effectiveGasPrice']) / num_batches_in_tx
-
-            # Parse batch to get L2 block range
-            initial_L2_block_number, num_blocks, cur_slot, cur_block = parse_batch(
-                blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block
-            )
-
-            # Calculate blob cost (amortized across all batches in this tx)
-            blob_cost = (receipt['blobGasPrice'] * receipt['blobGasUsed']) / num_batches_in_tx
-
-            batch_data_dict[batch_index] = [blob_hash, initial_L2_block_number, num_blocks,
-                                              commit_cost, blob_cost]
-
-        # Only print when count changes
-        if len(batch_data_dict) > prev_batch_count:
-            print(f"  Collected commit data for {len(batch_data_dict)}/{n_batches} batches")
-            prev_batch_count = len(batch_data_dict)
+            if batch_index in target_batches and batch_index not in batch_events:
+                batch_events[batch_index] = {'tx_hash': tx_hash, 'blob_index': blob_index}
 
         to_block = from_block - 1
         from_block = from_block - width - 1
-
-        # Stop if we've searched far enough
         if from_block < 0:
             break
+
+    print(f"    Found {len(batch_events)} CommitBatch events")
+
+    # Phase 2: Parallel fetch tx + receipt for unique tx hashes
+    print(f"  Phase 2: Fetching transactions and receipts in parallel...")
+    unique_tx_hashes = list(set(e['tx_hash'] for e in batch_events.values()))
+    print(f"    Unique transactions to fetch: {len(unique_tx_hashes)}")
+
+    tx_cache = {}  # tx_hash -> (tx, receipt)
+
+    def fetch_tx_and_receipt(tx_hash):
+        tx = w3.eth.get_transaction(tx_hash)
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+        return tx_hash, tx, receipt
+
+    max_workers = 20
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(fetch_tx_and_receipt, h): h for h in unique_tx_hashes}
+        completed = 0
+        for future in as_completed(futures):
+            tx_hash, tx, receipt = future.result()
+            tx_cache[tx_hash] = (tx, receipt)
+            completed += 1
+            if completed % 50 == 0 or completed == len(unique_tx_hashes):
+                print(f"    Fetched {completed}/{len(unique_tx_hashes)} transactions")
+
+    print(f"    Done fetching transactions")
+
+    # Phase 3: Parse blob data for each batch (sequential, needs slot state)
+    print(f"  Phase 3: Parsing blob data...")
+    batch_data_dict = {}
+    cur_slot = beacon_head_slot
+    cur_block = l1_head
+
+    # Process in block_number descending order for slot tracking
+    sorted_batches = sorted(batch_events.items(), key=lambda x: tx_cache[x[1]['tx_hash']][0].blockNumber, reverse=True)
+
+    for i, (batch_index, event_info) in enumerate(sorted_batches):
+        tx, receipt = tx_cache[event_info['tx_hash']]
+        blob_idx = event_info['blob_index']
+
+        block_number = tx.blockNumber
+        num_batches_in_tx = len(tx.blobVersionedHashes)
+        blob_hash = tx.blobVersionedHashes[blob_idx].hex()
+
+        commit_cost = (receipt['gasUsed'] * receipt['effectiveGasPrice']) / num_batches_in_tx
+
+        initial_L2_block_number, num_blocks, cur_slot, cur_block = parse_batch(
+            blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block
+        )
+
+        blob_cost = (receipt['blobGasPrice'] * receipt['blobGasUsed']) / num_batches_in_tx
+
+        batch_data_dict[batch_index] = [blob_hash, initial_L2_block_number, num_blocks,
+                                          commit_cost, blob_cost]
+
+        if (i + 1) % 50 == 0 or (i + 1) == len(sorted_batches):
+            print(f"    Parsed {i + 1}/{len(sorted_batches)} batches")
 
     # Step 3: Combine commit and finalize data
     print(f"\nStep 3: Combining commit and finalize data...")
@@ -1397,6 +1419,32 @@ def compare_parameters(current_params, commit_scalar, blob_scalar, penalty_multi
     print("\n" + "=" * 60)
     print("PARAMETER COMPARISON ANALYSIS")
     print("=" * 60)
+
+    # L1 Gas Price Distribution
+    print("\n" + "-" * 60)
+    print("L1 Gas Price Distribution (as seen by L2 fee oracle)")
+    print("-" * 60)
+
+    l1_base = tx_df['l1_base_fee']
+    l1_blob = tx_df['l1_blob_base_fee']
+
+    print(f"\n  l1_base_fee (wei):")
+    print(f"    Min:    {l1_base.min():>15,}  ({l1_base.min()/1e9:.4f} gwei)")
+    print(f"    P5:     {l1_base.quantile(0.05):>15,.0f}  ({l1_base.quantile(0.05)/1e9:.4f} gwei)")
+    print(f"    Median: {l1_base.median():>15,.0f}  ({l1_base.median()/1e9:.4f} gwei)")
+    print(f"    Mean:   {l1_base.mean():>15,.0f}  ({l1_base.mean()/1e9:.4f} gwei)")
+    print(f"    P95:    {l1_base.quantile(0.95):>15,.0f}  ({l1_base.quantile(0.95)/1e9:.4f} gwei)")
+    print(f"    Max:    {l1_base.max():>15,}  ({l1_base.max()/1e9:.4f} gwei)")
+    print(f"    Max/Min ratio: {l1_base.max()/l1_base.min():.1f}x")
+
+    print(f"\n  l1_blob_base_fee (wei):")
+    print(f"    Min:    {l1_blob.min():>15,}  ({l1_blob.min()/1e9:.4f} gwei)")
+    print(f"    P5:     {l1_blob.quantile(0.05):>15,.0f}  ({l1_blob.quantile(0.05)/1e9:.4f} gwei)")
+    print(f"    Median: {l1_blob.median():>15,.0f}  ({l1_blob.median()/1e9:.4f} gwei)")
+    print(f"    Mean:   {l1_blob.mean():>15,.0f}  ({l1_blob.mean()/1e9:.4f} gwei)")
+    print(f"    P95:    {l1_blob.quantile(0.95):>15,.0f}  ({l1_blob.quantile(0.95)/1e9:.4f} gwei)")
+    print(f"    Max:    {l1_blob.max():>15,}  ({l1_blob.max()/1e9:.4f} gwei)")
+    print(f"    Max/Min ratio: {l1_blob.max()/l1_blob.min():.1f}x")
 
     # Extract current (old) parameters
     old_commit_scalar = current_params['commit_scalar']
