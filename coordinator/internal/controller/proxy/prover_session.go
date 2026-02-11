@@ -268,7 +268,7 @@ func (c *proverSession) SubmitProof(ctx context.Context, param *types.SubmitProo
 		if resp.ErrCode != ctypes.ErrJWTTokenExpired && resp.ErrCode != ctypes.ErrJWTCommonErr {
 			return resp, nil
 		}
-		log.Debug("Get Task first-try failed for broken token", "up", up, "errcode", resp.ErrCode)
+		log.Debug("Submit Proof first-try failed for broken token", "up", up, "errcode", resp.ErrCode)
 	}
 
 	// like SDK, we would try one more time if the upstream token is expired

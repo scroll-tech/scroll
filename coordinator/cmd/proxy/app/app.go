@@ -62,9 +62,9 @@ func action(ctx *cli.Context) error {
 				log.Error("can not close db connection", "error", err)
 			}
 		}()
-		observability.Server(ctx, db)
 	}
 	registry := prometheus.DefaultRegisterer
+	observability.Server(ctx, db)
 
 	apiSrv := server(ctx, cfg, db, registry)
 
