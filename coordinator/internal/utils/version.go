@@ -19,7 +19,12 @@ func Version(hardForkName string, ValidiumMode bool) (uint8, error) {
 
 	if ValidiumMode {
 		domain = 1
-		stfVersion = 1
+		switch canonicalName := strings.ToLower(hardForkName); canonicalName {
+		case "galileov2":
+			stfVersion = 1
+		default:
+			return 0, errors.New("unsupported fork in validium mode " + canonicalName)
+		}
 	} else {
 		domain = 0
 		switch canonicalName := strings.ToLower(hardForkName); canonicalName {

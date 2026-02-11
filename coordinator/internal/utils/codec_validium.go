@@ -56,7 +56,7 @@ func (c CodecVersion) DABatchForTaskFromBytes(b []byte) (DABatch, error) {
 
 func decodeDABatchV1(data []byte) (*daBatchValidiumV1, error) {
 	if len(data) != daBatchValidiumEncodedLength {
-		return nil, fmt.Errorf("invalid data length for DABatchV7, expected %d bytes but got %d", daBatchValidiumEncodedLength, len(data))
+		return nil, fmt.Errorf("invalid data length for ValidiumDABatchV1, expected %d bytes but got %d", daBatchValidiumEncodedLength, len(data))
 	}
 
 	const (
