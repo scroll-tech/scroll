@@ -1053,7 +1053,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadValidium(batch *dbBatchWithCh
 	var version uint8
 	if encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV8 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV9 || encoding.CodecVersion(batch.Batch.CodecVersion) == encoding.CodecV10 {
 		// Validium version line starts with v1,
-		// but rollup-relayer behavior follows v8.
+		// but rollup-relayer behavior follows v10.
 		version = 1
 	} else {
 		return nil, 0, 0, fmt.Errorf("unexpected codec version %d for validium mode", batch.Batch.CodecVersion)
