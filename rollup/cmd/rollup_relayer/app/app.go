@@ -111,6 +111,9 @@ func action(ctx *cli.Context) error {
 	if minCodecVersion < encoding.CodecV7 {
 		log.Crit("min codec version must be greater than or equal to CodecV7", "minCodecVersion", minCodecVersion)
 	}
+	if cfg.L2Config.RelayerConfig.ValidiumMode && minCodecVersion < encoding.CodecV10 {
+		log.Crit("min codec version must be greater than or equal to CodecV10 in validium mode", "minCodecVersion", minCodecVersion)
+	}
 
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, cfg.L2Config.RelayerConfig.ValidiumMode, registry)
