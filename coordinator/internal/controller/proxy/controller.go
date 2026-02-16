@@ -35,7 +35,7 @@ func InitController(cfg *config.ProxyConfig, db *gorm.DB, reg prometheus.Registe
 		clients[cli.Name()] = cli
 	}
 
-	proverManager := NewProverManagerWithPersistent(100, db)
+	proverManager := NewProverManagerWithPersistent(100, db, reg)
 	priorityManager := NewPriorityUpstreamManagerPersistent(db)
 
 	Auth = NewAuthController(cfg, clients, proverManager)

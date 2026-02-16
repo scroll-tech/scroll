@@ -8,6 +8,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	ctypes "scroll-tech/common/types"
@@ -21,22 +22,77 @@ type ProverManager struct {
 	willDeprecatedData map[string]*proverSession
 	sizeLimit          int
 	persistent         *proverDataPersist
+
+	clientLoginTries *prometheus.CounterVec
+	getTaskTries     *prometheus.CounterVec
+	submitTaskTries  *prometheus.CounterVec
+
+	upstreamFail    *prometheus.GaugeVec
+	clientLoginFail *prometheus.CounterVec
+	getTaskFail     *prometheus.CounterVec
+	submitTaskFail  *prometheus.CounterVec
 }
 
-func NewProverManager(size int) *ProverManager {
-	return &ProverManager{
+func NewProverManager(size int, reg prometheus.Registerer) *ProverManager {
+	m := &ProverManager{
 		data:               make(map[string]*proverSession),
 		willDeprecatedData: make(map[string]*proverSession),
 		sizeLimit:          size,
 	}
+	m.registerCounters(reg)
+	return m
 }
 
-func NewProverManagerWithPersistent(size int, db *gorm.DB) *ProverManager {
-	return &ProverManager{
+func NewProverManagerWithPersistent(size int, db *gorm.DB, reg prometheus.Registerer) *ProverManager {
+	m := &ProverManager{
 		data:               make(map[string]*proverSession),
 		willDeprecatedData: make(map[string]*proverSession),
 		sizeLimit:          size,
 		persistent:         NewProverDataPersist(db),
+	}
+	m.registerCounters(reg)
+	return m
+}
+
+func (m *ProverManager) registerCounters(reg prometheus.Registerer) {
+	m.upstreamFail = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "upstream_error",
+		Help: "Set to 1 while a upstream session can not be obtained",
+	}, []string{"upstream"})
+
+	m.clientLoginFail = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "login_failure",
+		Help: "Client login has encountered an error",
+	}, []string{"upstream"})
+
+	m.getTaskFail = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "getTask_failure",
+		Help: "GetTask request has encountered an error",
+	}, []string{"upstream"})
+
+	m.submitTaskFail = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "submitTask_failure",
+		Help: "SubmitTask request has encountered an error",
+	}, []string{"upstream"})
+
+	m.clientLoginTries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "prover_speed",
+		Help: "Cycle against running time of prover (in mhz)",
+	}, []string{"upstream"})
+
+	m.getTaskTries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "prover_speed",
+		Help: "Cycle against running time of prover (in mhz)",
+	}, []string{"upstream"})
+
+	m.submitTaskTries = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "prover_speed",
+		Help: "Cycle against running time of prover (in mhz)",
+	}, []string{"upstream"})
+
+	if reg != nil {
+		reg.MustRegister(m.upstreamFail)
+		reg.MustRegister(m.clientLoginFail)
 	}
 }
 

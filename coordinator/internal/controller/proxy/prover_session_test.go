@@ -6,7 +6,7 @@ import (
 
 // TestProverManagerGetAndCreate validates basic creation and retrieval semantics.
 func TestProverManagerGetAndCreate(t *testing.T) {
-	pm := NewProverManager(2)
+	pm := NewProverManager(2, nil)
 
 	if got := pm.Get("user1"); got != nil {
 		t.Fatalf("expected nil for non-existent key, got: %+v", got)
@@ -26,7 +26,7 @@ func TestProverManagerGetAndCreate(t *testing.T) {
 // TestProverManagerRolloverAndPromotion verifies rollover when sizeLimit is reached
 // and that old entries are accessible and promoted back to active data map.
 func TestProverManagerRolloverAndPromotion(t *testing.T) {
-	pm := NewProverManager(2)
+	pm := NewProverManager(2, nil)
 
 	s1 := pm.GetOrCreate("u1")
 	s2 := pm.GetOrCreate("u2")
