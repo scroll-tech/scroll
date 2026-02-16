@@ -4,11 +4,9 @@ use crate::utils::short_git_version;
 use eyre::Result;
 use sbv_primitives::B256;
 use scroll_zkvm_types::{
-    batch::BatchInfo,
-    bundle::BundleInfo,
-    chunk::ChunkInfo,
     proof::{EvmProof, OpenVmEvmProof, ProofEnum, StarkProof},
     public_inputs::MultiVersionPublicInputs,
+    scroll::{batch::BatchInfo, bundle::BundleInfo, chunk::ChunkInfo},
     types_agg::AggregationInput,
     utils::{serialize_vk, vec_as_base64},
     version,
@@ -215,7 +213,7 @@ impl<Metadata: ProofMetadata> PersistableProof for WrappedProof<Metadata> {
 mod tests {
     use base64::{prelude::BASE64_STANDARD, Engine};
     use sbv_primitives::B256;
-    use scroll_zkvm_types::{bundle::BundleInfo, proof::EvmProof};
+    use scroll_zkvm_types::{proof::EvmProof, scroll::bundle::BundleInfo};
 
     use super::*;
 
@@ -253,7 +251,7 @@ mod tests {
                 msg_queue_hash: B256::repeat_byte(6),
                 encryption_key: None,
             };
-            let bundle_pi_hash = bundle_info.pi_hash_euclidv1();
+            let bundle_pi_hash = bundle_info.pi_hash_by_version(version::Version::euclid_v1());
             BundleProofMetadata {
                 bundle_info,
                 bundle_pi_hash,

@@ -13,22 +13,8 @@ use serde_json::value::RawValue;
 use std::{collections::HashMap, path::Path, sync::OnceLock};
 use tasks::chunk_interpreter::{ChunkInterpreter, TryFromWithInterpreter};
 
-pub(crate) fn witness_use_legacy_mode(fork_name: &str) -> eyre::Result<bool> {
-    ADDITIONAL_FEATURES
-        .get()
-        .and_then(|features| features.get(fork_name))
-        .map(|cfg| cfg.legacy_witness_encoding)
-        .ok_or_else(|| {
-            eyre::eyre!(
-                "can not find features setting for unrecognized fork {}",
-                fork_name
-            )
-        })
-}
-
 #[derive(Debug, Default, Clone)]
 struct FeatureOptions {
-    legacy_witness_encoding: bool,
     for_openvm_13_prover: bool,
 }
 
@@ -41,11 +27,10 @@ impl FeatureOptions {
         for feat_s in feats.split(':') {
             match feat_s.trim().to_lowercase().as_str() {
                 "legacy_witness" => {
-                    tracing::info!("set witness encoding for legacy mode");
-                    ret.legacy_witness_encoding = true;
+                    tracing::warn!("legacy witness is no longer supported");
                 }
                 "openvm_13" => {
-                    tracing::info!("set prover should use openvm 13");
+                    tracing::warn!("set prover should use openvm 13");
                     ret.for_openvm_13_prover = true;
                 }
                 s => tracing::warn!("unrecognized dynamic feature: {s}"),
