@@ -139,23 +139,24 @@ func initLeadingChunk(ctx context.Context, db *gorm.DB, beginBlk, endBlk uint64,
 		return nil
 	}
 
-	var l1MsgPoppedBefore uint64
 	blks, err := blockOrm.GetL2BlocksGEHeight(ctx, beginBlk, int(endBlk-beginBlk+1))
 	if err != nil {
 		return err
 	}
-	for i, block := range blks {
-		for _, tx := range block.Transactions {
-			if tx.Type == types.L1MessageTxType {
-				l1MsgPoppedBefore = tx.Nonce
-				log.Info("search first l1 nonce", "index", l1MsgPoppedBefore, "blk", beginBlk+uint64(i))
-				break
+
+	// search l1 message and derive the popped l1 msg from nonce
+	// if the nonce of first l1 msg is 0, or no l1 msg raised in target blocks, we do not need the leading chunk
+	l1MsgPoppedBefore := func() uint64 {
+		for i, block := range blks {
+			for _, tx := range block.Transactions {
+				if tx.Type == types.L1MessageTxType {
+					log.Info("search first l1 nonce", "index", tx.Nonce, "blk", beginBlk+uint64(i))
+					return tx.Nonce
+				}
 			}
 		}
-		if l1MsgPoppedBefore != 0 {
-			break
-		}
-	}
+		return 0
+	}()
 
 	if l1MsgPoppedBefore == 0 {
 		log.Info("no l1 message in target blks, no need for leading chunk")
