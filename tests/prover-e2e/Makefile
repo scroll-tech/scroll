@@ -66,5 +66,5 @@ import_data: build/bin/e2e_tool check_vars migration_blocks
 reimport_data: reset_db import_data
 
 coordinator_setup:
-	SCROLL_FORK_NAME=${SCROLL_FORK_NAME} $(MAKE) -C ../../coordinator localsetup
+	SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION} SCROLL_FORK_NAME=${SCROLL_FORK_NAME} $(MAKE) -C ../../coordinator localsetup
 	cp -f conf/genesis.json ../../coordinator/build/bin/conf
