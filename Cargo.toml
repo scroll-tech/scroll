@@ -18,9 +18,9 @@ version = "4.7.11"
 
 [workspace.dependencies]
 # with openvm 1.4.2
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "4a78ca9" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "4a78ca9" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "4a78ca9" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "b527310" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "b527310" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", rev = "b527310" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2" }
@@ -46,7 +46,6 @@ tracing = "0.1"
 eyre = "0.6"
 once_cell = "1.20"
 base64 = "0.22"
-
 
 [patch.crates-io]
 revm = { git = "https://github.com/scroll-tech/revm", tag = "scroll-v91" }
