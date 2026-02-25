@@ -17,9 +17,9 @@ repository = "https://github.com/scroll-tech/scroll"
 version = "4.7.1"
 
 [workspace.dependencies]
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
-scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
-scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.1" }
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.2" }
+scroll-zkvm-verifier = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.2" }
+scroll-zkvm-types = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.7.2" }
 
 sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2", features = ["scroll", "rkyv"] }
 sbv-utils = { git = "https://github.com/scroll-tech/stateless-block-verifier", tag = "scroll-v91.2" }
