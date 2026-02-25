@@ -19,3 +19,6 @@ link the staff dir as "conf" from one of the dir with staff set, currently we ha
   + set the `sdk_config.coordinator.base_url` field in `config.json`, so zkvm prover would connect with the locally launched coordinator api,
     for common case the url is `http://localhost:8390` (the default listening port of coordinator api)
   + launch `make test_e2e_run`, which would specific prover run locally, connect to the local coordinator api service according to the `config.json`, and prove all tasks being injected to db in step 1.
+
+## AI Helper
+The test process can be run with the help of `integration-test-helper` skill (~$1.0 for each full process)
