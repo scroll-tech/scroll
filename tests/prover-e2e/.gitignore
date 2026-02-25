@@ -1,3 +1,5 @@
 build/*
 testset.json
 conf
+*.log
+*.txt
