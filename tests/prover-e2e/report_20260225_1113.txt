@@ -1,0 +1,47 @@
+ProverE2E Integration Test Report
+Date: 2026-02-25
+Time: 11:13
+Branch: fix/validium_prover
+conf -> cloak-galileoV2/
+
+## Summary
+
+This run attempted to complete the full ProverE2E flow using the cloak-galileoV2 test environment (validium mode).
+
+## Steps Completed
+
+### Step 1: make all (DB setup + data import)
+- Completed: `make reimport_data` was used on this run to reset the DB and re-inject test data
+- Docker PostgreSQL was already running on localhost:5432
+- Blocks 2–15 imported successfully with validium mode decryption of L1 messages
+- 4 chunks, 2 batches, 1 bundle inserted into DB
+- testset.json updated with new hashes
+
+### Step 2: make coordinator_setup
+- Completed in a prior session (2026-02-24)
+- coordinator_api binary already built at coordinator/build/bin/
+- genesis.json copied, assets for galileoV2 present
+
+### Step 3: coordinator_api running
+- coordinator_api already running (pid 121277)
+- Listening at port 18390 (per ChangePort experience)
+- Config: l2.validium_mode=true, fork_name=galileoV2
+- sequencer.decryption_key configured
+
+### Step 4: make test_e2e_run
+- Status: FAILED (exit code 101)
+- Error: Circuit assertion failure in chunk-circuit
+  `assertion left == right failed: left: Feynman, right: GalileoV2`
+- All 4 chunk tasks failed with proving error
+- Batch tasks could not be retrieved (coordinator internal error — chunks not proven)
+
+## Current DB State (post-run)
+- All 4 chunk prover tasks in status 3 (failed/exhausted)
+- Batch and bundle tasks not attempted due to chunk failures
+
+## Log Archive
+/tmp/prover_e2e_logs_20260225_1113.tar.gz
+
+## Known Issues
+- Circuit fork mismatch: prover builds/runs with Feynman circuit but coordinator/config expects GalileoV2.
+  This is a code-level issue in the zkvm-prover to investigate.
