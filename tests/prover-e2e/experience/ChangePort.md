@@ -1,0 +1,1 @@
+Let coordiantor api listen at port 18390 to avoid security restriction or port confliction. Also change the corresponding field in `config.json`

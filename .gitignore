@@ -23,5 +23,8 @@ coverage.txt
 sftp-config.json
 *~
 
+# AI skills
+**/experience
+
 target
 zkvm-prover/*.json
