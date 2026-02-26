@@ -24,6 +24,13 @@ import (
 	cutils "scroll-tech/coordinator/internal/utils"
 )
 
+// Implement global throttle on debug_executionWitness calls.
+// This API slows down when there are multiple concurrent calls.
+var (
+	applyUniversalMaxParallelism = 2
+	witnessSemaphore             = make(chan struct{}, applyUniversalMaxParallelism)
+)
+
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
@@ -201,6 +208,17 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if getTaskParameter.Universal {
 		var metadata []byte
+
+		select {
+		case witnessSemaphore <- struct{}{}:
+			// Released when Assign returns (defer).
+			defer func() { <-witnessSemaphore }()
+		case <-ctx.Done():
+			log.Warn("context canceled waiting for witness semaphore", "task_id", chunkTask.Hash, "err", ctx.Err())
+			cp.recoverActiveAttempts(ctx, chunkTask)
+			return nil, ctx.Err()
+		}
+
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
 		if err != nil {
 			cp.recoverActiveAttempts(ctx, chunkTask)
