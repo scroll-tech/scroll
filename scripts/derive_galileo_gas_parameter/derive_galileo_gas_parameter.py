@@ -19,6 +19,8 @@ import zstandard as zstd
 import rlp
 import math
 import requests
+import subprocess
+import json
 import time
 import os
 from pathlib import Path
@@ -32,15 +34,15 @@ from multiprocessing import Pool, cpu_count
 # Read RPC endpoints from environment variables
 mainnet_url = os.getenv('MAINNET_URL', '')
 scroll_url = os.getenv('SCROLL_URL', 'https://rpc.scroll.io')
-beacon_url = os.getenv('BEACON_URL', '')
 
 # Validate that environment variables are set
 if not mainnet_url:
     raise ValueError("MAINNET_URL environment variable is not set. Please set it to your Ethereum mainnet RPC endpoint.")
 if not scroll_url:
     raise ValueError("SCROLL_URL environment variable is not set. Please set it to your Scroll RPC endpoint.")
-if not beacon_url:
-    raise ValueError("BEACON_URL environment variable is not set. Please set it to your Ethereum beacon chain RPC endpoint.")
+
+# Scroll Rollup Explorer API
+ROLLUP_EXPLORER_API = "https://mainnet-api-re.scroll.io/api"
 
 # EtherFi contract addresses (lowercase for comparison)
 ETHERFI_SPEND_ADDRESS = "0x7ca0b75e67e33c0014325b739a8d019c4fe445f0"
@@ -49,29 +51,6 @@ ETHERFI_SWAP_ADDRESS = "0x4deaa5f2e1cd1a792304d1649edfa35d565f9346"
 # ============================================================================
 # ABIs
 # ============================================================================
-
-rollup_abi = [
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "internalType": "uint256", "name": "batchIndex", "type": "uint256"},
-            {"indexed": True, "internalType": "bytes32", "name": "batchHash", "type": "bytes32"}
-        ],
-        "name": "CommitBatch",
-        "type": "event"
-    },
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "internalType": "uint256", "name": "batchIndex", "type": "uint256"},
-            {"indexed": True, "internalType": "bytes32", "name": "batchHash", "type": "bytes32"},
-            {"indexed": False, "internalType": "bytes32", "name": "stateRoot", "type": "bytes32"},
-            {"indexed": False, "internalType": "bytes32", "name": "withdrawRoot", "type": "bytes32"}
-        ],
-        "name": "FinalizeBatch",
-        "type": "event"
-    },
-]
 
 fee_oracle_abi = [
     {
@@ -137,9 +116,6 @@ fee_oracle_abi = [
 w3 = Web3(Web3.HTTPProvider(mainnet_url))
 scroll_w3 = Web3(Web3.HTTPProvider(scroll_url))
 
-rollup_contract_address = Web3.to_checksum_address("0xa13BAF47339d63B743e7Da8741db5456DAc1E556")
-rollup_contract = w3.eth.contract(address=rollup_contract_address, abi=rollup_abi)
-
 l1_fee_oracle_contract_address = Web3.to_checksum_address("0x5300000000000000000000000000000000000002")
 l1_fee_oracle_contract = scroll_w3.eth.contract(address=l1_fee_oracle_contract_address, abi=fee_oracle_abi)
 
@@ -183,49 +159,18 @@ def read_current_gas_parameters():
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def reverse_make_canonical(input_bytes, n=31):
-    """Reverse effect of make_canonical"""
-    output_bytes = bytearray()
-    for i in range(0, len(input_bytes)):
-        if i % (n+1) != 0:
-            output_bytes.extend(input_bytes[i:i+1])
-    return output_bytes
-
-
-def kzg_to_versioned_hash(kzg_commitment):
-    """Given kzg_commitment returns versioned_hash of version 0x01"""
-    from hashlib import sha256
-    return "0x01"+sha256(bytes.fromhex(kzg_commitment[2:])).hexdigest()[2:]
-
-
-def latest_finalized_event_block(width=1000):
-    """Find the latest L1 block with a FinalizeBatch event"""
-    finalized_l1_head = -1
-
-    to_block = w3.eth.block_number
-    from_block = to_block - width
-
-    while finalized_l1_head == -1:
-        event_filter = rollup_contract.events.FinalizeBatch.create_filter(fromBlock=from_block, toBlock=to_block)
-        events = event_filter.get_all_entries()
-
-        if len(events) > 0:
-            finalized_l1_head = events[-1]['blockNumber']
-            break
-
-        to_block = from_block - 1
-        from_block = from_block - width - 1
-
-    return finalized_l1_head
-
-
-def beacon_head(l1_head, mainnet_beacon_url):
-    """Get beacon chain slot number for given L1 block"""
-    latest_block_number = w3.eth.block_number
-    url = f"{mainnet_beacon_url}/eth/v1/beacon/headers/head"
-    headers = {'accept': 'application/json'}
-    response = requests.get(url, headers=headers)
-    return int(response.json()['data']['header']['message']['slot']) - (latest_block_number - l1_head)
+def curl_get_json(url, max_retries=3):
+    """Fetch JSON from URL using curl (bypasses Python SSL issues with VPN)"""
+    for attempt in range(max_retries):
+        result = subprocess.run(
+            ['curl', '-s', '--fail', url],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return json.loads(result.stdout)
+        if attempt < max_retries - 1:
+            time.sleep(1)
+    raise RuntimeError(f"curl failed for {url} after {max_retries} attempts: {result.stderr}")
 
 
 def to_bytes_helper(value):
@@ -448,93 +393,20 @@ def process_transaction_worker(tx_dict):
 
 
 # ============================================================================
-# BLOB AND BATCH PARSING
-# ============================================================================
-
-# Global cache for blob data
-indexed_blob = {}
-
-
-def get_blob_data_v2(blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block):
-    """
-    Fetch blob data from beacon chain
-    Returns: blob data, updated cur_slot, updated cur_block
-    """
-    global indexed_blob
-
-    if blob_hash in indexed_blob:
-        return indexed_blob[blob_hash], cur_slot, cur_block
-
-    cur_slot = cur_slot - (cur_block - block_number) + 1
-    cur_block = block_number
-
-    found_the_blob = False
-    while not found_the_blob:
-        cur_slot -= 1
-        url = f"{mainnet_beacon_url}/eth/v1/beacon/blob_sidecars/{cur_slot}"
-
-        headers = {'accept': 'application/json'}
-        try:
-            response = requests.get(url, headers=headers, timeout=5)
-        except Exception as e:
-            print(f"[warn] request error at slot {cur_slot}: {e}")
-            continue
-
-        if response.status_code != 200:
-            print(f"[warn] non-200 from beacon at slot {cur_slot}: {response.status_code}")
-            continue
-
-        if 'data' in response.json().keys():
-            for blob in response.json()['data']:
-                hash = kzg_to_versioned_hash(blob['kzg_commitment'])
-                if blob_hash == hash:
-                    found_the_blob = True
-                indexed_blob[hash] = blob['blob']
-
-    return indexed_blob[blob_hash], cur_slot, cur_block
-
-
-def parse_batch(blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block):
-    """
-    Parse batch from blob data to get L2 block range
-    Returns: (initial_L2_block_number, num_blocks, cur_slot, cur_block)
-    """
-    ZSTD_MAGIC = b'\x28\xb5\x2f\xfd'
-
-    batch_data, cur_slot, cur_block = get_blob_data_v2(blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block)
-    batch_data = reverse_make_canonical(bytearray.fromhex(batch_data[2:]), 31)
-
-    version = int(batch_data[0])
-    payload_N = int.from_bytes(batch_data[1:4], 'big')
-    flag = batch_data[4]
-    payload = batch_data[5:5+payload_N]
-    if flag == 1:
-        payload = zstd.decompress(ZSTD_MAGIC+payload)
-    initial_L2_block_number = int.from_bytes(payload[64:64+8], 'big')
-    num_blocks = int.from_bytes(payload[72:72+2], 'big')
-
-    return (initial_L2_block_number, num_blocks, cur_slot, cur_block)
-
-
-# ============================================================================
 # DATA COLLECTION FUNCTIONS
 # ============================================================================
 
-def collect_batch_data(n_batches=30, width=1000, start_time=None):
+def collect_batch_data(n_batches=30, start_time=None):
     """
-    Collect batch data from L1 (commits and finalizations)
-
-    Strategy: First find finalized batches, then collect their commit data
+    Collect batch data using Scroll Rollup Explorer API and L1 transaction receipts.
 
     Args:
         n_batches: Number of batches to collect
-        width: Block range width for event filtering
         start_time: Script start time for elapsed time calculation
 
     Returns:
         batch_df: DataFrame with columns:
             - index (batch_index)
-            - versioned_hash
             - initial_L2_block_number
             - num_blocks
             - commit_cost
@@ -545,261 +417,111 @@ def collect_batch_data(n_batches=30, width=1000, start_time=None):
     print(f"COLLECTING BATCH DATA ({n_batches} batches)")
     print("=" * 60)
 
-    # Get L1 head
-    mainnet_beacon_url = beacon_url
-    l1_head = latest_finalized_event_block(width)
-    beacon_head_slot = beacon_head(l1_head, mainnet_beacon_url)
+    # Step 1: Get latest finalized batch index from Rollup Explorer API
+    print(f"\nStep 1: Getting latest finalized batch index...")
+    data = curl_get_json(f"{ROLLUP_EXPLORER_API}/last_batch_indexes")
+    latest_finalized = data['finalized_index']
+    print(f"  Latest finalized batch: {latest_finalized}")
 
-    print(f"L1 HEAD: {l1_head}")
-    print(f"Beacon HEAD: {beacon_head_slot}")
+    batch_indices = list(range(latest_finalized - n_batches + 1, latest_finalized + 1))
+    print(f"  Collecting batches: {batch_indices[0]} - {batch_indices[-1]}")
 
-    # Step 1: Collect FinalizeBatch events until we have enough batches
-    print(f"\nStep 1: Collecting FinalizeBatch events...")
-    finalize_events = []  # List of (batch_index, finalize_cost)
-    to_block = l1_head
-    from_block = to_block - width
-    total_batches_covered = 0
-    prev_event_count = 0
+    # Step 2: Fetch batch info from Rollup Explorer API
+    print(f"\nStep 2: Fetching batch info from Rollup Explorer API...")
 
-    # Keep scanning until we have enough batches
-    # We need at least one extra event to properly calculate the range
-    while total_batches_covered < n_batches or len(finalize_events) < 2:
-        event_filter = rollup_contract.events.FinalizeBatch.create_filter(fromBlock=from_block, toBlock=to_block)
-        events = event_filter.get_all_entries()
+    batch_infos = {}
+    for i, batch_index in enumerate(batch_indices):
+        data = curl_get_json(f"{ROLLUP_EXPLORER_API}/batch?index={batch_index}")
+        batch_infos[data['batch']['index']] = data['batch']
+        if (i + 1) % 50 == 0 or (i + 1) == n_batches:
+            print(f"  Fetched {i + 1}/{n_batches} batch infos")
 
-        for event in events:
-            batch_index = event['args']['batchIndex']
-            receipt = w3.eth.get_transaction_receipt(event.transactionHash)
-            finalize_cost = receipt['gasUsed'] * receipt['effectiveGasPrice']
-            finalize_events.append((batch_index, finalize_cost))
+    # Step 3: Fetch L1 transaction receipts for cost calculation
+    print(f"\nStep 3: Fetching L1 transaction data...")
 
-        # Calculate how many batches we have covered so far
-        if len(finalize_events) >= 2:
-            finalize_events.sort(key=lambda x: x[0], reverse=True)
-            latest_batch = finalize_events[0][0]
-            # To properly calculate coverage, we need the range from the second-to-last event
-            # to the latest event, because we'll select N batches ending at latest_batch
-            if len(finalize_events) >= 2:
-                second_oldest = finalize_events[-2][0]
-                # The batches we can properly account for are from second_oldest+1 to latest_batch
-                total_batches_covered = latest_batch - second_oldest
+    # Collect unique tx hashes
+    commit_tx_hashes = set()
+    finalize_tx_hashes = set()
+    for info in batch_infos.values():
+        commit_tx_hashes.add(info['commit_tx_hash'])
+        finalize_tx_hashes.add(info['finalize_tx_hash'])
 
-        # Only print when we find new events
-        if len(finalize_events) > prev_event_count:
-            print(f"  Found {len(finalize_events)} FinalizeBatch events, covering ~{total_batches_covered} batches")
-            prev_event_count = len(finalize_events)
+    print(f"  Unique commit txs: {len(commit_tx_hashes)}, finalize txs: {len(finalize_tx_hashes)}")
 
-        to_block = from_block - 1
-        from_block = from_block - width - 1
+    # Count batches per finalize tx for amortization
+    finalize_tx_batch_count = {}
+    for info in batch_infos.values():
+        h = info['finalize_tx_hash']
+        finalize_tx_batch_count[h] = finalize_tx_batch_count.get(h, 0) + 1
 
-        if from_block < 0:
-            break
+    # For commit txs: fetch tx (for blobVersionedHashes count) + receipt
+    # For finalize txs: fetch receipt only
+    commit_tx_cache = {}   # tx_hash -> (tx, receipt)
+    finalize_rx_cache = {} # tx_hash -> receipt
 
-    if len(finalize_events) == 0:
-        raise RuntimeError("Could not find any FinalizeBatch events")
-
-    # Sort events by batch index (descending - newest first)
-    finalize_events.sort(key=lambda x: x[0], reverse=True)
-    print(f"\nFinalizeBatch events found:")
-    for batch_idx, cost in finalize_events:
-        print(f"  Batch {batch_idx}: {cost:,} wei")
-
-    # Calculate which batches each FinalizeBatch event covers
-    # and compute per-batch finalize costs
-    batch_finalize_costs = {}  # batch_index -> finalize_cost
-    all_finalized_batches = set()
-
-    for i, (batch_index, finalize_cost) in enumerate(finalize_events):
-        # Determine the range this FinalizeBatch covers
-        if i == len(finalize_events) - 1:
-            # This is the oldest event - we don't know where it starts
-            # For now, assume it only finalizes this single batch
-            start_batch = batch_index
-        else:
-            # This event finalizes from (next_older_batch + 1) to current_batch
-            next_older_batch = finalize_events[i + 1][0]
-            start_batch = next_older_batch + 1
-
-        end_batch = batch_index
-        num_batches = end_batch - start_batch + 1
-        per_batch_cost = finalize_cost / num_batches
-
-        print(f"\n  FinalizeBatch({batch_index}) covers batches {start_batch}-{end_batch} ({num_batches} batches)")
-        print(f"    Total cost: {finalize_cost:,} wei")
-        print(f"    Per-batch cost: {per_batch_cost:,.2f} wei")
-
-        # Record the finalize cost for each batch in this range
-        for b in range(start_batch, end_batch + 1):
-            batch_finalize_costs[b] = per_batch_cost
-            all_finalized_batches.add(b)
-
-    # Select the latest N batches
-    latest_batch = max(all_finalized_batches)
-    finalized_batch_indices = list(range(latest_batch - n_batches + 1, latest_batch + 1))
-
-    print(f"\n  Selected {len(finalized_batch_indices)} consecutive batches: {finalized_batch_indices[0]} - {finalized_batch_indices[-1]}")
-
-    # Verify all selected batches have finalize costs
-    missing_batches = [b for b in finalized_batch_indices if b not in batch_finalize_costs]
-    if missing_batches:
-        print(f"  Warning: {len(missing_batches)} batches missing finalize data: {missing_batches[:10]}...")
-        # Need to scan further back
-        print(f"  Scanning further back to find more FinalizeBatch events...")
-        # Continue scanning...
-        while missing_batches and from_block >= 0:
-            to_block = from_block - 1
-            from_block = from_block - width - 1
-
-            event_filter = rollup_contract.events.FinalizeBatch.create_filter(fromBlock=from_block, toBlock=to_block)
-            events = event_filter.get_all_entries()
-
-            for event in events:
-                batch_index = event['args']['batchIndex']
-                receipt = w3.eth.get_transaction_receipt(event.transactionHash)
-                finalize_cost = receipt['gasUsed'] * receipt['effectiveGasPrice']
-                finalize_events.append((batch_index, finalize_cost))
-
-            if len(events) > 0:
-                # Recalculate with new events
-                finalize_events.sort(key=lambda x: x[0], reverse=True)
-                batch_finalize_costs = {}
-
-                for i, (batch_index, finalize_cost) in enumerate(finalize_events):
-                    if i == len(finalize_events) - 1:
-                        start_batch = batch_index
-                    else:
-                        next_older_batch = finalize_events[i + 1][0]
-                        start_batch = next_older_batch + 1
-
-                    end_batch = batch_index
-                    num_batches = end_batch - start_batch + 1
-                    per_batch_cost = finalize_cost / num_batches
-
-                    for b in range(start_batch, end_batch + 1):
-                        batch_finalize_costs[b] = per_batch_cost
-
-                missing_batches = [b for b in finalized_batch_indices if b not in batch_finalize_costs]
-                print(f"    Still missing {len(missing_batches)} batches...")
-
-                if not missing_batches:
-                    break
-
-    # Step 2: Now collect commit data for these specific batches
-    print(f"\nStep 2: Collecting commit data for finalized batches...")
-
-    # Phase 1: Scan all CommitBatch events and record metadata
-    print(f"  Phase 1: Scanning CommitBatch events...")
-    target_batches = set(finalized_batch_indices)
-    batch_events = {}  # batch_index -> {tx_hash, blob_index}
-    last_tx_hash = None
-    blob_index = 0
-    to_block = l1_head
-    from_block = to_block - width
-
-    while len(batch_events) < n_batches:
-        event_filter = rollup_contract.events.CommitBatch.create_filter(fromBlock=from_block, toBlock=to_block)
-        events = event_filter.get_all_entries()
-
-        for event in events:
-            batch_index = event['args']['batchIndex']
-            tx_hash = event.transactionHash
-
-            # Track blob index for multiple batches in same transaction
-            if last_tx_hash == tx_hash:
-                blob_index += 1
-            else:
-                last_tx_hash = tx_hash
-                blob_index = 0
-
-            if batch_index in target_batches and batch_index not in batch_events:
-                batch_events[batch_index] = {'tx_hash': tx_hash, 'blob_index': blob_index}
-
-        to_block = from_block - 1
-        from_block = from_block - width - 1
-        if from_block < 0:
-            break
-
-    print(f"    Found {len(batch_events)} CommitBatch events")
-
-    # Phase 2: Parallel fetch tx + receipt for unique tx hashes
-    print(f"  Phase 2: Fetching transactions and receipts in parallel...")
-    unique_tx_hashes = list(set(e['tx_hash'] for e in batch_events.values()))
-    print(f"    Unique transactions to fetch: {len(unique_tx_hashes)}")
-
-    tx_cache = {}  # tx_hash -> (tx, receipt)
-
-    def fetch_tx_and_receipt(tx_hash):
+    def fetch_commit_tx_data(tx_hash):
         tx = w3.eth.get_transaction(tx_hash)
         receipt = w3.eth.get_transaction_receipt(tx_hash)
-        return tx_hash, tx, receipt
+        return ('commit', tx_hash, tx, receipt)
 
-    max_workers = 20
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(fetch_tx_and_receipt, h): h for h in unique_tx_hashes}
+    def fetch_finalize_receipt(tx_hash):
+        receipt = w3.eth.get_transaction_receipt(tx_hash)
+        return ('finalize', tx_hash, None, receipt)
+
+    all_fetches = []
+    for h in commit_tx_hashes:
+        all_fetches.append(('commit', h))
+    for h in finalize_tx_hashes:
+        all_fetches.append(('finalize', h))
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = []
+        for type_, h in all_fetches:
+            if type_ == 'commit':
+                futures.append(executor.submit(fetch_commit_tx_data, h))
+            else:
+                futures.append(executor.submit(fetch_finalize_receipt, h))
+
         completed = 0
+        total = len(futures)
         for future in as_completed(futures):
-            tx_hash, tx, receipt = future.result()
-            tx_cache[tx_hash] = (tx, receipt)
+            type_, tx_hash, tx, receipt = future.result()
+            if type_ == 'commit':
+                commit_tx_cache[tx_hash] = (tx, receipt)
+            else:
+                finalize_rx_cache[tx_hash] = receipt
             completed += 1
-            if completed % 50 == 0 or completed == len(unique_tx_hashes):
-                print(f"    Fetched {completed}/{len(unique_tx_hashes)} transactions")
+            if completed % 50 == 0 or completed == total:
+                print(f"  Fetched {completed}/{total} L1 transactions")
 
-    print(f"    Done fetching transactions")
-
-    # Phase 3: Parse blob data for each batch (sequential, needs slot state)
-    print(f"  Phase 3: Parsing blob data...")
-    batch_data_dict = {}
-    cur_slot = beacon_head_slot
-    cur_block = l1_head
-
-    # Process in block_number descending order for slot tracking
-    sorted_batches = sorted(batch_events.items(), key=lambda x: tx_cache[x[1]['tx_hash']][0].blockNumber, reverse=True)
-
-    for i, (batch_index, event_info) in enumerate(sorted_batches):
-        tx, receipt = tx_cache[event_info['tx_hash']]
-        blob_idx = event_info['blob_index']
-
-        block_number = tx.blockNumber
-        num_batches_in_tx = len(tx.blobVersionedHashes)
-        blob_hash = tx.blobVersionedHashes[blob_idx].hex()
-
-        commit_cost = (receipt['gasUsed'] * receipt['effectiveGasPrice']) / num_batches_in_tx
-
-        initial_L2_block_number, num_blocks, cur_slot, cur_block = parse_batch(
-            blob_hash, block_number, mainnet_beacon_url, cur_slot, cur_block
-        )
-
-        blob_cost = (receipt['blobGasPrice'] * receipt['blobGasUsed']) / num_batches_in_tx
-
-        batch_data_dict[batch_index] = [blob_hash, initial_L2_block_number, num_blocks,
-                                          commit_cost, blob_cost]
-
-        if (i + 1) % 50 == 0 or (i + 1) == len(sorted_batches):
-            print(f"    Parsed {i + 1}/{len(sorted_batches)} batches")
-
-    # Step 3: Combine commit and finalize data
-    print(f"\nStep 3: Combining commit and finalize data...")
+    # Step 4: Build batch data
+    print(f"\nStep 4: Building batch data...")
     batch_list = []
-    for batch_index in sorted(batch_data_dict.keys(), reverse=True):
-        if batch_index not in batch_finalize_costs:
-            print(f"  Warning: Batch {batch_index} has commit but no finalize data (skipping)")
-            continue
+    for batch_index in sorted(batch_infos.keys()):
+        info = batch_infos[batch_index]
 
-        blob_hash, initial_L2_block_number, num_blocks, commit_cost, blob_cost = batch_data_dict[batch_index]
-        finalize_cost = batch_finalize_costs[batch_index]
+        commit_tx, commit_receipt = commit_tx_cache[info['commit_tx_hash']]
+        finalize_receipt = finalize_rx_cache[info['finalize_tx_hash']]
+
+        # Amortize commit cost by number of blobs (= number of batches in commit tx)
+        n_blobs = len(commit_tx.blobVersionedHashes)
+        commit_cost = (commit_receipt['gasUsed'] * commit_receipt['effectiveGasPrice']) / n_blobs
+        blob_cost = (commit_receipt['blobGasPrice'] * commit_receipt['blobGasUsed']) / n_blobs
+
+        # Amortize finalize cost by number of batches sharing the same finalize tx
+        n_finalize = finalize_tx_batch_count[info['finalize_tx_hash']]
+        finalize_cost = (finalize_receipt['gasUsed'] * finalize_receipt['effectiveGasPrice']) / n_finalize
+
+        initial_L2_block_number = info['start_block_number']
+        num_blocks = info['end_block_number'] - info['start_block_number'] + 1
 
         batch_list.append([
-            batch_index,
-            blob_hash,
-            initial_L2_block_number,
-            num_blocks,
-            commit_cost,
-            finalize_cost,
-            blob_cost
+            batch_index, initial_L2_block_number, num_blocks,
+            commit_cost, finalize_cost, blob_cost
         ])
 
     # Create DataFrame
-    column_names = ['index', 'versioned_hash', 'initial_L2_block_number', 'num_blocks',
+    column_names = ['index', 'initial_L2_block_number', 'num_blocks',
                     'commit_cost', 'finalize_cost', 'blob_cost']
     batch_df = pd.DataFrame(batch_list, columns=column_names).astype(object)
     batch_df = batch_df.set_index('index').sort_index()
@@ -867,7 +589,7 @@ def collect_transaction_data(batch_df, start_time=None):
 
     # Use ThreadPoolExecutor for parallel RPC calls
     # With paid endpoint, can use more workers
-    max_workers = 50  # Higher limit for paid RPC endpoint
+    max_workers = 100  # Higher limit for paid RPC endpoint
     print(f"    Starting parallel fetch with {max_workers} workers...")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -988,13 +710,15 @@ def collect_transaction_data(batch_df, start_time=None):
     # Add batch_index to each transaction
     print(f"\n  Mapping transactions to batches...")
 
-    def block_to_batch(block_num):
-        for idx, row in batch_df.iterrows():
-            if row['initial_L2_block_number'] <= block_num < row['initial_L2_block_number'] + row['num_blocks']:
-                return idx
-        return None
+    # Build block_number -> batch_index lookup for O(1) mapping
+    block_to_batch = {}
+    for idx, row in batch_df.iterrows():
+        start = int(row['initial_L2_block_number'])
+        count = int(row['num_blocks'])
+        for b in range(start, start + count):
+            block_to_batch[b] = idx
 
-    tx_df['batch_index'] = tx_df['block_number'].apply(block_to_batch)
+    tx_df['batch_index'] = tx_df['block_number'].map(block_to_batch)
 
     print(f"\n  Collected {len(tx_df)} transactions")
     print(f"  Transaction size stats:")
