@@ -62,7 +62,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 }
 
 // Assign the chunk proof which need to prove
-func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (_ *coordinatorType.GetTaskSchema, retErr error) {
 	taskCtx, err := cp.checkParameter(ctx)
 	if err != nil || taskCtx == nil {
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
@@ -166,6 +166,12 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			defer func(chunkTask *orm.Chunk) {
+				if retErr != nil {
+					cp.recoverActiveAttempts(ctx, chunkTask)
+					log.Debug("recover active attempts", "chunk task_id", chunkTask.Hash)
+				}
+			}(tmpChunkTask)
 
 			if rowsAffected == 0 {
 				time.Sleep(100 * time.Millisecond)
@@ -201,7 +207,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	taskMsg, err := cp.formatProverTask(ctx.Copy(), proverTask, chunkTask, hardForkName)
 	if err != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -214,14 +219,12 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			// Released when Assign returns (defer).
 			defer func() { <-witnessSemaphore }()
 		case <-ctx.Done():
-			log.Warn("context canceled waiting for witness semaphore", "task_id", chunkTask.Hash, "err", ctx.Err())
-			cp.recoverActiveAttempts(ctx, chunkTask)
-			return nil, ctx.Err()
+			log.Warn("context cancelled waiting for witness semaphore", "task_id", chunkTask.Hash, "err", ctx.Err())
+			return nil, fmt.Errorf("context cancelled: %s", ctx.Err())
 		}
 
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
 		if err != nil {
-			cp.recoverActiveAttempts(ctx, chunkTask)
 			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -230,7 +233,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if taskCtx.hasAssignedTask == nil {
 		if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			cp.recoverActiveAttempts(ctx, chunkTask)
 			log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}

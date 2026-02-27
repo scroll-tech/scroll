@@ -59,7 +59,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 }
 
 // Assign load and assign batch tasks
-func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (_ *coordinatorType.GetTaskSchema, retErr error) {
 	taskCtx, err := bp.checkParameter(ctx)
 	if err != nil || taskCtx == nil {
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
@@ -163,6 +163,12 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			defer func(batchTask *orm.Batch) {
+				if retErr != nil {
+					bp.recoverActiveAttempts(ctx, batchTask)
+					log.Debug("recover active attempts", "batch task_id", batchTask.Hash)
+				}
+			}(tmpBatchTask)
 
 			if rowsAffected == 0 {
 				time.Sleep(100 * time.Millisecond)
@@ -199,7 +205,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, batchTask, hardForkName)
 	if err != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -208,7 +213,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
-			bp.recoverActiveAttempts(ctx, batchTask)
 			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -226,7 +230,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// Store session info.
 	if taskCtx.hasAssignedTask == nil {
 		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			bp.recoverActiveAttempts(ctx, batchTask)
 			log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}

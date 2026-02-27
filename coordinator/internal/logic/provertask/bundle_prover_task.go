@@ -57,7 +57,7 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 }
 
 // Assign load and assign batch tasks
-func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (_ *coordinatorType.GetTaskSchema, retErr error) {
 	taskCtx, err := bp.checkParameter(ctx)
 	if err != nil || taskCtx == nil {
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
@@ -161,6 +161,12 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 				log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			defer func(bundleTask *orm.Bundle) {
+				if retErr != nil {
+					bp.recoverActiveAttempts(ctx, bundleTask)
+					log.Debug("recover active attempts", "bundle task_id", bundleTask.Hash)
+				}
+			}(tmpBundleTask)
 
 			if rowsAffected == 0 {
 				time.Sleep(100 * time.Millisecond)
@@ -196,7 +202,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, hardForkName)
 	if err != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -204,7 +209,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		var metadata []byte
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
-			bp.recoverActiveAttempts(ctx, bundleTask)
 			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -224,7 +228,6 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	// Store session info.
 	if taskCtx.hasAssignedTask == nil {
 		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			bp.recoverActiveAttempts(ctx, bundleTask)
 			log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
