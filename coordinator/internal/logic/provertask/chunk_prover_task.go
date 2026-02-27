@@ -219,8 +219,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			// Released when Assign returns (defer).
 			defer func() { <-witnessSemaphore }()
 		case <-ctx.Done():
-			log.Warn("context cancelled waiting for witness semaphore", "task_id", chunkTask.Hash, "err", ctx.Err())
-			return nil, fmt.Errorf("context cancelled: %s", ctx.Err())
+			log.Warn("context canceled waiting for witness semaphore", "task_id", chunkTask.Hash, "err", ctx.Err())
+			return nil, fmt.Errorf("context canceled: %s", ctx.Err())
 		}
 
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
