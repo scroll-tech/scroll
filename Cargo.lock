@@ -4102,7 +4102,7 @@ dependencies = [
 
 [[package]]
 name = "l2geth"
-version = "4.7.11"
+version = "4.7.12"
 dependencies = [
  "alloy",
  "async-trait",
@@ -4241,7 +4241,7 @@ dependencies = [
 
 [[package]]
 name = "libzkp"
-version = "4.7.11"
+version = "4.7.12"
 dependencies = [
  "alloy-primitives",
  "base64 0.22.1",
@@ -4263,7 +4263,7 @@ dependencies = [
 
 [[package]]
 name = "libzkp-c"
-version = "4.7.11"
+version = "4.7.12"
 dependencies = [
  "l2geth",
  "libzkp",
@@ -6763,7 +6763,7 @@ dependencies = [
 
 [[package]]
 name = "prover"
-version = "4.7.11"
+version = "4.7.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",

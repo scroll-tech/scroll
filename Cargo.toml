@@ -14,7 +14,7 @@ edition = "2021"
 homepage = "https://scroll.io"
 readme = "README.md"
 repository = "https://github.com/scroll-tech/scroll"
-version = "4.7.11"
+version = "4.7.12"
 
 [workspace.dependencies]
 # with openvm 1.4.2
