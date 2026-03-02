@@ -53,3 +53,5 @@ go test -v -race -covermode=atomic scroll-tech/common/...
 ## License
 
 Scroll Monorepo is licensed under the [MIT](./LICENSE) license.
+<br>## Welcome to Bytecode Verification<br>Scroll's ZK EVM verifies Ethereum bytecode—new contributors, start with the Prover tutorial for your first ZK circuit. Tip: Use Scroll Bridge for L1-L2! <br>
+
