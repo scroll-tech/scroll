@@ -166,6 +166,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			if rowsAffected == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
 			defer func(chunkTask *orm.Chunk) {
 				if retErr != nil {
 					cp.recoverActiveAttempts(ctx, chunkTask)
@@ -173,10 +177,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				}
 			}(tmpChunkTask)
 
-			if rowsAffected == 0 {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
 		}
 		chunkTask = tmpChunkTask
 		break

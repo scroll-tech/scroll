@@ -161,17 +161,16 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 				log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			if rowsAffected == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
 			defer func(bundleTask *orm.Bundle) {
 				if retErr != nil {
 					bp.recoverActiveAttempts(ctx, bundleTask)
 					log.Debug("recover active attempts", "bundle task_id", bundleTask.Hash)
 				}
 			}(tmpBundleTask)
-
-			if rowsAffected == 0 {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
 		}
 		bundleTask = tmpBundleTask
 		break

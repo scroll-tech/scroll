@@ -163,17 +163,17 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 				log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 				return nil, ErrCoordinatorInternalFailure
 			}
+			if rowsAffected == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
 			defer func(batchTask *orm.Batch) {
 				if retErr != nil {
 					bp.recoverActiveAttempts(ctx, batchTask)
 					log.Debug("recover active attempts", "batch task_id", batchTask.Hash)
 				}
 			}(tmpBatchTask)
-
-			if rowsAffected == 0 {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
 		}
 
 		batchTask = tmpBatchTask
