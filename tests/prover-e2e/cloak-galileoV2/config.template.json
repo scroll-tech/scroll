@@ -24,9 +24,9 @@
   },
   "l2": {
     "validium_mode": true,
-    "chain_id": 5343523304,
+    "chain_id": 5343523305,
     "l2geth": {
-      "endpoint": "http://cloak-test-sequencer.mainnet.scroll.tech:8545"
+      "endpoint": "http://cloak-usx-sequencer.mainnet.scroll.tech:8545"
     }
   },
   "auth": {
