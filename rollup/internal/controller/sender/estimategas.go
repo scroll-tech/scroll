@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -134,11 +133,11 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 	accessList, gasLimitWithAccessList, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
 	if rpcErr != nil {
 		log.Error("CreateAccessList RPC error", "error", rpcErr)
-		return gasLimitWithoutAccessList, nil, rpcErr
+		return gasLimitWithoutAccessList, nil, nil
 	}
 	if errStr != "" {
 		log.Error("CreateAccessList reported error", "error", errStr)
-		return gasLimitWithoutAccessList, nil, errors.New(errStr)
+		return gasLimitWithoutAccessList, nil, nil
 	}
 
 	// Fine-tune accessList because 'to' address is automatically included in the access list by the Ethereum protocol: https://github.com/ethereum/go-ethereum/blob/v1.13.10/core/state/statedb.go#L1322
