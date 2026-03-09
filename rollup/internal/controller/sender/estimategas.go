@@ -133,9 +133,13 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 	accessList, gasLimitWithAccessList, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
 	if rpcErr != nil {
 		log.Error("CreateAccessList RPC error", "error", rpcErr)
+		// We ignore errors from eth_createAccessList and proceed
+		// with sending the transaction without an access list.
 		return gasLimitWithoutAccessList, nil, nil
 	}
 	if errStr != "" {
+		// We ignore errors from eth_createAccessList and proceed
+		// with sending the transaction without an access list.
 		log.Error("CreateAccessList reported error", "error", errStr)
 		return gasLimitWithoutAccessList, nil, nil
 	}
