@@ -168,8 +168,15 @@ func finetuneAccessList(accessList *types.AccessList, gasLimitWithAccessList uin
 			// Each storage key saves 100 gas units.
 			gasLimitWithAccessList += uint64(100 * len(entry.StorageKeys))
 		} else {
-			// Otherwise, keep the entry in the new access list.
-			newAccessList = append(newAccessList, entry)
+			// Ensure StorageKeys is never nil to avoid "missing required field 'storageKeys'" error during JSON serialization.
+			storageKeys := entry.StorageKeys
+			if storageKeys == nil {
+				storageKeys = []common.Hash{}
+			}
+			newAccessList = append(newAccessList, types.AccessTuple{
+				Address:     entry.Address,
+				StorageKeys: storageKeys,
+			})
 		}
 	}
 	return &newAccessList, gasLimitWithAccessList
