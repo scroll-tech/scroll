@@ -7,7 +7,7 @@ use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::{types::ProofType, ProverBuilder},
-    utils::{get_version, init_tracing},
+    utils::{VERSION, init_tracing},
 };
 use std::{fs::File, io::BufReader, path::Path};
 
@@ -78,7 +78,7 @@ async fn main() -> eyre::Result<()> {
     let args = Args::parse();
 
     if args.version {
-        println!("version is {}", get_version());
+        println!("version is {}", VERSION);
         std::process::exit(0);
     }
 
