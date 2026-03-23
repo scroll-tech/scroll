@@ -71,7 +71,7 @@ struct HandleSet {
     bundles: Vec<String>,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
     init_tracing();
 

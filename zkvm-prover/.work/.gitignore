@@ -1,4 +1,6 @@
 *.vmexe
+*.elf
+*.hex
 openvm.toml
 *.bin
 *.sol
