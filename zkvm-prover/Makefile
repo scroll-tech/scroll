@@ -36,17 +36,15 @@ ZK_VERSION=${ZKVM_COMMIT}-${PLONKY3_VERSION}
 E2E_HANDLE_SET ?= ../tests/prover-e2e/testset.json
 DUMP_DIR ?= .work
 
-prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
-
 version:
 	echo ${GO_TAG}-${GIT_REV}-${ZK_VERSION}
+	cargo clean --release -p scroll-proving-sdk
 
-prover_cpu:
+prover: version
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
+
+prover_cpu: version
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
-
-clean:
-	cargo clean -Z unstable-options --release -p prover --lockfile-path ../crates/gpu_override/Cargo.lock
 
 tests_binary:
 	cargo clean && cargo test --release --no-run
@@ -57,12 +55,12 @@ lint:
 	cargo clippy --all-features --all-targets -- -D warnings
 	cargo fmt --all
 
-test_run: 
+test_run: version 
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json
 
-test_e2e_run: ${E2E_HANDLE_SET}
+test_e2e_run: ${E2E_HANDLE_SET} version
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release -p prover -- --config ./config.json handle ${E2E_HANDLE_SET}
 
-test_e2e_run_gpu: ${E2E_HANDLE_SET}
+test_e2e_run_gpu: ${E2E_HANDLE_SET} version
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo run --release --features cuda -p prover -- --config ./config.json handle ${E2E_HANDLE_SET}
 

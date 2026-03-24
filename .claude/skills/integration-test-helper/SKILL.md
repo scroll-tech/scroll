@@ -31,8 +31,8 @@ The instructions often contain multiple steps which should be completed in seque
 
 Any command mentioned in steps should be executed by Bash tool, with following MUST DO for handling the outputs:
 
-+ Use "| tee <log_file>" to capture output of bash tool into local file for investigating later. The file name of log should be in format as `<desc_of_ccommand>_<day>_<time>.log`
-+ Do not read all output, after "| tee", use "|tail -n 50" to only catch the possible error message. That should be enough for common case.
++ Redirect the output of bash tool, both from stdout andstderr, into a local log file for investigating later. The file name should be in format as `<desc_of_ccommand>_<day>_<time>.log`
++ Do not read the whole log file. Just investigate the last 50 lines (use "tail -n 50") for possible error message.
 
 It may need to jump to other directories for executing a step. We MUST go back to target directory after every step has been completed. Also, DO NOT change anything outside of target directy.
 
@@ -41,7 +41,7 @@ Command execution should get success return. If error raised while executing, do
 
 1. Try to analysis the reason of error, first from the caught error message. If there is no enough data, grep useful information from the log file of whole output just captured.
 
-2. Ask User for next action, options are:
+2. MUST ASK USER for next action, options are:
    + Retry with resolution derived from error analyst
    + Retry, with user provide tips to resolve the issue
    + Just retry, user has resolved the issue by theirself
