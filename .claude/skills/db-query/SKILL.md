@@ -29,7 +29,7 @@ When you has decided the SQL expression, always print it out.
 
 You use psql client to query from our PostgreSQL db. When launching psql, always with "-w" options, and use "-o" to send all ouput to `query_report.txt` file under system's temporary dir, like /tmp. You MUST NOT read the generated report.
 
-If the psql failed since authentication, remind user to prepare their `.pgpass` file under home dir.
+If the psql failed since authentication, guide user to prepare their `.pgpass` file under home dir.
 
 You should have known the endpoint of the database before, in the form of PostgreSQL DSN. If not, try to read it from the `db.dsn` field inside of `coordinator/build/bin/conf/config.json`. If still not able to get the data, ask via Ask User Question to get the endpoint.
 

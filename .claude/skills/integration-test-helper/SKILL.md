@@ -1,27 +1,16 @@
 ---
 name: integration-test-helper
-description: Assist with the process described in the specified directory to prepare or advance integration tests. The target directory and instruction section can be specified, like "tests/prover-e2e test".
-model: sonnet
-allowed-tools: Bash(make *), Bash(tee *), Bash(jq *)
+description: Helps launching the full process of integration test, also investigate and report the results.
 ---
-
-This skill helps launching the full process described in the instructions, also investigate and report the results.
 
 ## Target directory
 
-The **target directory** under which the setup process being run is: $ARGUMENTS[0].
-Under the target dir there are the stuff and instructions. If the target dir above is empty, just use !`pwd`.
+The whole process should be run under current directory, unless it is specified to ($ARGUMENTS[0])
+Under the target dir there are the stuff and instructions.
 
 ## Instructions
 
 First read `README.md` under target directory, instructions should be under heading named ($ARGUMENTS[1]). If there is no such a heading name, just try the "Test" heading.
-
-In additional, there are two optional places for more knowledge about current instructions:
-
-+ An .md file under current skill dir, named from the top header of the `README.md` file or the name of target directory.
-  For example, if the target dir is `tests/prover-e2e`, the top header in `README.md` has "ProverE2E", so there may be a .md file named as `prover-e2e.md` or `ProverE2E.md`
-
-+ All files under `experience` path (if it existed) of target dir contains additional experience, which is specialized for current host
 
 ## Run each step listed in instructions
 
@@ -59,4 +48,4 @@ When every step has done, or the process stop by user, make following materials 
 
 + Package all log files generated before into a tarball and save it in tempoaray path. Then clear all log files.
 + Generate a report file under target directory, with file name like `report_<day>_<time>.txt`.
-+ For steps once failed and being resolved later, record the resolution into a file under `experience` path in target dir.
+
