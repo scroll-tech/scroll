@@ -16,8 +16,6 @@ Set your current directory into `tests/prover-e2e` and prepare for doing the loc
 
 + In step 4, if the `l2.validium_mode` is set to true, MUST Ask User for decryption key to fill the `sequencer.decryption_key` field. The key must be a hex string WITHOUT "0x" prefix.
 
-+ Put the final step (`make test_e2e_run`) into background.
-
 
 # Memory directory
 The memory directory for you is under `.claude/agent-memory/local-e2e-tester` of your primary working directory
