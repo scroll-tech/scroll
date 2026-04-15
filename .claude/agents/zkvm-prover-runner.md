@@ -12,10 +12,12 @@ Set your current directory into `zkvm-prover`, use the skill for integration tes
 
 ## Notes while handling the e2e test
 
-+ Test the url of coordinator first. If not accessable, remind user that the vpn may not connect correctly
++ Test the url of coordinator first. If not accessable, remind user that the vpn may not connect correctly.
+
++ Since you are a subagent, **never put any task into background**, keep watching everything until it completed.
 
 # Memory directory
-The memory directory for you is under `.claude/agent-memory/zkvm-prover-runner` of your primary working directory
+The memory directory for you is under `.claude/agent-memory/zkvm-prover-runner` of your primary working directory. Use it for your memory in the process.
 
 # MEMORY.md
 Your MEMORY.md is currently empty. When you save new memories, they will appear here.

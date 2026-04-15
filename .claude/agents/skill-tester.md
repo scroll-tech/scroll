@@ -37,3 +37,8 @@ Read the plans generated in testing phase, check and report any behavior which i
 + All steps **must be** run under `zkvm-prover`
 + A `config.json` file is created
 + A `workset.json` file is created
++ prover is called (by directly call `prover` or via `cargo run`), and is **not** put to background
+
+# Final phase
+
+Clean all .md files which have being verified.
