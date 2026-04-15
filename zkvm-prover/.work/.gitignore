@@ -5,7 +5,7 @@ openvm.toml
 *.bin
 *.sol
 cache
-db
+db*
 *.json
 ?
 root-verifier*

@@ -26,5 +26,8 @@ sftp-config.json
 # AI skills
 **/experience
 
+# AI skill generate report
+report_*.txt
+
 target
 zkvm-prover/*.json
