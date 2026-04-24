@@ -60,7 +60,7 @@ func (o *BlobUpload) GetNextBatchIndexToUploadByPlatform(ctx context.Context, st
 	return batchIndex, nil
 }
 
-// GetBlobUpload retrieves the selected blob uploads from the database.
+// GetBlobUploads retrieves the selected blob uploads from the database.
 func (o *BlobUpload) GetBlobUploads(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*BlobUpload, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&BlobUpload{})

@@ -18,7 +18,7 @@ const (
 	GolangCIVersion = "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2"
 )
 
-// GOBIN environment variable.
+// goBin environment variable.
 func goBin() string {
 	if os.Getenv("GOBIN") == "" {
 		log.Fatal("GOBIN not set")
