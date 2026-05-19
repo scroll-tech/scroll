@@ -21,6 +21,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
 	"scroll-tech/database/migrate"
@@ -48,7 +49,7 @@ var (
 
 func setupDB(t *testing.T) *gorm.DB {
 	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cfg := &database.Config{
 		DSN:        dsn,
@@ -57,10 +58,10 @@ func setupDB(t *testing.T) *gorm.DB {
 		MaxIdleNum: 20,
 	}
 	db, err := database.InitDB(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
+	require.NoError(t, err)
+	require.NoError(t, migrate.ResetDB(sqlDB))
 	return db
 }
 
@@ -88,20 +89,20 @@ func setupEnv(t *testing.T) {
 	)
 
 	testApps = tc.NewTestcontainerApps()
-	assert.NoError(t, testApps.StartPostgresContainer())
-	assert.NoError(t, testApps.StartL2GethContainer())
-	assert.NoError(t, testApps.StartPoSL1Container())
+	require.NoError(t, testApps.StartPostgresContainer())
+	require.NoError(t, testApps.StartL2GethContainer())
+	require.NoError(t, testApps.StartPoSL1Container())
 	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 
 	l1RawClient, err = testApps.GetPoSL1Client()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	l1Client = ethclient.NewClient(l1RawClient)
 	l2Client, err = testApps.GetL2GethClient()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	l1GethChainID, err = l1Client.ChainID(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	l2GethChainID, err = l2Client.ChainID(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
@@ -109,17 +110,17 @@ func setupEnv(t *testing.T) {
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
 	pKey, err := crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.CommitSenderSignerConfig.PrivateKeySignerConfig.PrivateKey))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l1GethChainID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pKey, err = crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.GasOracleSenderSignerConfig.PrivateKeySignerConfig.PrivateKey))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	l2Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l2GethChainID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	svrPort := strconv.FormatInt(port.Int64()+40000, 10)
 	l2Cfg.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 }
@@ -144,50 +145,50 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 func prepareContracts(t *testing.T) {
 	// L1 ScrolChain contract
 	nonce, err := l1Client.PendingNonceAt(context.Background(), l1Auth.From)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockL1ContractAddress := crypto.CreateAddress(l1Auth.From, nonce)
 	tx := types.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := l1Auth.Signer(l1Auth.From, tx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = l1Client.SendTransaction(context.Background(), signedTx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		_, isPending, getErr := l1Client.TransactionByHash(context.Background(), signedTx.Hash())
 		return getErr == nil && !isPending
 	}, 30*time.Second, time.Second)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		receipt, getErr := l1Client.TransactionReceipt(context.Background(), signedTx.Hash())
 		return getErr == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
 	}, 30*time.Second, time.Second)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		code, getErr := l1Client.CodeAt(context.Background(), mockL1ContractAddress, nil)
 		return getErr == nil && len(code) > 0
 	}, 30*time.Second, time.Second)
 
 	// L2 ScrolChain contract
 	nonce, err = l2Client.PendingNonceAt(context.Background(), l2Auth.From)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mockL2ContractAddress := crypto.CreateAddress(l2Auth.From, nonce)
 	tx = types.NewContractCreation(nonce, big.NewInt(0), 2000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err = l2Auth.Signer(l2Auth.From, tx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = l2Client.SendTransaction(context.Background(), signedTx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		_, isPending, err := l2Client.TransactionByHash(context.Background(), signedTx.Hash())
 		return err == nil && !isPending
 	}, 30*time.Second, time.Second)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		receipt, err := l2Client.TransactionReceipt(context.Background(), signedTx.Hash())
 		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
 	}, 30*time.Second, time.Second)
 
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		code, err := l2Client.CodeAt(context.Background(), mockL2ContractAddress, nil)
 		return err == nil && len(code) > 0
 	}, 30*time.Second, time.Second)
