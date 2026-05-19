@@ -18,7 +18,7 @@
   },
   "db": {
     "driver_name": "postgres",
-    "dsn": "postgres://dev:dev@localhost/scroll?sslmode=disable",
+    "dsn": "postgres://dev:dev@localhost:__DB_PORT__/scroll?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
@@ -26,7 +26,7 @@
     "validium_mode": false,
     "chain_id": 534352,
     "l2geth": {
-      "endpoint": "<serach a public rpc endpoint like alchemy>"
+      "endpoint": "https://mainnet-rpc.scroll.io"
     }
   },
   "auth": {

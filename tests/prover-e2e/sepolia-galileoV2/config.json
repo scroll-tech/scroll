@@ -1,7 +1,7 @@
 {
     "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://dev:dev@localhost:5432/scroll?sslmode=disable",
+    "dsn": "postgres://dev:dev@localhost:__DB_PORT__/scroll?sslmode=disable",
     "maxOpenNum": 5,
     "maxIdleNum": 1
   },

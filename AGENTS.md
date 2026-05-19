@@ -64,6 +64,46 @@ make coordinator_setup
 | `zkvm-prover/` | Build scripts and runtime config for the prover binary |
 | `build/dockerfiles/` | Dockerfiles for production images |
 
+## Troubleshooting Common E2E Test Issues
+
+### Port Conflicts (Shared Servers)
+- System PostgreSQL often occupies port 5432. Edit `docker-compose.yml` to use an alternative (e.g., 5442) and update all config files that reference the port (`.env`, `config.json`, `config.template.json`, `Makefile` health check).
+- Kill stale coordinator processes before restarting: `pkill -f coordinator_api`.
+
+### Stale Docker Containers
+- After changing `docker-compose.yml`, old containers may persist with stale port mappings. Always use `docker rm -f <name>` before `docker compose up`.
+- The E2E container is named `local_postgres`. Verify the port mapping with `docker port local_postgres`.
+
+### Solc Version
+- The project requires **solc ≥ 0.8.24** (for `--evm-version cancun`). System-installed solc is often older.
+- Workaround: download `solc-static-linux` v0.8.24 to `/tmp/solc` and prepend `/tmp` to PATH.
+
+### goose Migration Tool
+- The E2E `setup_db` step requires `goose`. Install with: `go install github.com/pressly/goose/v3/cmd/goose@latest`.
+- Ensure `$GOPATH/bin` (typically `~/go/bin`) is in PATH.
+
+### Config Template Placeholders
+- Some config templates contain literal placeholder strings (e.g., `"<serach a public rpc endpoint like alchemy>"`). Always verify the `l2geth.endpoint` field points to a reachable RPC before launching the coordinator.
+- A bad endpoint causes the coordinator to panic at startup during `InitL2geth`.
+
+### validium_mode Consistency
+- The E2E config (`tests/prover-e2e/*/config.json`) and coordinator config (`coordinator/build/bin/conf/config.json`) must agree on `validium_mode`. Mismatch causes "invalid data length for DABatchV7" errors.
+- For mainnet testing: set `validium_mode: false`.
+- For cloak / validium testing: set `validium_mode: true` and ensure `sequencer.decryption_key` is provided.
+
+### Fork & Block Range Selection
+- Blocks must be post-fork to match the configured codec version. For GalileoV2 (codec V10) on mainnet, use blocks ≥ 33,750,000. Older blocks (e.g., 26,653,680) are Galileo (codec V9) and will fail with "mismatched post-state root".
+- To verify fork compatibility: check `codec_version` in the E2E config and ensure `SCROLL_FORK_NAME` matches the coordinator's verifier fork list.
+
+### S3 Asset URLs
+- The prover config `base_url` must match the actual S3 object path. Verify with `curl -sI` before running.
+- The coordinator downloads **verifier** assets from `v0.X.X/verifier/`; the prover downloads **circuit** assets from `<fork>/<proof_type>/<vk>/`.
+- If you see HTTP 403 from S3, check whether the URL contains a `releases/` segment that shouldn't be there.
+
+### Multiple Coordinator Instances
+- Running `make coordinator_setup` rebuilds the binary but does not stop running instances. If the old instance holds port 8390, the new one fails with `bind: address already in use`.
+- Always check with `ss -tlnp | grep 8390` before launching.
+
 ## Coordination with Humans
 
 - **Code / logic issues**: agents should reason independently and propose fixes.

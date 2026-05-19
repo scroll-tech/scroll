@@ -58,6 +58,35 @@ impl AssetsLocationData {
         Ok(())
     }
 
+    /// Pre-flight check: verify the asset base URL is reachable before any proving.
+    /// S3 buckets typically return 403 for directory listings, which is expected and OK.
+    /// A connection error (DNS failure, timeout) indicates a bad URL.
+    pub async fn preflight_check(&self) -> Result<()> {
+        let client = reqwest::Client::new();
+        match client.head(self.base_url.clone()).send().await {
+            Ok(resp) => {
+                let status = resp.status();
+                if status.is_success() || status.as_u16() == 403 {
+                    // 403 on S3 directory listing is normal — bucket listing is disabled
+                    Ok(())
+                } else {
+                    eyre::bail!(
+                        "Asset URL returned unexpected status {}: {}",
+                        status,
+                        self.base_url
+                    )
+                }
+            }
+            Err(e) => {
+                eyre::bail!(
+                    "Asset URL unreachable: {}\n  Caused by: {}\n  Check the base_url in your prover config (common issue: extra 'releases/' path segment).",
+                    self.base_url,
+                    e
+                )
+            }
+        }
+    }
+
     pub async fn get_asset(
         &self,
         vk: &str,

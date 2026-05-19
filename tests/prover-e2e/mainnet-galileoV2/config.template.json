@@ -5,7 +5,7 @@
     "external_prover_threshold": 32,
     "bundle_collection_time_sec": 180,
     "batch_collection_time_sec": 180,
-    "chunk_collection_time_sec": 180,
+    "chunk_collection_time_sec": 3600,
     "verifier": {
       "min_prover_version": "v4.4.45",
       "verifiers": [
@@ -35,6 +35,6 @@
     "login_expire_duration_sec": 3600
   },
   "sequencer": {
-    "decryption_key": "<decryption key>"
+    "decryption_key": "not needed for non-validium"
   }
 }

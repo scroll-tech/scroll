@@ -86,6 +86,15 @@ async fn main() -> eyre::Result<()> {
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg.clone());
 
+    // Pre-flight check: verify all circuit asset URLs are reachable before any proving.
+    // This catches misconfigured base_url (e.g., extra "releases/" prefix) early,
+    // rather than failing mid-proving with an opaque HTTP 403.
+    for (fork_name, circuit) in &cfg.circuits {
+        circuit.location_data.preflight_check().await.map_err(|e| {
+            eyre::eyre!("Pre-flight check failed for fork '{}': {}\n  Asset URL: {}", fork_name, e, circuit.location_data.base_url)
+        })?;
+    }
+
     match args.command {
         Some(Commands::Dump {
             json_mode,

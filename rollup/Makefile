@@ -1,4 +1,8 @@
 .PHONY: mock_abi libzstd rollup_bins gas_oracle rollup_relayer test lint clean docker
+# NOTE: We use $$(CURDIR) instead of $$(PWD) throughout.
+# CURDIR is Make's built-in variable that tracks the current Makefile's directory
+# and respects 'make -C'. PWD is inherited from the shell and does NOT change with -C,
+# which causes binaries to be built to wrong paths when invoked via make -C <subdir>.
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
@@ -9,24 +13,24 @@ mock_abi:
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
 rollup_bins: ## Builds the Rollup bins.
-	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
-	go build -o $(PWD)/build/bin/blob_uploader ./cmd/blob_uploader/
+	go build -o $(CURDIR)/build/bin/gas_oracle ./cmd/gas_oracle/
+	go build -o $(CURDIR)/build/bin/rollup_relayer ./cmd/rollup_relayer/
+	go build -o $(CURDIR)/build/bin/blob_uploader ./cmd/blob_uploader/
 
 gas_oracle: ## Builds the gas_oracle bin
-	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
+	go build -o $(CURDIR)/build/bin/gas_oracle ./cmd/gas_oracle/
 
 rollup_relayer: ## Builds the rollup_relayer bin
-	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
+	go build -o $(CURDIR)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 blob_uploader: ## Builds the blob_uploader bin
-	go build -o $(PWD)/build/bin/blob_uploader ./cmd/blob_uploader/
+	go build -o $(CURDIR)/build/bin/blob_uploader ./cmd/blob_uploader/
 
 test:
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(CURDIR)/...
 
 lint: mock_abi ## Lint the files - used for CI
-	GOBIN=$(PWD)/build/bin go run ../build/lint.go
+	GOBIN=$(CURDIR)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
