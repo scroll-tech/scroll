@@ -7,7 +7,7 @@ use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::{types::ProofType, ProverBuilder},
-    utils::{VERSION, init_tracing},
+    utils::{init_tracing, VERSION},
 };
 use std::{fs::File, io::BufReader, path::Path};
 
