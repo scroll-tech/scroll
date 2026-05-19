@@ -96,8 +96,13 @@ func action(ctx *cli.Context) error {
 			return
 		}
 
+		if number == 0 {
+			log.Warn("L1 block number is 0, skipping fetch block header")
+			return
+		}
+
 		if loopErr = l1watcher.FetchBlockHeader(number - 1); loopErr != nil {
-			log.Error("Failed to fetch L1 block header", "lastest", number-1, "err", loopErr)
+			log.Error("Failed to fetch L1 block header", "latest", number-1, "err", loopErr)
 			return
 		}
 	})

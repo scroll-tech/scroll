@@ -64,6 +64,8 @@ func (r ProverProviderType) String() string {
 		return "prover provider type internal"
 	case ProverProviderTypeExternal:
 		return "prover provider type external"
+	case ProverProviderTypeProxy:
+		return "prover provider type proxy"
 	default:
 		return fmt.Sprintf("prover provider type: %d", r)
 	}
@@ -76,4 +78,6 @@ const (
 	ProverProviderTypeInternal
 	// ProverProviderTypeExternal is an external prover provider type
 	ProverProviderTypeExternal
+	// ProverProviderTypeProxy is an proxy prover provider type
+	ProverProviderTypeProxy = 3
 )

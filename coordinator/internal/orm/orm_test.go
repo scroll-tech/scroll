@@ -28,8 +28,8 @@ func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
 			testApps.Free()
+			tearDownEnv(t)
 		}
-		tearDownEnv(t)
 	}()
 	m.Run()
 }

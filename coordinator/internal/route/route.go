@@ -8,6 +8,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/proxy"
 	"scroll-tech/coordinator/internal/middleware"
 )
 
@@ -25,16 +26,45 @@ func Route(router *gin.Engine, cfg *config.Config, reg prometheus.Registerer) {
 func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
 
-	challengeMiddleware := middleware.ChallengeMiddleware(conf)
+	challengeMiddleware := middleware.ChallengeMiddleware(conf.Auth)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)
 
-	loginMiddleware := middleware.LoginMiddleware(conf)
+	loginMiddleware := middleware.LoginMiddleware(conf.Auth)
 	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
 
 	// need jwt token api
 	r.Use(loginMiddleware.MiddlewareFunc())
 	{
+		r.POST("/proxy_login", loginMiddleware.LoginHandler)
 		r.POST("/get_task", api.GetTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)
+	}
+}
+
+// Route register route for coordinator
+func ProxyRoute(router *gin.Engine, cfg *config.ProxyConfig, reg prometheus.Registerer) {
+	router.Use(gin.Recovery())
+
+	observability.Use(router, "coordinator", reg)
+
+	r := router.Group("coordinator")
+
+	v1_proxy(r, cfg)
+}
+
+func v1_proxy(router *gin.RouterGroup, conf *config.ProxyConfig) {
+	r := router.Group("/v1")
+
+	challengeMiddleware := middleware.ChallengeMiddleware(conf.ProxyManager.Auth)
+	r.GET("/challenge", challengeMiddleware.LoginHandler)
+
+	loginMiddleware := middleware.ProxyLoginMiddleware(conf.ProxyManager.Auth)
+	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
+
+	// need jwt token api
+	r.Use(loginMiddleware.MiddlewareFunc())
+	{
+		r.POST("/get_task", proxy.GetTask.GetTasks)
+		r.POST("/submit_proof", proxy.SubmitProof.SubmitProof)
 	}
 }

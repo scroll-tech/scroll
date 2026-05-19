@@ -7,7 +7,10 @@ package libzkp
 #include "libzkp.h"
 */
 import "C" //nolint:typecheck
-import "unsafe"
+import (
+	"strings"
+	"unsafe"
+)
 
 // Initialize the handler for universal task
 func InitL2geth(configJSON string) {
@@ -15,6 +18,11 @@ func InitL2geth(configJSON string) {
 	defer freeCString(cConfig)
 
 	C.init_l2geth(cConfig)
+}
+
+// Generate a universal task
+func GenerateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {
+	return generateUniversalTask(fromMessageTaskType(taskType), taskJSON, strings.ToLower(forkName), expectedVk, decryptionKey)
 }
 
 func generateUniversalTask(taskType int, taskJSON, forkName string, expectedVk []byte, decryptionKey []byte) (bool, string, string, []byte) {

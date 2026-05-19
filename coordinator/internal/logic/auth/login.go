@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,45 +20,72 @@ import (
 
 // LoginLogic the auth logic
 type LoginLogic struct {
-	cfg          *config.Config
-	challengeOrm *orm.Challenge
+	cfg          *config.VerifierConfig
+	deduplicator ChallengeDeduplicator
 
 	openVmVks map[string]struct{}
 
 	proverVersionHardForkMap map[string]string
 }
 
+type ChallengeDeduplicator interface {
+	InsertChallenge(ctx context.Context, challengeString string) error
+}
+
+type SimpleDeduplicator struct {
+}
+
+func (s *SimpleDeduplicator) InsertChallenge(ctx context.Context, challengeString string) error {
+	return nil
+}
+
+// NewLoginLogicWithSimpleDEduplicator new a LoginLogic, do not use db to deduplicate challenge
+func NewLoginLogicWithSimpleDeduplicator(vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+	return newLoginLogic(&SimpleDeduplicator{}, vcfg, vf)
+}
+
 // NewLoginLogic new a LoginLogic
-func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
+func NewLoginLogic(db *gorm.DB, vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+	return newLoginLogic(orm.NewChallenge(db), vcfg, vf)
+}
+
+func newLoginLogic(deduplicator ChallengeDeduplicator, vcfg *config.VerifierConfig, vf *verifier.Verifier) *LoginLogic {
+
 	proverVersionHardForkMap := make(map[string]string)
 
-	for _, cfg := range cfg.ProverManager.Verifier.Verifiers {
+	for _, cfg := range vcfg.Verifiers {
 		proverVersionHardForkMap[cfg.ForkName] = cfg.MinProverVersion
 	}
 
 	return &LoginLogic{
-		cfg:                      cfg,
+		cfg:                      vcfg,
 		openVmVks:                vf.OpenVMVkMap,
-		challengeOrm:             orm.NewChallenge(db),
+		deduplicator:             deduplicator,
 		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
 }
 
-// InsertChallengeString insert and check the challenge string is existed
-func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
-	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
-}
-
-func (l *LoginLogic) Check(login *types.LoginParameter) error {
+// Verify the completeness of login message
+func VerifyMsg(login *types.LoginParameter) error {
 	verify, err := login.Verify()
 	if err != nil || !verify {
 		log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
 			"prover_version", login.Message.ProverVersion, "message", login.Message)
 		return errors.New("auth message verify failure")
 	}
+	return nil
+}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.MinProverVersion) {
-		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.ProverManager.Verifier.MinProverVersion, login.Message.ProverVersion)
+// InsertChallengeString insert and check the challenge string is existed
+func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
+	return l.deduplicator.InsertChallenge(ctx.Copy(), challenge)
+}
+
+// Check if the login client is compatible with the setting in coordinator
+func (l *LoginLogic) CompatiblityCheck(login *types.LoginParameter) error {
+
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.MinProverVersion) {
+		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", l.cfg.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	vks := make(map[string]struct{})
@@ -65,27 +93,32 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		vks[vk] = struct{}{}
 	}
 
-	for _, vk := range login.Message.VKs {
-		if _, ok := vks[vk]; !ok {
-			log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
-				"prover_version", login.Message.ProverVersion, "message", login.Message)
-			if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
-				return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
-					version.Version, login.Message.ProverVersion)
+	// new coordinator / proxy do not check vks while login, code only for backward compatibility
+	if len(vks) != 0 {
+		for _, vk := range login.Message.VKs {
+			if _, ok := vks[vk]; !ok {
+				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
+					"prover_version", login.Message.ProverVersion, "message", login.Message)
+				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
+					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
+						version.Version, login.Message.ProverVersion)
+				}
+				// if the prover reports a same prover version
+				return errors.New("incompatible vk. please check your params files or config files")
 			}
-			// if the prover reports a same prover version
-			return errors.New("incompatible vk. please check your params files or config files")
 		}
 	}
 
-	if login.Message.ProverProviderType != types.ProverProviderTypeInternal && login.Message.ProverProviderType != types.ProverProviderTypeExternal {
+	switch login.Message.ProverProviderType {
+	case types.ProverProviderTypeInternal:
+	case types.ProverProviderTypeExternal:
+	case types.ProverProviderTypeProxy:
+	case types.ProverProviderTypeUndefined:
 		// for backward compatibility, set ProverProviderType as internal
-		if login.Message.ProverProviderType == types.ProverProviderTypeUndefined {
-			login.Message.ProverProviderType = types.ProverProviderTypeInternal
-		} else {
-			log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover version", login.Message.ProverVersion)
-			return errors.New("invalid prover provider type.")
-		}
+		login.Message.ProverProviderType = types.ProverProviderTypeInternal
+	default:
+		log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover version", login.Message.ProverVersion)
+		return errors.New("invalid prover provider type.")
 	}
 
 	return nil
