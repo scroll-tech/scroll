@@ -69,7 +69,7 @@ func action(ctx *cli.Context) error {
 	apiSrv := server(ctx, cfg, db, registry)
 
 	log.Info(
-		"Start coordinator api successfully.",
+		"Start coordinator proxy successfully.",
 		"version", version.Version,
 	)
 
