@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mitchellh/mapstructure"
 )
 
 // Response the response schema
@@ -11,6 +12,19 @@ type Response struct {
 	ErrCode int         `json:"errcode"`
 	ErrMsg  string      `json:"errmsg"`
 	Data    interface{} `json:"data"`
+}
+
+func (resp *Response) DecodeData(out interface{}) error {
+	// Decode generically unmarshaled JSON (map[string]any, []any) into a typed struct
+	// honoring `json` tags and allowing weak type conversions.
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  out,
+	})
+	if err != nil {
+		return err
+	}
+	return dec.Decode(resp.Data)
 }
 
 // RenderJSON renders response with json

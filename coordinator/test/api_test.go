@@ -30,12 +30,14 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/controller/proxy"
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/internal/route"
 )
 
 var (
-	conf *config.Config
+	conf      *config.Config
+	proxyConf *config.ProxyConfig
 
 	testApps *testcontainers.TestcontainerApps
 
@@ -51,6 +53,9 @@ var (
 	chunk        *encoding.Chunk
 	batch        *encoding.Batch
 	tokenTimeout int
+
+	envSet   bool
+	portUsed map[int64]struct{}
 )
 
 func TestMain(m *testing.M) {
@@ -63,18 +68,44 @@ func TestMain(m *testing.M) {
 }
 
 func randomURL() string {
-	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
-	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+	return randmURLBatch(1)[0]
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
-	var err error
-	db, err = testApps.GetGormDBClient()
+// Generate a batch of random localhost URLs with different ports, similar to randomURL.
+func randmURLBatch(n int) []string {
+	if n <= 0 {
+		return nil
+	}
+	urls := make([]string, 0, n)
+	if portUsed == nil {
+		portUsed = make(map[int64]struct{})
+	}
+	for len(urls) < n {
+		id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
+		port := 20000 + 2000 + id.Int64()
+		if _, exist := portUsed[port]; exist {
+			continue
+		}
+		portUsed[port] = struct{}{}
+		urls = append(urls, fmt.Sprintf("localhost:%d", port))
+	}
+	return urls
+}
 
-	assert.NoError(t, err)
+func setupCoordinatorDb(t *testing.T) {
+	var err error
+	assert.NotNil(t, db, "setEnv must be called before")
+	// db, err = testApps.GetGormDBClient()
+
+	// assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+}
+
+func launchCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+
+	assert.NotNil(t, db, "db must be set")
 
 	tokenTimeout = 60
 	conf = &config.Config{
@@ -114,6 +145,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		EuclidV2Time:   new(uint64),
 	}, db, nil)
 	route.Route(router, conf, nil)
+	t.Log("coordinator server url", coordinatorURL)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
 		Handler: router,
@@ -129,7 +161,77 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	return proofCollector, srv
 }
 
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+	setupCoordinatorDb(t)
+	return launchCoordinator(t, proversPerSession, coordinatorURL)
+}
+
+func setupProxyDb(t *testing.T) {
+	assert.NotNil(t, db, "setEnv must be called before")
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetModuleDB(sqlDB, "proxy"))
+}
+
+func launchProxy(t *testing.T, proxyURL string, coordinatorURL []string, usePersistent bool) *http.Server {
+	var err error
+	assert.NoError(t, err)
+
+	coordinators := make(map[string]*config.UpStream)
+	for i, n := range coordinatorURL {
+		coordinators[fmt.Sprintf("coordinator_%d", i)] = testProxyUpStreamCfg(n)
+	}
+
+	tokenTimeout = 60
+	proxyConf = &config.ProxyConfig{
+		ProxyName: "test_proxy",
+		ProxyManager: &config.ProxyManager{
+			Verifier: &config.VerifierConfig{
+				MinProverVersion: "v4.4.89",
+				Verifiers: []config.AssetConfig{{
+					AssetsPath: "",
+					ForkName:   "euclidV2",
+				}},
+			},
+			Client: testProxyClientCfg(),
+			Auth: &config.Auth{
+				Secret:                     "proxy",
+				ChallengeExpireDurationSec: tokenTimeout,
+				LoginExpireDurationSec:     tokenTimeout,
+			},
+		},
+		Coordinators: coordinators,
+	}
+
+	router := gin.New()
+	if usePersistent {
+		proxy.InitController(proxyConf, db, nil)
+	} else {
+		proxy.InitController(proxyConf, nil, nil)
+	}
+	route.ProxyRoute(router, proxyConf, nil)
+	t.Log("proxy server url", proxyURL)
+	srv := &http.Server{
+		Addr:    proxyURL,
+		Handler: router,
+	}
+	go func() {
+		runErr := srv.ListenAndServe()
+		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
+			assert.NoError(t, runErr)
+		}
+	}()
+	time.Sleep(time.Second * 2)
+
+	return srv
+}
+
 func setEnv(t *testing.T) {
+	if envSet {
+		t.Log("SetEnv is re-entried")
+		return
+	}
+
 	var err error
 
 	version.Version = "v4.5.45"
@@ -146,6 +248,7 @@ func setEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+	assert.NoError(t, migrate.MigrateModule(sqlDB, "proxy"))
 
 	batchOrm = orm.NewBatch(db)
 	chunkOrm = orm.NewChunk(db)
@@ -169,6 +272,7 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 	batch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
 
+	envSet = true
 }
 
 func TestApis(t *testing.T) {

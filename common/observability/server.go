@@ -16,6 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 )
 
@@ -33,9 +34,17 @@ func Server(c *cli.Context, db *gorm.DB) {
 		promhttp.Handler().ServeHTTP(context.Writer, context.Request)
 	})
 
-	probeController := NewProbesController(db)
-	r.GET("/health", probeController.HealthCheck)
-	r.GET("/ready", probeController.Ready)
+	if db != nil {
+		probeController := NewProbesController(db)
+		r.GET("/health", probeController.HealthCheck)
+		r.GET("/ready", probeController.Ready)
+	} else {
+		dummyOk := func(context *gin.Context) {
+			types.RenderSuccess(context, nil)
+		}
+		r.GET("/health", dummyOk)
+		r.GET("/ready", dummyOk)
+	}
 
 	address := fmt.Sprintf(":%s", c.String(utils.MetricsPort.Name))
 	server := &http.Server{

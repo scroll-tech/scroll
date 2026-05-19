@@ -19,39 +19,62 @@ type AuthController struct {
 	loginLogic *auth.LoginLogic
 }
 
-// NewAuthController returns an LoginController instance
-func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
+func NewAuthControllerWithLogic(loginLogic *auth.LoginLogic) *AuthController {
 	return &AuthController{
-		loginLogic: auth.NewLoginLogic(db, cfg, vf),
+		loginLogic: loginLogic,
 	}
 }
 
-// Login the api controller for login
+// NewAuthController returns an LoginController instance
+func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
+	return &AuthController{
+		loginLogic: auth.NewLoginLogic(db, cfg.ProverManager.Verifier, vf),
+	}
+}
+
+// Login the api controller for login, used as the Authenticator in JWT
+// It can work in two mode: full process for normal login, or if login request
+// is posted from proxy, run a simpler process to login a client
 func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
+
+	// check if the login is post by proxy
+	var viaProxy bool
+	if proverType, proverTypeExist := c.Get(types.ProverProviderTypeKey); proverTypeExist {
+		proverType := uint8(proverType.(float64))
+		viaProxy = proverType == types.ProverProviderTypeProxy
+	}
+
 	var login types.LoginParameter
 	if err := c.ShouldBind(&login); err != nil {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
 
-	// check login parameter's token is equal to bearer token, the Authorization must be existed
-	// if not exist, the jwt token will intercept it
-	brearToken := c.GetHeader("Authorization")
-	if brearToken != "Bearer "+login.Message.Challenge {
-		return "", errors.New("check challenge failure for the not equal challenge string")
+	// if not, process with normal login
+	if !viaProxy {
+		// check login parameter's token is equal to bearer token, the Authorization must be existed
+		// if not exist, the jwt token will intercept it
+		brearToken := c.GetHeader("Authorization")
+		if brearToken != "Bearer "+login.Message.Challenge {
+			return "", errors.New("check challenge failure for the not equal challenge string")
+		}
+
+		if err := auth.VerifyMsg(&login); err != nil {
+			return "", err
+		}
+
+		// check the challenge is used, if used, return failure
+		if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
+			return "", fmt.Errorf("login insert challenge string failure:%w", err)
+		}
 	}
 
-	if err := a.loginLogic.Check(&login); err != nil {
+	if err := a.loginLogic.CompatiblityCheck(&login); err != nil {
 		return "", fmt.Errorf("check the login parameter failure: %w", err)
 	}
 
 	hardForkNames, err := a.loginLogic.ProverHardForkName(&login)
 	if err != nil {
 		return "", fmt.Errorf("prover hard fork name failure:%w", err)
-	}
-
-	// check the challenge is used, if used, return failure
-	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
-		return "", fmt.Errorf("login insert challenge string failure:%w", err)
 	}
 
 	returnData := types.LoginParameterWithHardForkName{
@@ -85,10 +108,6 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.ProverName, proverName)
 	}
 
-	if publicKey, ok := claims[types.PublicKey]; ok {
-		c.Set(types.PublicKey, publicKey)
-	}
-
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
 	}
@@ -99,6 +118,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if providerType, ok := claims[types.ProverProviderTypeKey]; ok {
 		c.Set(types.ProverProviderTypeKey, providerType)
+	}
+
+	if publicKey, ok := claims[types.PublicKey]; ok {
+		return publicKey
 	}
 
 	return nil

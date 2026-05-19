@@ -9,19 +9,55 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-//go:embed migrations/*.sql
+//go:embed migrations
 var embedMigrations embed.FS
 
 // MigrationsDir migration dir
 const MigrationsDir string = "migrations"
 
 func init() {
+	// note goose ignore ono-sql files by default so we do not need to specify *.sql
 	goose.SetBaseFS(embedMigrations)
 	goose.SetSequential(true)
 	goose.SetTableName("scroll_migrations")
 
 	verbose, _ := strconv.ParseBool(os.Getenv("LOG_SQL_MIGRATIONS"))
 	goose.SetVerbose(verbose)
+}
+
+// MigrateModule migrate db used by other module with specified goose TableName
+// sql file for that module must be put as a sub-directory under `MigrationsDir`
+func MigrateModule(db *sql.DB, moduleName string) error {
+
+	goose.SetTableName(moduleName + "_migrations")
+	defer func() {
+		goose.SetTableName("scroll_migrations")
+	}()
+
+	return goose.Up(db, MigrationsDir+"/"+moduleName, goose.WithAllowMissing())
+}
+
+// RollbackModule rollback the specified module to the given version
+func RollbackModule(db *sql.DB, moduleName string, version *int64) error {
+
+	goose.SetTableName(moduleName + "_migrations")
+	defer func() {
+		goose.SetTableName("scroll_migrations")
+	}()
+	moduleDir := MigrationsDir + "/" + moduleName
+
+	if version != nil {
+		return goose.DownTo(db, moduleDir, *version)
+	}
+	return goose.Down(db, moduleDir)
+}
+
+// ResetModuleDB clean and migrate db for a module.
+func ResetModuleDB(db *sql.DB, moduleName string) error {
+	if err := RollbackModule(db, moduleName, new(int64)); err != nil {
+		return err
+	}
+	return MigrateModule(db, moduleName)
 }
 
 // Migrate migrate db
