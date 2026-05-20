@@ -67,10 +67,10 @@ The bundle SNARK phase is single-threaded (Halo2). Ensure `chunk_collection_time
 
 ## DB Port Configuration
 
-The DB port is controlled by a single variable `DB_PORT` in `.env`. Default is `5442` (system PostgreSQL often occupies the default 5432).
+The DB port is controlled by a single variable `DB_PORT` in `.env`. Default is `5432`.
 
 To change the port:
-1. Edit `DB_PORT=5442` → `DB_PORT=<your_port>` in `.env`
+1. Edit `DB_PORT=5432` → `DB_PORT=<your_port>` in `.env`
 2. Run `make gen-config` to regenerate config files
 3. Run `make setup_db` to restart PostgreSQL on the new port
 
@@ -87,7 +87,7 @@ All config files (docker-compose.yml, goose env, e2e_tool config, coordinator co
 
 ## Troubleshooting
 
-### Port already in use (5432 or 5442)
+### Port already in use (5432)
 ```bash
 ss -tlnp | grep <port>           # find what's using the port
 # Change DB_PORT in .env to an unused port, then make gen-config && make setup_db

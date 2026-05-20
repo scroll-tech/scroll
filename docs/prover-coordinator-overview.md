@@ -115,7 +115,7 @@ make coordinator_api
 # Requires libzkp.so to be built first
 ```
 
-### Run local E2E test
+### Run local E2E test (bare-metal)
 ```bash
 cd tests/prover-e2e
 ln -s sepolia-galileoV2 conf
@@ -129,6 +129,9 @@ cd zkvm-prover
 # copy config.template.json → config.json, set coordinator base_url
 make test_e2e_run
 ```
+
+### Run containerized E2E test (Docker Compose + Proxy)
+For a production-like setup using Docker containers and the Coordinator Proxy, see [`docs/testing/docker-compose-e2e-guide.md`](../testing/docker-compose-e2e-guide.md).
 
 ## Notes for Operators
 

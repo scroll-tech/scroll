@@ -79,7 +79,7 @@ make test
 
 **Guest asset version compatibility:** After building `prover`, verify that the guest assets (VKs, app config, ELF files) were compiled with the same OpenVM version the prover links against. The simplest check is to run a chunk proving task and confirm the prover does not panic with `Invalid app vm commit`. If it does, the guest assets must be recompiled with the matching OpenVM version and re-uploaded.
 
-### Level 4 — End-to-End Proving
+### Level 4 — End-to-End Proving (Bare-Metal)
 **Goal:** Run the full coordinator → prover → coordinator loop with real task data.
 
 Recommended scenario for GalileoV2-related upgrades: `sepolia-galileoV2`.
@@ -111,6 +111,17 @@ Then:
 - Memory usage stays within node limits (OpenVM upgrades may change `segment_len`, affecting RAM).
 - **GPU timeout:** On GPU-enabled provers, batch and bundle proving can take 1–3 minutes each. Ensure `chunk_collection_time_sec` (coordinator config) is set high enough (e.g., `3600`) so the coordinator does not abort long-running sessions. The default `180` is too short for GPU batch/bundle proving.
 
+### Level 4.5 — End-to-End Proving (Docker Compose + Coordinator Proxy)
+**Goal:** Validate the pipeline in a **production-like topology** where all components run as containers and the prover connects through the Coordinator Proxy.
+
+This catches issues that bare-metal tests miss:
+- Docker-specific volume / path / permission problems.
+- Missing runtime dependencies inside containers (e.g. `solc`, Halo2 SRS params).
+- Coordinator Proxy auth and task-routing behavior.
+- GPU stack limits in containerized environments.
+
+See [`docs/testing/docker-compose-e2e-guide.md`](docker-compose-e2e-guide.md) for full setup, build instructions, and troubleshooting.
+
 ### Level 5 — Docker Image Build
 **Goal:** Ensure production images build correctly.
 
@@ -123,6 +134,7 @@ make docker
 - Dockerfile base image (`scrolltech/go-rust-builder`) uses an older Rust nightly than `rust-toolchain`.
 - Missing `riscv32im-unknown-none-elf` target in the Docker build stage.
 - CGO linker flags incompatible with the new `libzkp.so`.
+- Prover GPU builds require `nvidia-smi` at compile time; standard `docker build` cannot access the GPU. Use the external-build-then-COPY pattern described in the Docker Compose guide.
 
 ## Special Test Cases
 
@@ -167,8 +179,9 @@ If the PR adds support for a new fork (e.g., `galileoV2`):
 
 An OpenVM upgrade PR can be considered fully tested when:
 
-1. All five levels above pass without errors.
+1. All test levels above pass without errors.
 2. At least one E2E scenario completes the full chunk → batch → bundle pipeline.
 3. Docker images build and the container starts (`coordinator_api --version` succeeds inside the image).
-4. No new Clippy warnings or formatting regressions.
-5. Coordinator config does not reference deprecated features (`legacy_witness`, `openvm_13`).
+4. **(Recommended)** The Docker Compose + Proxy E2E setup also passes, confirming production-like topology works.
+5. No new Clippy warnings or formatting regressions.
+6. Coordinator config does not reference deprecated features (`legacy_witness`, `openvm_13`).

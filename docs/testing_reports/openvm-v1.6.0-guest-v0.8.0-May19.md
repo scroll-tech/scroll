@@ -232,3 +232,110 @@ SELECT proving_status, COUNT(*) FROM bundle_task_detail GROUP BY proving_status;
 ✅ All five test levels passed (compilation, unit tests, artifact builds, E2E proving, Docker).  
 ✅ Full chunk → batch → bundle pipeline completed and verified.  
 ✅ No new Clippy warnings or formatting regressions.
+
+---
+
+## Day 2 — Docker Compose + Coordinator Proxy (2026-05-20)
+
+### Objective
+
+Validate the full proving pipeline when all components are running as **Docker containers** with the **Coordinator Proxy** inserted between prover and coordinator — matching production deployment topology.
+
+### Environment
+
+| Component | Version / Details |
+|-----------|-------------------|
+| Host OS | Ubuntu (shared dev server) |
+| Docker | 24.x |
+| CUDA | 12.9 |
+| Rust Toolchain | nightly-2025-08-18 |
+| GPU | NVIDIA RTX 3090 (reserved via Docker Compose `deploy.resources.reservations.devices`) |
+| Coordinator API Image | `scrolltech/coordinator-api:e2e-test` |
+| Coordinator Proxy Image | `scrolltech/coordinator-proxy:e2e-test` |
+| Prover Image | `scrolltech/prover:e2e-test` (pre-built GPU binary + CUDA runtime) |
+| Database | Existing `local_postgres` container on `prover-e2e_default` network, port 5442 |
+| L2 RPC | `https://mainnet-rpc.scroll.io` |
+
+### Architecture Under Test
+
+```
+Prover (Docker, GPU)
+  ↓
+Coordinator Proxy (Docker, :8590)
+  ↓
+Coordinator API (Docker, :8390)
+  ↓
+PostgreSQL (Docker, existing local_postgres)
+```
+
+### Test Results
+
+Test data: **Mainnet blocks 33750000–33750005** (6 blocks).
+
+Produced: 4 chunks → 2 batches → 1 bundle.
+
+| Task | Count | Per-Task Proving Time | Status |
+|------|-------|----------------------|--------|
+| Chunk | 4 | ~39s | ✅ verified |
+| Batch | 2 | ~59–62s | ✅ verified |
+| Bundle | 1 | ~1069s (~18 min) | ✅ verified |
+
+**Bundle breakdown:**
+- Halo2 outer SNARK: ~248s
+- Halo2 wrapper (EVM proof): ~151s
+
+All proofs were submitted by prover `docker-prover` through the proxy and verified by the coordinator API.
+
+### Issues Encountered & Resolutions
+
+#### 1. Prover Dockerfile Build Failure — Missing CUDA in Builder
+- **Symptom:** Original `build/dockerfiles/prover.Dockerfile` used `ubuntu:24.04` as builder and ran `make prover` (GPU). Build failed because `nvcc` was not found.
+- **Root cause:** The upstream `openvm-cuda-builder` crate requires both `nvcc` and `nvidia-smi` at compile time to detect the target GPU architecture (`sm_86`). A plain Ubuntu image lacks these.
+- **Fix:** Adopted the standard production pattern from `git@github.com:scroll-tech/devops.git`:
+  1. Build the prover binary **outside** Docker on a GPU host (`cd zkvm-prover && make prover`).
+  2. Copy the resulting `target/release/prover` into an `nvidia/cuda:12.9.1-runtime-ubuntu22.04` image.
+  3. Install `solc` 0.8.24 inside the runtime image for EVM proof generation.
+
+#### 2. Coordinator API Crash — Missing `genesis.json`
+- **Symptom:** Container exited with `failed to read genesis: open conf/genesis.json: no such file or directory`.
+- **Fix:** Added `genesis.json` volume mount in `docker-compose.yml`.
+
+#### 3. Coordinator API Crash — Empty `assets_v2` in Container
+- **Symptom:** `Setting up chunk verifier: No such file or directory (os error 2)` followed by SIGABRT.
+- **Root cause:** Docker Compose volume path `../../coordinator/build/bin/assets_v2` resolved incorrectly from `tests/prover-e2e/docker-e2e/`.
+- **Fix:** Corrected relative path to `../../../coordinator/build/bin/assets_v2`.
+
+#### 4. Prover Stack Overflow in Container
+- **Symptom:** `thread 'tokio-rt-worker' has overflowed its stack` during Halo2 key generation.
+- **Fix:** Added `RUST_MIN_STACK=16777216` environment variable to the prover service in Docker Compose.
+
+#### 5. Missing Halo2 SRS Parameters in Container
+- **Symptom:** Panic at `Params file "/root/.openvm/params/kzg_bn254_23.srs" does not exist` during bundle proof.
+- **Fix:** Mounted host `~/.openvm/params` into the prover container at `/root/.openvm/params`.
+
+#### 6. Coordinator Proxy Rejected Prover Login
+- **Symptom:** `JWTCommonErr: prover hard fork name failure: invalid prover prover_version`.
+- **Root cause:** Proxy config had `"verifiers": []`. The proxy validates the prover's declared fork support against this list during login.
+- **Fix:** Added `{ "fork_name": "galileoV2", "assets_path": "" }` to the proxy verifier list.
+
+### Configuration Used
+
+See `tests/prover-e2e/docker-e2e/conf/`:
+- `coordinator-api.json`
+- `coordinator-proxy.json`
+- `prover.json`
+
+And `tests/prover-e2e/docker-e2e/docker-compose.yml`.
+
+### Sign-Off (Day 2)
+
+✅ All components started successfully in Docker containers.  
+✅ Coordinator Proxy authenticated and routed tasks correctly.  
+✅ Full chunk → batch → bundle pipeline completed and verified.  
+✅ Production-style image build pattern validated.
+
+---
+
+## Reference
+
+For the reusable Docker Compose setup and build instructions, see [`docs/testing/docker-compose-e2e-guide.md`](../testing/docker-compose-e2e-guide.md).

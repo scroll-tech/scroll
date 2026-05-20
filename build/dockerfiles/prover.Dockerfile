@@ -1,23 +1,23 @@
-FROM ubuntu:24.04 AS builder
+# Scroll zkVM Prover — Production-style packaging
+# Binary is built externally (CI or local) using the cuda-go-rust-builder
+# and copied into a minimal CUDA runtime image.
+ARG RUNTIME_IMAGE=nvidia/cuda:12.9.1-runtime-ubuntu22.04
 
-RUN apt-get update -y && apt-get upgrade -y
+FROM ${RUNTIME_IMAGE}
+WORKDIR /prover
 
-# Install basic packages
-RUN apt-get install build-essential curl wget git pkg-config -y
-# Install dev-packages
-RUN apt-get install libclang-dev libssl-dev llvm -y
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libssl-dev curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-ENV CARGO_HOME=/root/.cargo
+# Install solc (needed by prover for EVM proof generation)
+RUN curl -sL https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux -o /usr/local/bin/solc && \
+    chmod +x /usr/local/bin/solc
 
-COPY . /src
+# Copy pre-built prover binary from host (built via `make prover` with CUDA)
+COPY target/release/prover /usr/local/bin/
 
-RUN cd /src/zkvm-prover && make prover
-
-FROM ubuntu:24.04 AS runtime
-
-COPY --from=builder /src/target/release/prover /usr/local/bin/
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 ENTRYPOINT ["prover"]

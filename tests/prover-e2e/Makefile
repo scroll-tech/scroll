@@ -44,12 +44,13 @@ check_vars: | conf
     fi
 
 # Generate config files with actual DB_PORT substituted from .env.
-# Source configs use __DB_PORT__ placeholder; this target replaces it.
+# Replaces both the __DB_PORT__ placeholder and any previously hardcoded ports
+# so that switching DB_PORT in .env always produces consistent configs.
 gen-config:
 	@echo "Generating config files with DB_PORT=$(DB_PORT)..."
-	@for f in conf/config.json conf/config.template.json; do \
+	@for f in */config.json */config.template.json; do \
 		if [ -f "$$f" ]; then \
-			sed -i 's/__DB_PORT__/$(DB_PORT)/g' "$$f"; \
+			sed -i 's|localhost:[0-9]*/|localhost:$(DB_PORT)/|g; s|localhost:__DB_PORT__/|localhost:$(DB_PORT)/|g' "$$f"; \
 			echo "  Updated $$f"; \
 		fi; \
 	done
@@ -94,8 +95,11 @@ reimport_data: reset_db import_data
 coordinator_setup: gen-config
 	SCROLL_ZKVM_VERSION=${SCROLL_ZKVM_VERSION} SCROLL_FORK_NAME=${SCROLL_FORK_NAME} $(MAKE) -C ../../coordinator localsetup
 	cp -f conf/genesis.json ../../coordinator/build/bin/conf
-# Also substitute DB_PORT in the coordinator config that was just copied
-	@sed -i 's/__DB_PORT__/$(DB_PORT)/g' ../../coordinator/build/bin/conf/config.template.json
-	@if [ -f ../../coordinator/build/bin/conf/config.json ]; then \
-		sed -i 's/__DB_PORT__/$(DB_PORT)/g' ../../coordinator/build/bin/conf/config.json; \
-	fi
+	@# Substitute DB_PORT in the coordinator config that was just copied.
+	@# Handles both the __DB_PORT__ placeholder and any previously hardcoded ports.
+	@for f in ../../coordinator/build/bin/conf/config.template.json ../../coordinator/build/bin/conf/config.json; do \
+		if [ -f "$$f" ]; then \
+			sed -i 's|localhost:[0-9]*/|localhost:$(DB_PORT)/|g; s|localhost:__DB_PORT__/|localhost:$(DB_PORT)/|g' "$$f"; \
+			echo "  Updated $$f"; \
+		fi; \
+	done

@@ -12,7 +12,7 @@ For a detailed architecture overview, see [`docs/prover-coordinator-overview.md`
 
 ## When You Are Working On an OpenVM / zkvm-prover Upgrade
 
-Follow the structured testing guide in [`docs/openvm-upgrade-testing-guide.md`](docs/openvm-upgrade-testing-guide.md). It covers five verification levels:
+Follow the structured testing guide in [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md). It covers five verification levels:
 
 1. Compilation & static checks
 2. Unit tests
@@ -67,7 +67,7 @@ make coordinator_setup
 ## Troubleshooting Common E2E Test Issues
 
 ### Port Conflicts (Shared Servers)
-- System PostgreSQL often occupies port 5432. Edit `docker-compose.yml` to use an alternative (e.g., 5442) and update all config files that reference the port (`.env`, `config.json`, `config.template.json`, `Makefile` health check).
+- System PostgreSQL often occupies port 5432. If the default `DB_PORT=5432` conflicts with a system instance, edit `.env` to use an alternative (e.g., `5433`) and run `make gen-config` to regenerate all configs.
 - Kill stale coordinator processes before restarting: `pkill -f coordinator_api`.
 
 ### Stale Docker Containers
@@ -114,5 +114,6 @@ make coordinator_setup
 | Document | What It Covers |
 |----------|----------------|
 | [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, component relationships, common operations |
-| [`docs/openvm-upgrade-testing-guide.md`](docs/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
+| [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
+| [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |

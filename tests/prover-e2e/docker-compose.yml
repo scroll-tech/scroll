@@ -3,7 +3,7 @@
 # - PostgreSQL is bound to localhost (127.0.0.1) and not exposed externally.
 # - Data is persisted to ./db relative to current directory.
 # - No production security settings are applied.
-# Port configured via DB_PORT in .env (default 5442).
+# Port configured via DB_PORT in .env (default 5432).
 # The access url is postgresql://dev:dev@localhost:${DB_PORT}/devdb
 
 version: '3.8'

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  coordinator-api:
+    image: scrolltech/coordinator-api:e2e-test
+    container_name: coordinator-api
+    command:
+      - "--config"
+      - "/app/conf/config.json"
+      - "--http"
+      - "--http.addr"
+      - "0.0.0.0"
+      - "--http.port"
+      - "8390"
+    ports:
+      - "8390:8390"
+    volumes:
+      - ./conf/coordinator-api.json:/app/conf/config.json:ro
+      - ../../../coordinator/build/bin/assets_v2:/app/assets_v2:ro
+      - ../mainnet-galileoV2/genesis.json:/app/conf/genesis.json:ro
+    networks:
+      - prover-e2e_default
+    restart: unless-stopped
+
+  coordinator-proxy:
+    image: scrolltech/coordinator-proxy:e2e-test
+    container_name: coordinator-proxy
+    command:
+      - "--config"
+      - "/app/conf/config.json"
+      - "--http"
+      - "--http.addr"
+      - "0.0.0.0"
+      - "--http.port"
+      - "8590"
+    ports:
+      - "8590:8590"
+    volumes:
+      - ./conf/coordinator-proxy.json:/app/conf/config.json:ro
+    networks:
+      - prover-e2e_default
+    depends_on:
+      - coordinator-api
+    restart: unless-stopped
+
+  prover:
+    image: scrolltech/prover:e2e-test
+    container_name: prover
+    command:
+      - "--config"
+      - "/app/config.json"
+      - "handle"
+      - "/app/testset.json"
+    environment:
+      - RUST_MIN_STACK=16777216
+    volumes:
+      - ./conf/prover.json:/app/config.json:ro
+      - ../testset.json:/app/testset.json:ro
+      - ./.work:/app/.work
+      - ~/.openvm/params:/root/.openvm/params:ro
+    networks:
+      - prover-e2e_default
+    depends_on:
+      - coordinator-proxy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+networks:
+  prover-e2e_default:
+    external: true
