@@ -91,7 +91,12 @@ async fn main() -> eyre::Result<()> {
     // rather than failing mid-proving with an opaque HTTP 403.
     for (fork_name, circuit) in &cfg.circuits {
         circuit.location_data.preflight_check().await.map_err(|e| {
-            eyre::eyre!("Pre-flight check failed for fork '{}': {}\n  Asset URL: {}", fork_name, e, circuit.location_data.base_url)
+            eyre::eyre!(
+                "Pre-flight check failed for fork '{}': {}\n  Asset URL: {}",
+                fork_name,
+                e,
+                circuit.location_data.base_url
+            )
         })?;
     }
 
