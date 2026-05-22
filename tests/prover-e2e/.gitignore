@@ -1,5 +1,6 @@
 build/*
 testset.json
 conf
+!docker-e2e/conf
 *.log
 *.txt

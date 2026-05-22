@@ -3,31 +3,29 @@
 This document describes how to run the end-to-end (E2E) proving pipeline in a **production-like containerized setup** using Docker Compose. Unlike the bare-metal E2E test (Level 4 in `openvm-upgrade-testing-guide.md`), this setup:
 
 - Runs all components in Docker containers.
-- Places **Coordinator Proxy** between the prover and coordinator (same as production).
 - Uses the same Docker images and base layers as the production deployment.
+- Prover connects directly to Coordinator API (no proxy).
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────┐      ┌─────────────────────┐      ┌─────────────────┐
-│   Prover    │─────>│ Coordinator Proxy   │─────>│ Coordinator API │
-│  (Docker)   │      │  (port 8590)        │      │  (port 8390)    │
-└─────────────┘      └─────────────────────┘      └─────────────────┘
-                              │                            │
-                              └────────────┬───────────────┘
-                                           │
-                                    ┌──────▼──────┐
-                                    │  PostgreSQL │
-                                    │ (Docker)    │
-                                    └─────────────┘
+┌─────────────┐      ┌─────────────────┐
+│   Prover    │─────>│ Coordinator API │
+│  (Docker)   │      │  (port 8390)    │
+└─────────────┘      └────────┬────────┘
+                              │
+                              │
+                       ┌──────▼──────┐
+                       │  PostgreSQL │
+                       │ (Docker)    │
+                       └─────────────┘
 ```
 
 - **PostgreSQL**: Existing `local_postgres` container (from `tests/prover-e2e/docker-compose.yml`).
 - **Coordinator API**: Scroll L2 coordinator with `libzkp.so` and verifier assets.
-- **Coordinator Proxy**: HTTP reverse proxy that load-balances across upstream coordinators. In this test there is only one upstream, but the proxy still handles auth, session management, and task routing exactly as in production.
-- **Prover**: zkVM prover with GPU support, connecting to the proxy instead of directly to the coordinator.
+- **Prover**: zkVM prover with GPU support, connecting directly to the coordinator API.
 
 ---
 
@@ -66,17 +64,7 @@ Build stages:
 - `base` / `builder`: Downloads Go modules, builds `coordinator_api` binary with CGO linking against the `.so` from the Rust stage.
 - Final `ubuntu:20.04` stage: Copies the binary and `libzkp.so` into a minimal runtime image.
 
-### 2. Coordinator Proxy
-
-```bash
-docker build \
-  -f build/dockerfiles/coordinator-proxy.Dockerfile \
-  -t scrolltech/coordinator-proxy:e2e-test .
-```
-
-This is a pure Go build; no Rust/CGO is involved.
-
-### 3. Prover
+### 2. Prover
 
 The prover is built **outside** the container (same as production CI) because GPU-enabled builds require:
 - A CUDA development environment (`nvcc`, CUDA headers).
@@ -116,10 +104,7 @@ All configs live in `tests/prover-e2e/docker-e2e/conf/`:
 | File | Service | Key Points |
 |------|---------|------------|
 | `coordinator-api.json` | Coordinator API | `assets_path: "assets_v2"`, DB connects to `local_postgres:5432`, `chunk_collection_time_sec: 3600` |
-| `coordinator-proxy.json` | Coordinator Proxy | Single upstream `coordinator-api:8390`, `compatible_mode: true`, verifier list must include target fork (e.g. `galileoV2`) or prover login is rejected |
-| `prover.json` | Prover | `base_url: "http://coordinator-proxy:8590"`, circuits point to `galileov2` S3 assets |
-
-> **Proxy verifier list:** The proxy's `verifier.verifiers` array cannot be empty. Even though the proxy does not verify proofs itself, it validates the prover's declared fork support during login. If empty, the prover receives `JWTCommonErr: invalid prover prover_version`.
+| `prover.json` | Prover | `base_url: "http://coordinator-api:8390"`, circuits point to `galileov2` S3 assets |
 
 ---
 
@@ -129,14 +114,13 @@ File: `tests/prover-e2e/docker-e2e/docker-compose.yml`
 
 Services:
 - `coordinator-api`: ports `8390:8390`, mounts config + `assets_v2` + `genesis.json`.
-- `coordinator-proxy`: ports `8590:8590`, mounts config, depends on `coordinator-api`.
 - `prover`: mounts config + `testset.json` + `.work` cache + `~/.openvm/params`, GPU reservation, `RUST_MIN_STACK=16777216`.
 
 Run:
 
 ```bash
 cd tests/prover-e2e/docker-e2e
-docker compose up -d coordinator-api coordinator-proxy
+docker compose up -d coordinator-api
 docker compose up -d prover
 ```
 
@@ -145,7 +129,6 @@ Follow logs:
 ```bash
 docker logs -f prover
 docker logs -f coordinator-api
-docker logs -f coordinator-proxy
 ```
 
 ---
@@ -170,9 +153,9 @@ docker logs -f coordinator-proxy
 
 **Fix:** The `assets_v2` directory was not mounted correctly. Ensure the host path in `docker-compose.yml` resolves to `coordinator/build/bin/assets_v2` (contains `verifier.bin`, `root_verifier_vk`, `openVmVk.json`).
 
-### `bind: address already in use` for port 8390/8590
+### `bind: address already in use` for port 8390
 
-**Fix:** `docker rm -f coordinator-api coordinator-proxy` before recreating.
+**Fix:** `docker rm -f coordinator-api` before recreating.
 
 ---
 

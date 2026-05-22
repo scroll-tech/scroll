@@ -1,0 +1,24 @@
+{
+  "sdk_config": {
+    "prover_name_prefix": "docker-prover",
+    "keys_dir": ".work",
+    "coordinator": {
+      "base_url": "http://coordinator-api:8390",
+      "retry_count": 10,
+      "retry_wait_time_sec": 10,
+      "connection_timeout_sec": 1800
+    },
+    "prover": {
+      "supported_proof_types": [1, 2, 3],
+      "circuit_version": "v0.13.1"
+    },
+    "health_listener_addr": "127.0.0.1:10080",
+    "db_path": ".work/db"
+  },
+  "circuits": {
+    "galileoV2": {
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/",
+      "workspace_path": ".work/galileo"
+    }
+  }
+}

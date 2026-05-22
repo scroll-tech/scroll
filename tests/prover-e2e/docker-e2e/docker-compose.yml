@@ -22,27 +22,6 @@ services:
       - prover-e2e_default
     restart: unless-stopped
 
-  coordinator-proxy:
-    image: scrolltech/coordinator-proxy:e2e-test
-    container_name: coordinator-proxy
-    command:
-      - "--config"
-      - "/app/conf/config.json"
-      - "--http"
-      - "--http.addr"
-      - "0.0.0.0"
-      - "--http.port"
-      - "8590"
-    ports:
-      - "8590:8590"
-    volumes:
-      - ./conf/coordinator-proxy.json:/app/conf/config.json:ro
-    networks:
-      - prover-e2e_default
-    depends_on:
-      - coordinator-api
-    restart: unless-stopped
-
   prover:
     image: scrolltech/prover:e2e-test
     container_name: prover
@@ -61,7 +40,7 @@ services:
     networks:
       - prover-e2e_default
     depends_on:
-      - coordinator-proxy
+      - coordinator-api
     deploy:
       resources:
         reservations:
