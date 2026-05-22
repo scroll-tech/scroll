@@ -31,3 +31,5 @@ report_*.txt
 
 target
 zkvm-prover/*.json
+.work/
+rollup/tests.test
