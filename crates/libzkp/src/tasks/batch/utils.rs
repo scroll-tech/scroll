@@ -22,7 +22,7 @@ pub mod point_eval {
 
     /// Given the blob-envelope, translate it to a fixed size EIP-4844 blob.
     ///
-    /// For every 32-bytes chunk in the blob, the most-significant byte is set to 0 while the other
+    /// For every 32-bytes chunk in the blob, the most significant byte is set to 0 while the other
     /// 31 bytes are copied from the provided blob-envelope.
     pub fn to_blob(envelope_bytes: &[u8]) -> c_kzg::Blob {
         let mut blob_bytes = [0u8; c_kzg::BYTES_PER_BLOB];
