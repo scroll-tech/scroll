@@ -3,6 +3,9 @@ name = "libzkp"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 scroll-zkvm-types = { workspace = true, features = ["scroll"] }
