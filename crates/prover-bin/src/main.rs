@@ -1,21 +1,32 @@
+#[macro_use]
+extern crate tracing;
+
 mod prover;
 mod types;
 mod zk_circuits_handler;
 
+use crate::prover::ProverKind;
 use clap::{ArgAction, Parser, Subcommand};
-use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
-    prover::{types::ProofType, ProverBuilder},
-    utils::{get_version, init_tracing},
+    prover::{ProverBuilder, types::ProofType},
+    utils::{VERSION, init_tracing},
 };
-use std::{fs::File, io::BufReader, path::Path};
+use std::{
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 #[derive(Parser, Debug)]
 #[command(disable_version_flag = true)]
 struct Args {
+    /// Prover kind
+    #[arg(long = "prover.kind", value_enum, default_value_t = ProverKind::Local)]
+    prover_kind: ProverKind,
+
     /// Path of config file
     #[arg(long = "config", default_value = "conf/config.json")]
-    config_file: String,
+    config_file: PathBuf,
 
     #[arg(long = "forkname")]
     fork_name: Option<String>,
@@ -42,8 +53,11 @@ enum Commands {
 
 #[derive(Debug, serde::Deserialize)]
 struct HandleSet {
+    #[serde(default)]
     chunks: Vec<String>,
+    #[serde(default)]
     batches: Vec<String>,
+    #[serde(default)]
     bundles: Vec<String>,
 }
 
@@ -54,13 +68,13 @@ async fn main() -> eyre::Result<()> {
     let args = Args::parse();
 
     if args.version {
-        println!("version is {}", get_version());
+        println!("version is {VERSION}");
         std::process::exit(0);
     }
+    info!(version = %VERSION, "Starting prover");
 
-    let cfg = LocalProverConfig::from_file(args.config_file)?;
-    let sdk_config = cfg.sdk_config.clone();
-    let local_prover = LocalProver::new(cfg.clone());
+    let (sdk_config, prover) = args.prover_kind.create_from_file(&args.config_file)?;
+    info!(prover = ?prover, "Loaded prover");
 
     match args.command {
         Some(Commands::Handle { task_path }) => {
@@ -68,37 +82,37 @@ async fn main() -> eyre::Result<()> {
             let reader = BufReader::new(file);
             let handle_set: HandleSet = serde_json::from_reader(reader)?;
 
-            let prover = ProverBuilder::new(sdk_config, local_prover)
+            let prover = ProverBuilder::new(sdk_config, prover)
                 .build()
                 .await
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
 
             let prover = std::sync::Arc::new(prover);
-            println!("Handling task set 1: chunks ...");
+            info!("Handling task set 1: chunks ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.chunks, ProofType::Chunk)
                     .await
             );
-            println!("Done! Handling task set 2: batches ...");
+            info!("Done! Handling task set 2: batches ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.batches, ProofType::Batch)
                     .await
             );
-            println!("Done! Handling task set 3: bundles ...");
+            info!("Done! Handling task set 3: bundles ...");
             assert!(
                 prover
                     .clone()
                     .one_shot(&handle_set.bundles, ProofType::Bundle)
                     .await
             );
-            println!("All done!");
+            info!("All done!");
         }
         None => {
-            let prover = ProverBuilder::new(sdk_config, local_prover)
+            let prover = ProverBuilder::new(sdk_config, prover)
                 .build()
                 .await
                 .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;

@@ -1,6 +1,6 @@
 use eyre::Result;
 use sbv_core::BlockWitness;
-use sbv_primitives::{types::consensus::TxL1Message, Bytes, B256};
+use sbv_primitives::{B256, Bytes, types::consensus::TxL1Message};
 
 /// An interpreter which is cirtical in translating chunk data
 /// since we need to grep block witness and storage node data

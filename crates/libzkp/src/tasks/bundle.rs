@@ -4,7 +4,7 @@ use scroll_zkvm_types::{
     bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
     public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
+    utils::{RancorError, to_rkyv_bytes},
 };
 
 use crate::proofs::BatchProof;

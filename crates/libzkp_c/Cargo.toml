@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 [dependencies]
 libzkp = { path = "../libzkp" }
 l2geth = { path = "../l2geth"}
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber.workspace = true
 tracing.workspace = true

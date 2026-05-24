@@ -6,7 +6,8 @@
       "base_url": "<the url of coordinator>",
       "retry_count": 10,
       "retry_wait_time_sec": 10,
-      "connection_timeout_sec": 1800
+      "connection_timeout_sec": 1800,
+      "suppress_empty_task_error": false
     },
     "prover": {
       "supported_proof_types": [
@@ -14,7 +15,10 @@
         2,
         3
       ],
-      "circuit_version": "v0.13.1"
+      "circuit_version": "v0.13.1",
+      "n_workers": 1,
+      "poll_interval_sec": 20,
+      "randomized_delay_sec": 0
     },
     "health_listener_addr": "127.0.0.1:10080",
     "db_path": ".work/db"
@@ -31,6 +35,13 @@
     "galileoV2": {
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileov2/",
       "workspace_path": ".work/galileo"
-    }    
+    }
+  },
+  "axiom_api_key": "<axiom api key>",
+  "axiom_programs": {
+    "<vk hex string>": {
+      "program_id": "prg_<axiom program id>",
+      "config_id": "cfg_<axiom config id>"
+    }
   }
 }

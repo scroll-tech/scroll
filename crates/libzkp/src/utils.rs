@@ -1,12 +1,12 @@
 use std::{
-    panic::{catch_unwind, AssertUnwindSafe},
+    panic::{AssertUnwindSafe, catch_unwind},
     path::Path,
 };
 
 use git_version::git_version;
 use serde::{
-    de::{Deserialize, DeserializeOwned},
     Serialize,
+    de::{Deserialize, DeserializeOwned},
 };
 
 use eyre::Result;

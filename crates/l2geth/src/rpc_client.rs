@@ -5,7 +5,7 @@ use alloy::{
 };
 use eyre::Result;
 use libzkp::tasks::ChunkInterpreter;
-use sbv_primitives::types::{consensus::TxL1Message, Network};
+use sbv_primitives::types::{Network, consensus::TxL1Message};
 use serde::{Deserialize, Serialize};
 
 fn default_max_retry() -> u32 {

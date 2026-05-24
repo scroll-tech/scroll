@@ -6,34 +6,28 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+axiom-sdk.workspace = true
 scroll-zkvm-types.workspace = true
 scroll-zkvm-prover.workspace = true
 libzkp = { path = "../libzkp"}
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "05648db" }
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "504e71f" }
 serde.workspace = true
 serde_json.workspace = true
-once_cell.workspace =true
-base64.workspace = true
-tiny-keccak = { workspace = true, features = ["sha3", "keccak"] }
 eyre.workspace = true
+tracing.workspace = true
 
-futures = "0.3.30"
 futures-util = "0.3"
 
-reqwest = { version = "0.12.4", features = ["gzip", "stream"] }
-reqwest-middleware = "0.3"
-reqwest-retry = "0.5"
+reqwest = { version = "0.12", features = ["gzip", "stream"] }
 hex = "0.4.3"
 
-rand = "0.8.5"
-tokio = "1.37.0"
+jiff.workspace = true
+tokio = { workspace = true, features = ["full"] }
 async-trait = "0.1"
-sled = "0.34.7"
-http = "1.1.0"
 clap = { version = "4.5", features = ["derive"] }
-ctor = "0.2.8"
-url = { version = "2.5.4", features = ["serde",] }
-serde_bytes = "0.11.15"
+url = { version = "2.5.4", features = ["serde"] }
+tempfile = "3.24"
+backon = "1.6.0"
 
 [features]
 default = []

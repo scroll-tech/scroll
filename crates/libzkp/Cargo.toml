@@ -3,12 +3,15 @@ name = "libzkp"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 scroll-zkvm-types = { workspace = true, features = ["scroll"] }
 scroll-zkvm-verifier.workspace = true
 
-alloy-primitives.workspace = true #depress the effect of "native-keccak"
+alloy-primitives.workspace = true # depress the effect of "native-keccak"
 sbv-primitives = {workspace = true, features = ["scroll-compress-info", "scroll"]}
 sbv-core = { workspace = true, features = ["scroll"] }
 base64.workspace = true

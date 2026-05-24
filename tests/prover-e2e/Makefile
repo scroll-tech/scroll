@@ -1,3 +1,5 @@
+include ../../build/common.mk
+
 .PHONY: clean setup_db test_tool all check_vars
 
 include conf/.make.env
@@ -57,6 +59,7 @@ reset_db:
 
 test_tool:
 	go build -o $(PWD)/build/bin/e2e_tool ../../rollup/tests/integration_tool
+	$(call macos_codesign,$(PWD)/build/bin/e2e_tool)
 
 build/bin/e2e_tool: test_tool
 

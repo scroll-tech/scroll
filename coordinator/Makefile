@@ -1,8 +1,10 @@
+include ../build/common.mk
+
 .PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator libzkp
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
-LIBZKP_PATH=./internal/logic/libzkp/lib/libzkp.so
+LIBZKP_PATH=./internal/logic/libzkp/lib/$(LIB_ZKP_NAME)
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKVM_VERSION=$(shell grep -m 1 "zkvm-prover?" ../Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -27,6 +29,7 @@ libzkp: clean_libzkp $(LIBZKP_PATH)
 
 coordinator_api: $(LIBZKP_PATH) ## Builds the Coordinator api instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
+	$(call macos_codesign,$(PWD)/build/bin/coordinator_api)
 
 coordinator_cron:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
@@ -50,6 +53,8 @@ localsetup: coordinator_api ## Local setup: build coordinator_api, copy config, 
 	@echo "Setting up releases..."
 	cd $(CURDIR)/build && bash setup_releases.sh
 
+run_coordinator_api: coordinator_api
+	cd build/bin && ./coordinator_api
 
 #coordinator_api_skip_libzkp:
 #	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api

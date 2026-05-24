@@ -13,7 +13,7 @@ use scroll_zkvm_types::{
     utils::{serialize_vk, vec_as_base64},
     version,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 /// A wrapper around the actual inner proof.
 #[derive(Clone, Serialize, Deserialize)]
@@ -213,7 +213,7 @@ impl<Metadata: ProofMetadata> PersistableProof for WrappedProof<Metadata> {
 
 #[cfg(test)]
 mod tests {
-    use base64::{prelude::BASE64_STANDARD, Engine};
+    use base64::{Engine, prelude::BASE64_STANDARD};
     use sbv_primitives::B256;
     use scroll_zkvm_types::{bundle::BundleInfo, proof::EvmProof};
 

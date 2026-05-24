@@ -1,11 +1,11 @@
 use eyre::Result;
 use sbv_core::BlockWitness;
-use sbv_primitives::{types::consensus::BlockHeader, B256};
+use sbv_primitives::{B256, types::consensus::BlockHeader};
 use scroll_zkvm_types::{
-    chunk::{execute, ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs},
+    chunk::{ChunkInfo, ChunkWitness, LegacyChunkWitness, ValidiumInputs, execute},
     public_inputs::{MultiVersionPublicInputs, Version},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
+    utils::{RancorError, to_rkyv_bytes},
 };
 
 use super::chunk_interpreter::*;
@@ -224,8 +224,8 @@ impl ChunkProvingTask {
                         attempts += 1;
                         if attempts >= MAX_FETCH_NODES_ATTEMPTS {
                             return Err(eyre!(
-                            "failed to fetch nodes after {MAX_FETCH_NODES_ATTEMPTS} attempts: {e}"
-                        ));
+                                "failed to fetch nodes after {MAX_FETCH_NODES_ATTEMPTS} attempts: {e}"
+                            ));
                         }
 
                         let node_hash =
