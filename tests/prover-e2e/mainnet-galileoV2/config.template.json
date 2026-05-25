@@ -5,28 +5,28 @@
     "external_prover_threshold": 32,
     "bundle_collection_time_sec": 180,
     "batch_collection_time_sec": 180,
-    "chunk_collection_time_sec": 180,
+    "chunk_collection_time_sec": 3600,
     "verifier": {
       "min_prover_version": "v4.4.45",
       "verifiers": [
         {
           "assets_path": "assets",
-          "fork_name": "feynman"
+          "fork_name": "galileoV2"
         }
       ]
     }
   },
   "db": {
     "driver_name": "postgres",
-    "dsn": "postgres://dev:dev@localhost/scroll?sslmode=disable",
+    "dsn": "postgres://dev:dev@localhost:5432/scroll?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
   "l2": {
-    "validium_mode": true,
-    "chain_id": 5343513301,
+    "validium_mode": false,
+    "chain_id": 534352,
     "l2geth": {
-      "endpoint": "http://cloak-xen-sequencer.sepolia.scroll.tech:8545/"
+      "endpoint": "https://mainnet-rpc.scroll.io"
     }
   },
   "auth": {
@@ -35,6 +35,6 @@
     "login_expire_duration_sec": 3600
   },
   "sequencer": {
-    "decryption_key": "<decryption key>"
+    "decryption_key": "not needed for non-validium"
   }
 }

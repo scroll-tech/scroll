@@ -23,5 +23,13 @@ coverage.txt
 sftp-config.json
 *~
 
+# AI skills
+**/experience
+
+# AI skill generate report
+report_*.txt
+
 target
-zkvm-prover/config.json
+zkvm-prover/*.json
+.work/
+rollup/tests.test

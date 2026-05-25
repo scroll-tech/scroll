@@ -1,0 +1,1 @@
+The mono repo for scroll-tech's services. See @README.md to know about the project.

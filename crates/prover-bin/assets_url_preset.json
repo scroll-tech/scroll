@@ -6,5 +6,10 @@
         "7eb91f1885cc7a63cc848928f043fa56bf747161a74cd933d88c0456b90643346618ea25a7991845bbc5fd571670ee47379ba31ace92d345bca59702a0d4112d": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.6.0-rc.1/chunk/",
         "dc653e7416628c612fa4d80b4724002bad4fde3653aef7316b80df0c19740a1bf2be2f4468d1ac4a70e7682babb1c60417e21c7633d4b55b58f44703ec82b05a": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.6.0-rc.1/batch/",
         "14de1c74b663ed3c99acb03e90a5753b5923233c5c590864ad7746570297d16722c0e5294bcb1b3a9def836f8d0f18612a9860629b9497292976ca11844b7e73": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/0.6.0-rc.1/bundle/"
+    },
+    "galileo": {
+        "64cf16439a284e4449666c479a3ae42b568fea5e88610777ff6b5f2cda19d91182a47957139d0d1c1c3fbb28b9579c23f2823c0c6ff05669fe71ad4a0c92620e": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/chunk/64cf16439a284e4449666c479a3ae42b568fea5e88610777ff6b5f2cda19d91182a47957139d0d1c1c3fbb28b9579c23f2823c0c6ff05669fe71ad4a0c92620e/",
+        "e9d6536bdcef7806156c245b20f2c5113825bb4a6cf5246b4b698829ecf23268ff32d36a5fa86c245eb45244557fe26b05efe158d36c6b48f854b32eca3b4c59": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/batch/e9d6536bdcef7806156c245b20f2c5113825bb4a6cf5246b4b698829ecf23268ff32d36a5fa86c245eb45244557fe26b05efe158d36c6b48f854b32eca3b4c59/",
+        "6b155f2d4a07ff0860f8ac395a263e657801761e7e5c3b5666bd35439e3b342d46f92437d8a633521cf9e93c9721b374f47f6c2459161e08e3186c6c66d34a1a": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/bundle/6b155f2d4a07ff0860f8ac395a263e657801761e7e5c3b5666bd35439e3b342d46f92437d8a633521cf9e93c9721b374f47f6c2459161e08e3186c6c66d34a1a/"
     }
 }

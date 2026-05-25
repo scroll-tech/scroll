@@ -1,10 +1,9 @@
 use eyre::Result;
 use sbv_primitives::B256;
 use scroll_zkvm_types::{
-    bundle::{BundleInfo, BundleWitness, LegacyBundleWitness},
     public_inputs::{MultiVersionPublicInputs, Version},
+    scroll::bundle::{BundleInfo, BundleWitness},
     task::ProvingTask,
-    utils::{to_rkyv_bytes, RancorError},
 };
 
 use crate::proofs::BatchProof;
@@ -27,12 +26,7 @@ pub struct BundleProvingTask {
 impl BundleProvingTask {
     pub fn into_proving_task_with_precheck(self) -> Result<(ProvingTask, BundleInfo, B256)> {
         let (witness, bundle_info, bundle_pi_hash) = self.precheck()?;
-        let serialized_witness = if crate::witness_use_legacy_mode(&self.fork_name)? {
-            let legacy = LegacyBundleWitness::from(witness);
-            to_rkyv_bytes::<RancorError>(&legacy)?.into_vec()
-        } else {
-            super::encode_task_to_witness(&witness)?
-        };
+        let serialized_witness = super::encode_task_to_witness(&witness)?;
 
         let proving_task = ProvingTask {
             identifier: self.identifier(),

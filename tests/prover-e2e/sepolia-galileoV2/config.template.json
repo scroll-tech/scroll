@@ -18,7 +18,7 @@
   },
   "db": {
     "driver_name": "postgres",
-    "dsn": "postgres://dev:dev@localhost/scroll?sslmode=disable",
+    "dsn": "postgres://dev:dev@localhost:5432/scroll?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
@@ -26,7 +26,7 @@
     "validium_mode": false,
     "chain_id": 534351,
     "l2geth": {
-      "endpoint": "<serach for a public rpc endpoint like alchemy>"
+      "endpoint": "http://l2geth-rpc-0.sepolia.scroll.tech:8545/"
     }
   },
   "auth": {

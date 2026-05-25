@@ -5,6 +5,10 @@
     "maxOpenNum": 5,
     "maxIdleNum": 1
   },
+  "fetch_config": {
+    "endpoint": "https://mainnet-rpc.scroll.io",
+    "l2_message_queue_address": "0x5300000000000000000000000000000000000000"
+  },  
   "validium_mode": false,
-  "codec_version": 8
+  "codec_version": 9
 }

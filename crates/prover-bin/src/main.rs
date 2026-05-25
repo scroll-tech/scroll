@@ -1,12 +1,13 @@
+mod dumper;
 mod prover;
 mod types;
 mod zk_circuits_handler;
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use prover::{LocalProver, LocalProverConfig};
 use scroll_proving_sdk::{
     prover::{types::ProofType, ProverBuilder},
-    utils::{get_version, init_tracing},
+    utils::{init_tracing, VERSION},
 };
 use std::{fs::File, io::BufReader, path::Path};
 
@@ -32,11 +33,34 @@ struct Args {
     command: Option<Commands>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, ValueEnum)]
+enum TaskType {
+    Chunk,
+    Batch,
+    Bundle,
+}
+
+impl From<TaskType> for ProofType {
+    fn from(value: TaskType) -> Self {
+        match value {
+            TaskType::Chunk => ProofType::Chunk,
+            TaskType::Batch => ProofType::Batch,
+            TaskType::Bundle => ProofType::Bundle,
+        }
+    }
+}
+
 #[derive(Subcommand, Debug)]
 enum Commands {
     Handle {
         /// path to save the verifier's asset
         task_path: String,
+    },
+    Dump {
+        #[arg(long = "json", default_value = "false")]
+        json_mode: bool,
+        task_type: TaskType,
+        task_id: String,
     },
 }
 
@@ -47,14 +71,14 @@ struct HandleSet {
     bundles: Vec<String>,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
     init_tracing();
 
     let args = Args::parse();
 
     if args.version {
-        println!("version is {}", get_version());
+        println!("version is {}", VERSION);
         std::process::exit(0);
     }
 
@@ -62,7 +86,41 @@ async fn main() -> eyre::Result<()> {
     let sdk_config = cfg.sdk_config.clone();
     let local_prover = LocalProver::new(cfg.clone());
 
+    // Pre-flight check: verify all circuit asset URLs are reachable before any proving.
+    // This catches misconfigured base_url (e.g., extra "releases/" prefix) early,
+    // rather than failing mid-proving with an opaque HTTP 403.
+    for (fork_name, circuit) in &cfg.circuits {
+        circuit.location_data.preflight_check().await.map_err(|e| {
+            eyre::eyre!(
+                "Pre-flight check failed for fork '{}': {}\n  Asset URL: {}",
+                fork_name,
+                e,
+                circuit.location_data.base_url
+            )
+        })?;
+    }
+
     match args.command {
+        Some(Commands::Dump {
+            json_mode,
+            task_type,
+            task_id,
+        }) => {
+            let prover = ProverBuilder::new(
+                sdk_config,
+                dumper::Dumper {
+                    json_mode,
+                    ..Default::default()
+                },
+            )
+            .build()
+            .await
+            .map_err(|e| eyre::eyre!("build prover fail: {e}"))?;
+
+            std::sync::Arc::new(prover)
+                .one_shot(&[task_id], task_type.into())
+                .await;
+        }
         Some(Commands::Handle { task_path }) => {
             let file = File::open(Path::new(&task_path))?;
             let reader = BufReader::new(file);

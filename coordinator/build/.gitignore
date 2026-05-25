@@ -1,0 +1,3 @@
+# Local verifier assets downloaded during E2E testing
+assets_*/
+*.vk
