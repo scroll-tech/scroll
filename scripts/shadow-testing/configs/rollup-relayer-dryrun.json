@@ -1,0 +1,75 @@
+{
+  "l2_config": {
+    "confirmations": "0x10",
+    "endpoint": "http://10.6.13.141:8545",
+    "l2_message_queue_address": "0x5300000000000000000000000000000000000000",
+    "relayer_config": {
+      "rollup_contract_address": "0xa13BAF47339d63B743e7Da8741db5456DAc1E556",
+      "sender_config": {
+        "endpoint": "https://rpc.scroll.io",
+        "write_endpoints": [
+          "https://rpc.scroll.io"
+        ],
+        "escalate_blocks": 6,
+        "escalate_multiple_num": 12,
+        "escalate_multiple_den": 10,
+        "min_gas_tip": 2000000000,
+        "max_gas_price": 2000000000000,
+        "max_blob_gas_price": 500000000000,
+        "tx_type": "DynamicFeeTx",
+        "check_pending_time": 10,
+        "confirmations": "0x6",
+        "max_pending_blob_txs": 6,
+        "fusaka_timestamp": 1764798551,
+        "dry_run": true
+      },
+      "batch_submission": {
+        "min_batches": 3,
+        "max_batches": 3,
+        "timeout": 8400,
+        "backlog_max": 75,
+        "blob_fee_tolerance": 50
+      },
+      "chain_monitor": {
+        "enabled": false,
+        "timeout": 3,
+        "try_times": 5,
+        "base_url": "http://localhost:8080"
+      },
+      "commit_sender_signer_config": {
+        "signer_type": "PrivateKey",
+        "private_key_signer_config": {
+          "private_key": "0x0000000000000000000000000000000000000000000000000000000000000001"
+        }
+      },
+      "finalize_sender_signer_config": {
+        "signer_type": "PrivateKey",
+        "private_key_signer_config": {
+          "private_key": "0x0000000000000000000000000000000000000000000000000000000000000002"
+        }
+      }
+    },
+    "chunk_proposer_config": {
+      "propose_interval_milliseconds": 100,
+      "max_l2_gas_per_chunk": 24000000,
+      "chunk_timeout_sec": 3600,
+      "max_uncompressed_batch_bytes_size": 8388608
+    },
+    "batch_proposer_config": {
+      "propose_interval_milliseconds": 1000,
+      "batch_timeout_sec": 720000,
+      "max_chunks_per_batch": 45,
+      "max_uncompressed_batch_bytes_size": 8388608
+    },
+    "bundle_proposer_config": {
+      "max_batch_num_per_bundle": 45,
+      "bundle_timeout_sec": 5400
+    }
+  },
+  "db_config": {
+    "driver_name": "postgres",
+    "dsn": "postgresql://<user>:<password>@localhost:5433/shadow_rollup?sslmode=disable",
+    "maxOpenNum": 50,
+    "maxIdleNum": 20
+  }
+}

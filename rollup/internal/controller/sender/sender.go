@@ -12,6 +12,7 @@ import (
 
 	"github.com/holiman/uint256"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -205,10 +206,43 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 }
 
 // sendTransactionToMultipleClients sends a transaction to all write clients in parallel
-// and returns success if at least one client succeeds
+// and returns success if at least one client succeeds.
+// In dry-run mode, it uses eth_call to simulate the transaction instead.
 func (s *Sender) sendTransactionToMultipleClients(signedTx *gethTypes.Transaction) error {
 	ctx, cancel := context.WithTimeout(s.ctx, 15*time.Second)
 	defer cancel()
+
+	// Dry-run mode: simulate the transaction via eth_call instead of sending it.
+	if s.config.DryRun {
+		msg := ethereum.CallMsg{
+			From:      s.transactionSigner.GetAddr(),
+			To:        signedTx.To(),
+			Gas:       signedTx.Gas(),
+			GasPrice:  signedTx.GasPrice(),
+			GasTipCap: signedTx.GasTipCap(),
+			GasFeeCap: signedTx.GasFeeCap(),
+			Value:     signedTx.Value(),
+			Data:      signedTx.Data(),
+		}
+		if signedTx.Type() == gethTypes.BlobTxType {
+			msg.BlobHashes = signedTx.BlobHashes()
+			msg.BlobGasFeeCap = signedTx.BlobGasFeeCap()
+		}
+		_, err := s.client.CallContract(ctx, msg, nil)
+		if err != nil {
+			log.Warn("dry-run eth_call failed",
+				"txHash", signedTx.Hash().Hex(),
+				"nonce", signedTx.Nonce(),
+				"from", s.transactionSigner.GetAddr().String(),
+				"error", err)
+			return fmt.Errorf("dry-run eth_call failed: %w", err)
+		}
+		log.Info("dry-run eth_call succeeded",
+			"txHash", signedTx.Hash().Hex(),
+			"nonce", signedTx.Nonce(),
+			"from", s.transactionSigner.GetAddr().String())
+		return nil
+	}
 
 	if len(s.writeClients) == 1 {
 		// Single client - use direct approach
@@ -342,19 +376,25 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, 0, fmt.Errorf("failed to create signed transaction, err: %w", err)
 	}
 
-	// Insert the transaction into the pending transaction table.
-	// A corner case is that the transaction is inserted into the table but not sent to the chain, because the server is stopped in the middle.
-	// This case will be handled by the checkPendingTransaction function.
-	if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), signedTx, blockNumber); err != nil {
-		log.Error("failed to insert transaction", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
-		return common.Hash{}, 0, fmt.Errorf("failed to insert transaction, err: %w", err)
+	// In dry-run mode, skip pending transaction tracking to avoid polluting the DB.
+	if !s.config.DryRun {
+		// Insert the transaction into the pending transaction table.
+		// A corner case is that the transaction is inserted into the table but not sent to the chain, because the server is stopped in the middle.
+		// This case will be handled by the checkPendingTransaction function.
+		if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), signedTx, blockNumber); err != nil {
+			log.Error("failed to insert transaction", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
+			return common.Hash{}, 0, fmt.Errorf("failed to insert transaction, err: %w", err)
+		}
 	}
 
 	if err := s.sendTransactionToMultipleClients(signedTx); err != nil {
-		// Delete the transaction from the pending transaction table if it fails to send.
-		if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
-			log.Error("failed to delete transaction", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", updateErr)
-			return common.Hash{}, 0, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
+		// In dry-run mode, skip pending transaction cleanup.
+		if !s.config.DryRun {
+			// Delete the transaction from the pending transaction table if it fails to send.
+			if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
+				log.Error("failed to delete transaction", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", updateErr)
+				return common.Hash{}, 0, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
+			}
 		}
 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", err)

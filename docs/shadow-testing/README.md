@@ -325,9 +325,46 @@ Key fields:
 - `circuits.galileoV2.base_url`: S3 path for circuit assets (no `/releases/` for v0.8.0)
 - `sdk_config.prover.supported_proof_types`: `[1, 2, 3]` for chunk, batch, bundle
 
+## Rollup Relayer Dry-Run Mode
+
+For testing the **rollup-relayer's transaction construction logic** (e.g., `finalizeBundle` calldata) without spending real gas or modifying chain state, the sender module supports a **dry-run mode**.
+
+When `"dry_run": true` is set in the sender config:
+- Transactions are **simulated** via `eth_call` instead of being broadcast
+- `pending_transaction` table is **not** populated (avoids DB pollution)
+- Nonce is still incremented to simulate real behavior
+- If the `eth_call` fails (e.g., contract revert), the error is propagated just like a real send failure
+
+### Usage
+
+1. Build the rollup-relayer binary:
+```bash
+cd rollup && go build -o rollup_relayer ./cmd/rollup_relayer/app
+```
+
+2. Configure `dry_run: true` in the sender config (see `scripts/shadow-testing/configs/rollup-relayer-dryrun.json`)
+
+3. Start the relayer:
+```bash
+./rollup_relayer --config /path/to/rollup-relayer-dryrun.json
+```
+
+### What Dry-Run Verifies
+
+| Aspect | Verified? | Notes |
+|--------|-----------|-------|
+| Calldata encoding (ABI pack) | ✅ | `constructFinalizeBundlePayloadCodecV7` etc. |
+| Gas estimation | ✅ | Full `EstimateGas` + `CreateAccessList` path |
+| Contract revert | ✅ | `eth_call` returns revert reason |
+| Signature / nonce | ⚠️ | Nonce incremented but tx not broadcast |
+| Pending tx lifecycle | ❌ | Skipped to avoid DB pollution |
+| Receipt confirmation | ❌ | No real tx = no receipt |
+
+For **full end-to-end** validation (including signature + receipt), use **Anvil** with `evm_snapshot`/`evm_revert` instead.
+
 ## Known Limitations
 
-1. **L1 messages**: If chunks contain L1 messages, the prover needs `scroll_getL1MessagesInBlock` RPC support. Most public RPCs don't expose this. Workaround: select chunks/blocks with no L1 messages, or use an internal RPC.
+1. **L1 messages**: If chunks contain L1 messages, the prover needs `scroll_getL1MessagesInBlock` RPC support. Most public RPCs don't expose this. Workaround: select chunks/blocks with no L1 messages, or use an internal RPC. In non-validium mode, the prover does not call this RPC at all.
 
 2. **Full batch proving**: Batch tasks require `chunk_proofs_status = 2` (all chunks proven). For quick chunk-only testing, you don't need to prove full batches.
 
