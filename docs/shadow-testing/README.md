@@ -305,6 +305,60 @@ Proving status values:
 - If you have system PostgreSQL on 5432, use 5433 for shadow DB (already configured).
 - Ensure all configs use the correct port.
 
+### Multi-GPU prover cache conflicts
+When running multiple prover instances on the same machine, the shared `.work/galileo` cache directory can cause `File exists (os error 17)` conflicts if two provers write the same temp file simultaneously.
+
+**Mitigation**: Ensure each prover has its own work directory, or symlink `.work/galileo` to a shared read-only cache while giving each instance a distinct write directory. Example launch script:
+```bash
+for i in 0 1 2 3; do
+  mkdir -p /tmp/prover-gpu${i}/work
+  ln -s /shared/cache/galileo /tmp/prover-gpu${i}/work/galileo
+  CUDA_VISIBLE_DEVICES=$i ./prover --config /tmp/prover-gpu${i}/config.json &
+done
+```
+
+### Bundle proving never starts
+If coordinator is actively assigning chunk/batch tasks but never assigns bundle tasks, the most likely cause is **orphan bundles** — bundle records whose corresponding batch data no longer exists in the shadow DB.
+
+**Diagnosis**:
+```sql
+-- Count bundles with no linked batches
+SELECT COUNT(*) FROM bundle b
+WHERE NOT EXISTS (
+  SELECT 1 FROM batch bat
+  WHERE bat.index BETWEEN b.start_batch_index AND b.end_batch_index
+);
+```
+
+**Root cause**: The bundle table often retains historical records from production (e.g., batch 308516+) while the batch table only holds recently imported batches (e.g., 517760+). Coordinator's `GetUnassignedBundle` picks the lowest-index bundle with `batch_proofs_status = 2`, finds it has no batches, and fails silently in a loop.
+
+**Fix**:
+```sql
+UPDATE bundle
+SET batch_proofs_status = 1
+WHERE index NOT IN (
+    SELECT DISTINCT b.index
+    FROM bundle b
+    JOIN batch bat ON bat.index BETWEEN b.start_batch_index AND b.end_batch_index
+);
+```
+
+### DB data inconsistency after import
+If imported chunks have `proving_status = 2` (assigned) but `proof = NULL`, coordinator may incorrectly set `batch.chunk_proofs_status = 2` and then fail when formatting batch tasks.
+
+**Fix**:
+```sql
+UPDATE chunk SET proving_status = 1, total_attempts = 0, active_attempts = 0
+WHERE proving_status = 2 AND proof IS NULL;
+
+UPDATE batch SET chunk_proofs_status = 0
+WHERE chunk_proofs_status != 0
+  AND EXISTS (
+    SELECT 1 FROM chunk c
+    WHERE c.batch_hash = batch.hash AND c.proving_status != 4
+  );
+```
+
 ## Configuration Reference
 
 ### Shadow Coordinator Config
@@ -362,6 +416,77 @@ cd rollup && go build -o rollup_relayer ./cmd/rollup_relayer/app
 
 For **full end-to-end** validation (including signature + receipt), use **Anvil** with `evm_snapshot`/`evm_revert` instead.
 
+### Anvil + Mock ScrollChain Setup (Recommended for Dry-Run)
+
+For the most realistic dry-run testing, deploy a minimal mock ScrollChain contract on a local Anvil node:
+
+```bash
+# 1. Start Anvil forked from mainnet (or standalone)
+anvil --fork-url https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY --fork-block-number 33878313
+
+# 2. Deploy mock contract (minimal Solidity with no-op commitBatches / finalizeBundle)
+cat > MockScrollChain.sol << 'EOF'
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract MockScrollChain {
+    mapping(address => bool) public isProver;
+    address public owner;
+    constructor() { owner = msg.sender; }
+    function addProver(address _prover) external {
+        require(msg.sender == owner, "Not owner");
+        isProver[_prover] = true;
+    }
+    function commitBatches(uint8 version, bytes32 parentBatchHash, bytes32 batchHash) external {}
+    function finalizeBundlePostEuclidV2NoProof(bytes calldata, uint256, bytes32, bytes32) external {}
+    function finalizeBundlePostEuclidV2(bytes calldata, uint256, bytes32, bytes32, bytes calldata) external {}
+}
+EOF
+
+# Compile and deploy
+solc --bin MockScrollChain.sol -o /tmp/mock
+BYTECODE=$(cat /tmp/mock/MockScrollChain.bin)
+cast send --rpc-url http://localhost:18545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+  --create "0x$BYTECODE"
+# → contractAddress: 0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d
+
+# 3. Fund sender accounts and add prover
+COMMIT_ADDR="0x1e32ABcfE6db15c1570709E3fC02725335f50A47"
+FINALIZE_ADDR="0x33e0F539E31B35170FAaA062af703b76a8282bf7"
+cast rpc anvil_setBalance "$COMMIT_ADDR" "0x3635c9adc5dea00000" --rpc-url http://localhost:18545
+cast rpc anvil_setBalance "$FINALIZE_ADDR" "0x3635c9adc5dea00000" --rpc-url http://localhost:18545
+cast send <MOCK_ADDR> "addProver(address)" "$FINALIZE_ADDR" --rpc-url http://localhost:18545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+**Key sender config changes**:
+```json
+{
+  "sender_config": {
+    "endpoint": "http://localhost:18545",
+    "dry_run": true
+  }
+}
+```
+
+**Dry-run gas estimation skip**: Anvil may fail `EstimateGas` on blob transactions or missing functions. A small patch to `rollup/internal/controller/sender/estimategas.go` skips gas estimation in dry-run mode:
+```go
+func (s *Sender) estimateGasLimit(...) (uint64, *types.AccessList, error) {
+    if s.config.DryRun {
+        return 10000000, nil, nil  // skip estimation
+    }
+    // ... original logic
+}
+```
+
+### What We Verified in Practice
+
+| Transaction | Status | Notes |
+|-------------|--------|-------|
+| `commitBatches` | ✅ `eth_call` succeeded | Selector `0x9bbaa2ba` via mock `commitBatches(uint8,bytes32,bytes32)` |
+| `finalizeBundlePostEuclidV2NoProof` | ✅ `eth_call` succeeded | Selector `0xbd6f916b` via mock no-op |
+| `finalizeBundlePostEuclidV2` (with proof) | ✅ `eth_call` succeeded | Bundle 17301 with valid `OpenVMBundleProof` |
+
 ## Known Limitations
 
 1. **L1 messages**: If chunks contain L1 messages, the prover needs `scroll_getL1MessagesInBlock` RPC support. Most public RPCs don't expose this. Workaround: select chunks/blocks with no L1 messages, or use an internal RPC. In non-validium mode, the prover does not call this RPC at all.
@@ -371,6 +496,43 @@ For **full end-to-end** validation (including signature + receipt), use **Anvil*
 3. **Coordinator startup time**: First startup performs OpenVM keygen (~2-3 min). Be patient.
 
 4. **Circuit download**: First prover run downloads ~5-10GB of circuit assets. Ensure good internet.
+
+5. **Bundle vs batch count mismatch**: The shadow DB's `bundle` table may contain 10,000+ historical records while `batch` only holds ~500 recent ones. This is expected when importing production data — the bundle table retains full history but batches are truncated. **Crucially**, orphan bundles (those with no matching batches) must have `batch_proofs_status = 1` or coordinator will deadlock trying to prove them. See "Bundle proving never starts" in Troubleshooting.
+
+## Common DB Fixes
+
+After importing production data or running for extended periods, these SQL fixes resolve common coordinator deadlocks:
+
+### 1. Reset proving status after import
+```sql
+UPDATE chunk SET proving_status = 1, total_attempts = 0, active_attempts = 0;
+UPDATE batch SET proving_status = 1, total_attempts = 0, active_attempts = 0, chunk_proofs_status = 0;
+UPDATE bundle SET proving_status = 1, total_attempts = 0, active_attempts = 0;
+```
+
+### 2. Mark orphan bundles (no linked batches)
+```sql
+UPDATE bundle
+SET batch_proofs_status = 1
+WHERE index NOT IN (
+    SELECT DISTINCT b.index
+    FROM bundle b
+    JOIN batch bat ON bat.index BETWEEN b.start_batch_index AND b.end_batch_index
+);
+```
+
+### 3. Fix stale assigned chunks without proofs
+```sql
+UPDATE chunk SET proving_status = 1, total_attempts = 0, active_attempts = 0
+WHERE proving_status = 2 AND proof IS NULL;
+
+UPDATE batch SET chunk_proofs_status = 0
+WHERE chunk_proofs_status != 0
+  AND EXISTS (
+    SELECT 1 FROM chunk c
+    WHERE c.batch_hash = batch.hash AND c.proving_status != 4
+  );
+```
 
 ## Scripts Reference
 
