@@ -559,7 +559,7 @@ The mainnet proof for bundle 17330 was generated with VK digests:
 
 Our deployed verifier had completely different digests (`0x00398b...` / `0x002178...`).
 
-**Solution**: Copy the exact mainnet verifier contract code (including embedded immutables) to Anvil using `anvil_setCode`:
+**Recommended Solution**: Copy the exact mainnet verifier contract code (including embedded immutables) to Anvil using `anvil_setCode`:
 
 ```bash
 # Copy mainnet ZkEvmVerifierPostFeynman wrapper (0x0dE1...)
@@ -574,6 +574,37 @@ cast rpc anvil_setCode $PLONK $PLONK_CODE --rpc-url http://localhost:18545
 ```
 
 This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet.
+
+### Alternative: Extract Digests from the Proof Itself
+
+If you must deploy a fresh verifier (e.g., testing a new circuit version), **do not use S3 `digest_1.hex` / `digest_2.hex`**. These files often return 403 or contain digests that do not match the specific proof you are testing.
+
+Instead, extract digests directly from the proof's `instances` array:
+
+```python
+import base64, json
+
+# proof_json is the decoded proof from coordinator/bundle table
+proof_data = base64.b64decode(proof_json['proof']['proof'])
+instances_data = base64.b64decode(proof_json['proof']['instances'])
+
+# instances are 12 × 32-byte Fr elements = 384 bytes, followed by app commits
+# verifierDigest1 = app_exe_commit = instances_bytes[384:416] (big-endian)
+# verifierDigest2 = app_vm_commit  = instances_bytes[416:448] (big-endian)
+digest1 = '0x' + instances_data[384:416].hex()
+digest2 = '0x' + instances_data[416:448].hex()
+```
+
+For the v0.8.0 circuit used to prove bundle 17330:
+- `digest1` = `0x00398b786b500ca759ca2de2aee9c73bd8e28f1c80b49e1c53bc060a9a649269`
+- `digest2` = `0x0021785a05e931b447c8d6463f4547f92081a92ee357af26e1c6f6ecfe373d67`
+
+Then deploy with:
+```bash
+forge create --broadcast --evm-version cancun --rpc-url http://localhost:18545 \
+  src/libraries/verifier/ZkEvmVerifierPostFeynman.sol:ZkEvmVerifierPostFeynman \
+  --constructor-args <plonkVerifier> <digest1> <digest2> <protocolVersion>
+```
 
 ### Register Copied Verifier
 
@@ -679,9 +710,25 @@ The `ZkEvmVerifierPostFeynman` contract prepends `protocolVersion = 10` (32 byte
 publicInputHash = keccak256(abi.encodePacked(protocolVersion, publicInput))
 ```
 
+- `protocolVersion` = 10 (GalileoV2)
+- `publicInput` = 204 bytes (standard EuclidV2 format)
+- Actual input to keccak256 = **236 bytes** (32-byte version prefix + 204-byte public input)
+
 Computed hash: `0xcd4421bad526bd108d9ae8c2af3d46ea1a986207f0b8c1af781b601c1ae50e5a`
 
 This **exactly matches** `bundle_pi_hash` from the proof metadata.
+
+#### Bundle Proof Format
+
+The `aggrProof` passed to `finalizeBundlePostEuclidV2` is:
+
+```
+bundleProof = instances[:384] + proof_bytes  = 1760 bytes total
+├── 384 bytes  = accumulator (12 Fr elements)
+└── 1376 bytes = Plonk proof
+```
+
+The `ZkEvmVerifierPostFeynman.verify()` function inserts `digest1`, `digest2`, and `publicInputHash` expansion into the calldata before forwarding to the Plonk verifier.
 
 ### Pre-Execution Setup Required
 
@@ -700,6 +747,10 @@ cast rpc anvil_setBalance $OWNER 0x56bc75e2d63100000 --rpc-url http://localhost:
 cast send $SCROLL_CHAIN "addProver(address)" $PROVER \
   --from $OWNER --rpc-url http://localhost:18545 --unlocked
 ```
+
+> ⚠️ **Anvil Default Account Is Not an EOA**: Anvil's default test account `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` has contract code (`0xef0100...`) in fork mode. `ScrollChain.addProver()` checks `_account.code.length == 0` and will revert with `ErrorAccountIsNotEOA`. Always use a freshly generated EOA (e.g., from `cast wallet new`) as the prover address.
+>
+> If the real owner account is an EOA with delegation code (e.g., ERC-7702), you may need to temporarily swap the proxy owner via `anvil_setStorageAt` on slot 51, call `addProver`, then restore the original owner.
 
 #### 2. Override `lastFinalizedBatchIndex`
 
@@ -768,10 +819,11 @@ cast send $SCROLL_CHAIN --from $PROVER $(cat /tmp/finalize_calldata.hex) \
 
 ### Key Takeaways
 
-1. **Always copy the mainnet verifier** — Deploying a new verifier with S3 digests will fail because the digests may not match the specific proof being tested.
+1. **Always copy the mainnet verifier** — Deploying a new verifier with S3 digests will fail because the digests may not match the specific proof being tested. If you must deploy fresh, extract digests from `proof.instances[12]` and `proof.instances[13]`.
 2. **`anvil_setStorageAt` works for direct variables** but not for mapping entries. Use it for `miscData`, `nextUnfinalizedQueueIndex`, etc.
 3. **Fork block matters** — If the fork block is after the real finalization, you must manually reset `lastFinalizedBatchIndex` and `nextUnfinalizedQueueIndex`.
 4. **Public input hash must match exactly** — Any discrepancy in `msg_queue_hash`, `chain_id`, `num_batches`, or roots will cause `VerificationFailed`.
+5. **Anvil default account is not an EOA in fork mode** — Use a freshly generated EOA for `addProver`; `0xf39F...` has contract code and will fail the EOA check.
 
 ## Known Limitations
 
