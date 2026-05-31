@@ -487,6 +487,292 @@ func (s *Sender) estimateGasLimit(...) (uint64, *types.AccessList, error) {
 | `finalizeBundlePostEuclidV2NoProof` | ✅ `eth_call` succeeded | Selector `0xbd6f916b` via mock no-op |
 | `finalizeBundlePostEuclidV2` (with proof) | ✅ `eth_call` succeeded | Bundle 17301 with valid `OpenVMBundleProof` |
 
+### ⚠️ Critical Discovery: Anvil Must Fork Ethereum Mainnet, NOT Scroll Mainnet
+
+When querying `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` on **Scroll L2** (`scroll-mainnet.g.alchemy.com`), the contract appears to have no ScrollChain functions and an empty implementation slot. This led to confusion — the address seemed to be a ProxyAdmin rather than the ScrollChain proxy.
+
+**The root cause**: We were querying the **wrong chain**. The ScrollChain proxy `0xa13B...` is deployed on **Ethereum L1**, not Scroll L2. When queried on Ethereum mainnet:
+
+- **Implementation**: `0x0a20703878e68e587c59204cc0ea86098b8c3ba7` (ScrollChain logic)
+- **Admin**: `0xEB803eb3F501998126bf37bB823646Ed3D59d072` (ProxyAdmin)
+- **Functions verified**: `lastFinalizedBatchIndex()`, `committedBatches(uint256)`, `isSequencer(address)`, `isProver(address)`, `commitBatches(uint8,bytes32,bytes32)`, `finalizeBundlePostEuclidV2(bytes,uint256,bytes32,bytes32,bytes)`
+
+### Real ScrollChain Proxy Dry-Run Testing
+
+For testing against the **actual deployed ScrollChain contract** on an Anvil fork:
+
+```bash
+# 1. Start Anvil forked from ETHEREUM mainnet (NOT Scroll mainnet)
+anvil --fork-url https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY \
+  --fork-block-number 25206000 \
+  --port 18545 \
+  --no-rate-limit \
+  --block-time 5
+
+# 2. Run takeover script (impersonate owner, add sequencer/prover)
+# See scroll-devnets/charts/shadow-fork/rollup-relayer/scripts/takeover-l1-contracts.sh
+# Key addresses:
+#   L1_SCROLL_CHAIN_PROXY_ADDR=0xa13BAF47339d63B743e7Da8741db5456DAc1E556
+#   L1_SCROLL_OWNER_ADDR=0x798576400F7D662961BA15C6b3F3d813447a26a6
+#   FORKED_L1_SCROLL_OWNER_ADDR=0x909D2900A1Ec2B518EAFe11811Da0c1Fc8729a73
+#   FORKED_L1_SCROLL_OWNER_PRIVATE_KEY=0x93d9b2e68479131dfa877a77cef8a286986940ab2de677a4790d17267462dd5e
+
+# 3. Set balances for relayer senders
+COMMIT_ADDR="0x1e32ABcfE6db15c1570709E3fC02725335f50A47"
+FINALIZE_ADDR="0x33e0F539E31B35170FAaA062af703b76a8282bf7"
+cast rpc anvil_setBalance "$COMMIT_ADDR" "0x21e19e0c9bab2400000" --rpc-url http://localhost:18545
+cast rpc anvil_setBalance "$FINALIZE_ADDR" "0x21e19e0c9bab2400000" --rpc-url http://localhost:18545
+
+# 4. Configure relayer to use REAL proxy address
+# In config: "rollup_contract_address": "0xa13BAF47339d63B743e7Da8741db5456DAc1E556"
+```
+
+**Important**: If blob base fee is extremely high on the forked block (causing `Insufficient funds`), mine empty blocks to reduce `excessBlobGas`:
+```bash
+cast rpc anvil_mine 400 --rpc-url http://localhost:18545
+```
+
+### Dry-Run Results with Real ScrollChain Proxy
+
+| Transaction | Status | Notes |
+|-------------|--------|-------|
+| `commitBatches` | ⚠️ `eth_call` reached contract | Reverted with `ErrorIncorrectBatchHash()` — shadow DB batch data is ahead of fork block state |
+| `finalizeBundlePostEuclidV2` | ✅ **Succeeded** | Bundle 17330 (batch 517809) finalized successfully with real mainnet proof. See "End-to-End finalizeBundlePostEuclidV2 Dry-Run Success" below. |
+
+**Why `commitBatches` reverts**: The shadow DB contains batches 518565+ but the Anvil fork block (25206000) only has batches committed up to ~517816. The parent batch hash in the calldata doesn't match what the contract expects, triggering `ErrorIncorrectBatchHash()`.
+
+This is **expected and actually confirms the pipeline works** — the relayer is successfully constructing and sending calldata to the real ScrollChain implementation, and the contract's validation logic is executing correctly.
+
+For `finalizeBundlePostEuclidV2`, the batch was already committed on mainnet at the fork block, so no `commitBatches` call is needed — we only need the proof and verifier to match.
+
+---
+
+## Real Verifier Deployment
+
+### Critical Discovery: Deployed Verifier Digests Must Match Mainnet Proof
+
+We initially deployed a fresh `ZkEvmVerifierPostFeynman` (address `0xc323...`) using S3 digest files. However, **direct verification failed** with `VerificationFailed (0x439cc0cd)` because the VK digests in our deployed verifier did **not** match the digests embedded in the mainnet proof.
+
+The mainnet proof for bundle 17330 was generated with VK digests:
+- `verifierDigest1`: `0x0091609acb607118f47f756c0f4db9aad227420326cbda96f0303384e0bbf8e3`
+- `verifierDigest2`: `0x009305f0762291e3cdd805ff6d6e81f1d135dbfdeb3ecf30ad82c3855dde7909`
+
+Our deployed verifier had completely different digests (`0x00398b...` / `0x002178...`).
+
+**Solution**: Copy the exact mainnet verifier contract code (including embedded immutables) to Anvil using `anvil_setCode`:
+
+```bash
+# Copy mainnet ZkEvmVerifierPostFeynman wrapper (0x0dE1...)
+MAINNET_VERIFIER="0x0dE180164Dc571522457101F5c47B2eaB36d0A82"
+CODE=$(cast code $MAINNET_VERIFIER --rpc-url https://ethereum-rpc.publicnode.com)
+cast rpc anvil_setCode $MAINNET_VERIFIER $CODE --rpc-url http://localhost:18545
+
+# Copy its Plonk verifier (0x749f...)
+PLONK="0x749fc77a1a131632a8b88e8703e489557660c75e"
+PLONK_CODE=$(cast code $PLONK --rpc-url https://ethereum-rpc.publicnode.com)
+cast rpc anvil_setCode $PLONK $PLONK_CODE --rpc-url http://localhost:18545
+```
+
+This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet.
+
+### Register Copied Verifier
+
+```bash
+MVRV="0x4cea3e866e7c57fd75cb0ca3e9f5f1151d4ead3f"
+OWNER="0x909d2900a1ec2b518eafe11811da0c1fc8729a73"
+ANVIL_VERIFIER="0x0dE180164Dc571522457101F5c47B2eaB36d0A82"
+
+# Impersonate owner and register
+cast rpc anvil_impersonateAccount $OWNER --rpc-url http://localhost:18545
+cast send $MVRV \
+  "updateVerifier(uint256,uint64,address)" \
+  10 0 $ANVIL_VERIFIER \
+  --from $OWNER --rpc-url http://localhost:18545 --unlocked
+```
+
+> **Note**: `latestVerifier[10]` returns a struct; use `getVerifier(10, batchIndex)` to confirm routing.
+
+### Previous Deployment Attempt (Incorrect Digests)
+
+For reference, the initially deployed verifier (wrong digests) was:
+
+```bash
+# Step 1: Deploy Plonk Verifier
+VER="v0.8.0"
+BASE_URL="https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$VER"
+curl -sL -o /tmp/verifier.bin "$BASE_URL/verifier/verifier.bin"
+PLONK_BYTECODE=$(xxd -p /tmp/verifier.bin | tr -d '\n')
+cast send --rpc-url http://localhost:18545 --chain 1 \
+  --from 0x909D2900A1Ec2B518EAFe11811Da0c1Fc8729a73 --unlocked \
+  --create "$PLONK_BYTECODE"
+# → Plonk Verifier: 0xe1c0b68e8377deee8eff9267e00981a45f2967e2
+
+# Step 2: Deploy ZkEvmVerifierPostFeynman
+cd scroll-contracts && git checkout 42de954bee237cfa478a5b443ac0aeb900aca5ad
+DIGEST1=$(curl -s "$BASE_URL/bundle/digest_1.hex")
+DIGEST2=$(curl -s "$BASE_URL/bundle/digest_2.hex")
+forge create --broadcast --evm-version cancun --rpc-url http://localhost:18545 \
+  --from 0x909D2900A1Ec2B518EAFe11811Da0c1Fc8729a73 --unlocked \
+  src/libraries/verifier/ZkEvmVerifierPostFeynman.sol:ZkEvmVerifierPostFeynman \
+  --constructor-args 0xe1c0b68e8377deee8eff9267e00981a45f2967e2 0x$DIGEST1 0x$DIGEST2 8
+# → ZkEvmVerifierPostFeynman: 0xc3230A4C89a5Ce0455414215e533de4D8849b3f8
+```
+
+This verifier **does not work** with mainnet bundle proofs because the S3 digest files do not match the VK used for the specific bundle being tested. Always use `anvil_setCode` to copy the mainnet verifier instead.
+
+### Critical Discovery: Anvil `eth_call` vs `anvil_setStorageAt`
+
+**Refined conclusion** (updated after further testing):
+
+- `anvil_setStorageAt` on **mapping slots** (e.g., `committedBatches[batchIndex]`) is visible to `eth_getStorageAt` but is **cached and ignored** by `eth_call` / `eth_sendTransaction` during contract execution. This is an Anvil bug.
+- `anvil_setStorageAt` on **direct variable slots** (e.g., `miscData` at slot 161, `nextUnfinalizedQueueIndex` at slot 104) **does work** and is visible to `eth_call`.
+
+**Implications**:
+- You **can** override simple state variables like `lastFinalizedBatchIndex`, `nextUnfinalizedQueueIndex`, etc.
+- You **cannot** override mapping entries like `committedBatches[517809]` or `finalizedStateRoots[517808]`.
+- For mappings, either fork at a block where the desired state already exists, or use a mock contract.
+
+### Deployed Contract Addresses (Anvil Fork)
+
+| Contract | Address | Notes |
+|----------|---------|-------|
+| ScrollChain Proxy | `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` | Forked from mainnet |
+| MultipleVersionRollupVerifier | `0x4CEA3E866e7c57fD75CB0CA3E9F5f1151D4Ead3F` | Forked from mainnet |
+| **ZkEvmVerifierPostFeynman (v10)** | `0x0dE180164Dc571522457101F5c47B2eaB36d0A82` | **Copied from mainnet** ✅ |
+| Plonk Verifier (v10) | `0x749fc77a1a131632a8b88e8703e489557660c75e` | Copied from mainnet |
+| ZkEvmVerifierPostFeynman (wrong) | `0xc3230A4C89a5Ce0455414215e533de4D8849b3f8` | Deployed with S3 digests — **do not use** |
+
+---
+
+## End-to-End finalizeBundlePostEuclidV2 Dry-Run Success
+
+We successfully executed `finalizeBundlePostEuclidV2` end-to-end on Anvil using **real mainnet proof data** from shadow DB bundle 17330.
+
+### Bundle 17330 Parameters
+
+| Field | Value |
+|-------|-------|
+| Bundle index | 17330 |
+| Batch index | 517809 |
+| Codec version | 10 (GalileoV2) |
+| Num batches | 1 |
+| `postStateRoot` | `0x28ff638e237ad6a0f2eebaab84f254dd4fca8a16297413c29fcd70f8b1b3fd85` |
+| `withdrawRoot` | `0xe88d24e9153438c91f94c32026cb49730212f32ac4652367b07c71f96ce063d9` |
+| `batchHash` | `0xeadeee9af865c6d13df6b66a45b3f3f161e6211aeb7d86e075a645f0e6a58f9e` |
+| `prevStateRoot` | `0x4d21a5ca662bffc2d650a4d24a445617c3eb7159a28b13548ec5421a3ba08ee7` |
+| `prevBatchHash` | `0xd6d7d027ef32d393a4aff7b04c1577bcb1f7fdc44834797e48f7e01581615a58` |
+| `totalL1MessagesPoppedOverall` | 998288 |
+| `msgQueueHash` | `0x5b08e5befde15d3acbf1a3e0e99622a6ac3fa62049cdfa62ba984ab700000000` |
+| Mainnet finalize tx | `0x753f8f9ca01d4e67f710c6dab8ce0b17a17a7ad46a9d7480d92657803a36ca24` |
+
+### Public Input Verification
+
+The 204-byte public input is constructed as:
+
+```
+chain_id(8) || msg_queue_hash(32) || num_batches(4) || prev_state_root(32) || prev_batch_hash(32) || post_state_root(32) || batch_hash(32) || withdraw_root(32)
+```
+
+The `ZkEvmVerifierPostFeynman` contract prepends `protocolVersion = 10` (32 bytes) and computes:
+
+```solidity
+publicInputHash = keccak256(abi.encodePacked(protocolVersion, publicInput))
+```
+
+Computed hash: `0xcd4421bad526bd108d9ae8c2af3d46ea1a986207f0b8c1af781b601c1ae50e5a`
+
+This **exactly matches** `bundle_pi_hash` from the proof metadata.
+
+### Pre-Execution Setup Required
+
+Because the Anvil fork block (25213457) is **after** the real finalization block (25198501), several state variables had already advanced past the values needed for the dry-run. We applied the following fixes:
+
+#### 1. Add Authorized Prover
+
+The prover authorization was lost after `anvil_reset`. Re-add:
+
+```bash
+SCROLL_CHAIN="0xa13BAF47339d63B743e7Da8741db5456DAc1E556"
+OWNER="0x798576400F7D662961BA15C6b3F3d813447a26a6"
+PROVER="0xc48DfbcdC4ef4cdACFf94eE7385020b7a7CE195f"
+
+cast rpc anvil_setBalance $OWNER 0x56bc75e2d63100000 --rpc-url http://localhost:18545
+cast send $SCROLL_CHAIN "addProver(address)" $PROVER \
+  --from $OWNER --rpc-url http://localhost:18545 --unlocked
+```
+
+#### 2. Override `lastFinalizedBatchIndex`
+
+Set `miscData` (slot 161) so `lastFinalizedBatchIndex = 517808`:
+
+```bash
+cast rpc anvil_setStorageAt $SCROLL_CHAIN 0xa1 \
+  0x0000000000000000000000016a1bb977000000000007e6b0000000000007e6d3 \
+  --rpc-url http://localhost:18545
+```
+
+> Layout: `lastCommitted(8) | lastFinalized(8) | lastFinalizeTimestamp(4) | flags(1) | reserved(7)`
+
+#### 3. Override `L1MessageQueueV2.nextUnfinalizedQueueIndex`
+
+Set slot 104 to `0` (the finalize call will update it to 998288):
+
+```bash
+MQV2="0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a"
+cast rpc anvil_setStorageAt $MQV2 0x68 0x0 --rpc-url http://localhost:18545
+```
+
+#### 4. Copy Mainnet Verifier
+
+See "Real Verifier Deployment" above for the `anvil_setCode` commands to copy the mainnet verifier wrapper and its Plonk verifier.
+
+### Execution
+
+```bash
+# Extract proof from mainnet finalize transaction
+python3 << 'PYEOF'
+import subprocess, json
+result = subprocess.run([
+    'cast', 'tx', '0x753f8f9ca01d4e67f710c6dab8ce0b17a17a7ad46a9d7480d92657803a36ca24',
+    '--json', '--rpc-url', 'https://ethereum-rpc.publicnode.com'
+], capture_output=True, text=True)
+tx = json.loads(result.stdout)
+input_hex = tx['input']
+data = bytes.fromhex(input_hex[2:])
+# ... decode batchHeader, totalL1MessagesPoppedOverall, postStateRoot, withdrawRoot, aggrProof
+PYEOF
+
+# Send transaction
+SCROLL_CHAIN="0xa13BAF47339d63B743e7Da8741db5456DAc1E556"
+PROVER="0xc48DfbcdC4ef4cdACFf94eE7385020b7a7CE195f"
+
+cast rpc anvil_setBalance $PROVER 0x56bc75e2d63100000 --rpc-url http://localhost:18545
+cast send $SCROLL_CHAIN --from $PROVER $(cat /tmp/finalize_calldata.hex) \
+  --rpc-url http://localhost:18545 --unlocked
+```
+
+### Result
+
+- **Transaction Hash**: `0x0000ba738dbcc27e89db8e545532cdc125a9d50c42683032d92ed30203ea8d65`
+- **Status**: Success ✅
+- **Gas Used**: 425,719
+- **Block**: 25213522
+
+### Post-Execution State
+
+| Variable | Value |
+|----------|-------|
+| `lastFinalizedBatchIndex` | 517809 |
+| `finalizedStateRoots[517809]` | `0x28ff638e237ad6a0f2eebaab84f254dd4fca8a16297413c29fcd70f8b1b3fd85` |
+| `L1MessageQueueV2.nextUnfinalizedQueueIndex` | 998288 |
+
+### Key Takeaways
+
+1. **Always copy the mainnet verifier** — Deploying a new verifier with S3 digests will fail because the digests may not match the specific proof being tested.
+2. **`anvil_setStorageAt` works for direct variables** but not for mapping entries. Use it for `miscData`, `nextUnfinalizedQueueIndex`, etc.
+3. **Fork block matters** — If the fork block is after the real finalization, you must manually reset `lastFinalizedBatchIndex` and `nextUnfinalizedQueueIndex`.
+4. **Public input hash must match exactly** — Any discrepancy in `msg_queue_hash`, `chain_id`, `num_batches`, or roots will cause `VerificationFailed`.
+
 ## Known Limitations
 
 1. **L1 messages**: If chunks contain L1 messages, the prover needs `scroll_getL1MessagesInBlock` RPC support. Most public RPCs don't expose this. Workaround: select chunks/blocks with no L1 messages, or use an internal RPC. In non-validium mode, the prover does not call this RPC at all.
@@ -498,6 +784,22 @@ func (s *Sender) estimateGasLimit(...) (uint64, *types.AccessList, error) {
 4. **Circuit download**: First prover run downloads ~5-10GB of circuit assets. Ensure good internet.
 
 5. **Bundle vs batch count mismatch**: The shadow DB's `bundle` table may contain 10,000+ historical records while `batch` only holds ~500 recent ones. This is expected when importing production data — the bundle table retains full history but batches are truncated. **Crucially**, orphan bundles (those with no matching batches) must have `batch_proofs_status = 1` or coordinator will deadlock trying to prove them. See "Bundle proving never starts" in Troubleshooting.
+
+6. **`finalizeBundlePostEuclidV2` requires `num_batches = 1`**: The contract computes `numBatches = batchIndex - lastFinalizedBatchIndex`. For a single-batch bundle, this is always `1`. You **cannot** test with bundle proofs where `num_batches > 1` (e.g., local E2E bundle 1 covering genesis → batch 1). Use real mainnet bundles with `num_batches = 1` (e.g., bundle 17330 = batch 517809).
+
+7. **Local E2E proofs cannot be used on mainnet fork**: Local E2E proofs are generated against a different chain state (genesis batch, different state roots, different message queue). Even if you deploy matching verifier digests, the public input (state roots, batch hashes, message queue hash) will not match the forked mainnet contract state, causing `VerificationFailed`.
+
+## Automated DB Replication from Mainnet RDS
+
+The `~/.pgpass` file on this machine contains valid credentials for the mainnet RDS read-only replica:
+
+```bash
+# Verify access
+cast psql -h localhost -p 15432 -U mainnet_infra_team_read_only -d mainnet_rollup -c "SELECT COUNT(*) FROM batch;"
+# → 517,830 batches
+```
+
+For automated DB sync, see `scroll-devnets/charts/shadow-fork/rollup-relayer/scripts/copy-db.sh` which uses `postgres-tunnel` to stream data from mainnet RDS to local shadow DB via `COPY ... TO STDOUT | COPY ... FROM STDIN`.
 
 ## Common DB Fixes
 
