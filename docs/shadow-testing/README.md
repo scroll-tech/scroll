@@ -824,6 +824,117 @@ cast send $SCROLL_CHAIN --from $PROVER $(cat /tmp/finalize_calldata.hex) \
 3. **Fork block matters** — If the fork block is after the real finalization, you must manually reset `lastFinalizedBatchIndex` and `nextUnfinalizedQueueIndex`.
 4. **Public input hash must match exactly** — Any discrepancy in `msg_queue_hash`, `chain_id`, `num_batches`, or roots will cause `VerificationFailed`.
 5. **Anvil default account is not an EOA in fork mode** — Use a freshly generated EOA for `addProver`; `0xf39F...` has contract code and will fail the EOA check.
+6. **Reset `rollup_status` before relayer finalize** — The shadow DB retains mainnet rollup state (`RollupFinalized` = 5). The relayer's `GetFirstPendingBundle` only queries `rollup_status = RollupPending` (1). You must reset both `bundle` and `batch` tables before the relayer will pick up bundles for finalization.
+
+## Multi-Bundle Relayer Finalize Test (5 Bundles)
+
+This test demonstrates running the actual `rollup_relayer` binary against an Anvil mainnet fork to finalize **5 consecutive bundles** (17297–17301, batches 517761–517765) using shadow proofs.
+
+### Prerequisites
+
+- Anvil fork running with `lastFinalizedBatchIndex` reset to `517760`
+- Shadow proofs generated for all 5 bundles (`proving_status = 4`)
+- Verifier `0xb1F2C5c1ea2885278a1070350d12d3D8824265B0` registered as `latestVerifier[10]`
+- Prover/finalize EOA `0x410E...` authorized on `ScrollChain`
+
+### Step 1: Reset DB Rollup Status
+
+The shadow DB retains mainnet rollup state. Before the relayer can pick up bundles, reset their status:
+
+```sql
+UPDATE bundle SET rollup_status = 1 WHERE index BETWEEN 17297 AND 17301;
+UPDATE batch SET rollup_status = 1 WHERE index BETWEEN 517761 AND 517765;
+```
+
+(`1` = `RollupPending`; without this, `GetFirstPendingBundle` returns nothing.)
+
+### Step 2: Build and Configure Relayer
+
+```bash
+cd rollup
+go build -o /tmp/rollup_relayer ./cmd/rollup_relayer
+```
+
+Create `/tmp/rollup-relayer-anvil.json`:
+
+```json
+{
+  "l2_config": {
+    "l2_geth": { "endpoint": "https://mainnet-galileo.scroll.io/l2" },
+    "relayer_config": {
+      "sender_config": {
+        "endpoint": "http://localhost:18545",
+        "check_balance": false,
+        "dry_run": false
+      },
+      "commit_sender_signer_config": {
+        "private_key": "0xac09..."
+      },
+      "finalize_sender_signer_config": {
+        "private_key": "0x01f1..."
+      },
+      "rollup_contract_address": "0xa13BAF47339d63B743e7Da8741db5456DAc1E556",
+      "chain_monitor": { "enabled": false },
+      "gas_oracle": { "enabled": false },
+      "batch_committer": {
+        "enable_test_env_bypass_features": true
+      },
+      "validium_mode": false
+    }
+  },
+  "db_config": {
+    "dsn": "postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup"
+  }
+}
+```
+
+**Important**: `commit_sender` and `finalize_sender` must be **different addresses**. The relayer enforces this at startup.
+
+### Step 3: Launch Relayer
+
+```bash
+/tmp/rollup_relayer \
+  --config /tmp/rollup-relayer-anvil.json \
+  --genesis /home/scroll/zzhang/scroll/tests/prover-e2e/mainnet-galileoV2/genesis.json \
+  --min-codec-version 7 \
+  --verbosity 3 \
+  2>&1 | tee /tmp/relayer.log
+```
+
+The relayer starts all modules (L2 watcher, proposers, batch committer, bundle finalizer). The batch committer will fail with `ErrorCallerIsNotSequencer` (expected — the commit sender is not a sequencer), but the **bundle finalizer runs independently every 15 seconds** and will pick up the pending bundles.
+
+### Step 4: Monitor Finalization
+
+Watch `/tmp/relayer.log` for:
+
+```
+{"msg":"Start to roll up zk proof","index":17297,...}
+{"msg":"finalizeBundle in layer1","index":17297,"tx hash":"0x6d62...","with proof":"true"}
+```
+
+### Results
+
+| Bundle | Batch | Transaction Hash | Status | Gas Used |
+|--------|-------|------------------|--------|----------|
+| 17297 | 517761 | `0x6d6264...cdaa725` | ✅ Success | 439,987 |
+| 17298 | 517762 | `0x071268...1136516` | ✅ Success | 407,455 |
+| 17299 | 517763 | `0x8f8894...6cabd5` | ✅ Success | 407,479 |
+| 17300 | 517764 | `0xa87721...302cd3` | ✅ Success | 407,419 |
+| 17301 | 517765 | `0x41ee42...c9cf89` | ✅ Success | 401,404 |
+
+**Final `lastFinalizedBatchIndex`**: `517765` (was `517760`)
+
+All 5 bundles finalized consecutively without manual intervention. Each bundle proof was verified on-chain by the `ZkEvmVerifierPostFeynman` contract deployed at `0xb1F2C5c1ea2885278a1070350d12d3D8824265B0`.
+
+### Key Differences from CLI Approach
+
+| Aspect | CLI (`cast send`) | Relayer |
+|--------|-------------------|---------|
+| Calldata construction | Manual Python script | Relayer reads from DB + constructs automatically |
+| Sender management | Single EOA | Separate commit/finalize senders |
+| Batch status tracking | None | Updates `bundle` and `batch` `rollup_status` in DB |
+| Error handling | Manual retry | Built-in retry and status polling |
+| Multi-bundle support | One at a time | Processes all pending bundles automatically |
 
 ## Known Limitations
 
