@@ -1,0 +1,6 @@
+# Local environment file with secrets
+.env
+
+# Generated/temporary files
+*.log
+*.tmp

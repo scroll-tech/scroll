@@ -30,7 +30,13 @@ For testing proof generation against **real mainnet production tasks** without i
 - **Automation**: [`scripts/shadow-testing/setup.sh`](scripts/shadow-testing/setup.sh) — one-command setup for postgres, coordinator, and prover.
 
 Key hard-won rules:
-- **L2 RPC**: Must support `debug_executionWitness`. `https://mainnet-rpc.scroll.io` works; `https://rpc.scroll.io` does not.
+- **L2 RPC for coordinator task generation** (must support `debug_executionWitness`):
+  - ✅ **Primary**: `https://l2geth-rpc-proxy.mainnet.aws.scroll.io/` (internal/debug-enabled, supports `debug_executionWitness`)
+  - ⚠️ **Fallback**: `https://mainnet-rpc.scroll.io` (public RPC, may not support `debug_executionWitness` for chunk task generation)
+  - ❌ **Avoid**: `https://rpc.scroll.io` (does not work)
+- **Alchemy API for Anvil fork** (must use Alchemy, others hit rate limits):
+  - ✅ **Primary**: `https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY`
+  - 📋 **Credential source**: Check `local-secrets.md`, `.env`, or `.pgpass` first. If not found, **ask a human** — do not guess or invent keys.
 - **S3 circuit URLs**: v0.8.0 uses `v0.8.0/` prefix (no `/releases/`).
 - **l2_block table**: Coordinator needs this for block hash lookups. Must be populated and linked via `chunk_hash`.
 - **Blocks**: Must be post-fork (GalileoV2 / codec V10 = blocks ≥ 33,750,000 on mainnet).
@@ -125,6 +131,20 @@ make coordinator_setup
 
 - **Code / logic issues**: agents should reason independently and propose fixes.
 - **Environment / secrets issues** (database passwords, RPC endpoints, cloud credentials, sudo access): ask the human and wait for a response. Do not time out and make unilateral decisions.
+
+## Secrets & Credentials Reference
+
+**All sensitive endpoints, keys, and passwords for local development are documented in [`local-secrets.md`](local-secrets.md)** (git-ignored).
+
+| Category | What's Inside | Why It Matters |
+|----------|---------------|----------------|
+| **RPC Endpoints** | ETH L1 (Alchemy mainnet/sepolia), Scroll L2 (public/internal) | Anvil must fork **ETH L1**, not Scroll L2. Coordinator needs debug-enabled L2 RPC. |
+| **Database DSNs** | Local shadow DB (port 5433), Sepolia shadow DB (port 5442), Mainnet RDS (port 15432 via tunnel) | Wrong DSN = wrong chain data = wasted proving hours. |
+| **Contract Addresses** | ScrollChain proxy, L1MessageQueueV2, RollupVerifier, MockVerifier | These change per network (mainnet vs sepolia). Hard-coding without checking = `ErrorIncorrectBatchHash`. |
+| **Sender Keys** | Commit/finalize EOA private keys for shadow fork | Anvil-funded accounts; never use production keys in shadow tests. |
+| **S3 URLs** | Circuit asset base URLs | v0.8.0 drops the `/releases/` prefix. Wrong URL = 403. |
+
+> **Agent Rule**: Before starting any shadow fork or E2E test, always cross-reference `local-secrets.md`. If a required secret is missing, ask the human — do not invent URLs or credentials.
 
 ## Documentation Index
 

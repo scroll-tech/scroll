@@ -1,0 +1,51 @@
+{
+    "name": "sepolia-shadow-fork",
+    "fork": {
+        "url": "https://eth-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY",
+        "block_number": 10878976,
+        "anvil_rpc": "http://localhost:18546"
+    },
+    "contracts": {
+        "scroll_chain": "0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0",
+        "l1_message_queue_v2": "0xA0673eC0A48aa924f067F1274EcD281A10c5f19F",
+        "rollup_verifier": "0x8A360c7F6fca548507017DdeD732bFe7E078F963",
+        "deployed_verifier": "",
+        "owner": "0xbE57544Eaf3515E888614a464EC9e0ad38f73e37"
+    },
+    "accounts": {
+        "prover_eoa": "0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9",
+        "commit_eoa": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    "reset": {
+        "last_finalized_batch_index": 127915,
+        "next_unfinalized_queue_index": 0,
+        "codec_version": 10
+    },
+    "db": {
+        "dsn": "postgresql://YOUR_SHADOW_DB_USER:YOUR_SHADOW_DB_PASSWORD@localhost:5442/sepolia_scroll"
+    },
+    "genesis": "tests/prover-e2e/sepolia-galileoV2/genesis.json",
+    "assets": {
+        "assets_v2": "coordinator/build/bin/assets_v2"
+    },
+    "prover": {
+        "name_prefix": "sepolia-shadowfork-prover",
+        "circuit_version": "v0.13.1",
+        "s3_base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/"
+    },
+    "coordinator": {
+        "l2geth": "https://l2geth-rpc-proxy.sepolia.aws.scroll.io"
+    },
+    "relayer": {
+        "validium_mode": false,
+        "min_codec_version": 7,
+        "chain_monitor_enabled": false
+    },
+    "e2e": {
+        "begin_block": 17086000,
+        "end_block": 17086005,
+        "l2_rpc": "https://sepolia-rpc.scroll.io",
+        "fork_name": "galileoV2",
+        "zkvm_version": "v0.8.0"
+    }
+}
