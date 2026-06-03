@@ -43,7 +43,7 @@ If you just want to get running, use the provided script:
 
 ```bash
 # 1. Set up shadow PostgreSQL
-cd scripts/shadow-testing
+cd tests/shadow-testing
 ./setup.sh --postgres
 
 # 2. Import production task data (requires RDS port-forward)
@@ -120,7 +120,7 @@ Export the latest N batches + their chunks + bundles from production RDS and imp
 
 ```bash
 # Edit these variables as needed
-# Credentials loaded from .env (see scripts/shadow-testing/.env.example)
+# Credentials loaded from .env (see tests/shadow-testing/.env.example)
 PROD_DB="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:${PROD_DB_PORT}/${PROD_DB_NAME}"
 SHADOW_DB="postgresql://${SHADOW_DB_USER}:${SHADOW_DB_PASSWORD}@${SHADOW_DB_HOST}:${SHADOW_DB_PORT}/${SHADOW_DB_NAME}"
 BATCH_LIMIT=50
@@ -174,7 +174,7 @@ The coordinator needs `l2_block` records to format chunk tasks (for block hashes
 Use the provided Python script or fetch blocks via L2 RPC:
 
 ```bash
-python3 scripts/shadow-testing/fetch-l2-blocks.py \
+python3 tests/shadow-testing/scripts/fetch-l2-blocks.py \
   --rpc https://mainnet-rpc.scroll.io \
   --db "postgresql://$SHADOW_DB_USER:$SHADOW_DB_PASSWORD@$SHADOW_DB_HOST:$SHADOW_DB_PORT/$SHADOW_DB_NAME" \
   --start-block 26000000 \
@@ -396,7 +396,7 @@ When `"dry_run": true` is set in the sender config:
 cd rollup && go build -o rollup_relayer ./cmd/rollup_relayer/app
 ```
 
-2. Configure `dry_run: true` in the sender config (see `scripts/shadow-testing/configs/rollup-relayer-dryrun.json`)
+2. Configure `dry_run: true` in the sender config (see `tests/shadow-testing/configs/rollup-relayer-dryrun.json`)
 
 3. Start the relayer:
 ```bash

@@ -102,6 +102,11 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *types
 }
 
 func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *types.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
+	// In dry-run mode, skip gas estimation and use a fixed gas limit.
+	if s.config.DryRun {
+		return 10000000, nil, nil
+	}
+
 	msg := ethereum.CallMsg{
 		From:      s.transactionSigner.GetAddr(),
 		To:        to,

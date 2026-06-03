@@ -25,9 +25,9 @@ Follow the structured testing guide in [`docs/testing/openvm-upgrade-testing-gui
 For testing proof generation against **real mainnet production tasks** without interfering with the live system, use the **Shadow Coordinator** approach. This is significantly faster than a full shadow fork:
 
 - **Architecture**: Local coordinator (`:8390`) + local prover (GPU), fed by imported production task data.
-- **Docs**: [`docs/shadow-testing/README.md`](docs/shadow-testing/README.md) — full setup guide, troubleshooting, config reference.
-- **Quick Start**: [`scripts/shadow-testing/QUICKSTART.md`](scripts/shadow-testing/QUICKSTART.md)
-- **Automation**: [`scripts/shadow-testing/setup.sh`](scripts/shadow-testing/setup.sh) — one-command setup for postgres, coordinator, and prover.
+- **Docs**: [`tests/shadow-testing/docs/README.md`](tests/shadow-testing/docs/README.md) — full setup guide, troubleshooting, config reference.
+- **Quick Start**: [`tests/shadow-testing/docs/QUICKSTART.md`](tests/shadow-testing/docs/QUICKSTART.md)
+- **Automation**: [`tests/shadow-testing/scripts/setup.sh`](tests/shadow-testing/scripts/setup.sh) — one-command setup for postgres, coordinator, and prover.
 
 Key hard-won rules:
 - **L2 RPC for coordinator task generation** (must support `debug_executionWitness`):
@@ -153,5 +153,5 @@ make coordinator_setup
 | [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, component relationships, common operations |
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
 | [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
-| [`docs/shadow-testing/README.md`](docs/shadow-testing/README.md) | Shadow coordinator + local prover setup for production task replay |
+| [`tests/shadow-testing/docs/README.md`](tests/shadow-testing/docs/README.md) | Shadow coordinator + local prover setup for production task replay |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
