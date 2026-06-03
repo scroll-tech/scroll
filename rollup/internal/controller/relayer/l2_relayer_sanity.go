@@ -294,6 +294,9 @@ func (r *Layer2Relayer) validateSingleChunkConsistency(chunk *orm.Chunk, prevChu
 	}
 
 	// Check chunk index continuity
+	if prevChunk == nil {
+		return fmt.Errorf("previous chunk is nil for chunk %d", chunk.Index)
+	}
 	if chunk.Index != prevChunk.Index+1 {
 		return fmt.Errorf("chunk index is not sequential: prev chunk index %d, current chunk index %d", prevChunk.Index, chunk.Index)
 	}

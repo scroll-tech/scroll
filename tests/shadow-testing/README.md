@@ -412,16 +412,16 @@ import base64, json
 instances = base64.b64decode(proof_json['proof']['instances'])
 print(f"instances length: {len(instances)} bytes")  # e.g. 1472
 
-# For ZkEvmVerifierPostEuclid (new guest v0.8.0+):
+# For ZkEvmVerifierPostFeynman (new guest v0.8.0+):
 #   1472 bytes = 12 accumulators (384) + 2 digests (64) + 32 publicInputHash bytes (1024)
 #   = 46 × 32-byte Fr elements
 digest1 = '0x' + instances[384:416].hex()
 digest2 = '0x' + instances[416:448].hex()
 ```
 
-If `len(instances) == 1472` (or more generally `12+2+32 = 46` words), your proof is for **`ZkEvmVerifierPostEuclid`**. The wrapper computes `keccak256(publicInput)` and feeds each of the 32 hash bytes as a separate field element to the plonk verifier.
+If `len(instances) == 1472` (or more generally `12+2+32 = 46` words), your proof is for **`ZkEvmVerifierPostFeynman`**. The wrapper computes `keccak256(abi.encodePacked(protocolVersion, publicInput))` and feeds each of the 32 hash bytes as a separate field element to the plonk verifier.
 
-If `len(instances)` were smaller (e.g. 12+13 = 25 words), the proof would be for `ZkEvmVerifierPostFeynman`, which decomposes public inputs into 13 field elements directly.
+`ZkEvmVerifierPostEuclid` (older) decomposes public inputs differently and does **not** include the `protocolVersion` prefix in the hash. Using `PostEuclid` with v0.8.0+ proofs will always fail with `VerificationFailed(0x439cc0cd)` because the hash mismatch is unconditional.
 
 **Fix — Automated deployment**
 
