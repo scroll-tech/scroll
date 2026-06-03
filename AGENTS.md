@@ -43,6 +43,19 @@ Key hard-won rules:
 - **L1 messages**: If chunks contain L1 messages, prover needs `scroll_getL1MessagesInBlock` RPC support. Most chunks at current mainnet height do NOT contain L1 messages, so this is usually non-blocking.
 - **Anvil MUST fork Ethereum L1, NOT Scroll L2**: The ScrollChain proxy address `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` is on **Ethereum mainnet** (chainId=1), not Scroll mainnet (chainId=534352). If you accidentally point Anvil at a Scroll L2 RPC (e.g., `scroll-mainnet.g.alchemy.com`), the proxy address will have no code or wrong code, and all contract interactions will fail. Always verify `eth_chainId` returns `1` after forking.
 
+### Sepolia Shadow Fork — Additional Rules
+
+| Dimension | Mainnet | Sepolia | Trap |
+|-----------|---------|---------|------|
+| **DB port** | `localhost:5433` (shadow) / `15432` (RDS tunnel) | `localhost:25432` (RDS tunnel) | Wrong port = connecting to mainnet data |
+| **L2 RPC** | `l2geth-rpc-proxy.mainnet.aws.scroll.io` | `l2geth-rpc-proxy.sepolia.aws.scroll.io` | Public Sepolia RPC (`sepolia-rpc.scroll.io`) rejects `debug_executionWitness` |
+| **Verifier** | Mainnet has `latestVerifier[10] = 0x0dE1...` (can `anvil_setCode`) | Sepolia has `latestVerifier[10] = 0x0` (must deploy fresh) | Cannot copy verifier — must deploy `ZkEvmVerifierPostFeynman` + register |
+| **`committedBatches`** | Sparse, but fork block usually covers target batches | Sparse; **every bundle end batch must exist** | Missing entry → `ErrorIncorrectBatchHash(0x2a1c1442)` |
+| **`L1MessageQueueV2`** | Reset `nextUnfinalizedQueueIndex = 0` sufficient | Must sync `nextCrossDomainMessageIndex == nextUnfinalizedQueueIndex` | Mismatch → `ErrorFinalizedIndexTooLarge(0x16465978)` |
+| **DB scope** | Imported limited range | Full production snapshot (batches 128080+) | Relayer batch committer floods logs with commit retries |
+| **Blob version** | Usually V0 | Anvil 1.0.0 cannot decode BlobSidecar V1 | Set `fusaka_timestamp: 2000000000` in relayer config |
+| **Proofs in DB** | May already be v0.8.0 | Old proofs are v0.7.3 | Must reset `proving_status = 1` to regenerate with v0.8.0 |
+
 ## Useful Commands
 
 ```bash
@@ -126,6 +139,16 @@ make coordinator_setup
 ### Multiple Coordinator Instances
 - Running `make coordinator_setup` rebuilds the binary but does not stop running instances. If the old instance holds port 8390, the new one fails with `bind: address already in use`.
 - Always check with `ss -tlnp | grep 8390` before launching.
+
+## Agent Discipline: Research Before Experimentation
+
+> **Rule**: When encountering a problem that is **non-trivial**, **time-consuming**, or **has failed more than once**, the agent **must** search existing documentation before attempting new fixes.
+>
+> 1. Read all relevant markdown files in the task directory (e.g., `tests/shadow-testing/docs/*.md`, `LESSONS_LEARNED.md`).
+> 2. Search for similar error messages, selectors, or symptoms in the codebase and docs.
+> 3. Only after confirming the issue is **not documented** should you design a new experiment.
+>
+> **Why**: This repository has extensive documentation of past pitfalls. Blind experimentation wastes time and repeats mistakes that are already solved in writing.
 
 ## Coordination with Humans
 
