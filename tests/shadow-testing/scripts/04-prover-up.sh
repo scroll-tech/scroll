@@ -90,6 +90,7 @@ EOF
 
     log_info "Starting prover on GPU $gpu_id..."
 
+    export RUST_MIN_STACK=16777216
     CUDA_VISIBLE_DEVICES="$gpu_id" nohup "$PROVER_BIN" \
         --config "$config_file" \
         > "$log_file" 2>&1 &
