@@ -1,6 +1,6 @@
 #!/bin/bash
 # One-command orchestrator for shadow fork testing.
-# Usage: ./07-docker-orchestrate.sh [options]
+# Usage: ./08-docker-orchestrate.sh [options]
 #
 # Options:
 #   --bundle-range RANGE    Bundle index range, e.g. 17302:17305
@@ -292,7 +292,7 @@ run_prove() {
 
     # 8. Wait for proofs
     log_info "Waiting for proofs..."
-    "${SCRIPT_DIR}/04-wait-for-proofs.sh" \
+    "${SCRIPT_DIR}/05-wait-for-proofs.sh" \
         --db-dsn "$DB_DSN" \
         --bundle-range "$BUNDLE_RANGE"
 
@@ -314,7 +314,7 @@ run_finalize() {
 
     # 11. Wait for finalization
     log_info "Waiting for finalization..."
-    "${SCRIPT_DIR}/06-wait-for-finalize.sh" \
+    "${SCRIPT_DIR}/07-wait-for-finalize.sh" \
         --anvil-rpc "$ANVIL_RPC" \
         --scroll-chain "$SCROLL_CHAIN" \
         --bundle-range "$BUNDLE_RANGE" \

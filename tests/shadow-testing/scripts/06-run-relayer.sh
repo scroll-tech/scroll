@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build and launch the rollup relayer
-# Usage: ./05-run-relayer.sh --config mainnet [--build]
+# Usage: ./06-run-relayer.sh --config mainnet [--build]
 
 set -euo pipefail
 

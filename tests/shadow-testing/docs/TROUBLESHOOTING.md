@@ -1,4 +1,4 @@
-# Agent Instructions for Shadow Testing
+# Troubleshooting & Pitfalls
 
 > **Read this file first** before starting any shadow fork or shadow coordinator test.
 > This directory contains hard-won knowledge from multiple debugging sessions. Blind experimentation will repeat documented mistakes.
@@ -7,9 +7,9 @@
 
 Before executing a single command:
 
-1. [ ] **Read `AGENTS.md`** (this file) — refresh the trap list.
+1. [ ] **Read root `AGENTS.md`** (this file) — refresh the trap list.
 2. [ ] **Read `docs/LESSONS_LEARNED.md`** — check if your planned task matches any documented failure mode.
-3. [ ] **Read `docs/README.md`** — verify the specific section matching your task (e.g., "Real Verifier Deployment", "Multi-Bundle Relayer Finalize Test").
+3. [ ] **Read `docs/GUIDE.md`** — verify the specific section matching your task (e.g., "Real Verifier Deployment", "Multi-Bundle Relayer Finalize Test").
 4. [ ] **Verify network** — confirm you are testing **Mainnet** or **Sepolia**, and all configs/ports/RPCs match that network.
 5. [ ] **Verify target bundle range** — query the DB to confirm:
    - Bundles exist and have `proving_status = 4` (or will be regenerated)
@@ -192,6 +192,6 @@ Before executing a single command:
 When debugging, read docs in this order:
 
 1. `docs/LESSONS_LEARNED.md` — fastest path to known solutions
-2. `docs/README.md` — detailed setup and troubleshooting
-3. `docs/QUICKSTART.md` — quick reference for common commands
+2. `docs/GUIDE.md` — detailed setup and troubleshooting
+3. `README.md` — quick reference for common commands
 4. `../../AGENTS.md` (repo root) — cross-network rules and secrets reference

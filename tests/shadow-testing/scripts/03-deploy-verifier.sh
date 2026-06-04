@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
             register=false; shift ;;
         --help|-h)
             cat << 'USAGE'
-Usage: 02-deploy-verifier.sh [options]
+Usage: 03-deploy-verifier.sh [options]
 
 Deploy a new ZkEvmVerifierPostFeynman (with new plonk verifier + digests
 extracted from the DB proof) and register it on Anvil.

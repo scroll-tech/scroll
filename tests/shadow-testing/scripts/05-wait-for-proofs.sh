@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wait for bundle proofs to reach proving_status=4 (verified)
-# Usage: ./04-wait-for-proofs.sh --bundle-range 17297:17301 [--timeout 3600]
+# Usage: ./05-wait-for-proofs.sh --bundle-range 17297:17301 [--timeout 3600]
 
 set -euo pipefail
 

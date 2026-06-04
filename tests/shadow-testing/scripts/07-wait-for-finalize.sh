@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wait for on-chain finalization of bundles
-# Usage: ./06-wait-for-finalize.sh --bundle-range 17297:17301 --anvil-rpc ... --scroll-chain ...
+# Usage: ./07-wait-for-finalize.sh --bundle-range 17297:17301 --anvil-rpc ... --scroll-chain ...
 
 set -euo pipefail
 

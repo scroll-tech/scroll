@@ -60,7 +60,7 @@ psql -h localhost -p 25432 -U sepolia_infra_user_read_only -d sepolia_scroll -c 
    digest1 = '0x' + instances[384:416].hex()
    digest2 = '0x' + instances[416:448].hex()
    ```
-3. **Use the provided script** (`scripts/02-deploy-verifier.sh`) which already deploys `PostFeynman` with the correct digests and `protocolVersion = 10`.
+3. **Use the provided script** (`scripts/03-deploy-verifier.sh`) which already deploys `PostFeynman` with the correct digests and `protocolVersion = 10`.
 
 ### Recovery Steps
 1.  Deploy `ZkEvmVerifierPostFeynman` with the same plonk verifier, digest1, digest2, and `protocolVersion = 10`.
@@ -547,7 +547,7 @@ cast call <verifier_addr> "verifierDigest2()" --rpc-url <URL>
 
 **⚠️ CRITICAL DISTINCTION**:
 - **This test** (re-use production proofs): Check MVRV → if digests match, skip deployment.
-- **New guest version test** (e.g., 0.8.0 / openvm 1.6): **MUST deploy new verifier**. New guest = new circuit = new plonk verifier bin = new digests. The old MVRV verifier will NOT match. Follow the full deployment flow in `docs/README.md` → "Real Verifier Deployment".
+- **New guest version test** (e.g., 0.8.0 / openvm 1.6): **MUST deploy new verifier**. New guest = new circuit = new plonk verifier bin = new digests. The old MVRV verifier will NOT match. Follow the full deployment flow in `docs/GUIDE.md` → "Real Verifier Deployment".
 
 **Rule**: Always know which scenario you're in:
 1. Re-playing old production tasks → verify existing MVRV entry matches.

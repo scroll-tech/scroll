@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start prover(s) for shadow testing
-# Usage: ./03-prover-up.sh --config mainnet --bundle-range 17297:17301 [--gpus 0,1]
+# Usage: ./04-prover-up.sh --config mainnet --bundle-range 17297:17301 [--gpus 0,1]
 
 set -euo pipefail
 

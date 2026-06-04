@@ -77,13 +77,13 @@ prove: prover-up wait-proofs
 
 prover-up:
 	@echo "🔬 Starting provers..."
-	$(SCRIPT_DIR)/scripts/03-prover-up.sh \
+	$(SCRIPT_DIR)/scripts/04-prover-up.sh \
 		--config "$(CONFIG)" \
 		--bundle-range "$(BUNDLE_RANGE)"
 
 wait-proofs:
 	@echo "⏳ Waiting for proofs to complete..."
-	$(SCRIPT_DIR)/scripts/04-wait-for-proofs.sh \
+	$(SCRIPT_DIR)/scripts/05-wait-for-proofs.sh \
 		--db-dsn "$(DB_DSN)" \
 		--bundle-range "$(BUNDLE_RANGE)"
 
@@ -94,12 +94,12 @@ finalize: relayer-up wait-finalize
 
 relayer-up:
 	@echo "📤 Starting relayer..."
-	$(SCRIPT_DIR)/scripts/05-run-relayer.sh \
+	$(SCRIPT_DIR)/scripts/06-run-relayer.sh \
 		--config "$(CONFIG)"
 
 wait-finalize:
 	@echo "⏳ Waiting for finalization..."
-	$(SCRIPT_DIR)/scripts/06-wait-for-finalize.sh \
+	$(SCRIPT_DIR)/scripts/07-wait-for-finalize.sh \
 		--anvil-rpc "$(ANVIL_RPC)" \
 		--scroll-chain "$(SCROLL_CHAIN)" \
 		--bundle-range "$(BUNDLE_RANGE)"
@@ -136,7 +136,7 @@ status: check-deps
 
 verify: check-deps
 	@echo "🔍 Verifying on-chain finalization..."
-	$(SCRIPT_DIR)/scripts/06-wait-for-finalize.sh \
+	$(SCRIPT_DIR)/scripts/07-wait-for-finalize.sh \
 		--anvil-rpc "$(ANVIL_RPC)" \
 		--scroll-chain "$(SCROLL_CHAIN)" \
 		--bundle-range "$(BUNDLE_RANGE)" \
@@ -147,28 +147,28 @@ verify: check-deps
 
 docker-all:
 	@echo "🐳 Docker-orchestrated full pipeline..."
-	$(SCRIPT_DIR)/scripts/07-docker-orchestrate.sh \
+	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
 		--config $(CONFIG) \
 		--bundle-range $(BUNDLE_RANGE) \
 		--phase all
 
 docker-env:
 	@echo "🐳 Docker environment setup..."
-	$(SCRIPT_DIR)/scripts/07-docker-orchestrate.sh \
+	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
 		--config $(CONFIG) \
 		--bundle-range $(BUNDLE_RANGE) \
 		--phase env
 
 docker-prove:
 	@echo "🐳 Docker proving phase..."
-	$(SCRIPT_DIR)/scripts/07-docker-orchestrate.sh \
+	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
 		--config $(CONFIG) \
 		--bundle-range $(BUNDLE_RANGE) \
 		--phase prove
 
 docker-finalize:
 	@echo "🐳 Docker finalization phase..."
-	$(SCRIPT_DIR)/scripts/07-docker-orchestrate.sh \
+	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
 		--config $(CONFIG) \
 		--bundle-range $(BUNDLE_RANGE) \
 		--phase finalize
