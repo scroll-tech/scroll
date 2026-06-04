@@ -716,3 +716,273 @@ CUDA_VISIBLE_DEVICES="$gpu_id" nohup "$PROVER_BIN" --config "$config_file" > "$l
 ```
 
 **Lesson**: Always ensure `RUST_MIN_STACK` is exported in prover startup scripts, not just in the build Makefile.
+
+---
+
+## 2026-06-04: Bundles 13450–13454 All Proved Successfully with OpenVM 1.6.0 (zkvm-prover ed3b964)
+
+### What Happened
+Successfully proved all 5 bundles (13450–13454, batches 128008–128020) using the local shadow prover built with OpenVM 1.6.0 / zkvm-prover `ed3b964`.
+
+| Bundle | Batches | Prover | Proof Time | Status |
+|--------|---------|--------|------------|--------|
+| 13450 | 128008–128009 | Prover 0 | ~22 min | ✅ Verified |
+| 13451 | 128010–128012 | Prover 0 | ~9 min | ✅ Verified |
+| 13452 | 128013–128015 | Prover 0 | ~12 min | ✅ Verified |
+| 13453 | 128016–128017 | Prover 0 | ~35 min | ✅ Verified |
+| 13454 | 128018–128020 | Prover 1 | ~35 min | ✅ Verified |
+
+**Total**: 14/14 chunks, 13/13 batches, 5/5 bundles verified.
+
+### New Issues Discovered and Resolutions
+
+#### 7. `batch_proofs_status` Does Not Auto-Update in Shadow Testing
+
+**Symptom**: After all batches in a bundle reached `proving_status=4` (verified), the bundle's `batch_proofs_status` remained `1` (Pending). The coordinator's cron job that normally updates this was not running in the shadow testing setup.
+
+**Impact**: Bundles could not be scheduled for bundle proof generation because `Assign()` requires `batch_proofs_status == 2` (Ready).
+
+**Fix**: Manually update when all constituent batches are verified:
+```sql
+UPDATE bundle SET batch_proofs_status = 2 WHERE index = <bundle_index>;
+```
+
+**Why this happens**: The coordinator background cron (`cron.UpdateBundleProofsStatus`) is either not enabled or relies on production-specific infrastructure (e.g., message queue, scheduler) that is absent in shadow testing.
+
+#### 8. Prover 1 Entered Failure Loop After Config Change
+
+**Symptom**: After changing `supported_proof_types` from `[1,2,3]` to `[3]` (Bundle only), Prover 1 was assigned a chunk task, rejected it, and entered a loop:
+```
+ERROR: cannot submit valid proof for a prover task twice
+ERROR: CoordinatorEmptyProofData: get empty prover task
+```
+
+**Root Cause**: The prover received a chunk task from the coordinator but its config said it only supports Bundle proofs. It failed the task, but the coordinator kept reassigning it.
+
+**Fix**:
+1. Revert config to `supported_proof_types: [1, 2, 3]`
+2. Reset the stuck chunk's `proving_status = 1`, `active_attempts = 0`
+3. Delete failed `prover_task` records for that chunk
+4. Restart prover
+
+#### 9. `libzkp.so` Must Be Rebuilt When zkvm-prover Version Changes
+
+**Symptom**: Coordinator verification failed with:
+```
+failed to verify proof: data did not match any variant of untagged enum ProofEnum
+```
+
+**Root Cause**: The `libzkp.so` shared library was built on May 19 against an older zkvm-prover (`f18523c`). The new prover (`ed3b964`, OpenVM 1.6.0) changed the `Proof<SC>` bincode serialization format. Old `libzkp.so` could not deserialize new proofs.
+
+**Fix**: Rebuild `libzkp-c` and replace `libzkp.so`:
+```bash
+cargo build --release -p libzkp-c
+cp target/release/libzkp.so coordinator/build/bin/
+```
+
+**Lesson**: `libzkp.so` is NOT forward-compatible across zkvm-prover revisions. Always rebuild after upgrading the prover.
+
+#### 10. Coordinator `json.Unmarshal` Error Was a Red Herring
+
+**Symptom**: Coordinator log showed:
+```
+failed to unmarshal proof: ..., bundle hash: ..., batch hash: ...
+```
+
+**Initial suspicion**: GORM was corrupting PostgreSQL `bytea` fields.
+
+**Verification**: Standalone Go test confirmed GORM correctly maps `bytea` → `[]byte`.
+
+**Actual root cause**: The `json.Unmarshal` in Go succeeded (it produced a valid `OpenVMBatchProof` struct). The failure was in Rust `libzkp::gen_universal_task` when it tried to bincode-deserialize the inner `StarkProof`. The error message bubbled up from Rust → CGO → Go, but the Go layer's `json.Unmarshal` log was the most visible symptom.
+
+**Lesson**: When seeing deserialization errors in a Go/Rust hybrid system, verify which layer actually fails. Don't assume the first logged error is the root cause.
+
+### Next Step: Real On-Chain Finalize
+
+All 5 bundle proofs are coordinator-verified. The next step is to attempt real on-chain finalization via the relayer:
+
+1. Ensure `ZkEvmVerifierPostFeynman` is deployed with digests matching the new proofs
+2. Register verifier on `MultipleVersionRollupVerifier`
+3. Ensure batches are committed on-chain (`committedBatches[endBatchIndex] != 0`)
+4. Start relayer to call `finalizeBundlePostEuclidV2`
+
+⚠️ **Current Anvil state**: `lastCommittedBatchIndex = 0`, `lastFinalizedBatchIndex = 0`. The batches were never committed on this Anvil fork. The relayer must first commit batches before finalizing bundles.
+
+### Post-Proving Checklist
+
+- [ ] All chunks/batches/bundles have `proving_status = 4`
+- [ ] All bundles have `batch_proofs_status = 2`
+- [ ] `libzkp.so` matches prover revision
+- [ ] Coordinator asset hashes match prover circuit hashes
+- [ ] Verifier digests extracted from new proofs match on-chain verifier
+- [ ] `committedBatches[endBatchIndex]` is non-zero for all target batches
+- [ ] Relayer config has `enable_test_env_bypass_features` in correct location (if needed for other tests)
+
+---
+
+## 2026-06-04: Bundle 13451 `VerificationFailed` — `L1MessageQueueV2` State Mismatch on Anvil Fork
+
+### What Happened
+
+After successfully proving bundles 13450–13454 with OpenVM 1.6.0, bundle 13450 finalized on-chain successfully. Bundle 13451 failed with:
+
+```
+execution reverted: custom error 0x439cc0cd   # VerificationFailed
+```
+
+Manual `cast call` to the verifier contract with DB-extracted public inputs reproduced the same error.
+
+### Root Cause
+
+The Anvil fork block (10979334) was at a boundary where `L1MessageQueueV2.nextCrossDomainMessageIndex = 1091255`. Bundle 13451's `totalL1MessagesPoppedOverall = 1091256`, so the contract queried `getMessageRollingHash(1091255)`. On Anvil this returned `0x0` because no message had been appended at that index yet. In production, `getMessageRollingHash(1091255) = 0xb9954a9f...`.
+
+The proof was generated with the production `messageQueueHash` (embedded in `bundle_pi_hash`), but the on-chain contract recomputed `publicInputs` using Anvil's stale `0x0` value. This mismatch caused `VerificationFailed` even though the proof structure and SNARK were internally valid.
+
+**The coordinator verifies SNARK self-consistency (proof matches its own instances), NOT that the instances match on-chain state.**
+
+### Diagnosis Steps
+
+1. **Verify the error is from the verifier, not the contract**:
+   ```bash
+   cast call <VERIFIER> "verify(bytes,bytes32[])" <proof> <publicInputs> --rpc-url $ANVIL_RPC
+   # → reverts with 0x439cc0cd
+   ```
+
+2. **Compare `messageQueueHash` in proof metadata vs contract**:
+   ```python
+   # From bundle proof JSON
+   msg_queue_hash = proof_json['metadata']['bundle_info']['msg_queue_hash']
+   # From contract (what it would compute)
+   cast call <L1MQ> "getMessageRollingHash(uint256)(bytes32)" 1091255 --rpc-url $ANVIL_RPC
+   # → 0x0 (mismatch!)
+   ```
+
+3. **Check production value**:
+   ```bash
+   cast call <L1MQ> "getMessageRollingHash(uint256)(bytes32)" 1091255 --rpc-url $SEPOLIA_RPC
+   # → 0xb9954a9f... (matches proof)
+   ```
+
+### Recovery Steps
+
+#### 1. Sync `messageRollingHashes` from production
+
+Use `anvil_setStorageAt` to set the correct rolling hash values. First find the base slot:
+
+```bash
+forge inspect L1MessageQueueV2 storage-layout | grep messageRollingHashes
+# → slot 101
+```
+
+Compute individual slots and set values:
+
+```python
+import eth_abi
+from eth_utils import keccak
+
+BASE_SLOT = 101
+ANVIL_RPC = "http://localhost:18546"
+L1MQ = "0xA0673eC0A48aa924f067F1274EcD281A10c5f19F"
+
+# Fetch from production
+for idx in range(1091255, 1091274):
+    hash_val = cast_call(L1MQ, "getMessageRollingHash(uint256)(bytes32)", idx, SEPOLIA_RPC)
+    slot = keccak(eth_abi.encode(['uint256', 'uint256'], [idx, BASE_SLOT]))
+    anvil_set_storage_at(L1MQ, slot, hash_val)
+```
+
+#### 2. Update `nextCrossDomainMessageIndex`
+
+```bash
+# Set to production value (1091274)
+cast rpc anvil_setStorageAt "$L1MQ" "0x67" \
+  "0x000000000000000000000000000000000000000000000000000000000010a6ca" \
+  --rpc-url "$ANVIL_RPC"
+```
+
+#### 3. Update `nextUnfinalizedQueueIndex` to **pre-finalization** value
+
+**Critical**: Do NOT set this to the production current value. It must be the value *before* the first target bundle was finalized.
+
+```sql
+-- For bundle 13451 (first batch = 128010), find the pre-finalization value
+-- which is the totalL1MessagesPoppedOverall of the previously-finalized bundle
+SELECT total_l1_messages_popped_before + total_l1_messages_popped_in_chunk
+FROM chunk
+WHERE index = (SELECT end_chunk_index FROM batch WHERE index = 128009);
+-- → 1091255
+```
+
+```bash
+cast rpc anvil_setStorageAt "$L1MQ" "0x68" \
+  "0x000000000000000000000000000000000000000000000000000000000010a6b7" \
+  --rpc-url "$ANVIL_RPC"
+```
+
+#### 4. Ensure finalize sender is an authorized prover
+
+`finalizeBundlePostEuclidV2` has `OnlyProver` modifier. If using a new EOA:
+
+```bash
+# Impersonate ScrollChain owner
+OWNER=$(cast call $SCROLL_CHAIN "owner()(address)" --rpc-url $ANVIL_RPC)
+cast rpc anvil_impersonateAccount "$OWNER" --rpc-url "$ANVIL_RPC"
+
+# Add new sender as prover
+cast send $SCROLL_CHAIN "addProver(address)" "$NEW_SENDER" \
+  --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked
+
+cast rpc anvil_stopImpersonatingAccount "$OWNER" --rpc-url "$ANVIL_RPC"
+```
+
+### Verification
+
+```bash
+# L1MessageQueueV2 state
+cast call $L1MQ "nextCrossDomainMessageIndex()(uint256)" --rpc-url $ANVIL_RPC
+# → 1091274
+cast call $L1MQ "nextUnfinalizedQueueIndex()(uint256)" --rpc-url $ANVIL_RPC
+# → 1091255
+cast call $L1MQ "getMessageRollingHash(uint256)(bytes32)" 1091255 --rpc-url $ANVIL_RPC
+# → 0xb9954a9f...
+
+# ScrollChain state
+cast call $SCROLL_CHAIN "lastFinalizedBatchIndex()(uint256)" --rpc-url $ANVIL_RPC
+# → 128009 (pre-finalization)
+
+# Test verifier directly
+cast call $VERIFIER "verify(bytes,bytes32[])" <proof> <publicInputs> --rpc-url $ANVIL_RPC
+# → should NOT revert
+```
+
+### Result
+
+After the fix, all bundles 13450–13454 finalized successfully on-chain:
+
+| Bundle | Batches | Finalize Tx | Status |
+|--------|---------|-------------|--------|
+| 13450 | 128008–128009 | `0xfcbce5...` | ✅ Finalized |
+| 13451 | 128010–128012 | `0x20117a...` | ✅ Finalized |
+| 13452 | 128013–128015 | `0x4f4b68...` | ✅ Finalized |
+| 13453 | 128016–128017 | `0x1daa13...` | ✅ Finalized |
+| 13454 | 128018–128020 | `0xd1da28...` | ✅ Finalized |
+
+### Key Lesson
+
+> **Shadow fork state can diverge from production in subtle ways.** Even when `ScrollChain.committedBatches` and `finalizedStateRoots` look correct, peripheral contracts like `L1MessageQueueV2` may have different state at the fork block. Always verify that *all* contract inputs used in `publicInputs` computation match the values the proof was generated with.
+
+### Pre-Finalize Checklist (Updated)
+
+- [ ] Anvil forked at `last_real_finalize_block + 1`
+- [ ] `lastFinalizedBatchIndex` set to `<first_target_batch - 1>`
+- [ ] `lastCommittedBatchIndex` set to real Sepolia value (≥ last target batch)
+- [ ] All end-batch indices have non-zero `committedBatches` hashes
+- [ ] `L1MessageQueueV2.nextUnfinalizedQueueIndex` set to pre-finalization value
+- [ ] `L1MessageQueueV2.nextCrossDomainMessageIndex` ≥ post-finalization value
+- [ ] **`L1MessageQueueV2.messageRollingHashes` synced from production for all indices needed by target bundles**
+- [ ] **Verify slot numbers with `forge inspect`** before `anvil_setStorageAt`
+- [ ] Sender balances > 0 on Anvil
+- [ ] **Finalize sender is authorized prover** (`isProver[sender] == true`)
+- [ ] Verifier digests match proofs
+- [ ] Relayer started with `--config <path>` and `--min-codec-version 10`
+- [ ] Target bundles/batches reset to `rollup_status = 1`

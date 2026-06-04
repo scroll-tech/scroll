@@ -87,7 +87,7 @@ if [[ -z "$ANVIL_RPC" || -z "$MVRV" || -z "$OWNER" || -z "$DB_DSN" ]]; then
 fi
 
 # Compute start batch: must be >= lastFinalized + 1 AND >= existing latestVerifier startBatchIndex
-EXISTING_START=$(cast call "$MVRV" "latestVerifier(uint256)(uint64,address)" 10 --rpc-url "$ANVIL_RPC" 2>/dev/null | grep -oP '^\d+' || echo "0")
+EXISTING_START=$(cast call "$MVRV" "latestVerifier(uint256)(uint64,address)" 10 --rpc-url "$ANVIL_RPC" 2>/dev/null | grep -oP '^\d+' | head -1 || echo "0")
 MIN_START=$((LAST_FINALIZED + 1))
 if [[ "$EXISTING_START" -gt "$MIN_START" ]]; then
     START_BATCH="$EXISTING_START"

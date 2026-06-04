@@ -39,7 +39,7 @@ GENESIS=$(jq -r '.genesis' "$CONFIG_FILE")
 
 # Use hardcoded dev keys for shadow testing
 # Anvil default account #0 (commit) and the prover/finalize EOA
-COMMIT_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+COMMIT_KEY="0x0afd95b5f1d9ef456b33c4e3720fbe70de7b4ff6e868fef454dc0aa60b09d8dc"
 FINALIZE_KEY="0x01f1e12ee33f91d63172c3d51baa3cecb4469284b0ab45eed48e57fb5329ac4d"
 
 # ─── Render config ───────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@
         "min_gas_tip": 0,
         "check_pending_time": 60,
         "max_pending_blob_txs": 3,
-        "fusaka_timestamp": 1750000000
+        "fusaka_timestamp": 9999999999
       },
       "commit_sender_signer_config": {
         "signer_type": "PrivateKey",
@@ -33,7 +33,7 @@
       "rollup_contract_address": "{{SCROLL_CHAIN}}",
       "batch_submission": {
         "min_batches": 1,
-        "max_batches": 6,
+        "max_batches": 1,
         "timeout": 7200,
         "backlog_max": 200,
         "blob_fee_tolerance": 500000000
