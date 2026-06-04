@@ -110,6 +110,7 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 	msg := ethereum.CallMsg{
 		From:      s.transactionSigner.GetAddr(),
 		To:        to,
+		Gas:       10000000, // Set a high gas limit to prevent Anvil from rejecting eth_estimateGas when Gas=0
 		GasPrice:  gasPrice,
 		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,
@@ -121,9 +122,20 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 		msg.BlobGasFeeCap = blobGasFeeCap
 	}
 
-	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, msg)
+	// Anvil has a bug where eth_estimateGas fails with "Out of gas" when
+	// maxFeePerGas/maxPriorityFeePerGas are present. We create a copy without
+	// gas price fields for the estimation call.
+	estimateMsg := msg
+	estimateMsg.GasPrice = nil
+	estimateMsg.GasTipCap = nil
+	estimateMsg.GasFeeCap = nil
+	if sidecar != nil {
+		estimateMsg.BlobGasFeeCap = nil
+	}
+
+	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, estimateMsg)
 	if err != nil {
-		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err, "msg", fmt.Sprintf("%+v", msg))
+		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err, "msg", fmt.Sprintf("%+v", estimateMsg))
 		return 0, nil, err
 	}
 

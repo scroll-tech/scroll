@@ -1,5 +1,37 @@
 # Shadow Testing Lessons Learned
 
+## 2026-06-03: "psql timeout" does NOT mean "port is closed"
+
+### What Happened
+1.  Ran `psql -h localhost -p 25432 ...` to connect to Sepolia shadow DB.
+2.  Command timed out after 60s.
+3.  **Misconclusion**: Assumed port-forward was not established and told user to start SSH tunnel.
+4.  User asked: "你怎么测试的？telnet $PORT 吗？"
+5.  Ran `nc -vz localhost 25432` → port was **OPEN**.
+6.  Re-ran `psql` with correct username → connected instantly.
+
+### Root Cause
+- `psql` timeout can be caused by many things: DNS resolution, SSL handshake failure, wrong username triggering slow auth fallback, etc.
+- TCP port being open is a separate layer from application-level connectivity.
+
+### Rule
+> **Always test TCP connectivity first** with `nc`, `telnet`, or `/dev/tcp/host/port` before diagnosing application-level issues.
+> Only after confirming the port is open (or closed) should you investigate `psql`-specific parameters.
+
+### Verification Commands
+```bash
+# TCP connectivity test (fast, no auth needed)
+timeout 3 bash -c 'cat < /dev/null > /dev/tcp/localhost/25432' && echo "Open" || echo "Closed"
+
+# Or with nc
+nc -vz localhost 25432
+
+# Then test psql with explicit username
+psql -h localhost -p 25432 -U sepolia_infra_user_read_only -d sepolia_scroll -c "SELECT 1;"
+```
+
+---
+
 ## 2026-06-03: PostEuclid vs PostFeynman Verifier Mismatch
 
 ### What Happened
@@ -333,3 +365,234 @@ if r.cfg.EnableTestEnvBypassFeatures {
 - [ ] Shadow bypass covers both `withProof=true` and `withProof=false` paths.
 - [ ] Bypass mode updates directly to `RollupFinalized` to avoid stuck `RollupFinalizing` state.
 - [ ] `bundle_index_seq` is set high enough to avoid blocking production indices.
+
+---
+
+## 2026-06-03: Sepolia Shadow Fork — Real `finalizeBundlePostEuclidV2` On-Chain Finalization (Bundles 13445-13449)
+
+> ⚠️ **Context**: This test **re-used existing production proofs** from Sepolia RDS, not newly-generated proofs from a new guest version. The lessons here are about relayer + contract interaction mechanics, NOT about proving new circuit versions.
+
+### What Happened
+Successfully finalized 5 production bundles (13445-13449, batches 127994-128007) on a Sepolia Anvil shadow fork using **real on-chain `finalizeBundlePostEuclidV2` transactions** (no bypass). This was a full relayer + contract interaction test, not a coordinator+prover test.
+
+**Proof source**: Imported directly from Sepolia production DB. These proofs were originally generated and verified on the live Sepolia chain. Bundle proof size ≈ 4.6KB, batch proofs ≈ 1MB.
+
+### Issues Discovered and Resolutions
+
+#### 1. Anvil `eth_estimateGas` rejects fee caps without explicit gas limit
+
+**Symptom**: Relayer finalize failed with:
+```
+failed to get fee data, err: Out of gas: gas required exceeds allowance: 0
+```
+
+**Root Cause**: Anvil's `eth_estimateGas` implementation returns `"Out of gas: gas required exceeds allowance: 0"` when the `CallMsg` contains `GasFeeCap`/`GasTipCap` fields but `Gas` is zero/unset. The Go Ethereum client's `EstimateGas` sets `Gas: 0` by default in the `CallMsg`.
+
+**Resolution**: In `rollup/internal/controller/sender/estimategas.go`, create a copy of the `CallMsg` with fee caps stripped before calling `EstimateGas`:
+
+```go
+msg := ethereum.CallMsg{
+    From:      s.transactionSigner.GetAddr(),
+    To:        to,
+    Gas:       10000000, // High limit for CreateAccessList later
+    GasPrice:  gasPrice,
+    GasTipCap: gasTipCap,
+    GasFeeCap: gasFeeCap,
+    Data:      data,
+}
+
+// Anvil bug: eth_estimateGas fails when maxFeePerGas/maxPriorityFeePerGas
+// are present without an explicit gas limit.
+estimateMsg := msg
+estimateMsg.GasPrice = nil
+estimateMsg.GasTipCap = nil
+estimateMsg.GasFeeCap = nil
+
+gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, estimateMsg)
+```
+
+**Rule**: When testing against Anvil, always verify `eth_estimateGas` behavior with a simple curl first if gas estimation fails.
+
+---
+
+#### 2. `L1MessageQueueV2.nextUnfinalizedQueueIndex` storage slot is NOT at slot 0 or 4
+
+**Symptom**: After setting `nextUnfinalizedQueueIndex = 0` via `anvil_setStorageAt` on slot 0, `eth_call` still returned `0x10a6bb` (1,091,259) on real Sepolia. The contract and Anvil disagreed on the value.
+
+**Root Cause**: `L1MessageQueueV2` inherits `OwnableUpgradeable` → `ContextUpgradeable` (with `uint256[50] __gap`) → `Initializable`. The `__gap[50]` pushes `L1MessageQueueV2`'s own variables far down. Using `forge inspect`:
+
+```bash
+forge inspect L1MessageQueueV2 storage-layout | grep nextUnfinalizedQueueIndex
+# → slot 104 (0x68)
+```
+
+Actual layout:
+- Slot 0: `_initialized` + `_initializing` + `_owner`
+- Slots 1-50: `ContextUpgradeable.__gap[50]`
+- Slot 51: `OwnableUpgradeable._owner` (wait, actually it's packed in slot 0)
+- Slot 52: `messageRollingHashes` mapping base
+- Slot 53: `firstCrossDomainMessageIndex`
+- Slot 54: `nextCrossDomainMessageIndex`
+- **Slot 55**: Wait, `forge inspect` said 104. The exact number depends on OpenZeppelin version.
+
+**Resolution**: **Always use `forge inspect <Contract> storage-layout`** to find the exact slot for any state variable. Never guess based on source code reading alone.
+
+```bash
+forge inspect L1MessageQueueV2 storage-layout
+```
+
+For the deployed Sepolia contract, the correct slots were:
+- `firstCrossDomainMessageIndex`: slot 102
+- `nextCrossDomainMessageIndex`: slot 103
+- `nextUnfinalizedQueueIndex`: slot 104
+
+---
+
+#### 3. `nextUnfinalizedQueueIndex` must match pre-finalization state, not post-finalization
+
+**Symptom**: Setting `nextUnfinalizedQueueIndex = 0` caused `finalizeBundlePostEuclidV2` to revert with an L1 message queue index mismatch.
+
+**Root Cause**: The fork block (10979334) is AFTER the real finalization of bundles 13445-13449 on Sepolia. The real state at that block already has `nextUnfinalizedQueueIndex = 1,091,259` (post-finalization). We reset `lastFinalizedBatchIndex` to 127993 (pre-finalization) to re-simulate finalization, but also need `nextUnfinalizedQueueIndex` at its pre-finalization value.
+
+**How to compute the correct pre-finalization value**:
+```sql
+SELECT MIN(total_l1_messages_popped_before) 
+FROM chunk 
+WHERE batch_hash IN (SELECT hash FROM batch WHERE index = <first_target_batch>);
+-- → 1091247 for batch 127994
+```
+
+**Resolution**:
+```bash
+# Set to pre-finalization value (NOT 0, NOT post-finalization value)
+curl -X POST http://localhost:18546 \
+  -d '{"jsonrpc":"2.0","method":"anvil_setStorageAt","params":[
+    "0xA0673eC0A48aa924f067F1274EcD281A10c5f19F",
+    "0x68",  # slot 104 — verify with forge inspect first
+    "0x000000000000000000000000000000000000000000000000000000000010a6af"
+  ],"id":1}'
+```
+
+**Rule**: For shadow fork re-finalization tests, `nextUnfinalizedQueueIndex` must be the `MIN(total_l1_messages_popped_before)` of the first target batch's chunks.
+
+---
+
+#### 4. Anvil sender balances reset to zero
+
+**Symptom**: After fixing gas estimation, relayer failed with:
+```
+failed to send transaction, err: Insufficient funds for gas * price + value
+```
+
+**Root Cause**: `anvil_setBalance` funds from previous sessions do not persist across Anvil restarts. The finalize sender (`0x410E...`) had 0 ETH.
+
+**Resolution**: Re-fund before starting the relayer:
+```bash
+curl -X POST http://localhost:18546 \
+  -d '{"jsonrpc":"2.0","method":"anvil_setBalance","params":[
+    "0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9",
+    "0x21e19e0c9bab2400000"
+  ],"id":1}'
+```
+
+**Rule**: After every Anvil restart, verify sender balances before starting the relayer:
+```bash
+curl -X POST http://localhost:18546 \
+  -d '{"jsonrpc":"2.0","method":"eth_getBalance","params":[
+    "0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9","latest"
+  ],"id":1}'
+```
+
+---
+
+#### 5. Relayer requires `--config` flag and `--min-codec-version`
+
+**Symptom**: Relayer printed help text and exited with:
+```
+Required flag "min-codec-version" not set
+```
+
+Then when started without `--config`, it connected to the default `./conf/config.json` (mainnet config) instead of the shadow config, failing with wrong DB credentials.
+
+**Root Cause**: The relayer uses `cli.StringFlag{Name: "config"}` for config file path, NOT an environment variable. And `MinCodecVersionFlag` is `Required: true`.
+
+**Resolution**:
+```bash
+cd rollup && ./build/bin/rollup_relayer \
+  --config /tmp/rollup-relayer-sepolia-shadow.json \
+  --min-codec-version 10
+```
+
+**Rule**: Never rely on `ROLLUP_RELAYER_CONFIG` env var (it doesn't work). Always pass `--config <path>` and `--min-codec-version <version>` explicitly.
+
+---
+
+#### 6. Production proofs + production verifier = no new deployment needed (THIS TEST ONLY)
+
+**Symptom**: Initially thought a new verifier needed to be deployed for the shadow fork.
+
+**Root Cause**: This test **re-used production proofs** from Sepolia RDS. Sepolia's production `MultipleVersionRollupVerifier` (MVRV) at `0x8A360...` already points to verifier `0xc37f...` with digests that match these exact production proofs. Since proof and verifier were already a verified pair on the live chain, no new deployment was necessary.
+
+**MVRV** = `MultipleVersionRollupVerifier`, a Solidity contract that maps `protocolVersion → verifierAddress`. ScrollChain calls `MVRV.getVerifier(version, batchIndex)` to determine which verifier to use for a given bundle.
+
+**Resolution**: Verified digest match via `cast call`:
+```bash
+cast call 0x8A360c7F6fca548507017DdeD732bFe7E078F963 \
+  "getVerifier(uint256,uint256)" 10 127996 \
+  --rpc-url https://eth-sepolia.g.alchemy.com/v2/<KEY>
+
+cast call <verifier_addr> "verifierDigest1()" --rpc-url <URL>
+cast call <verifier_addr> "verifierDigest2()" --rpc-url <URL>
+```
+
+**⚠️ CRITICAL DISTINCTION**:
+- **This test** (re-use production proofs): Check MVRV → if digests match, skip deployment.
+- **New guest version test** (e.g., 0.8.0 / openvm 1.6): **MUST deploy new verifier**. New guest = new circuit = new plonk verifier bin = new digests. The old MVRV verifier will NOT match. Follow the full deployment flow in `docs/README.md` → "Real Verifier Deployment".
+
+**Rule**: Always know which scenario you're in:
+1. Re-playing old production tasks → verify existing MVRV entry matches.
+2. Testing new circuit/guest → deploy fresh `ZkEvmVerifierPostFeynman` + register on MVRV.
+
+---
+
+### Final State Verification
+
+After all 5 bundles finalized successfully:
+
+```bash
+# lastFinalizedBatchIndex = 128007
+cast call 0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0 \
+  "lastFinalizedBatchIndex()(uint256)" --rpc-url http://localhost:18546
+# → 128007
+
+# nextUnfinalizedQueueIndex = 1091254 (started at 1091247 + 7 messages)
+cast call 0xA0673eC0A48aa924f067F1274EcD281A10c5f19F \
+  "nextUnfinalizedQueueIndex()(uint256)" --rpc-url http://localhost:18546
+# → 1091254
+```
+
+### Successful Finalize Transactions
+
+| Bundle | Batches | Tx Hash |
+|--------|---------|---------|
+| 13445 | 127994-127996 | `0x64cd766d...` |
+| 13446 | 127997-127999 | `0x2fda1bd5...` |
+| 13447 | 128000-128002 | `0x2724f176...` |
+| 13448 | 128003-128004 | `0xf5f7054a...` |
+| 13449 | 128005-128007 | `0xf6f7903f...` |
+
+### Pre-Finalize Checklist for Real On-Chain Shadow Fork Tests
+
+- [ ] Anvil forked at `last_real_finalize_block + 1`
+- [ ] `lastFinalizedBatchIndex` set to `<first_target_batch - 1>`
+- [ ] `lastCommittedBatchIndex` set to real Sepolia value (≥ last target batch)
+- [ ] All end-batch indices (127996, 127999, 128002, 128004, 128007) have non-zero `committedBatches` hashes
+- [ ] `L1MessageQueueV2.nextUnfinalizedQueueIndex` set to `MIN(total_l1_messages_popped_before)` of first target batch
+- [ ] `L1MessageQueueV2.nextCrossDomainMessageIndex` ≥ post-finalization value
+- [ ] **Verify slot numbers with `forge inspect`** before `anvil_setStorageAt`
+- [ ] Sender balances > 0 on Anvil
+- [ ] Prover EOA authorized on ScrollChain (`addProver`)
+- [ ] Verifier digests match proofs (check MVRV before deploying)
+- [ ] Relayer started with `--config <path>` and `--min-codec-version 10`
+- [ ] Target bundles/batches reset to `rollup_status = 1`
+- [ ] Parent batch exists in shadow DB

@@ -49,9 +49,12 @@ Key hard-won rules:
 |-----------|---------|---------|------|
 | **DB port** | `localhost:5433` (shadow) / `15432` (RDS tunnel) | `localhost:25432` (RDS tunnel) | Wrong port = connecting to mainnet data |
 | **L2 RPC** | `l2geth-rpc-proxy.mainnet.aws.scroll.io` | `l2geth-rpc-proxy.sepolia.aws.scroll.io` | Public Sepolia RPC (`sepolia-rpc.scroll.io`) rejects `debug_executionWitness` |
-| **Verifier** | Mainnet has `latestVerifier[10] = 0x0dE1...` (can `anvil_setCode`) | Sepolia has `latestVerifier[10] = 0x0` (must deploy fresh) | Cannot copy verifier — must deploy `ZkEvmVerifierPostFeynman` + register |
+| **Verifier** | Mainnet has `latestVerifier[10] = 0x0dE1...` (can `anvil_setCode`) | Production proofs + production MVRV may already match | Re-using old proofs → check MVRV first. Testing **new guest** → MUST deploy fresh verifier |
 | **`committedBatches`** | Sparse, but fork block usually covers target batches | Sparse; **every bundle end batch must exist** | Missing entry → `ErrorIncorrectBatchHash(0x2a1c1442)` |
-| **`L1MessageQueueV2`** | Reset `nextUnfinalizedQueueIndex = 0` sufficient | Must sync `nextCrossDomainMessageIndex == nextUnfinalizedQueueIndex` | Mismatch → `ErrorFinalizedIndexTooLarge(0x16465978)` |
+| **`L1MessageQueueV2`** | Reset `nextUnfinalizedQueueIndex = 0` sufficient | Set to `MIN(total_l1_messages_popped_before)` of first target batch; **slot 104** (verify with `forge inspect`) | Wrong slot/value → `ErrorFinalizedIndexTooLarge(0x16465978)` |
+| **Anvil gas estimation** | Same as mainnet | `eth_estimateGas` fails with fee caps present (`Gas=0`) | Patch `estimategas.go` or use `--min-codec-version` workaround |
+| **Sender balance** | Persisted across restarts | **Resets to 0** after Anvil restart | Must re-fund EOAs before each relayer start |
+| **Relayer flags** | Standard | Requires `--config <path>` AND `--min-codec-version 10` | Missing flags = wrong config or immediate exit |
 | **DB scope** | Imported limited range | Full production snapshot (batches 128080+) | Relayer batch committer floods logs with commit retries |
 | **Blob version** | Usually V0 | Anvil 1.0.0 cannot decode BlobSidecar V1 | Set `fusaka_timestamp: 2000000000` in relayer config |
 | **Proofs in DB** | May already be v0.8.0 | Old proofs are v0.7.3 | Must reset `proving_status = 1` to regenerate with v0.8.0 |
@@ -99,6 +102,28 @@ make coordinator_setup
 | `tests/integration-test/` | General integration tests |
 | `zkvm-prover/` | Build scripts and runtime config for the prover binary |
 | `build/dockerfiles/` | Dockerfiles for production images |
+
+## Troubleshooting: Verifier Wrapper Deployment on Shadow Forks
+
+### `anvil_setCode` Does NOT Reset Immutables
+- **Problem**: Copying a mainnet verifier wrapper (e.g., `ZkEvmVerifierPostFeynman`) to Anvil via `anvil_setCode` preserves the **original immutables** (`verifierDigest1`, `verifierDigest2`, `protocolVersion`). These digests are bound to the mainnet plonk verifier VK and will **never** match locally-generated proofs.
+- **Symptom**: `VerificationFailed` (selector `0x439cc0cd`) even when the plonk verifier binary, public input hash, and proof are all individually correct.
+- **Root cause**: The wrapper assembles its own `instances` array from immutables + `keccak256(protocolVersion || publicInput)`. Wrong immutables = wrong instances = plonk verifier rejects the proof.
+- **Solution**: **Always recompile and redeploy** the wrapper with immutables extracted from the *local* proof's `instances` array (bytes 384–416 and 416–448 for digest1/digest2).
+
+### Do Not "Fix" Production Solidity Without Evidence
+- **Problem**: When `VerificationFailed` appears, it's tempting to blame the assembly loop in the wrapper (`sub(0x5a0, i)` vs `add(0x1c0, i)`).
+- **Reality**: The production wrapper (`ZkEvmVerifierPostFeynman.sol`) has used `sub(0x5a0, i)` since deployment and has finalized thousands of bundles on mainnet. The loop direction maps hash bytes in **reverse order** to instance words, which matches the verifier circuit's expectation.
+- **Symptom of wrong patch**: Changing the loop to `add(0x1c0, i)` inverts the hash-word layout, producing a different set of instances that also fail verification.
+- **Correct diagnosis flow**:
+  1. Verify the plonk verifier binary matches the deployed contract runtime code.
+  2. Verify `keccak256(abi.encodePacked(protocolVersion, publicInput))` matches the proof metadata `bundle_pi_hash`.
+  3. Verify the wrapper's immutables match the local proof's digest words.
+  4. Only after (1–3) pass should you look at Solidity logic — and even then, production code is almost certainly correct.
+
+### Access Control on `finalizeBundlePostEuclidV2`
+- `ScrollChain.finalizeBundlePostEuclidV2` has `OnlyProver` modifier.
+- On shadow fork, impersonate the registered prover EOA before sending the transaction: `cast rpc anvil_impersonateAccount <prover_address>`.
 
 ## Troubleshooting Common E2E Test Issues
 
@@ -177,4 +202,6 @@ make coordinator_setup
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
 | [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
 | [`tests/shadow-testing/docs/README.md`](tests/shadow-testing/docs/README.md) | Shadow coordinator + local prover setup for production task replay |
+| [`tests/shadow-testing/docs/LESSONS_LEARNED.md`](tests/shadow-testing/docs/LESSONS_LEARNED.md) | Hard-won debugging knowledge from past shadow tests (read before experimenting) |
+| [`tests/shadow-testing/docs/QUICKSTART.md`](tests/shadow-testing/docs/QUICKSTART.md) | Quick reference for common shadow testing commands |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
