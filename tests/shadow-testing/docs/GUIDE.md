@@ -273,6 +273,29 @@ Proving status values:
 - `4` = Proven (success)
 - `5` = Failed
 
+### Verify bundle readiness before finalization
+
+After all batch proofs are done (status 4), verify the bundle-level status:
+
+```bash
+psql "$SHADOW_DB" -c "
+  SELECT index, batch_proofs_status, finalization_status
+  FROM bundle WHERE index = 13470;
+"
+```
+
+Bundle `batch_proofs_status` values:
+- `1` = Pending — waiting for coordinator cron to scan and transition
+- `2` = Ready — all batch proofs verified, bundle can be finalized
+
+The coordinator runs `checkBundleAllBatchReady()` every 10s to transition bundles from `1` to `2`. If this hasn't happened yet (e.g., cron is lagging), manually update:
+
+```sql
+UPDATE bundle SET batch_proofs_status = 2 WHERE index = 13470;
+```
+
+> **Important**: The relayer will not call `finalizeBundleWithProof` until `batch_proofs_status >= 2`, even if all individual batch proofs are already status 4.
+
 ## Troubleshooting
 
 ### Coordinator says "Start coordinator api successfully" but prover gets no tasks
@@ -650,6 +673,34 @@ cast send $MVRV \
 ```
 
 > **Note**: `latestVerifier[10]` returns a struct; use `getVerifier(10, batchIndex)` to confirm routing.
+
+### Verify MVRV Routing
+
+After registering the verifier, **always verify that MVRV routes target batches to the correct verifier** before starting finalization tests. This is especially critical when testing new prover digests on batch ranges that may already be mapped to a legacy verifier.
+
+```bash
+# Check which verifier MVRV returns for each batch in your target range
+for idx in 128069 128070 128071; do
+  echo -n "Batch $idx → "
+  cast call $MVRV "getVerifier(uint256,uint256)(address)" 10 $idx --rpc-url http://localhost:18545
+done
+```
+
+If any batch returns the **wrong verifier** (e.g., an old production verifier whose digests don't match your proofs), update the MVRV mapping:
+
+```bash
+# Route batches ≥ START_BATCH to the new verifier
+START_BATCH=128069
+NEW_VERIFIER="0x16110D4e0CBE54530cE46D1aB2b22574BeEEa105"
+
+cast rpc anvil_impersonateAccount $OWNER --rpc-url http://localhost:18545
+cast send $MVRV \
+  "updateVerifier(uint256,uint64,address)" \
+  10 $START_BATCH $NEW_VERIFIER \
+  --from $OWNER --rpc-url http://localhost:18545 --unlocked
+```
+
+> **Critical**: If MVRV routes to the wrong verifier, finalization will revert with `VerificationFailed(0x439cc0cd)` even though your deployed verifier and proof digests are correct.
 
 ### Previous Deployment Attempt (Incorrect Digests) — Historical Record
 

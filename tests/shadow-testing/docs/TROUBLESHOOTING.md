@@ -34,14 +34,29 @@ Before executing a single command:
 - **Symptom**: `VerificationFailed(0x439cc0cd)` even with correct digests.
 - **Cause A**: Deployed `ZkEvmVerifierPostEuclid` instead of `ZkEvmVerifierPostFeynman`.
 - **Cause B**: Used S3 `digest_1.hex` / `digest_2.hex` **directly** without Montgomery → Canonical conversion.
-- **Rule**: For guest v0.8.0+ proofs, **always use `PostFeynman`** with **canonical-form digests**.
-- **Verification**: Extract canonical digests from proof instances:
+- **Cause C**: **MVRV routes the batch to the wrong verifier**. The deployed verifier's digests are correct, but `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)` returns an old verifier with different digests. This happens when re-proving bundles with a new prover (new digests) whose batch indices fall in a range still mapped to a legacy verifier.
+- **Rule**: For guest v0.8.0+ proofs, **always use `PostFeynman`** with **canonical-form digests**, and **verify MVRV routing** before finalizing.
+- **Verification — Digests**: Extract canonical digests from proof instances:
   ```python
   instances = base64.b64decode(proof_json['proof']['instances'])
   digest1 = '0x' + instances[384:416].hex()   # canonical, offset 384-416
   digest2 = '0x' + instances[416:448].hex()   # canonical, offset 416-448
   ```
   Then deploy with `protocolVersion = 10`.
+- **Verification — MVRV Routing**: Before finalizing, confirm the verifier returned by MVRV for each target batch matches the verifier whose digests match the proofs:
+  ```bash
+  for idx in 128069 128070 128071; do
+    cast call $MVRV "getVerifier(uint256,uint256)(address)" 10 $idx --rpc-url $ANVIL_RPC
+  done
+  ```
+  If any batch returns the old verifier while proofs use new digests, update MVRV:
+  ```bash
+  cast rpc anvil_impersonateAccount $OWNER --rpc-url $ANVIL_RPC
+  cast send $MVRV \
+    "updateVerifier(uint256,uint64,address)" \
+    10 $START_BATCH $NEW_VERIFIER \
+    --from $OWNER --rpc-url $ANVIL_RPC --unlocked
+  ```
 - **S3 Digests**: If using S3 `digest_1.hex`, convert from Montgomery to canonical first:
   ```python
   bn254_mod = 21888242871839275222246405745257275088548364400416034343698204186575808495617

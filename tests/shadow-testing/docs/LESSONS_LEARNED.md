@@ -1,5 +1,71 @@
 # Shadow Testing Lessons Learned
 
+## 2026-06-05: MVRV Verifier Routing Must Match Proof Digests
+
+### What Happened
+1.  Successfully proved bundles 13470–13474 (batches 128069–128074) using the local shadow prover with guest v0.8.0.
+2.  All proofs verified successfully on the coordinator (status 4), but relayer finalization reverted with `VerificationFailed(0x439cc0cd)`.
+3.  The deployed new verifier (`0x16110D4e0CBE54530cE46D1aB2b22574BeEEa105`) had correct canonical digests matching the proofs.
+4.  Root cause: `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)` returned the **old production verifier** (`0xc37F4D0F2DEEF2639F2dc76326B9Ca7fA01aAA21`) for batch indices ≥128069.
+5.  After executing `updateVerifier(10, 128069, newVerifier)` (Tx `0xb408311e32f1f77974d17fbe01f6da04fb9e24e00cf0188ca045922a5e061a30`), all bundles finalized successfully.
+
+### Root Cause Analysis
+
+The `MultipleVersionRollupVerifier` maintains a mapping of `verifiers[protocolVersion]` → list of `(startBatchIndex, verifierAddress)` entries. When `ScrollChain` calls `MVRV.getVerifier(protocolVersion, batchIndex)`, it returns the **most recently registered verifier whose `startBatchIndex` is ≤ batchIndex**.
+
+If you test a new prover (with new digests) on batch indices that fall within an existing MVRV range mapped to an old verifier, the old verifier will be used — and its digests won't match the new proofs.
+
+### Lesson
+
+**Always verify MVRV routing after registering a new verifier and before starting finalization tests.** Use:
+```bash
+for idx in 128069 128070 128071; do
+  echo -n "Batch $idx → "
+  cast call $MVRV "getVerifier(uint256,uint256)(address)" 10 $idx --rpc-url $ANVIL_RPC
+done
+```
+
+If any batch returns the wrong verifier, update MVRV:
+```bash
+cast rpc anvil_impersonateAccount $OWNER --rpc-url $ANVIL_RPC
+cast send $MVRV \
+  "updateVerifier(uint256,uint64,address)" \
+  10 $START_BATCH $NEW_VERIFIER \
+  --from $OWNER --rpc-url $ANVIL_RPC --unlocked
+```
+
+This is especially important when:
+- Testing a new prover on old batch ranges (the old batches may already be mapped to a legacy verifier)
+- The new verifier has different digests from any previously-registered verifier
+
+---
+
+## 2026-06-05: `bundle.batch_proofs_status` Must Transition to `Ready(2)` Before Finalization
+
+### What Happened
+1.  Shadow bundle 13470: all 7 chunk proofs and 6 batch proofs verified (status 4).
+2.  Relayer refused to finalize, logging that bundle was not ready.
+3.  Investigation showed `bundle.batch_proofs_status = 1 (Pending)` in the shadow DB.
+4.  The coordinator's background cron job `checkBundleAllBatchReady` (runs every 10s) had not yet scanned this bundle to transition it to `Ready(2)`.
+5.  Manually updating `batch_proofs_status = 2` allowed finalization to proceed.
+
+### Root Cause Analysis
+
+The coordinator maintains a separate `batch_proofs_status` field on bundles to track whether all constituent batch proofs are ready. The relayer checks this field before attempting `finalizeBundleWithProof`. Even when all individual batch proofs are status 4, the bundle-level flag must also be ≥2.
+
+The background cron should eventually update this, but there can be lag (10s interval, plus the cron may have other work). For shadow testing where we're manually driving finalization, this delay is unnecessary.
+
+### Lesson
+
+**After all batch proofs reach status 4, verify `bundle.batch_proofs_status` in the shadow DB before starting finalization.** If still `1 (Pending)`, either wait for the cron or manually update:
+```sql
+UPDATE bundle SET batch_proofs_status = 2 WHERE index = <bundle_index>;
+```
+
+The relayer will not proceed to `finalizeBundleWithProof` until `bundle.batch_proofs_status >= 2`.
+
+---
+
 ## 2026-06-05: `batch.withdraw_root` Can Be `0x0` in Production RDS for Codec V7+ Batches
 
 ### What Happened
