@@ -1,5 +1,96 @@
 # Shadow Testing Lessons Learned
 
+## 2026-06-05: `batch.withdraw_root` Can Be `0x0` in Production RDS for Codec V7+ Batches
+
+### What Happened
+1.  Successfully proved bundles 13455–13459 (batches 128021–128033) using the local shadow prover.
+2.  Relayer `finalizeBundlePostEuclidV2` reverted with `VerificationFailed(0x439cc0cd)`.
+3.  Manual investigation revealed `batch.withdraw_root = 0x0` in the shadow DB for all 13 batches, while the locally-generated proofs embedded `withdraw_root = 0x7151572959e4dfe58f3060f2a725a011986ff9906a431f063157c8a7ef48c85e` in their metadata.
+4.  Patching `batch.withdraw_root` to the non-zero proof value resolved the verification failure and all 5 bundles finalized successfully.
+
+### Root Cause Analysis
+
+#### The `withdraw_root` lives in TWO places with different lifecycles
+
+| Source | Used By | How It's Computed |
+|--------|---------|-------------------|
+| `batch.withdraw_root` DB column | **Relayer** (`constructFinalizeBundlePayloadCodecV7`) | Set once at batch insertion from `encoding.Batch.WithdrawRoot()` (last block of last chunk) |
+| Chunk/block data + proof metadata | **Prover** (`BatchInfoBuilderV7`) | Re-derived from `last_chunk.withdraw_root` during witness generation |
+
+For **codec v7+** (galileoV2), the on-chain `BatchHeader` is only 73 bytes and does **not** contain `withdraw_root` — it's passed as a separate argument to `finalizeBundlePostEuclidV2`. This means the DB column is the *only* place the relayer gets this value.
+
+#### Production RDS contains `0x0` for newer batches
+
+Querying the shadow DB after import revealed a sharp cutoff:
+
+| Batch Range | `withdraw_root` | Bundles |
+|-------------|-----------------|---------|
+| 128008–128020 | `0x715157…` (non-zero) | 13450–13454 |
+| 128021–128033 | `0x0` (patched to `0x715157…`) | 13455–13459 |
+| 128034–128153 | `0x0` (120 batches) | 17391–17436 |
+
+The production CSV export for bundles 13450–13454 (Jun 4 11:01) confirms non-zero `withdraw_root` in production RDS for that range. For bundles 13455+ there is no surviving export directory, but the systematic `0x0` pattern across 120 consecutive batches strongly indicates that **production RDS itself stores `0x0`** for these rows.
+
+**Likely reason**: The production Sepolia rollup service was upgraded at some point between bundle 13459 and bundle 17391. The newer code no longer populates `batch.withdraw_root` (possibly because v7+ batch headers omit this field, or the L2 node's `withdrawTrieRootSlot` query was disabled). The column became a stale/dormant field in production.
+
+> ⚠️ **Important**: Production finalization on the live Sepolia chain still succeeded because the production proofs were generated *before* the column was cleared, or production uses a different code path that does not depend on this column. Shadow testing re-proves from scratch, so the prover computes the correct value from block data, but the relayer reads the stale DB column.
+
+### How to Prevent This
+
+1. **After every production data import, verify `withdraw_root` consistency**:
+   ```sql
+   SELECT index, withdraw_root
+   FROM batch
+   WHERE withdraw_root = '0x0000000000000000000000000000000000000000000000000000000000000000'
+   ORDER BY index;
+   ```
+
+2. **Cross-check against proof metadata** (after the first batch proof is generated):
+   ```python
+   import psycopg2, json
+   conn = psycopg2.connect("postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup")
+   cur = conn.cursor()
+   cur.execute("SELECT index, proof FROM batch WHERE index = 128021")
+   idx, proof = cur.fetchone()
+   data = json.loads(proof)
+   proof_withdraw_root = data['metadata']['batch_info']['withdraw_root']
+   print(f"Batch {idx}: proof withdraw_root = {proof_withdraw_root}")
+   ```
+
+3. **Patch the DB before running the relayer** if any mismatch is found:
+   ```sql
+   UPDATE batch
+   SET withdraw_root = '0x7151572959e4dfe58f3060f2a725a011986ff9906a431f063157c8a7ef48c85e'
+   WHERE index BETWEEN 128021 AND 128033;
+   ```
+
+### Recovery Steps (for this incident)
+
+1.  Extract `withdraw_root` from the first successfully-generated batch proof:
+    ```python
+    proof_json = json.loads(batch_proof_bytes)
+    correct_withdraw_root = proof_json['metadata']['batch_info']['withdraw_root']
+    ```
+
+2.  Update all affected batches:
+    ```sql
+    UPDATE batch
+    SET withdraw_root = '0x7151572959e4dfe58f3060f2a725a011986ff9906a431f063157c8a7ef48c85e'
+    WHERE index BETWEEN 128021 AND 128033;
+    ```
+
+3.  Verify the fix:
+    ```bash
+    cast call $SCROLL_CHAIN "finalizeBundlePostEuclidV2(...)" --rpc-url $ANVIL_RPC
+    # should NOT revert with 0x439cc0cd
+    ```
+
+### Key Insight
+
+> **For codec v7+, `batch.withdraw_root` is a "ghost column" in production RDS.** It is not part of the batch header bytes, it is not validated by the coordinator, and it may be `0x0` for newer batches. Yet the relayer still passes it to `finalizeBundlePostEuclidV2`, where it becomes part of the verifier's `publicInputs`. Always treat this column as untrusted after a production import and verify it against the proof metadata before attempting on-chain finalization.
+
+---
+
 ## 2026-06-03: "psql timeout" does NOT mean "port is closed"
 
 ### What Happened
@@ -54,13 +145,22 @@ psql -h localhost -p 25432 -U sepolia_infra_user_read_only -d sepolia_scroll -c 
 
 ### How to Prevent This
 1. **Always use `ZkEvmVerifierPostFeynman` for guest v0.8.0+ proofs.**
-2. **Extract digests from the proof itself**, not from S3 `digest_1.hex` / `digest_2.hex` (those often don't match the specific proof being tested):
+2. **Extract digests from the proof itself**, or convert S3 digests from Montgomery to canonical form:
    ```python
+   # Option A: From proof instances (canonical form directly)
    instances = base64.b64decode(proof_json['proof']['instances'])
    digest1 = '0x' + instances[384:416].hex()
    digest2 = '0x' + instances[416:448].hex()
+   
+   # Option B: From S3 (Montgomery form → canonical)
+   bn254_mod = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+   R = pow(2, 256, bn254_mod)
+   R_inv = pow(R, -1, bn254_mod)
+   d1_mont = int(requests.get(".../digest_1.hex").text, 16)
+   d1_canon = f"{(d1_mont * R_inv) % bn254_mod:064x}"
    ```
-3. **Use the provided script** (`scripts/03-deploy-verifier.sh`) which already deploys `PostFeynman` with the correct digests and `protocolVersion = 10`.
+   S3 `digest_1.hex` / `digest_2.hex` are in **Montgomery form**; the verifier constructor expects **canonical form**.
+3. **Use the provided script** (`scripts/03-deploy-verifier.sh`) which extracts digests from proof instances and deploys `PostFeynman` with `protocolVersion = 10`.
 
 ### Recovery Steps
 1.  Deploy `ZkEvmVerifierPostFeynman` with the same plonk verifier, digest1, digest2, and `protocolVersion = 10`.

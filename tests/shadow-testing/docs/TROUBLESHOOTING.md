@@ -30,17 +30,24 @@ Before executing a single command:
 
 ## Critical Traps (Do Not Skip)
 
-### Trap 1: Wrong Verifier Contract
+### Trap 1: Wrong Verifier Contract or Wrong Digest Form
 - **Symptom**: `VerificationFailed(0x439cc0cd)` even with correct digests.
-- **Cause**: Deployed `ZkEvmVerifierPostEuclid` instead of `ZkEvmVerifierPostFeynman`.
-- **Rule**: For guest v0.8.0+ proofs, **always use `PostFeynman`**.
-- **Verification**: Extract digests from proof instances:
+- **Cause A**: Deployed `ZkEvmVerifierPostEuclid` instead of `ZkEvmVerifierPostFeynman`.
+- **Cause B**: Used S3 `digest_1.hex` / `digest_2.hex` **directly** without Montgomery → Canonical conversion.
+- **Rule**: For guest v0.8.0+ proofs, **always use `PostFeynman`** with **canonical-form digests**.
+- **Verification**: Extract canonical digests from proof instances:
   ```python
   instances = base64.b64decode(proof_json['proof']['instances'])
-  digest1 = '0x' + instances[384:416].hex()   # offset 384-416
-  digest2 = '0x' + instances[416:448].hex()   # offset 416-448
+  digest1 = '0x' + instances[384:416].hex()   # canonical, offset 384-416
+  digest2 = '0x' + instances[416:448].hex()   # canonical, offset 416-448
   ```
   Then deploy with `protocolVersion = 10`.
+- **S3 Digests**: If using S3 `digest_1.hex`, convert from Montgomery to canonical first:
+  ```python
+  bn254_mod = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+  R_inv = pow(pow(2, 256, bn254_mod), -1, bn254_mod)
+  canonical = (int(s3_hex, 16) * R_inv) % bn254_mod
+  ```
 
 ### Trap 2: Anvil Forks Wrong Chain
 - **Symptom**: `ScrollChain` proxy has no code, or `eth_chainId` returns `534352`.
