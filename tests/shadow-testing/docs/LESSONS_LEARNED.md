@@ -1152,3 +1152,112 @@ After the fix, all bundles 13450–13454 finalized successfully on-chain:
 - [ ] Verifier digests match proofs
 - [ ] Relayer started with `--config <path>` and `--min-codec-version 10`
 - [ ] Target bundles/batches reset to `rollup_status = 1`
+
+---
+
+## 2026-06-09: Mainnet Shadow Fork — Re-prove + Real On-Chain Finalize (Bundles 17297–17301)
+
+Full end-to-end run on a **mainnet** Anvil fork using the dockerized coordinator/prover images
+(`zhuoatscroll/{coordinator-api,prover}:v4.7.13-openvm16`): imported bundles 17297–17301
+(batches 517761–517765, codec v10, single-batch each) from mainnet RDS, cleared production proofs,
+re-proved all 20 chunks + 5 batches + 5 bundles locally on 4×RTX 3090, deployed a fresh
+`ZkEvmVerifierPostFeynman`, and finalized all 5 bundles with **real** `finalizeBundlePostEuclidV2`
+transactions. `lastFinalizedBatchIndex` advanced 517760 → 517765 and `finalizedStateRoots[517765]`
+matched the DB batch state root. Three new traps surfaced — documented below.
+
+### Trap A: halo2 SRS files must live in `~/.openvm/params/`, NOT `~/.openvm/`
+
+**Symptom**: chunk and batch proofs succeed, but the **first bundle proof** crashes the prover at the
+halo2 wrapping stage:
+```
+thread 'tokio-rt-worker' panicked at .../halo2/utils.rs:127:
+Params file "/root/.openvm/params/kzg_bn254_23.srs" does not exist
+```
+Container exits; the bundle stays stuck at `proving_status = 2`.
+
+**Root cause**: `CacheHalo2ParamsReader` reads the KZG SRS from `$HOME/.openvm/params/kzg_bn254_{k}.srs`
+(openvm `extensions/native/recursion/src/halo2/utils.rs`). Only the bundle proof's `halo2_outer` /
+`halo2_wrapper` stages need it (k = 22/23/24); chunk/batch proofs use smaller in-tree params, so the
+problem stays hidden until the first bundle reaches halo2. If the `.srs` files are downloaded/placed at
+`~/.openvm/` root (or any other dir), they are silently not found.
+
+**Fix**: ensure the SRS files are under the `params/` subdir of the mounted openvm dir:
+```bash
+mkdir -p ~/.openvm/params
+mv ~/.openvm/kzg_bn254_2{2,3,4}.srs ~/.openvm/params/    # if they landed in the wrong place
+# files: kzg_bn254_22.srs (~513MB), _23.srs (~1.1GB), _24.srs (~2.1GB)
+```
+When running the prover in Docker, mount the host openvm dir to `/root/.openvm` (writable) and confirm
+`/root/.openvm/params/kzg_bn254_23.srs` resolves inside the container.
+
+### Trap B: prover Docker `--gpus device=N` renumbers the GPU to index 0 inside the container
+
+**Symptom**: prover container exits immediately (code 139) with:
+```
+CudaError { code: 100, name: "cudaErrorNoDevice", message: "no CUDA-capable device is detected" }
+```
+Only the prover on GPU 0 works; provers for GPUs 1/2/3 crash on boot.
+
+**Root cause**: `docker run --gpus "device=N"` exposes **only** that one GPU to the container and
+**renumbers it to index 0** inside. Setting `CUDA_VISIBLE_DEVICES=N` (the host index) then points at a
+device that doesn't exist in the container.
+
+**Fix**: pair `--gpus "device=$i"` with `CUDA_VISIBLE_DEVICES=0` (the only visible device in-container):
+```bash
+docker run -d --name shadow-prover-$i --network host \
+  --gpus "device=$i" -e CUDA_VISIBLE_DEVICES=0 -e RUST_MIN_STACK=16777216 \
+  -v .../prover-$i.json:/prover/conf/config.json:ro \
+  -v .../prover-$i:/prover/.work -v ~/.openvm:/root/.openvm \
+  zhuoatscroll/prover:v4.7.13-openvm16 --config /prover/conf/config.json
+```
+(Alternative: `--gpus all` + `CUDA_VISIBLE_DEVICES=$i`.)
+
+### Trap C: galileoV2 verifier assets are under S3 `v0.8.0/`, prover circuits under `galileov2/`
+
+The coordinator verifier assets (`openVmVk.json`, `verifier.bin`, `root_verifier_vk`) for the galileoV2
+fork are served from `scroll-zkvm/v0.8.0/verifier/` (the `galileov2/verifier/` path returns **403**),
+while the prover downloads its circuits (`{chunk,batch,bundle}/<vk_hash>/app.vmexe`) from
+`scroll-zkvm/galileov2/`. They are nonetheless consistent: the VK hashes in
+`v0.8.0/verifier/openVmVk.json` (`chunk 64cf16…`, `batch e9d653…`, `bundle 6b155f…`) match the circuit
+objects available under `galileov2/`. Download coordinator assets from `v0.8.0/verifier/`; point the
+prover `circuits.galileoV2.base_url` at `…/scroll-zkvm/galileov2/`.
+
+### Other notes from this run
+
+- **Coordinator/prover are run via the prebuilt Docker images** (native prover build fails on CUDA on
+  this host). Run with `--network host` so the coordinator reaches the shadow DB on `localhost:5433`,
+  the prover reaches the coordinator on `localhost:8390`, and the relayer reaches Anvil on
+  `localhost:18545`. Coordinator entrypoint is `/bin/coordinator_api`; `LD_LIBRARY_PATH` for `libzkp.so`
+  is already baked into the image. Coordinator config: `l2.chain_id = 534352` (Scroll **mainnet** L2),
+  `l2.l2geth.endpoint` = internal debug-enabled proxy, one `verifiers[]` entry with
+  `fork_name: galileoV2` + low `min_prover_version`.
+- **`l2_block` export by JOIN on `chunk_hash` is pathologically slow** against the prod RDS (full scan of
+  a huge table). Export by **block-number range** instead (`WHERE number BETWEEN <min_start> AND
+  <max_end>`, PK-indexed, ~tens of seconds). The block range is the min `start_block_number` / max
+  `end_block_number` across the target batches' chunks.
+- **`chunk_proofs_status` / `batch_proofs_status` may not auto-promote** in the shadow setup. A small
+  watcher loop that sets `batch.chunk_proofs_status = 2` once all of a batch's chunks reach
+  `proving_status = 4`, and `bundle.batch_proofs_status = 2` once all of a bundle's batches reach
+  `proving_status = 4`, keeps the chunk→batch→bundle pipeline flowing without stalls.
+- **The batch committer fails harmlessly during a finalize-only run**: the relayer's commit sender
+  (derived from `commit_sender_signer_config`, e.g. `0xBC732a76…`) is unfunded and not a sequencer, so
+  `commitBatch` loops with "Insufficient funds"/`ErrorCallerIsNotSequencer`. This is expected and does
+  **not** affect the bundle finalizer, which runs independently and uses the (funded, prover-authorized)
+  finalize sender.
+- **Set `bundle_index_seq` above the imported max** (e.g. `SELECT setval('bundle_index_seq', 18000)`)
+  before starting the relayer, so any proposer-created bundle gets a higher index and cannot block
+  `GetFirstPendingBundle` (orders by `index ASC`). Also clear stale `finalize_tx_hash` on imported
+  bundles/batches.
+
+### Successful finalize transactions (mainnet fork)
+
+| Bundle | Batch | Finalize Tx | Status |
+|--------|-------|-------------|--------|
+| 17297 | 517761 | `0x5e8a7e01…cd1b` | ✅ |
+| 17298 | 517762 | `0xf55e9f00…c407f` | ✅ |
+| 17299 | 517763 | `0xa6466c0a…412f` | ✅ |
+| 17300 | 517764 | `0x1deca7d1…2d8f` | ✅ |
+| 17301 | 517765 | `0x204b28de…a100` | ✅ |
+
+Final `lastFinalizedBatchIndex = 517765`; verifier deployed at `0xf74BcAA17bbb3B0a996aF04a7b301E69501C4bf0`
+(plonk `0x1d710357818776073705b29482486AbCF586f33b`), digests `0x00398b78…` / `0x0021785a…`.
