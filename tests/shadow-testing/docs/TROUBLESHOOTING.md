@@ -127,6 +127,37 @@ Before executing a single command:
   ./rollup_relayer --config /path/to/config.json --min-codec-version 10
   ```
 
+### Trap 12: halo2 SRS Not in `~/.openvm/params/`
+- **Symptom**: chunk/batch proofs succeed; the **first bundle proof** crashes the prover with
+  `Params file ".../.openvm/params/kzg_bn254_23.srs" does not exist`. Bundle stuck at `proving_status=2`.
+- **Cause**: openvm reads the KZG SRS from `$HOME/.openvm/params/kzg_bn254_{22,23,24}.srs` only at the
+  bundle proof's halo2 stage; if the `.srs` files sit in `~/.openvm/` root (or anywhere else) they are
+  silently not found.
+- **Rule**: `mkdir -p ~/.openvm/params && mv ~/.openvm/kzg_bn254_2{2,3,4}.srs ~/.openvm/params/`. Mount the
+  host openvm dir to `/root/.openvm` (writable) for the prover container and confirm the path resolves.
+
+### Trap 13: Prover Docker `--gpus device=N` + Wrong `CUDA_VISIBLE_DEVICES`
+- **Symptom**: prover container exits (code 139) with `cudaErrorNoDevice: no CUDA-capable device is detected`;
+  only the GPU-0 prover works.
+- **Cause**: `--gpus "device=N"` exposes only that GPU and **renumbers it to index 0** inside the container,
+  so `CUDA_VISIBLE_DEVICES=N` points at a nonexistent device.
+- **Rule**: use `--gpus "device=$i"` with `CUDA_VISIBLE_DEVICES=0` (or `--gpus all` with `CUDA_VISIBLE_DEVICES=$i`).
+
+### Trap 14: Coordinator Verifier Assets vs Prover Circuit S3 Paths (galileoV2)
+- **Symptom**: coordinator asset download 403s on `scroll-zkvm/galileov2/verifier/openVmVk.json`.
+- **Cause**: galileoV2 verifier assets live under `scroll-zkvm/v0.8.0/verifier/`, while prover circuits live
+  under `scroll-zkvm/galileov2/{chunk,batch,bundle}/<vk_hash>/`. Different prefixes, same VK hashes.
+- **Rule**: download coordinator `openVmVk.json`/`verifier.bin`/`root_verifier_vk` from `v0.8.0/verifier/`;
+  set prover `circuits.galileoV2.base_url` to `…/scroll-zkvm/galileov2/`.
+
+### Trap 15: Slow `l2_block` Export by `chunk_hash` JOIN
+- **Symptom**: `00-import-bundle-range.sh` hangs for minutes on the `l2_block` export (0-byte CSV) — the
+  `l2_block ⋈ chunk ON chunk_hash` JOIN full-scans the huge prod table.
+- **Rule**: export `l2_block` by **block-number range** instead:
+  `COPY (SELECT * FROM l2_block WHERE number BETWEEN <min_start_block> AND <max_end_block>) TO STDOUT …`
+  (PK-indexed, seconds). Derive the range from the target batches' chunks' `start_block_number` /
+  `end_block_number`.
+
 ## Step-by-Step Checklist
 
 ### Phase 0: Environment Validation
@@ -208,6 +239,10 @@ Before executing a single command:
 | Relayer exits with `Required flag "min-codec-version" not set` | Missing CLI flags | Trap 11 |
 | Coordinator assigns but prover gets nothing | L2 RPC missing `debug_executionWitness` | README.md |
 | `CoordinatorEmptyProofData` | Prover crashed; reset stuck tasks | README.md |
+| `Params file ".../kzg_bn254_23.srs" does not exist` (bundle proof crash) | halo2 SRS not in `~/.openvm/params/` | Trap 12 |
+| Prover exits 139 `cudaErrorNoDevice` | `--gpus device=N` + wrong `CUDA_VISIBLE_DEVICES` | Trap 13 |
+| Coordinator asset download 403 (`galileov2/verifier/...`) | Wrong S3 prefix; use `v0.8.0/verifier/` | Trap 14 |
+| `l2_block` export hangs for minutes | Slow `chunk_hash` JOIN; export by block-number range | Trap 15 |
 
 ## Documentation Priority
 
