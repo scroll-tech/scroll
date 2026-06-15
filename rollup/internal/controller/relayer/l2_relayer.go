@@ -1289,6 +1289,14 @@ func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
 			return common.Address{}, fmt.Errorf("signer address is empty")
 		}
 		return common.HexToAddress(config.RemoteSignerConfig.SignerAddress), nil
+	case sender.AWSKMSSignerType:
+		if config.AWSKMSSignerConfig == nil || config.AWSKMSSignerConfig.SignerAddress == "" {
+			return common.Address{}, fmt.Errorf("aws kms signer address is empty")
+		}
+		if !common.IsHexAddress(config.AWSKMSSignerConfig.SignerAddress) {
+			return common.Address{}, fmt.Errorf("aws kms signer address %q is not a valid hex address", config.AWSKMSSignerConfig.SignerAddress)
+		}
+		return common.HexToAddress(config.AWSKMSSignerConfig.SignerAddress), nil
 	default:
 		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}

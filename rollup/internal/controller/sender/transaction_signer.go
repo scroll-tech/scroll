@@ -22,18 +22,23 @@ const (
 
 	// RemoteSignerType is the type of signer that uses a remote signer to sign transactions
 	RemoteSignerType = "RemoteSigner"
+
+	// AWSKMSSignerType is the type of signer that uses an AWS KMS key to sign transactions
+	AWSKMSSignerType = "AWSKMS"
 )
 
 // TransactionSigner signs given transactions
 type TransactionSigner struct {
-	config    *config.SignerConfig
-	auth      *bind.TransactOpts
-	rpcClient *rpc.Client
-	nonce     uint64
-	addr      common.Address
+	config      *config.SignerConfig
+	auth        *bind.TransactOpts
+	rpcClient   *rpc.Client
+	kmsSigner   *kmsSigner
+	kmsTxSigner gethTypes.Signer
+	nonce       uint64
+	addr        common.Address
 }
 
-func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*TransactionSigner, error) {
+func NewTransactionSigner(ctx context.Context, config *config.SignerConfig, chainID *big.Int) (*TransactionSigner, error) {
 	switch config.SignerType {
 	case PrivateKeySignerType:
 		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKeySignerConfig.PrivateKey))
@@ -61,6 +66,17 @@ func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*Trans
 			config:    config,
 			rpcClient: rpcClient,
 			addr:      common.HexToAddress(config.RemoteSignerConfig.SignerAddress),
+		}, nil
+	case AWSKMSSignerType:
+		ks, err := newKMSSigner(ctx, config.AWSKMSSignerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create AWS KMS signer, err: %w", err)
+		}
+		return &TransactionSigner{
+			config:      config,
+			kmsSigner:   ks,
+			kmsTxSigner: gethTypes.LatestSignerForChainID(chainID),
+			addr:        ks.address(),
 		}, nil
 	default:
 		return nil, fmt.Errorf("failed to create new transaction signer, unknown type: %v", config.SignerType)
@@ -90,6 +106,19 @@ func (ts *TransactionSigner) SignTransaction(ctx context.Context, tx *gethTypes.
 		signedTx := new(gethTypes.Transaction)
 		if err := signedTx.UnmarshalBinary(result); err != nil {
 			return nil, err
+		}
+		return signedTx, nil
+	case AWSKMSSignerType:
+		// KMS signs the transaction hash, so we construct the signed tx locally.
+		// This supports every tx type the sender builds, including BlobTx.
+		sig, err := ts.kmsSigner.sign(ctx, ts.kmsTxSigner.Hash(tx).Bytes())
+		if err != nil {
+			log.Info("failed to sign tx with AWS KMS", "address", ts.addr.String(), "err", err)
+			return nil, err
+		}
+		signedTx, err := tx.WithSignature(ts.kmsTxSigner, sig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply KMS signature to tx, err: %w", err)
 		}
 		return signedTx, nil
 	default:
