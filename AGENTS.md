@@ -206,3 +206,4 @@ make coordinator_setup
 | [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | Structured pitfalls and agent checklists for shadow testing |
 | [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) | Quick reference for common shadow testing commands |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
+| [`docs/testing/single-chunk-reproving.md`](docs/testing/single-chunk-reproving.md) | Re-proving one specific mainnet chunk using shadow DB + local coordinator/prover |
