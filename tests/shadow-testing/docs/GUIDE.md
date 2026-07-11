@@ -573,7 +573,7 @@ For `finalizeBundlePostEuclidV2`, the batch was already committed on mainnet at 
 
 ## Real Verifier Deployment
 
-### Option 1: Copy the Mainnet Verifier (Fastest)
+### Option 1: Copy the Mainnet Verifier (Fastest — Only if Digests Match)
 
 For quick testing, copy the exact mainnet verifier contract code to Anvil using `anvil_setCode`:
 
@@ -589,7 +589,7 @@ PLONK_CODE=$(cast code $PLONK --rpc-url https://ethereum-rpc.publicnode.com)
 cast rpc anvil_setCode $PLONK $PLONK_CODE --rpc-url http://localhost:18545
 ```
 
-This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet and works as long as your proofs use the same digests as mainnet.
+This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet and works **only** if your proofs use the same digests as mainnet. When testing a new guest / circuit version (e.g., v0.9.0) whose digests differ from mainnet, this will produce `VerificationFailed`; use Option 2 instead.
 
 ### Option 2: Deploy a Fresh Verifier Using S3 Digests
 
@@ -615,6 +615,24 @@ For v0.9.0 release assets are under `scroll-zkvm/releases/v0.9.0/`:
 | Bundle digests | `.../releases/v0.9.0/bundle/{digest_1.hex,digest_2.hex}` |
 
 > ✅ **Use the S3 digest files directly.** For guest v0.9.0, `digest_1.hex` / `digest_2.hex` are published in the canonical form expected by the Plonk verifier. You no longer need to extract digests from a proof's `instances` array.
+
+### Important: `finalizeBundlePostEuclidV2` uses a `ZkEvmVerifierPostFeynman` verifier
+
+Do not be misled by the contract function name. `ScrollChain` only has one bundle-finalize entry point:
+
+```text
+finalizeBundlePostEuclidV2(bytes,uint256,bytes32,bytes32,bytes)
+```
+
+There is **no** `finalizeBundlePostFeynman` function. The actual verifier used by this function is selected by `MultipleVersionRollupVerifier.getVerifier(version, batchIndex)`. For the current mainnet GalileoV2 range, that verifier is a `ZkEvmVerifierPostFeynman`-style wrapper whose `protocolVersion` immutable equals `10`.
+
+- `ZkEvmVerifierPostEuclid` computes `keccak256(publicInput)`. This is old code and is **not** used for current GalileoV2 / v0.9.0 proofs.
+- `ZkEvmVerifierPostFeynman` computes `keccak256(abi.encodePacked(protocolVersion, publicInput))` with `protocolVersion = 10`. This matches the `bundle_pi_hash` produced by v0.9.0 guest provers.
+
+So on a shadow fork you must either:
+
+1. Copy the exact mainnet `ZkEvmVerifierPostFeynman` wrapper (only works if your local proofs use the **same digests** as mainnet), or
+2. Deploy a fresh `ZkEvmVerifierPostFeynman` with the digests from the v0.9.0 S3 release and register it on the MVRV.
 
 ### Verifying Digests Match Your Proofs
 

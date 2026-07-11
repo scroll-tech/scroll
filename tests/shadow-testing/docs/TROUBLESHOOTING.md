@@ -236,6 +236,46 @@ Before executing a single command:
 | Coordinator asset download 403 (`galileov2/verifier/...`) | Wrong S3 prefix; use `v0.8.0/verifier/` | Trap 14 |
 | `l2_block` export hangs for minutes | Slow `chunk_hash` JOIN; export by block-number range | Trap 15 |
 
+## Lessons from the v0.9.0 Multi-Bundle Shadow Test
+
+The following issues were hit while finalizing bundles 17297–17301 (batches 517761–517765) on an Anvil mainnet fork with zkvm guest prover v0.9.0. Keep them in mind for future upgrades.
+
+### 1. Do not `git checkout --` uncommitted source changes blindly
+
+When cleaning up the branch, the v0.9.0 source adaptations (`libzkp`, `prover-bin`, Go `message` types, `rust-toolchain`, `Cargo.lock`) were accidentally reverted because they were not committed. They had to be reconstructed from compiler errors. Always check `git diff --stat` before a bulk revert, and stage or stash anything you intend to keep.
+
+### 2. `finalizeBundlePostEuclidV2` is the only finalize function, but the verifier must be Post-Feynman
+
+`ScrollChain` exposes only one bundle-finalize selector (`0xc1aa4e19`). The name says `PostEuclidV2`, but the verifier it actually calls is chosen by `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)`. For GalileoV2 / v0.9.0 this must be a `ZkEvmVerifierPostFeynman`-style wrapper whose `protocolVersion` immutable is `10`.
+
+- `ZkEvmVerifierPostEuclid` computes `keccak256(publicInput)` — this is old code and will reject current proofs.
+- `ZkEvmVerifierPostFeynman` computes `keccak256(protocolVersion || publicInput)` — this matches v0.9.0 `bundle_pi_hash`.
+
+### 3. Copying the mainnet verifier via `anvil_setCode` fails for new guest versions
+
+`anvil_setCode` copies runtime bytecode but **preserves the original immutables** (`plonkVerifier`, `verifierDigest1/2`, `protocolVersion`). If your local v0.9.0 proofs use different digests than mainnet, the wrapper will return `VerificationFailed`. For a new guest version, deploy a fresh `ZkEvmVerifierPostFeynman` using the S3 release digests.
+
+### 4. MVRV routing must be verified per target batch
+
+After deploying a new verifier, confirm that `MVRV.getVerifier(10, batchIndex)` returns your wrapper for every batch you intend to finalize. If the fork block already contains a later mainnet verifier registration, a plain `updateVerifier` may be rejected; force the storage slot or impersonate the owner as needed for the shadow fork.
+
+### 5. v0.9.0 dependency graph needs a fresh `Cargo.lock`
+
+Pointing `Cargo.toml` to v0.9.0 is not enough. The first `cargo check` hit a revm version conflict because the old `Cargo.lock` pinned incompatible crate versions. Regenerating `Cargo.lock` resolved it.
+
+### 6. Prover aggregation circuits need deferral enabled
+
+OpenVM v2+ requires `Prover::enable_deferral(child_prover)` before proving aggregation tasks:
+
+- Batch proving needs a chunk child prover.
+- Bundle proving needs a batch child prover.
+
+The prover config therefore needs `child_circuit_vks` so the prover can load the correct child circuit assets.
+
+### 7. S3 digest files are canonical — no proof extraction needed
+
+For v0.9.0, `.../releases/v0.9.0/bundle/digest_1.hex` and `digest_2.hex` are published in the canonical form expected by the Plonk verifier. Do not apply Montgomery→canonical conversion and do not extract digests from proof `instances` unless you are double-checking a specific artifact.
+
 ## Documentation Priority
 
 When debugging, read docs in this order:
