@@ -31,7 +31,7 @@
     "prover": {
         "name_prefix": "sepolia-shadowfork-prover",
         "circuit_version": "v0.13.1",
-        "s3_base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/"
+        "s3_base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/"
     },
     "coordinator": {
         "l2geth": "https://l2geth-rpc-proxy.sepolia.aws.scroll.io"
@@ -46,6 +46,6 @@
         "end_block": 17086005,
         "l2_rpc": "https://sepolia-rpc.scroll.io",
         "fork_name": "galileoV2",
-        "zkvm_version": "v0.8.0"
+        "zkvm_version": "v0.9.0"
     }
 }

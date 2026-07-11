@@ -115,6 +115,15 @@ PLONK_VERIFIER=""
 if $deploy_plonk; then
     VERIFIER_BIN="${ASSETS_DIR}/verifier.bin"
     if [[ ! -f "$VERIFIER_BIN" ]]; then
+        S3_BASE_URL=$(jq -r '.prover.s3_base_url // empty' "$CONFIG_FILE")
+        if [[ -n "$S3_BASE_URL" ]]; then
+            log_info "  Downloading plonk verifier binary from S3..."
+            mkdir -p "$ASSETS_DIR"
+            curl -fsSL "${S3_BASE_URL}verifier/verifier.bin" -o "$VERIFIER_BIN" || true
+        fi
+    fi
+
+    if [[ ! -f "$VERIFIER_BIN" ]]; then
         log_error "Plonk verifier binary not found: $VERIFIER_BIN"
         log_error "Make sure coordinator assets are downloaded (run coordinator once or download from S3)."
         exit 1
@@ -151,44 +160,34 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Extract digests from DB proof instances
+# 2. Fetch digests from S3 release
 # ---------------------------------------------------------------------------
 DIGEST1=""
 DIGEST2=""
 if $extract_digests; then
-    log_info "Extracting digests from bundle $DB_BUNDLE_INDEX proof instances ..."
-
-    PROOF_JSON=$(psql "$DB_DSN" -Atq -c "
-        SELECT encode(proof, 'escape')
-        FROM bundle
-        WHERE index = $DB_BUNDLE_INDEX;
-    " 2>/dev/null)
-
-    if [[ -z "$PROOF_JSON" ]]; then
-        log_error "Bundle $DB_BUNDLE_INDEX not found in DB"
+    S3_BASE_URL=$(jq -r '.prover.s3_base_url // empty' "$CONFIG_FILE")
+    if [[ -z "$S3_BASE_URL" ]]; then
+        log_error "Missing prover.s3_base_url in config; cannot download digest files"
         exit 1
     fi
 
-    # Parse instances base64 and extract digests
-    DIGESTS=$(echo "$PROOF_JSON" | python3 -c "
-import sys, json, base64
-data = sys.stdin.read()
-j = json.loads(data)
-instances_raw = base64.b64decode(j['proof']['instances'])
-# instances: 12 accumulators (384) + digest1 (32) + digest2 (32) + publicInputHash bytes (32*32=1024)
-digest1 = '0x' + instances_raw[384:416].hex()
-digest2 = '0x' + instances_raw[416:448].hex()
-print(digest1)
-print(digest2)
-")
+    log_info "Fetching digests from S3: ${S3_BASE_URL}bundle/digest_*.hex"
 
-    DIGEST1=$(echo "$DIGESTS" | sed -n '1p')
-    DIGEST2=$(echo "$DIGESTS" | sed -n '2p')
+    DIGEST1_HEX=$(curl -fsSL "${S3_BASE_URL}bundle/digest_1.hex" 2>/dev/null | tr -d '[:space:]')
+    DIGEST2_HEX=$(curl -fsSL "${S3_BASE_URL}bundle/digest_2.hex" 2>/dev/null | tr -d '[:space:]')
 
-    log_info "Extracted digest1: $DIGEST1"
-    log_info "Extracted digest2: $DIGEST2"
+    if [[ -z "$DIGEST1_HEX" || -z "$DIGEST2_HEX" ]]; then
+        log_error "Failed to download digest files from S3"
+        exit 1
+    fi
+
+    DIGEST1="0x${DIGEST1_HEX}"
+    DIGEST2="0x${DIGEST2_HEX}"
+
+    log_info "Fetched digest1: $DIGEST1"
+    log_info "Fetched digest2: $DIGEST2"
 else
-    log_error "--skip-digests not supported; digests must always be extracted from proof"
+    log_error "--skip-digests not supported; digests must be fetched from S3"
     exit 1
 fi
 
