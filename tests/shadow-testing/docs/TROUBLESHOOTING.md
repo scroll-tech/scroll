@@ -42,12 +42,7 @@ Before executing a single command:
   DIGEST1=$(curl -fsSL "${BASE_URL}/bundle/digest_1.hex" | tr -d '[:space:]')
   DIGEST2=$(curl -fsSL "${BASE_URL}/bundle/digest_2.hex" | tr -d '[:space:]')
   ```
-  If you need to double-check, extract canonical digests from a generated proof's `instances` array:
-  ```python
-  instances = base64.b64decode(proof_json['proof']['instances'])
-  digest1 = '0x' + instances[384:416].hex()   # canonical, offset 384-416
-  digest2 = '0x' + instances[416:448].hex()   # canonical, offset 416-448
-  ```
+  The S3 files are already in canonical form; no conversion or proof extraction is required.
 - **Verification — MVRV Routing**: Before finalizing, confirm the verifier returned by MVRV for each target batch matches the verifier whose digests match the proofs:
   ```bash
   for idx in 128069 128070 128071; do

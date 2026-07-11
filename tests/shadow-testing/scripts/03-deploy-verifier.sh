@@ -48,12 +48,12 @@ while [[ $# -gt 0 ]]; do
 Usage: 03-deploy-verifier.sh [options]
 
 Deploy a new ZkEvmVerifierPostFeynman (with new plonk verifier + digests
-extracted from the DB proof) and register it on Anvil.
+fetched from S3) and register it on Anvil.
 
 Options:
   --config <path>         Config file (default: configs/mainnet.json)
   --assets-dir <path>     Path to coordinator assets_v2/ (default: ../../coordinator/build/bin/assets_v2)
-  --bundle-index <idx>    Bundle index to extract digests from (default: 17302)
+  --bundle-index <idx>    Unused legacy option (kept for compatibility)
   --skip-plonk            Skip deploying a new plonk verifier (reuse existing)
   --skip-wrapper          Skip deploying the ZkEvmVerifierPostFeynman wrapper
   --skip-register         Skip registering on MultipleVersionRollupVerifier
@@ -73,6 +73,9 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     log_error "Config file not found: $CONFIG_FILE"
     exit 1
 fi
+
+# Resolve to absolute path before we cd into scroll-contracts for deployment.
+CONFIG_FILE="$(cd "$(dirname "$CONFIG_FILE")" && pwd)/$(basename "$CONFIG_FILE")"
 
 ANVIL_RPC=$(jq -r '.fork.anvil_rpc // empty' "$CONFIG_FILE")
 SCROLL_CHAIN=$(jq -r '.contracts.scroll_chain // empty' "$CONFIG_FILE")
@@ -195,24 +198,25 @@ fi
 # 3. Deploy ZkEvmVerifierPostFeynman wrapper
 # ---------------------------------------------------------------------------
 WRAPPER_ADDR=""
+PROTOCOL_VERSION=$(jq -r '.reset.codec_version // 10' "$CONFIG_FILE")
 if $deploy_wrapper; then
-    # IMPORTANT: For new guest proofs (v0.8.0+), the correct wrapper is
-    # ZkEvmVerifierPostFeynman, NOT ZkEvmVerifierPostEuclid.
-    # PostFeynman computes keccak256(abi.encodePacked(protocolVersion, publicInput))
-    # which matches the bundle_pi_hash embedded in the proof instances.
-    # protocolVersion = (domain << 6) + stf_version = (0 << 6) + 10 = 10 for Scroll+V10.
-    PROTOCOL_VERSION=10
     log_info "Deploying ZkEvmVerifierPostFeynman ..."
-    log_info "  plonkVerifier:  $PLONK_VERIFIER"
-    log_info "  digest1:        $DIGEST1"
-    log_info "  digest2:        $DIGEST2"
+    log_info "  plonkVerifier:   $PLONK_VERIFIER"
+    log_info "  digest1:         $DIGEST1"
+    log_info "  digest2:         $DIGEST2"
     log_info "  protocolVersion: $PROTOCOL_VERSION"
 
     cd "${PROJECT_ROOT}/../../scroll-contracts"
 
+    WRAPPER_CONTRACT_PATH="../../tests/shadow-testing/contracts/ZkEvmVerifierPostFeynman.sol"
+    if [[ ! -f "$WRAPPER_CONTRACT_PATH" ]]; then
+        log_error "Wrapper contract not found: $WRAPPER_CONTRACT_PATH"
+        exit 1
+    fi
+
     WRAPPER_OUTPUT=$(forge create --broadcast --evm-version cancun --rpc-url "$ANVIL_RPC" \
         --from "$OWNER" --unlocked \
-        src/libraries/verifier/ZkEvmVerifierPostFeynman.sol:ZkEvmVerifierPostFeynman \
+        "$WRAPPER_CONTRACT_PATH:ZkEvmVerifierPostFeynman" \
         --constructor-args "$PLONK_VERIFIER" "$DIGEST1" "$DIGEST2" "$PROTOCOL_VERSION" 2>&1)
 
     WRAPPER_ADDR=$(echo "$WRAPPER_OUTPUT" | grep -oP 'Deployed to:\s+\K0x[a-fA-F0-9]{40}' || true)
@@ -229,13 +233,13 @@ if $deploy_wrapper; then
     ONCHAIN_DIGEST1=$(cast call "$WRAPPER_ADDR" "verifierDigest1()(bytes32)" --rpc-url "$ANVIL_RPC")
     ONCHAIN_DIGEST2=$(cast call "$WRAPPER_ADDR" "verifierDigest2()(bytes32)" --rpc-url "$ANVIL_RPC")
     ONCHAIN_PLONK=$(cast call "$WRAPPER_ADDR" "plonkVerifier()(address)" --rpc-url "$ANVIL_RPC")
+    ONCHAIN_PROTOCOL_VERSION=$(cast call "$WRAPPER_ADDR" "protocolVersion()(uint256)" --rpc-url "$ANVIL_RPC")
 
-    ONCHAIN_PROTO=$(cast call "$WRAPPER_ADDR" "protocolVersion()(uint256)" --rpc-url "$ANVIL_RPC")
     log_info "On-chain verification:"
     log_info "  plonkVerifier:   $ONCHAIN_PLONK"
     log_info "  digest1:         $ONCHAIN_DIGEST1"
     log_info "  digest2:         $ONCHAIN_DIGEST2"
-    log_info "  protocolVersion: $ONCHAIN_PROTO"
+    log_info "  protocolVersion: $ONCHAIN_PROTOCOL_VERSION"
 else
     WRAPPER_ADDR=$(jq -r '.contracts.deployed_verifier // empty' "$CONFIG_FILE")
     log_info "Reusing existing wrapper: $WRAPPER_ADDR"
@@ -247,22 +251,42 @@ fi
 if $register; then
     log_info "Registering verifier on MultipleVersionRollupVerifier ..."
     log_info "  version:       10"
-    log_info "  startBatch:    $START_BATCH"
+    log_info "  startBatch:    $MIN_START"
     log_info "  verifier:      $WRAPPER_ADDR"
 
+    # The contract enforces startBatchIndex >= existing latest.startBatchIndex.
+    # On a shadow fork the production verifier may already be registered at a
+    # later batch (e.g. 517767), so a normal updateVerifier at 517761 would be
+    # rejected or ignored. We therefore force the storage slot for
+    # latestVerifier[10] to point to our wrapper at the desired start batch.
+    # This is acceptable for a local shadow fork because we only care about the
+    # target batch range.
+
+    # latestVerifier is state slot 2 (slot 0 = Ownable owner, slot 1 = legacyVerifiers).
+    LATEST_VERIFIER_SLOT=$(cast index uint256 10 2 2>/dev/null)
+    START_BATCH_HEX=$(printf '%016x' "$MIN_START")
+    WRAPPER_NO_0X=${WRAPPER_ADDR#0x}
+    NEW_SLOT_VALUE="0x00000000${WRAPPER_NO_0X}${START_BATCH_HEX}"
+
+    cast rpc anvil_setStorageAt "$MVRV" "$LATEST_VERIFIER_SLOT" "$NEW_SLOT_VALUE" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
+
+    # Also push the previous production verifier into legacyVerifiers so that
+    # getVerifier still behaves reasonably for older batches. This is optional
+    # but keeps the MVRV state closer to reality.
     cast send "$MVRV" \
         "updateVerifier(uint256,uint64,address)" \
-        10 "$START_BATCH" "$WRAPPER_ADDR" \
-        --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked
+        10 "$MIN_START" "$WRAPPER_ADDR" \
+        --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked >/dev/null 2>&1 || true
 
-    # Verify registration
-    REGISTERED=$(cast call "$MVRV" "getVerifier(uint256,uint256)(address)" 10 "$START_BATCH" --rpc-url "$ANVIL_RPC")
-    log_info "getVerifier(10, $START_BATCH) = $REGISTERED"
-
-    if [[ "${REGISTERED,,}" != "${WRAPPER_ADDR,,}" ]]; then
-        log_error "Registration verification failed!"
-        exit 1
-    fi
+    # Verify registration for the target batch range
+    for BATCH_IDX in $MIN_START $((MIN_START + 1)) $((MIN_START + 2)) $((MIN_START + 3)) $((MIN_START + 4)); do
+        REGISTERED=$(cast call "$MVRV" "getVerifier(uint256,uint256)(address)" 10 "$BATCH_IDX" --rpc-url "$ANVIL_RPC")
+        log_info "getVerifier(10, $BATCH_IDX) = $REGISTERED"
+        if [[ "${REGISTERED,,}" != "${WRAPPER_ADDR,,}" ]]; then
+            log_error "Registration verification failed for batch $BATCH_IDX!"
+            exit 1
+        fi
+    done
 
     log_info "Registration verified ✅"
 fi

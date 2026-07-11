@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Fetch L2 block headers from RPC and populate l2_block table in shadow DB.
+Fetch L2 block data from RPC and populate the l2_block table in shadow DB.
 
-The coordinator needs l2_block records to format chunk tasks (for block hashes
-and hardfork name resolution). This script fetches blocks in batches and
-inserts them into the shadow database.
+The coordinator needs l2_block records (specifically the `header` column) to
+format chunk tasks (for block hashes and hardfork name resolution). This script
+fetches full blocks in batches and inserts them into the shadow database. Columns
+not available from a standard RPC (withdraw_root, row_consumption) are filled
+with sentinel values because the coordinator chunk-task path only reads `header`.
 
 Usage:
     python3 fetch-l2-blocks.py --rpc https://mainnet-rpc.scroll.io \
@@ -20,6 +22,7 @@ After running, link blocks to chunks:
 """
 
 import argparse
+import json
 import sys
 import time
 import concurrent.futures
@@ -31,12 +34,12 @@ from psycopg2.extras import execute_values
 
 
 def fetch_block_batch(rpc_url: str, block_numbers: list[int]) -> list[dict]:
-    """Fetch multiple blocks via batch JSON-RPC request."""
+    """Fetch multiple full blocks via batch JSON-RPC request."""
     payload = [
         {
             "jsonrpc": "2.0",
             "method": "eth_getBlockByNumber",
-            "params": [hex(num), False],
+            "params": [hex(num), True],
             "id": i,
         }
         for i, num in enumerate(block_numbers)
@@ -63,7 +66,7 @@ def fetch_block_batch(rpc_url: str, block_numbers: list[int]) -> list[dict]:
 
 
 def insert_blocks(db_url: str, blocks: list[dict]) -> int:
-    """Insert blocks into l2_block table."""
+    """Insert full blocks into the l2_block table."""
     if not blocks:
         return 0
 
@@ -73,9 +76,35 @@ def insert_blocks(db_url: str, blocks: list[dict]) -> int:
             number = int(block["number"], 16)
             hash_val = block["hash"]
             parent_hash = block["parentHash"]
-            timestamp = int(block["timestamp"], 16)
+            state_root = block["stateRoot"]
+            tx_num = len(block.get("transactions", []))
             gas_used = int(block["gasUsed"], 16)
-            rows.append((number, hash_val, parent_hash, timestamp, gas_used))
+            block_timestamp = int(block["timestamp"], 16)
+
+            # Header JSON: the geth-types.Header fields only; drop the RPC-only
+            # `hash` and the embedded `transactions` array.
+            header_obj = {k: v for k, v in block.items() if k not in ("hash", "transactions")}
+            header = json.dumps(header_obj, separators=(",", ":"))
+            transactions = json.dumps(block.get("transactions", []), separators=(",", ":"))
+
+            # Sentinel values for columns the coordinator does not use for chunk
+            # task generation. They must be non-null to satisfy the schema.
+            withdraw_root = "0x0000000000000000000000000000000000000000000000000000000000000000"
+            row_consumption = "null"
+
+            rows.append((
+                number,
+                hash_val,
+                parent_hash,
+                header,
+                transactions,
+                withdraw_root,
+                state_root,
+                tx_num,
+                gas_used,
+                block_timestamp,
+                row_consumption,
+            ))
         except (KeyError, ValueError) as e:
             print(f"  Skipping malformed block: {e}", file=sys.stderr)
             continue
@@ -89,13 +118,22 @@ def insert_blocks(db_url: str, blocks: list[dict]) -> int:
             execute_values(
                 cur,
                 """
-                INSERT INTO l2_block (number, hash, parent_hash, timestamp, gas_used)
+                INSERT INTO l2_block (
+                    number, hash, parent_hash, header, transactions, withdraw_root,
+                    state_root, tx_num, gas_used, block_timestamp, row_consumption
+                )
                 VALUES %s
-                ON CONFLICT (number) DO UPDATE SET
+                ON CONFLICT (number) WHERE deleted_at IS NULL DO UPDATE SET
                     hash = EXCLUDED.hash,
                     parent_hash = EXCLUDED.parent_hash,
-                    timestamp = EXCLUDED.timestamp,
-                    gas_used = EXCLUDED.gas_used
+                    header = EXCLUDED.header,
+                    transactions = EXCLUDED.transactions,
+                    withdraw_root = EXCLUDED.withdraw_root,
+                    state_root = EXCLUDED.state_root,
+                    tx_num = EXCLUDED.tx_num,
+                    gas_used = EXCLUDED.gas_used,
+                    block_timestamp = EXCLUDED.block_timestamp,
+                    row_consumption = EXCLUDED.row_consumption
                 """,
                 rows,
             )
@@ -116,6 +154,26 @@ def get_existing_block_range(db_url: str) -> tuple[Optional[int], Optional[int]]
         conn.close()
 
 
+def link_blocks_to_chunks(db_url: str) -> int:
+    """Update chunk_hash for all blocks that fall inside a known chunk range."""
+    conn = psycopg2.connect(db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE l2_block lb
+                SET chunk_hash = c.hash
+                FROM chunk c
+                WHERE lb.number >= c.start_block_number
+                  AND lb.number <= c.end_block_number
+                  AND lb.chunk_hash IS DISTINCT FROM c.hash
+            """)
+            updated = cur.rowcount
+        conn.commit()
+        return updated
+    finally:
+        conn.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fetch L2 blocks into shadow DB")
     parser.add_argument("--rpc", required=True, help="L2 RPC endpoint URL")
@@ -126,6 +184,7 @@ def main():
     parser.add_argument("--workers", type=int, default=4, help="Concurrent workers (default: 4)")
     parser.add_argument("--delay", type=float, default=0.1, help="Delay between batches in seconds (default: 0.1)")
     parser.add_argument("--skip-existing", action="store_true", help="Skip blocks already in DB")
+    parser.add_argument("--link-chunks", action="store_true", default=True, help="Link blocks to chunks after fetch (default: True)")
     args = parser.parse_args()
 
     existing_min, existing_max = get_existing_block_range(args.db)
@@ -135,8 +194,7 @@ def main():
     end = args.end_block
 
     if args.skip_existing and existing_min is not None:
-        # Only fetch gaps or new blocks
-        # Simple approach: just fetch the requested range, ON CONFLICT will handle it
+        # Simple approach: fetch the requested range, ON CONFLICT will handle it.
         pass
 
     total_blocks = end - start + 1
@@ -176,15 +234,14 @@ def main():
 
             time.sleep(args.delay)
 
-    print(f"\nDone! Fetched: {fetched}, Failed: {failed}")
-    print("\nNext step: link blocks to chunks:")
-    print("""
-    UPDATE l2_block lb
-    SET chunk_hash = c.hash
-    FROM chunk c
-    WHERE lb.number >= c.start_block_number
-      AND lb.number <= c.end_block_number;
-    """)
+    print(f"\nFetched: {fetched}, Failed: {failed}")
+
+    if args.link_chunks:
+        print("Linking blocks to chunks...")
+        linked = link_blocks_to_chunks(args.db)
+        print(f"  Linked {linked} blocks to chunks")
+
+    print("\nDone!")
 
 
 if __name__ == "__main__":

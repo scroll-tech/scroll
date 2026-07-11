@@ -614,20 +614,18 @@ For v0.9.0 release assets are under `scroll-zkvm/releases/v0.9.0/`:
 | Verifier assets | `.../releases/v0.9.0/verifier/{openVmVk.json,verifier.bin,root_verifier_vk}` |
 | Bundle digests | `.../releases/v0.9.0/bundle/{digest_1.hex,digest_2.hex}` |
 
-> ⚠️ **Always verify digests match your proofs.** The S3 digest files are now published in the canonical form expected by the Plonk verifier. If you are unsure, deploy the wrapper, then compare `verifierDigest1()` / `verifierDigest2()` against the canonical digests in your proof's `instances` array (offsets 384–416 and 416–448).
+> ✅ **Use the S3 digest files directly.** For guest v0.9.0, `digest_1.hex` / `digest_2.hex` are published in the canonical form expected by the Plonk verifier. You no longer need to extract digests from a proof's `instances` array.
 
-### Fallback: Extract Digests from a Proof
+### Verifying Digests Match Your Proofs
 
-If S3 is unavailable or you need to double-check, extract canonical digests directly from a generated proof's `instances` array:
+If you want to double-check, compare the canonical digests from S3 against the values stored in the deployed wrapper:
 
-```python
-import base64, json
-
-instances_data = base64.b64decode(proof_json['proof']['instances'])
-# instances: 12 accumulators (384 bytes) + digest1 (32) + digest2 (32) + publicInputHash bytes
-digest1 = '0x' + instances_data[384:416].hex()   # canonical form
-digest2 = '0x' + instances_data[416:448].hex()   # canonical form
+```bash
+cast call "$WRAPPER" "verifierDigest1()(bytes32)" --rpc-url "$ANVIL_RPC"
+cast call "$WRAPPER" "verifierDigest2()(bytes32)" --rpc-url "$ANVIL_RPC"
 ```
+
+These must match the digests published at `.../releases/v0.9.0/bundle/{digest_1.hex,digest_2.hex}`.
 
 ### Register the Verifier
 
@@ -842,7 +840,7 @@ cast send $SCROLL_CHAIN --from $PROVER $(cat /tmp/finalize_calldata.hex) \
 
 ### Key Takeaways
 
-1. **Always copy the mainnet verifier** — Deploying a new verifier with S3 digests will fail because the digests may not match the specific proof being tested. If you must deploy fresh, extract digests from `proof.instances[12]` and `proof.instances[13]`.
+1. **Always deploy `ZkEvmVerifierPostFeynman` with S3 digests** — For guest v0.9.0 the canonical digests are published at `.../releases/v0.9.0/bundle/digest_*.hex`. Use them directly; do not attempt to copy the mainnet verifier wrapper (`anvil_setCode` preserves the original immutables and will fail verification).
 2. **`anvil_setStorageAt` works for direct variables** but not for mapping entries. Use it for `miscData`, `nextUnfinalizedQueueIndex`, etc.
 3. **Fork block matters** — If the fork block is after the real finalization, you must manually reset `lastFinalizedBatchIndex` and `nextUnfinalizedQueueIndex`.
 4. **Public input hash must match exactly** — Any discrepancy in `msg_queue_hash`, `chain_id`, `num_batches`, or roots will cause `VerificationFailed`.

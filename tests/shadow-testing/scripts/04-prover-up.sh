@@ -35,6 +35,14 @@ DB_DSN=$(jq -r '.db.dsn' "$CONFIG_FILE")
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
+# Load circuit VKs from coordinator assets so we can set per-circuit S3 detours.
+# v0.9.0 stores app.vmexe at <base_url><proof_type>/app.vmexe (no VK subdir),
+# while the prover's default URL builder appends <proof_type>/<vk>/.
+ASSETS_V2="${REPO_ROOT}/coordinator/build/bin/assets_v2"
+CHUNK_VK=$(jq -r '.chunk_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
+BATCH_VK=$(jq -r '.batch_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
+BUNDLE_VK=$(jq -r '.bundle_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
+
 # ─── Build prover if needed ──────────────────────────────────────────────────
 PROVER_BIN="${REPO_ROOT}/target/release/prover"
 
@@ -79,7 +87,13 @@ for i in "${!GPU_ARRAY[@]}"; do
   "circuits": {
     "galileoV2": {
       "base_url": "${S3_URL}",
-      "workspace_path": "${work_dir}/galileo"
+      "workspace_path": "${work_dir}/galileo",
+      "asset_detours": {
+        "${CHUNK_VK}": "${S3_URL}chunk/",
+        "${BATCH_VK}": "${S3_URL}batch/",
+        "${BUNDLE_VK}": "${S3_URL}bundle/"
+      },
+      "debug_mode": false
     }
   }
 }
@@ -93,7 +107,7 @@ EOF
     export RUST_MIN_STACK=16777216
     CUDA_VISIBLE_DEVICES="$gpu_id" nohup "$PROVER_BIN" \
         --config "$config_file" \
-        > "$log_file" 2>&1 &
+        >> "$log_file" 2>&1 &
 
     pid=$!
     echo "$pid" > "${work_dir}/prover.pid"
