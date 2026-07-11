@@ -28,6 +28,15 @@ impl UniversalHandler {
         Ok(Self { prover })
     }
 
+    /// Enable OpenVM deferral using `child_prover` as the child circuit prover.
+    /// Required for batch (child=chunk) and bundle (child=batch) aggregation proofs.
+    pub fn enable_deferral(&mut self, child: &UniversalHandler) -> Result<()> {
+        self.prover
+            .enable_deferral(&child.prover)
+            .map_err(|e| eyre::eyre!("failed to enable deferral: {}", e))?;
+        Ok(())
+    }
+
     /// get_prover get the inner prover, later we would replace chunk/batch/bundle_prover with
     /// universal prover, before that, use bundle_prover as the represent one
     pub fn get_prover(&mut self) -> &mut Prover {

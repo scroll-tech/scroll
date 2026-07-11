@@ -191,6 +191,10 @@ pub struct CircuitConfig {
     /// cached vk value to save some initial cost, for debugging only
     #[serde(default)]
     pub vks: HashMap<ProofType, String>,
+    /// Child circuit VKs used to enable OpenVM deferral for aggregation tasks.
+    /// Required for batch (child=chunk) and bundle (child=batch) proving in v0.9.0+.
+    #[serde(default)]
+    pub child_circuit_vks: HashMap<ProofType, String>,
 }
 
 pub struct LocalProver {
@@ -198,7 +202,7 @@ pub struct LocalProver {
     next_task_id: u64,
     current_task: Option<JoinHandle<Result<String>>>,
 
-    handlers: HashMap<String, Arc<dyn CircuitsHandler>>,
+    handlers: HashMap<String, Arc<Mutex<UniversalHandler>>>,
 }
 
 #[async_trait]
@@ -325,39 +329,44 @@ impl LocalProver {
         }
         let prover_task: ProvingTask = prover_task.into();
         let vk = hex::encode(&prover_task.vk);
-        let handler = if let Some(handler) = self.handlers.get(&vk) {
-            handler.clone()
-        } else {
-            let base_config = self
+
+        let parent_handler = self
+            .get_or_load_handler(&req.hard_fork_name, req.proof_type, &vk)
+            .await?;
+
+        // OpenVM v2+ aggregation circuits (batch/bundle) need deferral enabled
+        // using their immediate child circuit's prover.
+        let child_proof_type = match req.proof_type {
+            ProofType::Batch => Some(ProofType::Chunk),
+            ProofType::Bundle => Some(ProofType::Batch),
+            _ => None,
+        };
+        if let Some(child_type) = child_proof_type {
+            let child_vk = self
                 .config
                 .circuits
                 .get(&req.hard_fork_name)
+                .and_then(|c| c.child_circuit_vks.get(&child_type))
                 .ok_or_else(|| {
                     eyre::eyre!(
-                        "coordinator sent unexpected forkname {}",
+                        "missing child circuit vk for {:?} in fork {}",
+                        child_type,
                         req.hard_fork_name
                     )
-                })?;
-            let url_base = if let Some(url) = base_config.location_data.asset_detours.get(&vk) {
-                url.clone()
-            } else {
-                base_config
-                    .location_data
-                    .gen_asset_url(&vk, req.proof_type)?
-            };
-            let asset_path = base_config
-                .location_data
-                .get_asset(&vk, &url_base, &base_config.workspace_path)
+                })?
+                .clone();
+            let child_handler = self
+                .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
                 .await?;
-            let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(&asset_path)?));
-            self.handlers.insert(vk, circuits_handler.clone());
-            circuits_handler
-        };
+            let mut parent_guard = parent_handler.lock().await;
+            let child_guard = child_handler.lock().await;
+            parent_guard.enable_deferral(&*child_guard)?;
+        }
 
         let handle = Handle::current();
         let is_evm = req.proof_type == ProofType::Bundle;
         let task_handle = tokio::task::spawn_blocking(move || {
-            handle.block_on(handler.get_proof_data(&prover_task, is_evm))
+            handle.block_on(parent_handler.get_proof_data(&prover_task, is_evm))
         });
         self.current_task = Some(task_handle);
 
@@ -371,5 +380,35 @@ impl LocalProver {
             input: Some(req.input),
             ..Default::default()
         })
+    }
+
+    /// Load a handler for the given fork/proof-type/vk, reusing a cached one if available.
+    async fn get_or_load_handler(
+        &mut self,
+        fork_name: &str,
+        proof_type: ProofType,
+        vk: &str,
+    ) -> Result<Arc<Mutex<UniversalHandler>>> {
+        if let Some(handler) = self.handlers.get(vk) {
+            return Ok(handler.clone());
+        }
+
+        let base_config = self
+            .config
+            .circuits
+            .get(fork_name)
+            .ok_or_else(|| eyre::eyre!("coordinator sent unexpected forkname {}", fork_name))?;
+        let url_base = if let Some(url) = base_config.location_data.asset_detours.get(vk) {
+            url.clone()
+        } else {
+            base_config.location_data.gen_asset_url(vk, proof_type)?
+        };
+        let asset_path = base_config
+            .location_data
+            .get_asset(vk, &url_base, &base_config.workspace_path)
+            .await?;
+        let handler = Arc::new(Mutex::new(UniversalHandler::new(&asset_path)?));
+        self.handlers.insert(vk.to_string(), handler.clone());
+        Ok(handler)
     }
 }

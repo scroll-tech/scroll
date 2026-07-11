@@ -93,6 +93,10 @@ for i in "${!GPU_ARRAY[@]}"; do
         "${BATCH_VK}": "${S3_URL}batch/",
         "${BUNDLE_VK}": "${S3_URL}bundle/"
       },
+      "child_circuit_vks": {
+        "Chunk": "${CHUNK_VK}",
+        "Batch": "${BATCH_VK}"
+      },
       "debug_mode": false
     }
   }
