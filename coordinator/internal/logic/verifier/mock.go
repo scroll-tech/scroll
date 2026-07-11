@@ -21,7 +21,7 @@ func NewVerifier(cfg *config.VerifierConfig, _ bool) (*Verifier, error) {
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.
 func (v *Verifier) VerifyChunkProof(proof *message.OpenVMChunkProof, forkName string) (bool, error) {
-	if proof.VmProof != nil && string(proof.VmProof.Proof) == InvalidTestProof {
+	if proof.StarkProof != nil && string(proof.StarkProof.Proof) == InvalidTestProof {
 		return false, nil
 	}
 	return true, nil
@@ -29,7 +29,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.OpenVMChunkProof, forkName st
 
 // VerifyBatchProof return a mock verification result for a BatchProof.
 func (v *Verifier) VerifyBatchProof(proof *message.OpenVMBatchProof, forkName string) (bool, error) {
-	if proof.VmProof != nil && string(proof.VmProof.Proof) == InvalidTestProof {
+	if proof.StarkProof != nil && string(proof.StarkProof.Proof) == InvalidTestProof {
 		return false, nil
 	}
 	return true, nil

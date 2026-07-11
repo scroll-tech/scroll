@@ -124,6 +124,7 @@ impl ChunkProvingTask {
             aggregated_proofs: Vec::new(),
             serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
+            input_commits: Vec::new(),
         };
 
         Ok((proving_task, chunk_info, chunk_pi_hash))
