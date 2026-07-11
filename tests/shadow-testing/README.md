@@ -26,7 +26,6 @@ See `make help` for all targets.
 |----------|----------------|
 | [`docs/GUIDE.md`](docs/GUIDE.md) | Full setup guide — step-by-step manual setup, architecture, configuration |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Structured pitfalls, traps, and agent checklists |
-| [`docs/LESSONS_LEARNED.md`](docs/LESSONS_LEARNED.md) | Time-lined debugging stories from past shadow tests |
 | [`docs/CONTRACTS.md`](docs/contract-addresses.md) | L1 contract addresses per network |
 
 ## Directory Structure
@@ -75,4 +74,4 @@ The pipeline has three phases:
 
 ## Contributing
 
-When you discover a new trap or workaround, add it to `docs/TROUBLESHOOTING.md` (structured) or `docs/LESSONS_LEARNED.md` (narrative).
+When you discover a new trap or workaround, add it to `docs/TROUBLESHOOTING.md` (structured).

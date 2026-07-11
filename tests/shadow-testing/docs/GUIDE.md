@@ -103,12 +103,12 @@ mkdir -p "$VERIFIER_DIR/openvm-0.5.6"
 mkdir -p "$VERIFIER_DIR/openvm-v0.7.1"
 # Download or copy verifier assets for galileo
 
-# galileoV2 (v0.8.0) — NOTE: v0.8.0 does NOT use /releases/ prefix in S3 URLs
-mkdir -p "$VERIFIER_DIR/openvm-v0.8.0"
-# Download or copy verifier assets for galileoV2
+# galileoV2 (v0.9.0)
+mkdir -p "$VERIFIER_DIR/openvm-v0.9.0"
+# Download or copy verifier assets for galileoV2 from .../scroll-zkvm/releases/v0.9.0/verifier/
 ```
 
-> ⚠️ **Important**: v0.8.0 assets use `v0.8.0/` path prefix, NOT `releases/v0.8.0/`. Using the wrong prefix causes HTTP 403 errors.
+> ⚠️ **Important**: v0.9.0 assets are under `scroll-zkvm/releases/v0.9.0/`. Earlier v0.8.0 assets used `scroll-zkvm/v0.8.0/` (no `/releases/`). Using the wrong prefix causes HTTP 403 errors.
 
 ### Step 4: Initialize Shadow DB Schema
 
@@ -317,6 +317,7 @@ UPDATE bundle SET batch_proofs_status = 2 WHERE index = 13470;
 - If L1 messages exist, you need an RPC that supports this method.
 
 ### S3 403 errors when downloading circuit assets
+- v0.9.0 assets: `https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/`
 - v0.8.0 assets: `https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/v0.8.0/`
 - v0.7.1 and earlier: `https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.7.1/`
 - Verify with `curl -sI <url>` before running.
@@ -399,7 +400,7 @@ See `configs/prover-local.json` in this directory.
 
 Key fields:
 - `sdk_config.coordinator.base_url`: Shadow coordinator API (`http://localhost:8390`)
-- `circuits.galileoV2.base_url`: S3 path for circuit assets (no `/releases/` for v0.8.0)
+- `circuits.galileoV2.base_url`: S3 path for circuit assets (`.../scroll-zkvm/releases/v0.9.0/` for v0.9.0)
 - `sdk_config.prover.supported_proof_types`: `[1, 2, 3]` for chunk, batch, bundle
 
 ## Rollup Relayer Dry-Run Mode
@@ -572,11 +573,9 @@ For `finalizeBundlePostEuclidV2`, the batch was already committed on mainnet at 
 
 ## Real Verifier Deployment
 
-### Critical Discovery: Deployed Verifier Digests Must Match Mainnet Proof
+### Option 1: Copy the Mainnet Verifier (Fastest)
 
-We initially deployed a fresh `ZkEvmVerifierPostFeynman` (address `0xc323...`) using S3 digest files **without format conversion**, and verification failed with `VerificationFailed (0x439cc0cd)`. The root cause was later discovered to be a **Montgomery vs Canonical representation mismatch** (see below), not an actual digest mismatch.
-
-For quick testing, you can copy the exact mainnet verifier contract code to Anvil using `anvil_setCode`:
+For quick testing, copy the exact mainnet verifier contract code to Anvil using `anvil_setCode`:
 
 ```bash
 # Copy mainnet ZkEvmVerifierPostFeynman wrapper (0x0dE1...)
@@ -590,74 +589,47 @@ PLONK_CODE=$(cast code $PLONK --rpc-url https://ethereum-rpc.publicnode.com)
 cast rpc anvil_setCode $PLONK $PLONK_CODE --rpc-url http://localhost:18545
 ```
 
-This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet.
+This preserves the exact immutables (plonkVerifier address, digests, protocolVersion) from mainnet and works as long as your proofs use the same digests as mainnet.
 
-### Correct Approach: Use S3 Digests with Montgomery → Canonical Conversion
+### Option 2: Deploy a Fresh Verifier Using S3 Digests
 
-S3 `digest_1.hex` / `digest_2.hex` **do contain the correct digests**, but they are stored in **Montgomery form** for the Bn254 field. The proof instances contain the same digests in **canonical form**. Both represent the same value; they just use different field element encodings.
+When testing a new guest / circuit version (e.g., v0.9.0), deploy a fresh `ZkEvmVerifierPostFeynman` with digests taken from the release S3 bucket:
 
-**Conversion formula** (`bn254_mod = 21888242871839275222246405745257275088548364400416034343698204186575808495617`):
-```python
-R = pow(2, 256, bn254_mod)
-R_inv = pow(R, -1, bn254_mod)
-canonical = (montgomery * R_inv) % bn254_mod
-```
-
-**Practical conversion script**:
-```python
-import requests
-
-BN254_MOD = 21888242871839275222246405745257275088548364400416034343698204186575808495617
-R = pow(2, 256, BN254_MOD)
-R_INV = pow(R, -1, BN254_MOD)
-
-def montgomery_to_canonical(hex_str):
-    val = int(hex_str, 16)
-    return f"{(val * R_INV) % BN254_MOD:064x}"
-
-# Download from S3
-base = "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.8.0/bundle"
-d1_mont = requests.get(f"{base}/digest_1.hex").text.strip()
-d2_mont = requests.get(f"{base}/digest_2.hex").text.strip()
-
-d1_canon = montgomery_to_canonical(d1_mont)
-d2_canon = montgomery_to_canonical(d2_mont)
-
-print(f"digest1 = 0x{d1_canon}")  # 0x00398b78...
-print(f"digest2 = 0x{d2_canon}")  # 0x0021785a...
-```
-
-For `v0.8.0`:
-- S3 Montgomery `digest1`: `2bacecb92b61b7cf7cff726f230ee16a42b85eacac2fafa32d48d62f820023eb`
-- S3 Montgomery `digest2`: `2190d3ad4438e96758074b6e80d4999f75816dc2317a126b2acc7a02bc96f1e0`
-- Canonical `digest1` (for deploy): `0x00398b786b500ca759ca2de2aee9c73bd8e28f1c80b49e1c53bc060a9a649269`
-- Canonical `digest2` (for deploy): `0x0021785a05e931b447c8d6463f4547f92081a92ee357af26e1c6f6ecfe373d67`
-
-Then deploy with canonical digests:
 ```bash
+BASE_URL="https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0"
+DIGEST1=$(curl -fsSL "${BASE_URL}/bundle/digest_1.hex" | tr -d '[:space:]')
+DIGEST2=$(curl -fsSL "${BASE_URL}/bundle/digest_2.hex" | tr -d '[:space:]')
+
 forge create --broadcast --evm-version cancun --rpc-url http://localhost:18545 \
+  --from "$OWNER" --unlocked \
   src/libraries/verifier/ZkEvmVerifierPostFeynman.sol:ZkEvmVerifierPostFeynman \
-  --constructor-args <plonkVerifier> 0x<canonical_d1> 0x<canonical_d2> 10
+  --constructor-args "$PLONK_VERIFIER" "0x$DIGEST1" "0x$DIGEST2" 10
 ```
 
-> ⚠️ **Always use canonical form for the constructor.** The Solidity contract stores the `bytes32` value as-is and passes it to the Plonk verifier. The Plonk verifier expects canonical form because the proof instances contain canonical digests.
+For v0.9.0 release assets are under `scroll-zkvm/releases/v0.9.0/`:
 
-### Alternative: Extract Digests from the Proof Itself
+| File | S3 Path |
+|------|---------|
+| Chunk/batch/bundle circuits | `.../releases/v0.9.0/{chunk,batch,bundle}/<vk>/` |
+| Verifier assets | `.../releases/v0.9.0/verifier/{openVmVk.json,verifier.bin,root_verifier_vk}` |
+| Bundle digests | `.../releases/v0.9.0/bundle/{digest_1.hex,digest_2.hex}` |
 
-If S3 digests are unavailable (403) or you want to double-check, extract digests directly from the proof's `instances` array:
+> ⚠️ **Always verify digests match your proofs.** The S3 digest files are now published in the canonical form expected by the Plonk verifier. If you are unsure, deploy the wrapper, then compare `verifierDigest1()` / `verifierDigest2()` against the canonical digests in your proof's `instances` array (offsets 384–416 and 416–448).
+
+### Fallback: Extract Digests from a Proof
+
+If S3 is unavailable or you need to double-check, extract canonical digests directly from a generated proof's `instances` array:
 
 ```python
 import base64, json
 
 instances_data = base64.b64decode(proof_json['proof']['instances'])
-# instances: 12 accumulators (384 bytes) + digest1 (32) + digest2 (32) + publicInputHash
+# instances: 12 accumulators (384 bytes) + digest1 (32) + digest2 (32) + publicInputHash bytes
 digest1 = '0x' + instances_data[384:416].hex()   # canonical form
 digest2 = '0x' + instances_data[416:448].hex()   # canonical form
 ```
 
-This gives the same canonical values as the S3 → Montgomery conversion above.
-
-### Register Copied Verifier
+### Register the Verifier
 
 ```bash
 MVRV="0x4cea3e866e7c57fd75cb0ca3e9f5f1151d4ead3f"
@@ -676,7 +648,7 @@ cast send $MVRV \
 
 ### Verify MVRV Routing
 
-After registering the verifier, **always verify that MVRV routes target batches to the correct verifier** before starting finalization tests. This is especially critical when testing new prover digests on batch ranges that may already be mapped to a legacy verifier.
+After registering a new verifier, **always verify that MVRV routes target batches to the correct verifier** before starting finalization tests. This is especially critical when testing new prover digests on batch ranges that may already be mapped to a legacy verifier.
 
 ```bash
 # Check which verifier MVRV returns for each batch in your target range
@@ -701,21 +673,6 @@ cast send $MVRV \
 ```
 
 > **Critical**: If MVRV routes to the wrong verifier, finalization will revert with `VerificationFailed(0x439cc0cd)` even though your deployed verifier and proof digests are correct.
-
-### Previous Deployment Attempt (Incorrect Digests) — Historical Record
-
-For reference, the initially deployed verifier that failed was:
-
-```bash
-# WRONG: Used S3 digests directly without Montgomery → Canonical conversion
-DIGEST1=$(curl -s "$BASE_URL/bundle/digest_1.hex")  # Montgomery form
-DIGEST2=$(curl -s "$BASE_URL/bundle/digest_2.hex")  # Montgomery form
-forge create ... --constructor-args ... 0x$DIGEST1 0x$DIGEST2 ...
-```
-
-This failed because S3 `digest_1.hex` / `digest_2.hex` are in **Montgomery form**, but the verifier constructor expects **canonical form**. The deployed digests (`0x2bacecb9...` / `0x2190d3ad...`) did not match the canonical digests in the proof instances (`0x00398b78...` / `0x0021785a...`), causing `VerificationFailed`.
-
-> **Historical confusion**: We previously concluded "S3 digests don't match" and recommended copying the mainnet verifier via `anvil_setCode`. The real issue was the missing Montgomery conversion, not incorrect S3 data.
 
 ### Critical Discovery: Anvil `eth_call` vs `anvil_setStorageAt`
 

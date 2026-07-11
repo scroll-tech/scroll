@@ -8,7 +8,7 @@
 Before executing a single command:
 
 1. [ ] **Read root `AGENTS.md`** (this file) — refresh the trap list.
-2. [ ] **Read `docs/LESSONS_LEARNED.md`** — check if your planned task matches any documented failure mode.
+2. [ ] **Read `docs/TROUBLESHOOTING.md`** — check if your planned task matches any documented failure mode.
 3. [ ] **Read `docs/GUIDE.md`** — verify the specific section matching your task (e.g., "Real Verifier Deployment", "Multi-Bundle Relayer Finalize Test").
 4. [ ] **Verify network** — confirm you are testing **Mainnet** or **Sepolia**, and all configs/ports/RPCs match that network.
 5. [ ] **Verify target bundle range** — query the DB to confirm:
@@ -33,16 +33,21 @@ Before executing a single command:
 ### Trap 1: Wrong Verifier Contract or Wrong Digest Form
 - **Symptom**: `VerificationFailed(0x439cc0cd)` even with correct digests.
 - **Cause A**: Deployed `ZkEvmVerifierPostEuclid` instead of `ZkEvmVerifierPostFeynman`.
-- **Cause B**: Used S3 `digest_1.hex` / `digest_2.hex` **directly** without Montgomery → Canonical conversion.
+- **Cause B**: Used digests in the wrong form. For v0.9.0 the S3 `digest_1.hex` / `digest_2.hex` files are published in **canonical form**, but if you are re-using an old v0.8.0 workflow that converted from Montgomery form, double-check you are not applying the conversion twice.
 - **Cause C**: **MVRV routes the batch to the wrong verifier**. The deployed verifier's digests are correct, but `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)` returns an old verifier with different digests. This happens when re-proving bundles with a new prover (new digests) whose batch indices fall in a range still mapped to a legacy verifier.
-- **Rule**: For guest v0.8.0+ proofs, **always use `PostFeynman`** with **canonical-form digests**, and **verify MVRV routing** before finalizing.
-- **Verification — Digests**: Extract canonical digests from proof instances:
+- **Rule**: For guest v0.9.0 proofs, **always use `PostFeynman`** with digests from `.../releases/v0.9.0/bundle/digest_*.hex`, and **verify MVRV routing** before finalizing.
+- **Verification — Digests**: Fetch canonical digests from S3 and deploy with `protocolVersion = 10`:
+  ```bash
+  BASE_URL="https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0"
+  DIGEST1=$(curl -fsSL "${BASE_URL}/bundle/digest_1.hex" | tr -d '[:space:]')
+  DIGEST2=$(curl -fsSL "${BASE_URL}/bundle/digest_2.hex" | tr -d '[:space:]')
+  ```
+  If you need to double-check, extract canonical digests from a generated proof's `instances` array:
   ```python
   instances = base64.b64decode(proof_json['proof']['instances'])
   digest1 = '0x' + instances[384:416].hex()   # canonical, offset 384-416
   digest2 = '0x' + instances[416:448].hex()   # canonical, offset 416-448
   ```
-  Then deploy with `protocolVersion = 10`.
 - **Verification — MVRV Routing**: Before finalizing, confirm the verifier returned by MVRV for each target batch matches the verifier whose digests match the proofs:
   ```bash
   for idx in 128069 128070 128071; do
@@ -56,12 +61,6 @@ Before executing a single command:
     "updateVerifier(uint256,uint64,address)" \
     10 $START_BATCH $NEW_VERIFIER \
     --from $OWNER --rpc-url $ANVIL_RPC --unlocked
-  ```
-- **S3 Digests**: If using S3 `digest_1.hex`, convert from Montgomery to canonical first:
-  ```python
-  bn254_mod = 21888242871839275222246405745257275088548364400416034343698204186575808495617
-  R_inv = pow(pow(2, 256, bn254_mod), -1, bn254_mod)
-  canonical = (int(s3_hex, 16) * R_inv) % bn254_mod
   ```
 
 ### Trap 2: Anvil Forks Wrong Chain
@@ -109,7 +108,7 @@ Before executing a single command:
 ### Trap 9: Anvil `eth_estimateGas` Rejects Fee Caps
 - **Symptom**: `failed to get fee data, err: Out of gas: gas required exceeds allowance: 0`.
 - **Cause**: Anvil's `eth_estimateGas` fails when `CallMsg` has `GasFeeCap`/`GasTipCap` set but `Gas` is 0 (Go Ethereum client's default).
-- **Rule**: If testing relayer against Anvil and gas estimation fails, patch `estimategas.go` to strip fee caps from the `EstimateGas` call (see `LESSONS_LEARNED.md` for exact patch).
+- **Rule**: If you hit this on a shadow fork, the correct fix belongs in the upstream `rollup/internal/controller/sender/estimategas.go` (do not maintain a local patch in this branch). Verify with the latest `develop` code and, if still present, fix it there so all shadow tests benefit.
 
 ### Trap 10: Sender Balance Lost After Anvil Restart
 - **Symptom**: `failed to send transaction, err: Insufficient funds for gas * price + value` even after successful gas estimation.
@@ -143,12 +142,10 @@ Before executing a single command:
   so `CUDA_VISIBLE_DEVICES=N` points at a nonexistent device.
 - **Rule**: use `--gpus "device=$i"` with `CUDA_VISIBLE_DEVICES=0` (or `--gpus all` with `CUDA_VISIBLE_DEVICES=$i`).
 
-### Trap 14: Coordinator Verifier Assets vs Prover Circuit S3 Paths (galileoV2)
-- **Symptom**: coordinator asset download 403s on `scroll-zkvm/galileov2/verifier/openVmVk.json`.
-- **Cause**: galileoV2 verifier assets live under `scroll-zkvm/v0.8.0/verifier/`, while prover circuits live
-  under `scroll-zkvm/galileov2/{chunk,batch,bundle}/<vk_hash>/`. Different prefixes, same VK hashes.
-- **Rule**: download coordinator `openVmVk.json`/`verifier.bin`/`root_verifier_vk` from `v0.8.0/verifier/`;
-  set prover `circuits.galileoV2.base_url` to `…/scroll-zkvm/galileov2/`.
+### Trap 14: Coordinator Verifier Assets vs Prover Circuit S3 Paths (v0.9.0)
+- **Symptom**: coordinator asset download 403s or prover cannot find circuit apps.
+- **Cause**: Starting with v0.9.0, both verifier assets and circuit apps are released under a unified `scroll-zkvm/releases/v0.9.0/` prefix. Earlier versions split them across `v0.8.0/verifier/` and `scroll-zkvm/galileov2/`.
+- **Rule**: For v0.9.0, point both coordinator verifier assets and prover `circuits.galileoV2.base_url` at `…/scroll-zkvm/releases/v0.9.0/`. The expected layout is `{chunk,batch,bundle}/<vk>/` for circuits and `verifier/` for coordinator assets.
 
 ### Trap 15: Slow `l2_block` Export by `chunk_hash` JOIN
 - **Symptom**: `00-import-bundle-range.sh` hangs for minutes on the `l2_block` export (0-byte CSV) — the
@@ -248,7 +245,7 @@ Before executing a single command:
 
 When debugging, read docs in this order:
 
-1. `docs/LESSONS_LEARNED.md` — fastest path to known solutions
-2. `docs/GUIDE.md` — detailed setup and troubleshooting
+1. `docs/TROUBLESHOOTING.md` — fastest path to known traps
+2. `docs/GUIDE.md` — detailed setup and procedures
 3. `README.md` — quick reference for common commands
 4. `../../AGENTS.md` (repo root) — cross-network rules and secrets reference

@@ -182,7 +182,7 @@ Example:
   },
   "circuits": {
     "galileoV2": {
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/galileov2/",
+      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/",
       "workspace_path": "/tmp/prover-multi-gpu/gpu0/.work/galileo",
       "debug_mode": true
     }

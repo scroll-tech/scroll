@@ -37,7 +37,7 @@ Key hard-won rules:
 - **Alchemy API for Anvil fork** (must use Alchemy, others hit rate limits):
   - ✅ **Primary**: `https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY`
   - 📋 **Credential source**: Check `local-secrets.md`, `.env`, or `.pgpass` first. If not found, **ask a human** — do not guess or invent keys.
-- **S3 circuit URLs**: v0.8.0 uses `v0.8.0/` prefix (no `/releases/`).
+- **S3 circuit URLs**: v0.9.0 uses `releases/v0.9.0/` prefix. (v0.8.0 historically used `v0.8.0/` without `/releases/`.)
 - **l2_block table**: Coordinator needs this for block hash lookups. Must be populated and linked via `chunk_hash`.
 - **Blocks**: Must be post-fork (GalileoV2 / codec V10 = blocks ≥ 33,750,000 on mainnet).
 - **L1 messages**: If chunks contain L1 messages, prover needs `scroll_getL1MessagesInBlock` RPC support. Most chunks at current mainnet height do NOT contain L1 messages, so this is usually non-blocking.
@@ -57,7 +57,7 @@ Key hard-won rules:
 | **Relayer flags** | Standard | Requires `--config <path>` AND `--min-codec-version 10` | Missing flags = wrong config or immediate exit |
 | **DB scope** | Imported limited range | Full production snapshot (batches 128080+) | Relayer batch committer floods logs with commit retries |
 | **Blob version** | Usually V0 | Anvil 1.0.0 cannot decode BlobSidecar V1 | Set `fusaka_timestamp: 2000000000` in relayer config |
-| **Proofs in DB** | May already be v0.8.0 | Old proofs are v0.7.3 | Must reset `proving_status = 1` to regenerate with v0.8.0 |
+| **Proofs in DB** | May already be v0.9.0 | Old proofs are v0.7.3 | Must reset `proving_status = 1` to regenerate with v0.9.0 |
 
 ## Useful Commands
 
@@ -158,8 +158,8 @@ make coordinator_setup
 
 ### S3 Asset URLs
 - The prover config `base_url` must match the actual S3 object path. Verify with `curl -sI` before running.
-- The coordinator downloads **verifier** assets from `v0.X.X/verifier/`; the prover downloads **circuit** assets from `<fork>/<proof_type>/<vk>/`.
-- If you see HTTP 403 from S3, check whether the URL contains a `releases/` segment that shouldn't be there.
+- For v0.9.0, both coordinator **verifier** assets and prover **circuit** assets are under `scroll-zkvm/releases/v0.9.0/`. Earlier v0.8.0 assets used `scroll-zkvm/v0.X.X/` for verifier assets and `scroll-zkvm/galileov2/` for prover circuits.
+- If you see HTTP 403 from S3, check whether the URL uses the correct `releases/` prefix for the target version.
 
 ### Multiple Coordinator Instances
 - Running `make coordinator_setup` rebuilds the binary but does not stop running instances. If the old instance holds port 8390, the new one fails with `bind: address already in use`.
@@ -169,7 +169,7 @@ make coordinator_setup
 
 > **Rule**: When encountering a problem that is **non-trivial**, **time-consuming**, or **has failed more than once**, the agent **must** search existing documentation before attempting new fixes.
 >
-> 1. Read all relevant markdown files in the task directory (e.g., `tests/shadow-testing/docs/*.md`, `LESSONS_LEARNED.md`).
+> 1. Read all relevant markdown files in the task directory (e.g., `tests/shadow-testing/docs/*.md`).
 > 2. Search for similar error messages, selectors, or symptoms in the codebase and docs.
 > 3. Only after confirming the issue is **not documented** should you design a new experiment.
 >
@@ -190,7 +190,7 @@ make coordinator_setup
 | **Database DSNs** | Local shadow DB (port 5433), Sepolia shadow DB (port 5442), Mainnet RDS (port 15432 via tunnel) | Wrong DSN = wrong chain data = wasted proving hours. |
 | **Contract Addresses** | ScrollChain proxy, L1MessageQueueV2, RollupVerifier, MockVerifier | These change per network (mainnet vs sepolia). Hard-coding without checking = `ErrorIncorrectBatchHash`. |
 | **Sender Keys** | Commit/finalize EOA private keys for shadow fork | Anvil-funded accounts; never use production keys in shadow tests. |
-| **S3 URLs** | Circuit asset base URLs | v0.8.0 drops the `/releases/` prefix. Wrong URL = 403. |
+| **S3 URLs** | Circuit asset base URLs | v0.9.0 uses the `releases/v0.9.0/` prefix. Wrong URL = 403. |
 
 > **Agent Rule**: Before starting any shadow fork or E2E test, always cross-reference `local-secrets.md`. If a required secret is missing, ask the human — do not invent URLs or credentials.
 
@@ -202,7 +202,7 @@ make coordinator_setup
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
 | [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
 | [`tests/shadow-testing/docs/GUIDE.md`](tests/shadow-testing/docs/GUIDE.md) | Shadow coordinator + local prover setup for production task replay |
-| [`tests/shadow-testing/docs/LESSONS_LEARNED.md`](tests/shadow-testing/docs/LESSONS_LEARNED.md) | Hard-won debugging knowledge from past shadow tests (read before experimenting) |
+| [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | Structured pitfalls and agent checklists for shadow testing |
 | [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | Structured pitfalls and agent checklists for shadow testing |
 | [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) | Quick reference for common shadow testing commands |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
