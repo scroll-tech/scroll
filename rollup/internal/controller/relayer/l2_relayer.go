@@ -146,7 +146,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		}
 
 		// Ensure test features aren't enabled on the ethereum mainnet.
-        // Skip chain ID check for shadow testing
+		if commitSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
+			return nil, errors.New("cannot enable test env features in mainnet")
+		}
 
 	default:
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
@@ -762,8 +764,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
 	}
 
-	var txHash common.Hash
-	txHash, _, err = r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil)
+	txHash, _, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		log.Error("finalizeBundle in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex,

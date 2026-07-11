@@ -102,15 +102,9 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *types
 }
 
 func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *types.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
-	// In dry-run mode, skip gas estimation and use a fixed gas limit.
-	if s.config.DryRun {
-		return 10000000, nil, nil
-	}
-
 	msg := ethereum.CallMsg{
 		From:      s.transactionSigner.GetAddr(),
 		To:        to,
-		Gas:       10000000, // Set a high gas limit to prevent Anvil from rejecting eth_estimateGas when Gas=0
 		GasPrice:  gasPrice,
 		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,
@@ -122,20 +116,9 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *type
 		msg.BlobGasFeeCap = blobGasFeeCap
 	}
 
-	// Anvil has a bug where eth_estimateGas fails with "Out of gas" when
-	// maxFeePerGas/maxPriorityFeePerGas are present. We create a copy without
-	// gas price fields for the estimation call.
-	estimateMsg := msg
-	estimateMsg.GasPrice = nil
-	estimateMsg.GasTipCap = nil
-	estimateMsg.GasFeeCap = nil
-	if sidecar != nil {
-		estimateMsg.BlobGasFeeCap = nil
-	}
-
-	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, estimateMsg)
+	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, msg)
 	if err != nil {
-		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err, "msg", fmt.Sprintf("%+v", estimateMsg))
+		log.Error("estimateGasLimit EstimateGas failure without access list", "error", err, "msg", fmt.Sprintf("%+v", msg))
 		return 0, nil, err
 	}
 

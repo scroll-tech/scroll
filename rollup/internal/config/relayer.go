@@ -37,9 +37,6 @@ type SenderConfig struct {
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
 	// The timestamp of the Ethereum Fusaka upgrade in seconds since epoch.
 	FusakaTimestamp uint64 `json:"fusaka_timestamp"`
-	// If true, transactions will be simulated via eth_call instead of being sent to the chain.
-	// This is useful for testing the transaction construction logic without spending gas.
-	DryRun bool `json:"dry_run"`
 }
 
 type BatchSubmission struct {
