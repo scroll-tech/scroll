@@ -57,10 +57,10 @@ contract ZkEvmVerifierPostFeynman is IZkEvmVerifierV2 {
 
     /// @inheritdoc IZkEvmVerifierV2
     ///
-    /// @dev Encoding for `publicInput`:
+    /// @dev Encoding for `publicInput` (v0.9.0 / GalileoV2 bundle proofs):
     /// ```text
-    /// | layer2ChainId | numBatches | prevStateRoot | prevBatchHash | postStateRoot | batchHash | withdrawRoot |
-    /// |    8 bytes    |  4  bytes  |   32  bytes   |   32  bytes   |   32  bytes   | 32  bytes |   32 bytes   |
+    /// | layer2ChainId | messageQueueHash | numBatches | prevStateRoot | prevBatchHash | postStateRoot | batchHash | withdrawRoot |
+    /// |    8 bytes    |     32 bytes     |  4  bytes  |   32  bytes   |   32  bytes   |   32  bytes   | 32  bytes |   32 bytes   |
     /// ```
     /// The hash passed to the plonk verifier is `keccak256(abi.encodePacked(protocolVersion, publicInput))`.
     function verify(bytes calldata bundleProof, bytes calldata publicInput) external view override {

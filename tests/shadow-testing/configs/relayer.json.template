@@ -53,17 +53,20 @@
       "propose_interval_milliseconds": 10000,
       "max_l2_gas_per_chunk": 100000000,
       "chunk_timeout_sec": 900,
-      "max_uncompressed_batch_bytes_size": 63488
+      "max_uncompressed_batch_bytes_size": 63488,
+      "disable": true
     },
     "batch_proposer_config": {
       "propose_interval_milliseconds": 10000,
       "batch_timeout_sec": 1800,
       "max_chunks_per_batch": 15,
-      "max_uncompressed_batch_bytes_size": 129024
+      "max_uncompressed_batch_bytes_size": 129024,
+      "disable": true
     },
     "bundle_proposer_config": {
       "max_batch_num_per_bundle": 30,
-      "bundle_timeout_sec": 3600
+      "bundle_timeout_sec": 3600,
+      "disable": true
     },
     "blob_uploader_config": {
       "start_batch": 0

@@ -8,7 +8,7 @@
 #   --anvil-rpc URL         Anvil RPC endpoint (default: http://localhost:18545)
 #   --state-file PATH       Save Anvil state to this file after setup
 #   --last-finalized NUM    Reset lastFinalizedBatchIndex to this value
-#   --last-committed NUM    Reset lastCommittedBatchIndex to this value (default: last-finalized)
+#   --last-committed NUM    Reset lastCommittedBatchIndex (default: real fork value)
 #   --committed-batch-hash HASH  Set committedBatches[last-committed] to this hash
 #   --next-queue NUM        Reset nextUnfinalizedQueueIndex to this value
 #   --deployed-verifier ADDR  Address of ZkEvmVerifierPostFeynman to register
@@ -75,10 +75,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# If last-committed not provided, default to last-finalized (mainnet behavior)
-# For Sepolia shadow forks, set last-committed = last-finalized + 1
-# NOTE: This must run AFTER argument parsing, because LAST_FINALIZED may be overridden by --last-finalized.
-LAST_COMMITTED="${LAST_COMMITTED:-$LAST_FINALIZED}"
+# If last-committed not provided, default to the REAL fork value (queried later,
+# after Anvil starts). On mainnet, lastCommittedBatchIndex is usually far ahead of
+# lastFinalizedBatchIndex; defaulting it to last-finalized breaks finalization of
+# already-committed batches with ErrorBatchNotCommitted (0x227a699e).
+LAST_COMMITTED_EXPLICIT="${LAST_COMMITTED:-}"
 
 # ─── Validate deps ───────────────────────────────────────────────────────────
 require_cmd cast
@@ -122,23 +123,29 @@ wait_for_anvil "$ANVIL_RPC"
 log_info "Resetting ScrollChain state..."
 log_info "  lastFinalizedBatchIndex → $LAST_FINALIZED"
 
-# ScrollChainMiscData is packed into one slot (slot 161):
-#   bytes 0-7:   lastCommittedBatchIndex (uint64)
-#   bytes 8-15:  lastFinalizedBatchIndex (uint64)
+# ScrollChainMiscData is packed into one slot (slot 161 / 0xa1):
+#   bytes 0-7:   lastCommittedBatchIndex (uint64)  - low 16 hex chars
+#   bytes 8-15:  lastFinalizedBatchIndex (uint64)  - next 16 hex chars
 #   bytes 16-19: lastFinalizeTimestamp   (uint32)
 #   byte 20:     flags                   (uint8)
 #   bytes 21-31: reserved                (uint88)
-# We set committed and finalized, zero out timestamp & flags.
+# We only rewrite the two index fields and PRESERVE timestamp/flags/reserved
+# from the forked state (zeroing them can trigger enforced-batch-mode logic).
+current_miscdata=$(get_storage "$SCROLL_CHAIN" "0x00000000000000000000000000000000000000000000000000000000000000a1" "$ANVIL_RPC")
+miscdata_high="${current_miscdata:2:32}"  # reserved + flags + timestamp (32 hex chars)
+
+# Default last-committed to the REAL fork value when not explicitly provided.
+if [[ -z "$LAST_COMMITTED_EXPLICIT" ]]; then
+    LAST_COMMITTED=$(cast call "$SCROLL_CHAIN" "miscData()(uint64,uint64,uint32,uint8,uint88)" --rpc-url "$ANVIL_RPC" 2>/dev/null | sed -n '1p' | awk '{print $1}')
+    log_info "  lastCommittedBatchIndex → $LAST_COMMITTED (read from fork state)"
+else
+    LAST_COMMITTED="$LAST_COMMITTED_EXPLICIT"
+    log_info "  lastCommittedBatchIndex → $LAST_COMMITTED (explicit)"
+fi
+
 committed_hex=$(printf '%016x' "$LAST_COMMITTED")
 finalized_hex=$(printf '%016x' "$LAST_FINALIZED")
-# ScrollChainMiscData layout (32 bytes), little-endian:
-#   bytes 0-7:   lastCommittedBatchIndex (uint64 LE)  - 16 hex
-#   bytes 8-15:  lastFinalizedBatchIndex (uint64 LE)  - 16 hex
-#   bytes 16-19: lastFinalizeTimestamp   (uint32)     - 8 hex
-#   byte 20:     flags                   (uint8)      - 2 hex
-#   bytes 21-31: reserved                (uint88)     - 22 hex
-# Total: 64 hex chars. We zero out timestamp & flags.
-new_miscdata="0x00000000000000000000000000000000${finalized_hex}${committed_hex}"
+new_miscdata="0x${miscdata_high}${finalized_hex}${committed_hex}"
 
 set_storage "$SCROLL_CHAIN" "0x00000000000000000000000000000000000000000000000000000000000000a1" "$new_miscdata" "$ANVIL_RPC"
 
@@ -185,6 +192,18 @@ set_storage "$L1_MSG_QUEUE_V2" "0x0000000000000000000000000000000000000000000000
 
 actual_queue=$(cast call "$L1_MSG_QUEUE_V2" "nextUnfinalizedQueueIndex()(uint256)" --rpc-url "$ANVIL_RPC" 2>/dev/null)
 log_ok "  nextUnfinalizedQueueIndex = $actual_queue"
+
+# Defensive: ensure nextCrossDomainMessageIndex (slot 0x67) is at least the real
+# fork value. finalization reverts with ErrorFinalizedIndexTooLarge (0x16465978)
+# when totalL1MessagesPoppedOverall exceeds it (e.g. stale state file or an
+# earlier manual patch lowered it).
+real_next_cdm=$(cast call "$L1_MSG_QUEUE_V2" "nextCrossDomainMessageIndex()(uint256)" --rpc-url "$FORK_URL" --block "$FORK_BLOCK" 2>/dev/null | awk '{print $1}')
+current_next_cdm=$(cast call "$L1_MSG_QUEUE_V2" "nextCrossDomainMessageIndex()(uint256)" --rpc-url "$ANVIL_RPC" 2>/dev/null | awk '{print $1}')
+if [[ -n "$real_next_cdm" && -n "$current_next_cdm" ]] && (( real_next_cdm > current_next_cdm )); then
+    log_info "  nextCrossDomainMessageIndex: $current_next_cdm → $real_next_cdm (fork value)"
+    set_storage "$L1_MSG_QUEUE_V2" "0x0000000000000000000000000000000000000000000000000000000000000067" "$(encode_uint256 "$real_next_cdm")" "$ANVIL_RPC"
+fi
+log_ok "  nextCrossDomainMessageIndex = $(cast call "$L1_MSG_QUEUE_V2" "nextCrossDomainMessageIndex()(uint256)" --rpc-url "$ANVIL_RPC" 2>/dev/null)"
 
 # ─── Step 4: Deploy / copy verifier ──────────────────────────────────────────
 if [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x0000000000000000000000000000000000000000" ]]; then

@@ -94,8 +94,8 @@ for i in "${!GPU_ARRAY[@]}"; do
         "${BUNDLE_VK}": "${S3_URL}bundle/"
       },
       "child_circuit_vks": {
-        "Chunk": "${CHUNK_VK}",
-        "Batch": "${BATCH_VK}"
+        "1": "${CHUNK_VK}",
+        "2": "${BATCH_VK}"
       },
       "debug_mode": false
     }

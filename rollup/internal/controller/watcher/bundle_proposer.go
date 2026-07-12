@@ -29,6 +29,12 @@ type BundleProposer struct {
 
 	cfg *config.BundleProposerConfig
 
+	// lastBundleCreatedAt is used to enforce a wall-clock cooldown between
+	// consecutive bundle proposals. This is useful in shadow-fork scenarios
+	// where L2 block timestamps are historical, so the normal bundle timeout
+	// would otherwise fire immediately.
+	lastBundleCreatedAt time.Time
+
 	minCodecVersion encoding.CodecVersion
 	chainCfg        *params.ChainConfig
 
@@ -52,6 +58,7 @@ func NewBundleProposer(ctx context.Context, cfg *config.BundleProposerConfig, mi
 		batchOrm:        orm.NewBatch(db),
 		bundleOrm:       orm.NewBundle(db),
 		cfg:             cfg,
+		lastBundleCreatedAt: time.Now(),
 		minCodecVersion: minCodecVersion,
 		chainCfg:        chainCfg,
 
@@ -91,6 +98,18 @@ func NewBundleProposer(ctx context.Context, cfg *config.BundleProposerConfig, mi
 // TryProposeBundle tries to propose a new bundle.
 func (p *BundleProposer) TryProposeBundle() {
 	p.bundleProposerCircleTotal.Inc()
+
+	if p.cfg.Disable {
+		return
+	}
+
+	if p.cfg.BundleProposeCooldownSec > 0 {
+		if elapsed := time.Since(p.lastBundleCreatedAt).Seconds(); elapsed < float64(p.cfg.BundleProposeCooldownSec) {
+			log.Debug("bundle proposal cooldown has not elapsed", "elapsed", elapsed, "cooldown", p.cfg.BundleProposeCooldownSec)
+			return
+		}
+	}
+
 	if err := p.proposeBundle(); err != nil {
 		p.proposeBundleFailureTotal.Inc()
 		log.Error("propose new bundle failed", "err", err)
@@ -121,6 +140,8 @@ func (p *BundleProposer) UpdateDBBundleInfo(batches []*orm.Batch, codecVersion e
 		log.Error("update chunk info in orm failed", "err", err)
 		return err
 	}
+
+	p.lastBundleCreatedAt = time.Now()
 	return nil
 }
 

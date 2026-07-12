@@ -1,4 +1,4 @@
-use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
+use crate::zk_circuits_handler::universal::UniversalHandler;
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
@@ -12,7 +12,7 @@ use scroll_proving_sdk::{
         ProvingService,
     },
 };
-use scroll_zkvm_types::ProvingTask;
+use scroll_zkvm_types::{proof::StarkProof, ProvingTask};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -327,7 +327,7 @@ impl LocalProver {
         if prover_task.use_openvm_13 {
             eyre::bail!("prover do not support snark params base on openvm 13");
         }
-        let prover_task: ProvingTask = prover_task.into();
+        let mut prover_task: ProvingTask = prover_task.into();
         let vk = hex::encode(&prover_task.vk);
 
         let parent_handler = self
@@ -335,38 +335,74 @@ impl LocalProver {
             .await?;
 
         // OpenVM v2+ aggregation circuits (batch/bundle) need deferral enabled
-        // using their immediate child circuit's prover.
-        let child_proof_type = match req.proof_type {
-            ProofType::Batch => Some(ProofType::Chunk),
-            ProofType::Bundle => Some(ProofType::Batch),
+        // using their immediate child circuit's prover, plus input commits/defersal
+        // inputs derived from the child proofs.
+        let deferral = match req.proof_type {
+            ProofType::Batch | ProofType::Bundle => {
+                let child_type = match req.proof_type {
+                    ProofType::Batch => ProofType::Chunk,
+                    ProofType::Bundle => ProofType::Batch,
+                    _ => unreachable!(),
+                };
+                let child_vk = self
+                    .config
+                    .circuits
+                    .get(&req.hard_fork_name)
+                    .and_then(|c| c.child_circuit_vks.get(&child_type))
+                    .ok_or_else(|| {
+                        eyre::eyre!(
+                            "missing child circuit vk for {:?} in fork {}",
+                            child_type,
+                            req.hard_fork_name
+                        )
+                    })?
+                    .clone();
+                let child_handler = self
+                    .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
+                    .await?;
+                let mut parent_guard = parent_handler.lock().await;
+                let child_guard = child_handler.lock().await;
+                parent_guard.enable_deferral(&*child_guard)?;
+
+                let child_agg_vk = child_guard
+                    .agg_vk()
+                    .map_err(|e| eyre::eyre!("failed to get child agg vk: {e}"))?;
+                let cached_commit = parent_guard
+                    .deferral_cached_commit()
+                    .map_err(|e| eyre::eyre!("failed to get parent deferral cached commit: {e}"))?;
+
+                let child_proofs: Vec<&StarkProof> = prover_task.aggregated_proofs.iter().collect();
+                let (input_commits, def_inputs, def_states) =
+                    crate::deferral::compute_deferral_data(
+                        &child_agg_vk,
+                        cached_commit,
+                        &child_proofs,
+                    )?;
+                prover_task.input_commits = input_commits;
+
+                // locks are released here
+                Some((def_inputs, def_states))
+            }
             _ => None,
         };
-        if let Some(child_type) = child_proof_type {
-            let child_vk = self
-                .config
-                .circuits
-                .get(&req.hard_fork_name)
-                .and_then(|c| c.child_circuit_vks.get(&child_type))
-                .ok_or_else(|| {
-                    eyre::eyre!(
-                        "missing child circuit vk for {:?} in fork {}",
-                        child_type,
-                        req.hard_fork_name
-                    )
-                })?
-                .clone();
-            let child_handler = self
-                .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
-                .await?;
-            let mut parent_guard = parent_handler.lock().await;
-            let child_guard = child_handler.lock().await;
-            parent_guard.enable_deferral(&*child_guard)?;
-        }
 
         let handle = Handle::current();
         let is_evm = req.proof_type == ProofType::Bundle;
         let task_handle = tokio::task::spawn_blocking(move || {
-            handle.block_on(parent_handler.get_proof_data(&prover_task, is_evm))
+            handle.block_on(async {
+                let mut guard = parent_handler.lock().await;
+                match deferral {
+                    Some((def_inputs, def_states)) => {
+                        guard.get_proof_data_with_deferral(
+                            &prover_task,
+                            is_evm,
+                            &def_inputs,
+                            &def_states,
+                        )
+                    }
+                    None => guard.get_proof_data(&prover_task, is_evm),
+                }
+            })
         });
         self.current_task = Some(task_handle);
 

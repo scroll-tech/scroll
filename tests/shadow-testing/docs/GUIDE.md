@@ -1003,6 +1003,25 @@ cast psql -h localhost -p 15432 -U mainnet_infra_team_read_only -d mainnet_rollu
 
 For automated DB sync, see `scroll-devnets/charts/shadow-fork/rollup-relayer/scripts/copy-db.sh` which uses `postgres-tunnel` to stream data from mainnet RDS to local shadow DB via `COPY ... TO STDOUT | COPY ... FROM STDIN`.
 
+## Real-Time Catch-Up Mode (Follow Mainnet Cadence)
+
+To test whether the local prover fleet can keep up with real mainnet bundle production, run the shadow fork in catch-up mode:
+
+1. **Relayer proposers disabled** — in the relayer config, set `l2_config.{chunk,batch,bundle}_proposer_config.disable = true`. The relayer then only commits/finalizes what the DB contains, instead of synthesizing bundles at an unrealistic rate.
+2. **Poll the production DB** — `scripts/sync-mainnet-db.py --poll-interval 60` copies new chunk/batch/bundle rows (plus referenced `l2_block`/`l1_message` on baseline) from the mainnet read replica (`localhost:15432`) into the shadow DB every 60s. Proof columns are never copied; everything is re-proven locally.
+
+Critical behavior of the sync (do not bypass):
+
+- Newly inserted rows carry **mainnet's** `rollup_status`/commit/finalize columns, which are meaningless on the fork. The sync resets them per row range:
+  - `batch.index <= fork miscData.lastCommittedBatchIndex` → `rollup_status = 3` (already committed on the fork).
+  - `batch.index > boundary` → `rollup_status = 1` so the shadow relayer commits them on Anvil (requires `parentBatchHash == committedBatches[lastCommittedBatchIndex]`; keep Trap 19's boundary accurate).
+  - `bundle` → always `rollup_status = 1`.
+- The boundary is queried from Anvil each poll cycle (`ANVIL_RPC` / `SCROLL_CHAIN` env vars to override), so it advances automatically as the shadow relayer commits new batches.
+- `ON CONFLICT DO NOTHING` everywhere: rows already advanced by the shadow relayer are never overwritten.
+
+Watch item: the first bundle whose batches were committed on mainnet **after** the fork block exercises the relayer's commit path on Anvil (blob-carrying `commitBatches` tx). Keep `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts the blob sidecar.
+
+
 ## Common DB Fixes
 
 After importing production data or running for extended periods, these SQL fixes resolve common coordinator deadlocks:

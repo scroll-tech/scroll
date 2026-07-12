@@ -133,6 +133,9 @@ func (p *BatchProposer) SetReplayDB(replayDB *gorm.DB) {
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
 	p.batchProposerCircleTotal.Inc()
+	if p.cfg.Disable {
+		return
+	}
 	if err := p.proposeBatch(); err != nil {
 		p.proposeBatchFailureTotal.Inc()
 		log.Error("proposeBatchChunks failed", "err", err)

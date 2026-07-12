@@ -169,12 +169,14 @@ type OpenVMProof struct {
 	PublicValues []byte `json:"public_values"`
 }
 
-// Proof for flatten VM stark proof (v0.9.0+)
+// Proof for flatten VM stark proof (v0.9.0+).
+// Mirrors scroll_zkvm_types::proof::StarkProof used by the OpenVM v2 prover.
 type OpenVMStarkProof struct {
-	Proof        []byte           `json:"proofs"`
-	PublicValues []byte           `json:"public_values"`
-	UserPvsProof []byte           `json:"user_pvs_proof"`
-	Stat         *OpenVMProofStat `json:"stat,omitempty"`
+	Proof                []byte           `json:"proof"`
+	UserPvsProof         []byte           `json:"user_pvs_proof"`
+	Baseline             []byte           `json:"baseline,omitempty"`
+	DeferralMerkleProofs []byte           `json:"deferral_merkle_proofs,omitempty"`
+	Stat                 *OpenVMProofStat `json:"stat,omitempty"`
 }
 
 // Proof for flatten EVM proof
@@ -254,10 +256,10 @@ func (ap *OpenVMBatchProof) SanityCheck() error {
 			return errors.New("vk not ready")
 		}
 		pf := ap.StarkProof
-		if pf.Proof == nil {
+		if len(pf.Proof) == 0 {
 			return errors.New("proof data not ready")
 		}
-		if len(pf.PublicValues) == 0 {
+		if len(pf.UserPvsProof) == 0 {
 			return errors.New("proof public value not ready")
 		}
 	}

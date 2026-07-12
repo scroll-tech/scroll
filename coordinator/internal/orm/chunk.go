@@ -171,13 +171,25 @@ func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.
 func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash string) (bool, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("batch_hash = ? AND proving_status != ?", batchHash, types.ProvingTaskVerified)
+	db = db.Where("batch_hash = ?", batchHash)
 
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
 		return false, fmt.Errorf("Chunk.CheckIfBatchChunkProofsAreReady error: %w, batch hash: %v", err, batchHash)
 	}
-	return count == 0, nil
+	if totalCount == 0 {
+		return false, nil
+	}
+
+	db = o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("batch_hash = ? AND proving_status != ?", batchHash, types.ProvingTaskVerified)
+
+	var unreadyCount int64
+	if err := db.Count(&unreadyCount).Error; err != nil {
+		return false, fmt.Errorf("Chunk.CheckIfBatchChunkProofsAreReady error: %w, batch hash: %v", err, batchHash)
+	}
+	return unreadyCount == 0, nil
 }
 
 // GetChunkByHash retrieves the given chunk.

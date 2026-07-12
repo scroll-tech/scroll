@@ -208,7 +208,9 @@ if $deploy_wrapper; then
 
     cd "${PROJECT_ROOT}/../../scroll-contracts"
 
-    WRAPPER_CONTRACT_PATH="../../tests/shadow-testing/contracts/ZkEvmVerifierPostFeynman.sol"
+    # The wrapper was moved from the scroll-contracts submodule to the shadow-testing
+    # directory, so deploy from the absolute path instead of a relative one.
+    WRAPPER_CONTRACT_PATH="${PROJECT_ROOT}/contracts/ZkEvmVerifierPostFeynman.sol"
     if [[ ! -f "$WRAPPER_CONTRACT_PATH" ]]; then
         log_error "Wrapper contract not found: $WRAPPER_CONTRACT_PATH"
         exit 1
