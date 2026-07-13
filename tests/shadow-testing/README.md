@@ -66,7 +66,7 @@ range), disable the relayer's local proposers and run the polling sync:
 
 ```bash
 python3 scripts/sync-mainnet-db.py --poll-interval 60   # DB rows + l2_block/parent links
-python3 scripts/sync-queue-hashes.py                    # L1 queue rolling hashes (cron every 10 min)
+python3 scripts/sync-queue-hashes.py                    # L1 queue rolling hashes (also runs inside sync-mainnet-db.py poll loop)
 scripts/sweep-stale-proving.sh                          # stale task sweeper (cron every 10 min)
 ```
 

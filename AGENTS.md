@@ -48,7 +48,7 @@ Key hard-won rules:
 For continuously proving mainnet bundles in real time (poll-syncing the mainnet DB into the shadow DB), three silent starvation traps apply — see `tests/shadow-testing/docs/TROUBLESHOOTING.md` Trap 22/23:
 - Poll sync must also maintain `l2_block.chunk_hash` links (UPDATE, not INSERT) and `chunk.batch_hash`/`batch.bundle_hash` parent links, or tasks become invisible to the coordinator with no ERROR logged.
 - `sweep-stale-proving.sh` must reset `total_attempts`, not just `proving_status` — the coordinator skips tasks with `total_attempts >= 5`.
-- Bundles popping L1 messages enqueued after the Anvil fork block fail with `VerificationFailed(0x439cc0cd)`: run `tests/shadow-testing/scripts/sync-queue-hashes.py` (cron, 10 min) to mirror `messageRollingHashes` + `nextCrossDomainMessageIndex` from mainnet onto the fork.
+- Bundles popping L1 messages enqueued after the Anvil fork block fail with `VerificationFailed(0x439cc0cd)`: `sync-mainnet-db.py` poll mode runs `tests/shadow-testing/scripts/sync-queue-hashes.py` every cycle to mirror `messageRollingHashes` + `nextCrossDomainMessageIndex` from mainnet onto the fork.
 
 ### Sepolia Shadow Fork — Additional Rules
 

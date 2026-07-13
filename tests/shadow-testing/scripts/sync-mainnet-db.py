@@ -16,12 +16,14 @@ fork is meant to exercise the local v0.9.0 prover, not reuse mainnet proofs.
 """
 
 import argparse
+import importlib.util
 import json
 import logging
 import os
 import subprocess
 import time
 import urllib.request
+from pathlib import Path
 
 import psycopg2
 
@@ -30,6 +32,14 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 log = logging.getLogger("sync-mainnet-db")
+
+# sync-queue-hashes.py (Trap 23) is loaded as a module so each poll cycle can
+# also mirror L1MessageQueueV2 rolling hashes onto the Anvil fork.
+_sqh_spec = importlib.util.spec_from_file_location(
+    "sync_queue_hashes", Path(__file__).parent / "sync-queue-hashes.py"
+)
+_sqh = importlib.util.module_from_spec(_sqh_spec)
+_sqh_spec.loader.exec_module(_sqh)
 
 SRC_DSN = os.environ.get(
     "MAINNET_DSN",
@@ -581,6 +591,13 @@ def poll_sync(src_dsn, dst_dsn, interval):
             finally:
                 src_cur.close()
                 dst_cur.close()
+            # Trap 23: mirror post-fork L1 queue rolling hashes onto the fork
+            # so bundles popping new L1 messages can be finalized. Failures
+            # here must never kill the DB sync loop.
+            try:
+                _sqh.run_once(log_fn=lambda m: log.info("queue-hash: %s", m))
+            except Exception as e:
+                log.warning("queue-hash sync failed: %s", e)
             time.sleep(interval)
     finally:
         src.close()

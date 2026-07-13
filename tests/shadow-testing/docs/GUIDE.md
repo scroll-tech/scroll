@@ -1023,7 +1023,7 @@ Critical behavior of the sync (do not bypass):
 
 Watch item: the first bundle whose batches were committed on mainnet **after** the fork block exercises the relayer's commit path on Anvil (blob-carrying `commitBatches` tx). Keep `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts the blob sidecar.
 
-**L1 message queue follow-along (mandatory for long runs)**: bundles that pop L1 messages enqueued after the fork block fail finalization (`VerificationFailed` / `ErrorFinalizedIndexTooLarge`, Trap 23). Run `scripts/sync-queue-hashes.py` periodically — it copies `getMessageRollingHash(i)` from a mainnet RPC into the fork's `messageRollingHashes` mapping (slot 101) and aligns `nextCrossDomainMessageIndex` (slot 103) with mainnet.
+**L1 message queue follow-along (mandatory for long runs)**: bundles that pop L1 messages enqueued after the fork block fail finalization (`VerificationFailed` / `ErrorFinalizedIndexTooLarge`, Trap 23). `sync-mainnet-db.py` poll mode runs `scripts/sync-queue-hashes.py` every cycle — it copies `getMessageRollingHash(i)` from a mainnet RPC into the fork's `messageRollingHashes` mapping (slot 101) and aligns `nextCrossDomainMessageIndex` (slot 103) with mainnet.
 
 **Recommended automation** (what the 48-hour test ran with):
 
@@ -1031,7 +1031,7 @@ Watch item: the first bundle whose batches were committed on mainnet **after** t
 |---------|-----|---------|
 | 60s loop | `sync-mainnet-db.py --poll-interval 60` | DB row sync + l2_block/parent-link repair |
 | 10 min cron | `scripts/sweep-stale-proving.sh` | Reset stale proving rows **and `total_attempts`** (attempt exhaustion silently starves tasks, Trap 22) |
-| 10 min cron | `scripts/sync-queue-hashes.py` | L1 queue rolling hashes + cursor follow mainnet (Trap 23) |
+| every poll cycle (in `sync-mainnet-db.py`) | `scripts/sync-queue-hashes.py` | L1 queue rolling hashes + cursor follow mainnet (Trap 23) |
 | 1 h cron | `scripts/monitor-catchup.py >> .work/catchup-metrics.log` | Hourly metrics snapshot for the final report |
 
 Final report: `SHADOW_REPORT_START=<ISO8601> python3 scripts/generate-catchup-report.py` — the env var windows the report to the current run (the metrics log accumulates across runs).

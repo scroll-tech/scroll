@@ -89,36 +89,38 @@ def set_storage(index, value32):
     )
 
 
-def main():
-    dry_run = "--dry-run" in sys.argv
+def run_once(dry_run=False, log_fn=print):
+    """One sync pass. Returns (synced_hashes, (old_next, new_next) or None)."""
     start = next_index(FORK_RPC) - 1  # last index guaranteed present on fork
-    print(f"fork nextCrossDomainMessageIndex-1 = {start}")
+    log_fn(f"fork nextCrossDomainMessageIndex-1 = {start}")
     synced = 0
     i = start + 1
     while synced < MAX_PER_RUN:
         try:
             mainnet_hash = rolling_hash(MAINNET_RPC, i)
         except Exception as e:
-            print(f"mainnet RPC error at index {i}: {e}; stopping")
+            log_fn(f"mainnet RPC error at index {i}: {e}; stopping")
             break
         if mainnet_hash == b"\x00" * 32:
             break  # not enqueued on mainnet yet
         fork_hash = rolling_hash(FORK_RPC, i)
         if fork_hash != mainnet_hash:
-            print(f"index {i}: fork={fork_hash.hex() or '0'} -> mainnet={mainnet_hash.hex()}")
+            log_fn(f"index {i}: fork={fork_hash.hex() or '0'} -> mainnet={mainnet_hash.hex()}")
             if not dry_run:
                 set_storage(i, mainnet_hash)
             synced += 1
         i += 1
-    print(f"done; {'would sync' if dry_run else 'synced'} {synced} rolling hashes")
+    log_fn(f"done; {'would sync' if dry_run else 'synced'} {synced} rolling hashes")
 
     # Keep the fork's enqueue cursor in line with mainnet: finalizing a bundle
     # that pops messages beyond the fork's nextCrossDomainMessageIndex reverts
     # with ErrorFinalizedIndexTooLarge (0x16465978). Slot 103 = 0x67.
+    bumped = None
     mainnet_next = next_index(MAINNET_RPC)
     fork_next = next_index(FORK_RPC)
     if mainnet_next > fork_next:
-        print(f"nextCrossDomainMessageIndex: fork={fork_next} -> mainnet={mainnet_next}")
+        log_fn(f"nextCrossDomainMessageIndex: fork={fork_next} -> mainnet={mainnet_next}")
+        bumped = (fork_next, mainnet_next)
         if not dry_run:
             subprocess.run(
                 [
@@ -129,6 +131,11 @@ def main():
                 check=True,
                 capture_output=True,
             )
+    return synced, bumped
+
+
+def main():
+    run_once(dry_run="--dry-run" in sys.argv)
 
 
 if __name__ == "__main__":
