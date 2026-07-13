@@ -73,6 +73,9 @@ Before executing a single command:
 - **Rule**: Use **internal** L2 RPC proxies only.
 
 ### Trap 7: Relayer Nonce Desync
+
+> **Fixed upstream / harness**: the relayer sender config now supports `chain_nonce_only` (default false), which initializes the nonce from the chain pending nonce only, ignoring `pending_transaction` — the shadow relayer config template sets it. Additionally `10-follow-up.sh --reset` now TRUNCATEs `pending_transaction` (the rows are not chain/fork-scoped and can also replay old calldata onto a fresh fork). The manual fix below is only needed if you run a relayer without those.
+
 - **Symptom**: Tx sent but never mined; `eth_getTransactionReceipt` returns null forever.
 - **Cause**: `pending_transaction` table retains nonces from previous runs that were never confirmed. Relayer initializes nonce from `maxDbNonce + 1`, which is ahead of the on-chain nonce.
 - **Rule**: After any relayer crash or Anvil restart:
@@ -82,6 +85,9 @@ Before executing a single command:
   Then restart the relayer.
 
 ### Trap 9: Anvil `eth_estimateGas` Rejects Fee Caps
+
+> **Fixed upstream**: `rollup/internal/controller/sender/estimategas.go` now sends an explicit non-zero gas cap in the estimation `CallMsg`, so Anvil no longer rejects fee-capped estimate calls. This entry is kept for reference when running older relayer builds.
+
 - **Symptom**: `failed to get fee data, err: Out of gas: gas required exceeds allowance: 0`.
 - **Cause**: Anvil's `eth_estimateGas` fails when `CallMsg` has `GasFeeCap`/`GasTipCap` set but `Gas` is 0 (Go Ethereum client's default).
 - **Rule**: If you hit this on a shadow fork, the correct fix belongs in the upstream `rollup/internal/controller/sender/estimategas.go` (do not maintain a local patch in this branch). Verify with the latest `develop` code and, if still present, fix it there so all shadow tests benefit.

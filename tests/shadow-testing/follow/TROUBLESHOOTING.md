@@ -78,6 +78,8 @@ see also the [Follow Mode Guide](./GUIDE.md). Trap numbers are stable across the
 
 ### Trap 26: Relayer L2 Watcher Genesis-Crawls an Empty `l2_block` [follow mode]
 
+> **Fixed upstream**: the relayer now supports `l2_config.disable_l2_watcher` (default false = production behavior unchanged), which skips the watcher loop entirely. The shadow relayer config template (`lib/configs/relayer.json.template`) sets it — in follow mode the poll sync is what keeps `l2_block` populated for newly synced chunks, so the watcher is redundant. The harness ordering below remains as defense-in-depth.
+
 - **Symptom**: `l2_block` fills with rows numbered 1, 2, 3, … at ~30–60 blocks/s, `chunk_hash = NULL`, `withdraw_root = 0x0000…` — a full L2 history crawl that would take days and tens of GB, while relayer logs show `retrieved block height=…` climbing from genesis.
 - **Cause**: `rollup_relayer` always runs an L2 watcher loop (`rollup/cmd/rollup_relayer/app/app.go` → `TryFetchRunningMissingBlocks` every 2 s) that fetches **all** blocks from `MAX(l2_block.number)+1` up to the L2 tip — reading the max **once** at loop entry. If the relayer is alive while `--reset` TRUNCATEs `l2_block` (or the table is empty for any other reason), the watcher sees `MAX = 0` and starts crawling from block 1; the in-flight call keeps going for days even after the baseline repopulates the window.
 - **Fix (in place)**: `10-follow-up.sh --reset` now runs `11-follow-stop.sh` **before** the TRUNCATE, so no writer survives into the reset. Never TRUNCATE `l2_block` (or let it go empty) while a relayer is running.

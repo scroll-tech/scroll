@@ -68,7 +68,7 @@ One command brings up the entire follow-mode stack (`scripts/10-follow-up.sh`):
 3. **Verifier wrapper** — deploy/register the `ZkEvmVerifierPostFeynman` wrapper matching the guest under test (manual procedure: "Real Verifier Deployment" in the [Snapshot Replay Mode Guide](../snapshot/GUIDE.md#real-verifier-deployment)).
 4. **Coordinator** — start `coordinator_api` + `coordinator_cron` against the shadow DB.
 5. **Provers** — start one prover per GPU.
-6. **Relayer** — start the rollup relayer with local proposers **disabled** (`l2_config.{chunk,batch,bundle}_proposer_config.disable = true`): the relayer then only commits/finalizes what the DB contains, instead of synthesizing bundles at an unrealistic rate.
+6. **Relayer** — start the rollup relayer with local proposers **disabled** (`l2_config.{chunk,batch,bundle}_proposer_config.disable = true`): the relayer then only commits/finalizes what the DB contains, instead of synthesizing bundles at an unrealistic rate. The shadow relayer config template (`lib/configs/relayer.json.template`) additionally sets `l2_config.disable_l2_watcher = true` (the poll sync, not the relayer's L2 watcher, keeps `l2_block` populated — Trap 26) and `sender_config.chain_nonce_only = true` (sender nonces initialize from the fork, never from stale `pending_transaction` rows — Trap 7/27).
 7. **Background daemons** — poll-sync, sweeper, hourly monitor (plain background processes with pidfiles in `.work/`; no agent/session cron is required).
 
 The run window is recorded in `.work/follow-run.env` (`SHADOW_REPORT_START`, `FOLLOW_RUN_HOURS=48`). Tear down with `make follow-stop` (`scripts/11-follow-stop.sh`, supports `--keep-anvil`).

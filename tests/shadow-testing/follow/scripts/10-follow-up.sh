@@ -178,10 +178,16 @@ if $RESET_DB; then
     if ! $DRY_RUN; then
         bash "${SCRIPT_DIR}/11-follow-stop.sh" || log_warn "  11-follow-stop returned non-zero (continuing)"
     fi
-    log_warn "  --reset: truncating chunk/batch/bundle/l2_block/l1_message"
+    log_warn "  --reset: truncating chunk/batch/bundle/l2_block/l1_message/pending_transaction"
     if ! $DRY_RUN; then
         psql "$SHADOW_DSN" -Atq --set ON_ERROR_STOP=1 -c "TRUNCATE chunk, batch, bundle, l2_block, l1_message" >/dev/null \
             || { log_error "TRUNCATE failed — aborting before baseline"; exit 1; }
+        # Trap 7/27: pending_transaction rows are not chain/fork-scoped. Stale
+        # rows from a previous run poison the relayer sender's nonce
+        # (initializeNonce = max(db_max+1, chain_nonce)) and can replay old
+        # calldata onto the fresh fork. Wipe them on every reset.
+        psql "$SHADOW_DSN" -Atq --set ON_ERROR_STOP=1 -c "TRUNCATE pending_transaction" >/dev/null \
+            || { log_error "TRUNCATE pending_transaction failed — aborting"; exit 1; }
         # Trap 21: wipe prover-local proof caches; they hold proofs from the
         # previous run/circuit version and get replayed as VData mismatches.
         rm -rf "${WORK_DIR}"/prover-*/db

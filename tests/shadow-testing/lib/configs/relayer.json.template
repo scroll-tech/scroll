@@ -1,6 +1,7 @@
 {
   "l2_config": {
     "endpoint": "{{L2_ENDPOINT}}",
+    "disable_l2_watcher": true,
     "relayer_config": {
       "sender_config": {
         "endpoint": "{{ANVIL_RPC}}",
@@ -16,7 +17,8 @@
         "min_gas_tip": 0,
         "check_pending_time": 60,
         "max_pending_blob_txs": 3,
-        "fusaka_timestamp": 9999999999
+        "fusaka_timestamp": 9999999999,
+        "chain_nonce_only": true
       },
       "commit_sender_signer_config": {
         "signer_type": "PrivateKey",
