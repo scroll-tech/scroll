@@ -16,6 +16,10 @@ type L2Config struct {
 	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
 	// The WithdrawTrieRootSlot in L2MessageQueue contract.
 	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
+	// DisableL2Watcher disables the L2 watcher loop that fetches missing blocks.
+	// Useful for shadow-fork testing where the l2_block table is imported/empty and a
+	// genesis crawl is undesirable. Defaults to false (watcher enabled).
+	DisableL2Watcher bool `json:"disable_l2_watcher"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The chunk_proposer config

@@ -536,6 +536,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			"end hash", lastBatch.Hash,
 			"RollupContractAddress", r.cfg.RollupContractAddress,
 			"err", err,
+		)
+		log.Debug(
+			"Failed to send commitBatch tx to layer1, calldata dump",
+			"start index", firstBatch.Index,
+			"end index", lastBatch.Index,
 			"calldata", common.Bytes2Hex(calldata),
 		)
 		return
@@ -768,7 +773,8 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	if err != nil {
 		log.Error("finalizeBundle in layer1 failed", "with proof", withProof, "index", bundle.Index,
 			"start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex,
-			"RollupContractAddress", r.cfg.RollupContractAddress, "err", err, "calldata", common.Bytes2Hex(calldata))
+			"RollupContractAddress", r.cfg.RollupContractAddress, "err", err)
+		log.Debug("finalizeBundle in layer1 failed, calldata dump", "index", bundle.Index, "calldata", common.Bytes2Hex(calldata))
 		return err
 	}
 
@@ -906,6 +912,16 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 				status = types.RollupFinalizeFailed
 				r.metrics.rollupL2BundlesFinalizedConfirmedFailedTotal.Inc()
 				log.Warn("FinalizeBundleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
+				// Status RollupFinalizeFailed (7) is NOT picked up again by ProcessPendingBundles
+				// (GetFirstPendingBundle only queries rollup_status = RollupPending); the bundle is
+				// stranded until rollup_status is manually reset to 1.
+				bundleIndex := uint64(0)
+				bundles, queryErr := r.bundleOrm.GetBundles(r.ctx, map[string]interface{}{"hash": bundleHash}, nil, 1)
+				if queryErr == nil && len(bundles) > 0 {
+					bundleIndex = bundles[0].Index
+				}
+				log.Error("Bundle is now STRANDED with rollup_status=RollupFinalizeFailed(7): it will NOT be retried by ProcessPendingBundles, manual intervention required (reset rollup_status to 1)",
+					"bundle index", bundleIndex, "bundle hash", bundleHash, "tx hash", cfm.TxHash.String(), "query err", queryErr)
 			}
 
 			err := r.db.Transaction(func(dbTX *gorm.DB) error {
