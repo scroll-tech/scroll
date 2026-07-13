@@ -66,7 +66,9 @@ def main():
     avg_batch = last_summary.get("avg_batch_proof_time")
     avg_bundle = last_summary.get("avg_bundle_proof_time")
 
-    # Collect all errors seen across records
+    # Collect all errors seen across records. CoordinatorEmptyProofData is the
+    # SDK's idle-poll message ("no task available") logged at ERROR level — it
+    # is benign and floods the report, so count it separately.
     all_errors = {
         "prover-0": [],
         "prover-1": [],
@@ -75,10 +77,15 @@ def main():
         "relayer": [],
         "coordinator": [],
     }
+    idle_polls = 0
     for r in records:
         recent = r.get("recent_errors", {})
         for prover, errs in recent.get("prover", {}).items():
-            all_errors.setdefault(prover, []).extend(errs)
+            for e in errs:
+                if "CoordinatorEmptyProofData" in e:
+                    idle_polls += 1
+                else:
+                    all_errors.setdefault(prover, []).append(e)
         all_errors["relayer"].extend(recent.get("relayer", []))
         all_errors["coordinator"].extend(recent.get("coordinator", []))
 
@@ -102,6 +109,7 @@ def main():
     print("## Failures / Bottlenecks")
     total_errors = sum(len(v) for v in all_errors.values())
     print(f"- Total error samples collected: {total_errors}")
+    print(f"- Idle-poll samples suppressed (CoordinatorEmptyProofData, benign): {idle_polls}")
     for source, errs in all_errors.items():
         unique = sorted(set(errs))[:5]
         if unique:

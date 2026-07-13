@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
 
 DB_DSN="${DB_DSN:-postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup}"
 BUNDLE_RANGE=""

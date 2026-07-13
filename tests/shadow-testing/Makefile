@@ -1,230 +1,109 @@
-# Shadow Testing Makefile
-# Usage:
-#   make all CONFIG=mainnet BUNDLE_RANGE=17297:17301
-#   make env  CONFIG=mainnet BUNDLE_RANGE=17297:17301
-#   make prove CONFIG=mainnet BUNDLE_RANGE=17297:17301
-#   make finalize CONFIG=mainnet BUNDLE_RANGE=17297:17301
-#   make stop
+# Shadow Testing Makefile — thin dispatcher.
+#
+# The two test modes live in their own directories, each with its own
+# Makefile, scripts, configs and GUIDE:
+#
+#   follow/    Follow mode (primary): fork the current mainnet tip and follow
+#              mainnet bundle production in real time. Default acceptance test
+#              for prover/guest upgrades.
+#   snapshot/  Snapshot replay mode: fork a historical block and prove/finalize
+#              a fixed bundle range. Incident reproduction, single-bundle
+#              debugging, Sepolia testing, codec-migration checks.
+#
+# Shared scripts and the relayer config template live in lib/.
+# .work/ (logs, pidfiles, anvil state) is shared by both modes and stays here.
 
 CONFIG        ?= mainnet
 BUNDLE_RANGE  ?= 17297:17301
-SCRIPT_DIR    := $(shell cd "$(dir $(lastword $(MAKEFILE_LIST)))" && pwd)
-CONFIG_FILE   := $(SCRIPT_DIR)/configs/$(CONFIG).json
-WORK_DIR      := $(SCRIPT_DIR)/.work
 
-# Extract values from JSON config (requires jq)
-FORK_URL      := $(shell jq -r '.fork.url' $(CONFIG_FILE) 2>/dev/null)
-FORK_BLOCK    := $(shell jq -r '.fork.block_number' $(CONFIG_FILE) 2>/dev/null)
-ANVIL_RPC     := $(shell jq -r '.fork.anvil_rpc' $(CONFIG_FILE) 2>/dev/null)
-DB_DSN        := $(shell jq -r '.db.dsn' $(CONFIG_FILE) 2>/dev/null)
-GENESIS       := $(shell jq -r '.genesis' $(CONFIG_FILE) 2>/dev/null)
-SCROLL_CHAIN  := $(shell jq -r '.contracts.scroll_chain' $(CONFIG_FILE) 2>/dev/null)
-L1_MSG_QUEUE  := $(shell jq -r '.contracts.l1_message_queue_v2' $(CONFIG_FILE) 2>/dev/null)
-ROLLUP_VERIF  := $(shell jq -r '.contracts.rollup_verifier' $(CONFIG_FILE) 2>/dev/null)
-DEPLOYED_VERIF:= $(shell jq -r '.contracts.deployed_verifier' $(CONFIG_FILE) 2>/dev/null)
-OWNER         := $(shell jq -r '.contracts.owner' $(CONFIG_FILE) 2>/dev/null)
-PROVER_EOA    := $(shell jq -r '.accounts.prover_eoa' $(CONFIG_FILE) 2>/dev/null)
-COMMIT_EOA    := $(shell jq -r '.accounts.commit_eoa' $(CONFIG_FILE) 2>/dev/null)
-LAST_FINALIZED:= $(shell jq -r '.reset.last_finalized_batch_index' $(CONFIG_FILE) 2>/dev/null)
-LAST_COMMITTED:= $(shell jq -r '.reset.last_committed_batch_index // empty' $(CONFIG_FILE) 2>/dev/null)
-NEXT_QUEUE    := $(shell jq -r '.reset.next_unfinalized_queue_index' $(CONFIG_FILE) 2>/dev/null)
-CODEC_VERSION := $(shell jq -r '.reset.codec_version' $(CONFIG_FILE) 2>/dev/null)
+# --- Follow mode -------------------------------------------------------------
+.PHONY: follow-up follow-stop follow-status follow-report re-fork
 
-# ─── Validation ──────────────────────────────────────────────────────────────
-.PHONY: check-deps
+follow-up:
+	$(MAKE) -C follow follow
 
-check-deps:
-	@command -v jq >/dev/null 2>&1 || { echo "jq is required"; exit 1; }
-	@command -v cast >/dev/null 2>&1 || { echo "cast (Foundry) is required"; exit 1; }
-	@test -f $(CONFIG_FILE) || { echo "Config file not found: $(CONFIG_FILE)"; exit 1; }
+follow-stop:
+	$(MAKE) -C follow follow-stop
 
-# ─── Environment Setup ───────────────────────────────────────────────────────
+follow-status:
+	$(MAKE) -C follow follow-status
 
-env: check-deps anvil-up db-reset
-	@echo ""
-	@echo "✅ Environment ready for $(CONFIG)"
-	@echo "   Anvil RPC: $(ANVIL_RPC)"
-	@echo "   Bundle range: $(BUNDLE_RANGE)"
+follow-report:
+	$(MAKE) -C follow follow-report
 
-anvil-up: check-deps
-	@echo "🚀 Setting up Anvil fork ($(CONFIG))..."
-	$(SCRIPT_DIR)/scripts/01-setup-anvil.sh \
-		--fork-url "$(FORK_URL)" \
-		--fork-block "$(FORK_BLOCK)" \
-		--anvil-rpc "$(ANVIL_RPC)" \
-		--state-file "$(WORK_DIR)/anvil-$(CONFIG).state.json" \
-		--last-finalized "$(LAST_FINALIZED)" \
-		--last-committed "$(LAST_COMMITTED)" \
-		--next-queue "$(NEXT_QUEUE)" \
-		--deployed-verifier "$(DEPLOYED_VERIF)" \
-		--prover-eoa "$(PROVER_EOA)" \
-		--commit-eoa "$(COMMIT_EOA)" \
-		--owner "$(OWNER)" \
-		--scroll-chain "$(SCROLL_CHAIN)" \
-		--l1-msg-queue "$(L1_MSG_QUEUE)" \
-		--rollup-verifier "$(ROLLUP_VERIF)"
+re-fork:
+	$(MAKE) -C follow re-fork
 
-db-reset: check-deps
-	@echo "🗄️  Preparing shadow DB..."
-	$(SCRIPT_DIR)/scripts/02-prepare-db.sh \
-		--db-dsn "$(DB_DSN)" \
-		--bundle-range "$(BUNDLE_RANGE)"
+# --- Snapshot replay mode ----------------------------------------------------
+.PHONY: snapshot-all snapshot-env snapshot-prove snapshot-finalize \
+        snapshot-sepolia-all snapshot-status snapshot-verify \
+        snapshot-docker-all snapshot-docker-env snapshot-docker-prove \
+        snapshot-docker-finalize snapshot-docker-stop snapshot-stop snapshot-clean
 
-# ─── Proving Phase ────────────────────────────────────────────────────────────
-.PHONY: prove prover-up wait-proofs
+snapshot-all:
+	$(MAKE) -C snapshot all CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-prove: prover-up wait-proofs
+snapshot-env:
+	$(MAKE) -C snapshot env CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-prover-up:
-	@echo "🔬 Starting provers..."
-	$(SCRIPT_DIR)/scripts/04-prover-up.sh \
-		--config "$(CONFIG)" \
-		--bundle-range "$(BUNDLE_RANGE)"
+snapshot-prove:
+	$(MAKE) -C snapshot prove CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-wait-proofs:
-	@echo "⏳ Waiting for proofs to complete..."
-	$(SCRIPT_DIR)/scripts/05-wait-for-proofs.sh \
-		--db-dsn "$(DB_DSN)" \
-		--bundle-range "$(BUNDLE_RANGE)"
+snapshot-finalize:
+	$(MAKE) -C snapshot finalize CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-# ─── Finalization Phase ──────────────────────────────────────────────────────
-.PHONY: finalize relayer-up wait-finalize
+snapshot-sepolia-all:
+	$(MAKE) -C snapshot sepolia-all CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-finalize: relayer-up wait-finalize
+snapshot-status:
+	$(MAKE) -C snapshot status CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-relayer-up:
-	@echo "📤 Starting relayer..."
-	$(SCRIPT_DIR)/scripts/06-run-relayer.sh \
-		--config "$(CONFIG)"
+snapshot-verify:
+	$(MAKE) -C snapshot verify CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-wait-finalize:
-	@echo "⏳ Waiting for finalization..."
-	$(SCRIPT_DIR)/scripts/07-wait-for-finalize.sh \
-		--anvil-rpc "$(ANVIL_RPC)" \
-		--scroll-chain "$(SCROLL_CHAIN)" \
-		--bundle-range "$(BUNDLE_RANGE)"
+snapshot-docker-all:
+	$(MAKE) -C snapshot docker-all CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-# ─── Sepolia-specific Pipeline ───────────────────────────────────────────────
-.PHONY: sepolia-all
+snapshot-docker-env:
+	$(MAKE) -C snapshot docker-env CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-sepolia-all: env prove finalize
-	@echo ""
-	@echo "🎉 Sepolia shadow test complete!"
-	@echo "   Bundles: $(BUNDLE_RANGE)"
-	@echo "   Anvil RPC: $(ANVIL_RPC)"
+snapshot-docker-prove:
+	$(MAKE) -C snapshot docker-prove CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-# ─── Full Pipeline ────────────────────────────────────────────────────────────
-.PHONY: all
+snapshot-docker-finalize:
+	$(MAKE) -C snapshot docker-finalize CONFIG=$(CONFIG) BUNDLE_RANGE=$(BUNDLE_RANGE)
 
-all: env prove finalize
-	@echo ""
-	@echo "🎉 Shadow test complete for $(CONFIG)!"
-	@echo "   Bundles: $(BUNDLE_RANGE)"
-	@echo "   Anvil RPC: $(ANVIL_RPC)"
+snapshot-docker-stop:
+	$(MAKE) -C snapshot docker-stop CONFIG=$(CONFIG)
 
-# ─── Status & Verification ───────────────────────────────────────────────────
-.PHONY: status verify
+snapshot-stop:
+	$(MAKE) -C snapshot stop CONFIG=$(CONFIG)
 
-status: check-deps
-	@echo "📊 Current status:"
-	@echo ""
-	@echo "Anvil lastFinalizedBatchIndex:"
-	@cast call "$(SCROLL_CHAIN)" "lastFinalizedBatchIndex()(uint256)" --rpc-url "$(ANVIL_RPC)" 2>/dev/null || echo "  (Anvil not running)"
-	@echo ""
-	@echo "Bundle proving status:"
-	@psql "$(DB_DSN)" -c "SELECT index, proving_status, rollup_status FROM bundle WHERE index BETWEEN $(subst :, AND ,$(BUNDLE_RANGE)) ORDER BY index;" 2>/dev/null || echo "  (DB not accessible)"
+snapshot-clean:
+	$(MAKE) -C snapshot clean CONFIG=$(CONFIG)
 
-verify: check-deps
-	@echo "🔍 Verifying on-chain finalization..."
-	$(SCRIPT_DIR)/scripts/07-wait-for-finalize.sh \
-		--anvil-rpc "$(ANVIL_RPC)" \
-		--scroll-chain "$(SCROLL_CHAIN)" \
-		--bundle-range "$(BUNDLE_RANGE)" \
-		--verify-only
-
-# ─── Docker-Orchestrated Pipeline ──────────────────────────────────────────────
-.PHONY: docker-all docker-env docker-prove docker-finalize docker-stop
-
-docker-all:
-	@echo "🐳 Docker-orchestrated full pipeline..."
-	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
-		--config $(CONFIG) \
-		--bundle-range $(BUNDLE_RANGE) \
-		--phase all
-
-docker-env:
-	@echo "🐳 Docker environment setup..."
-	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
-		--config $(CONFIG) \
-		--bundle-range $(BUNDLE_RANGE) \
-		--phase env
-
-docker-prove:
-	@echo "🐳 Docker proving phase..."
-	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
-		--config $(CONFIG) \
-		--bundle-range $(BUNDLE_RANGE) \
-		--phase prove
-
-docker-finalize:
-	@echo "🐳 Docker finalization phase..."
-	$(SCRIPT_DIR)/scripts/08-docker-orchestrate.sh \
-		--config $(CONFIG) \
-		--bundle-range $(BUNDLE_RANGE) \
-		--phase finalize
-
-docker-stop:
-	@echo "🛑 Stopping Docker services..."
-	-docker compose -f $(SCRIPT_DIR)/docker-compose.yml down 2>/dev/null || true
-	@if [ -f $(WORK_DIR)/anvil-$(CONFIG).pid ]; then \
-		kill $$(cat $(WORK_DIR)/anvil-$(CONFIG).pid) 2>/dev/null || true; \
-		rm -f $(WORK_DIR)/anvil-$(CONFIG).pid; \
-	fi
-	@echo "Done."
-
-# ─── Cleanup ─────────────────────────────────────────────────────────────────
-.PHONY: stop clean
-
-stop: docker-stop
-	@echo "🛑 Stopping bare-metal services..."
-	@if [ -f $(WORK_DIR)/anvil.pid ]; then \
-		kill $$(cat $(WORK_DIR)/anvil.pid) 2>/dev/null || true; \
-		rm -f $(WORK_DIR)/anvil.pid; \
-	fi
-	@echo "Done."
-
-clean: stop
-	@echo "🧹 Cleaning up..."
-	rm -rf $(WORK_DIR)/*
-	@echo "Done."
-
-# ─── Help ────────────────────────────────────────────────────────────────────
+# --- Help --------------------------------------------------------------------
 .PHONY: help
 
 help:
-	@echo "Shadow Testing Makefile"
+	@echo "Shadow Testing — two modes, each with its own directory:"
 	@echo ""
-	@echo "Docker Targets (recommended):"
-	@echo "  make docker-all      CONFIG=<name> BUNDLE_RANGE=<start:end>  Full docker pipeline"
-	@echo "  make docker-env      CONFIG=<name> BUNDLE_RANGE=<start:end>  Setup env (postgres + anvil + import)"
-	@echo "  make docker-prove    CONFIG=<name> BUNDLE_RANGE=<start:end>  Prove (coordinator + prover)"
-	@echo "  make docker-finalize CONFIG=<name> BUNDLE_RANGE=<start:end>  Finalize (relayer)"
-	@echo "  make docker-stop                                        Stop docker services"
+	@echo "Follow Mode (primary — fork current mainnet tip, follow indefinitely):"
+	@echo "  make follow-up                 Bring up the full follow-mode stack"
+	@echo "  make follow-status             Latest monitor snapshot + finalize lag"
+	@echo "  make follow-report             Throughput report for the current run"
+	@echo "  make re-fork                   Re-fork Anvil at latest block (recovery)"
+	@echo "  make follow-stop               Stop the follow-mode stack"
+	@echo "  (or: make -C follow <target>; guide: follow/GUIDE.md)"
 	@echo ""
-	@echo "Bare-Metal Targets:"
-	@echo "  make all      CONFIG=<name> BUNDLE_RANGE=<start:end>  Full pipeline"
-	@echo "  make env      CONFIG=<name> BUNDLE_RANGE=<start:end>  Setup Anvil + DB"
-	@echo "  make prove    CONFIG=<name> BUNDLE_RANGE=<start:end>  Prove bundles"
-	@echo "  make finalize CONFIG=<name> BUNDLE_RANGE=<start:end>  Finalize bundles"
-	@echo "  make status   CONFIG=<name> BUNDLE_RANGE=<start:end>  Check status"
-	@echo "  make verify   CONFIG=<name> BUNDLE_RANGE=<start:end>  Verify on-chain"
-	@echo "  make stop                                              Stop all services"
-	@echo "  make clean                                             Stop + cleanup"
-	@echo ""
-	@echo "Configs: $(shell ls $(SCRIPT_DIR)/configs/*.json 2>/dev/null | xargs -n1 basename | sed 's/.json//g' | xargs)"
-	@echo ""
-	@echo "Example (docker):"
-	@echo "  make docker-all CONFIG=mainnet BUNDLE_RANGE=17302:17305"
-	@echo ""
-	@echo "Example (bare-metal):"
-	@echo "  make all CONFIG=mainnet BUNDLE_RANGE=17297:17301"
+	@echo "Snapshot Replay Mode (historical fork, fixed bundle range):"
+	@echo "  make snapshot-all        CONFIG=<name> BUNDLE_RANGE=<start:end>  Full pipeline"
+	@echo "  make snapshot-env        CONFIG=<name> BUNDLE_RANGE=<start:end>  Setup Anvil + DB"
+	@echo "  make snapshot-prove      CONFIG=<name> BUNDLE_RANGE=<start:end>  Prove bundles"
+	@echo "  make snapshot-finalize   CONFIG=<name> BUNDLE_RANGE=<start:end>  Finalize bundles"
+	@echo "  make snapshot-status     CONFIG=<name> BUNDLE_RANGE=<start:end>  Check status"
+	@echo "  make snapshot-verify     CONFIG=<name> BUNDLE_RANGE=<start:end>  Verify on-chain"
+	@echo "  make snapshot-sepolia-all CONFIG=sepolia BUNDLE_RANGE=<start:end> Sepolia pipeline"
+	@echo "  make snapshot-docker-{all,env,prove,finalize,stop}               Docker pipeline"
+	@echo "  make snapshot-stop / snapshot-clean                              Stop / cleanup"
+	@echo "  (or: make -C snapshot <target>; guide: snapshot/GUIDE.md)"

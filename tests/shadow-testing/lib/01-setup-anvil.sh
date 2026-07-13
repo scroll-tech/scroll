@@ -21,7 +21,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/anvil-utils.sh"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 FORK_URL="${FORK_URL:-https://eth-mainnet.g.alchemy.com/v2/demo}"
@@ -109,10 +109,15 @@ if [[ "$NO_ANVIL" == "false" ]]; then
         --host 0.0.0.0 \
         ${STATE_FILE:+--state "$STATE_FILE"} \
         >/dev/null 2>&1 &
-    ANVIL_PID=$!
-
-    log_info "Anvil started (PID $ANVIL_PID)"
+    log_info "Anvil starting on port $anvil_port ..."
     sleep 3
+    # setsid forks, so $! is the dead wrapper, not anvil. Resolve the real
+    # pid via the listening port and record it immediately — later steps in
+    # this script may fail, and the pidfile must still exist for
+    # 10-follow-up.sh / 11-follow-stop.sh to track the process.
+    ANVIL_PID=$(lsof -ti :"$anvil_port" 2>/dev/null | head -1 || true)
+    [[ -n "$ANVIL_PID" ]] && echo "$ANVIL_PID" > "${SCRIPT_DIR}/../.work/anvil.pid"
+    log_info "Anvil started (PID ${ANVIL_PID:-unknown})"
 else
     log_info "Skipping Anvil startup (using existing instance)"
 fi
@@ -279,14 +284,17 @@ log_info "  Prover: $PROVER_EOA"
 
 impersonate "$OWNER" "$ANVIL_RPC"
 
-cast send "$SCROLL_CHAIN" \
+if add_prover_err=$(cast send "$SCROLL_CHAIN" \
     "addProver(address)" "$PROVER_EOA" \
-    --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked >/dev/null 2>&1
-
-stop_impersonate "$OWNER" "$ANVIL_RPC"
-
-is_prover=$(cast call "$SCROLL_CHAIN" "isProver(address)(bool)" "$PROVER_EOA" --rpc-url "$ANVIL_RPC" 2>/dev/null)
-log_ok "  isProver[$PROVER_EOA] = $is_prover"
+    --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked 2>&1 >/dev/null); then
+    stop_impersonate "$OWNER" "$ANVIL_RPC"
+    is_prover=$(cast call "$SCROLL_CHAIN" "isProver(address)(bool)" "$PROVER_EOA" --rpc-url "$ANVIL_RPC" 2>/dev/null)
+    log_ok "  isProver[$PROVER_EOA] = $is_prover"
+else
+    stop_impersonate "$OWNER" "$ANVIL_RPC"
+    log_error "  addProver reverted: $(echo "$add_prover_err" | tail -2)"
+    exit 1
+fi
 
 # ─── Step 6: Authorize commit EOA as sequencer (optional) ────────────────────
 if [[ -n "$COMMIT_EOA" ]]; then
@@ -329,5 +337,6 @@ log_ok "Anvil setup complete!"
 # If we started Anvil, keep it running in foreground
 if [[ "$NO_ANVIL" == "false" && -n "$ANVIL_PID" ]]; then
     log_info "Anvil running in background (PID $ANVIL_PID)"
-    echo "$ANVIL_PID" > "${SCRIPT_DIR}/../../.work/anvil.pid"
+    mkdir -p "${SCRIPT_DIR}/../.work"
+    echo "$ANVIL_PID" > "${SCRIPT_DIR}/../.work/anvil.pid"
 fi

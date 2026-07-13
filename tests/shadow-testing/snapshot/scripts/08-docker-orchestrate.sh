@@ -12,8 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 CONFIG="${CONFIG:-mainnet}"
@@ -138,10 +138,10 @@ wait_for_prover() {
 }
 
 render_relayer_config() {
-    local output="${SCRIPT_DIR}/../.work/relayer-${CONFIG}.json"
+    local output="${SCRIPT_DIR}/../../.work/relayer-${CONFIG}.json"
     mkdir -p "$(dirname "$output")"
 
-    local template="${SCRIPT_DIR}/../configs/relayer.json.template"
+    local template="${SCRIPT_DIR}/../../lib/configs/relayer.json.template"
     sed \
         -e "s|{{ANVIL_RPC}}|$ANVIL_RPC|g" \
         -e "s|{{DB_DSN}}|$DB_DSN|g" \
@@ -157,7 +157,7 @@ render_relayer_config() {
 
 render_prover_config() {
     local gpu_id="${1:-0}"
-    local output="${SCRIPT_DIR}/../.work/prover-${gpu_id}.json"
+    local output="${SCRIPT_DIR}/../../.work/prover-${gpu_id}.json"
     mkdir -p "$(dirname "$output")"
 
     local prover_name
@@ -233,7 +233,7 @@ run_env() {
         sleep 2
     fi
 
-    local state_file="${SCRIPT_DIR}/../.work/anvil-${CONFIG}.state.json"
+    local state_file="${SCRIPT_DIR}/../../.work/anvil-${CONFIG}.state.json"
     mkdir -p "$(dirname "$state_file")"
 
     nohup anvil \
@@ -246,13 +246,13 @@ run_env() {
         >/dev/null 2>&1 &
     ANVIL_PID=$!
     log_info "Anvil started (PID $ANVIL_PID, port $anvil_port)"
-    echo "$ANVIL_PID" > "${SCRIPT_DIR}/../.work/anvil-${CONFIG}.pid"
+    echo "$ANVIL_PID" > "${SCRIPT_DIR}/../../.work/anvil-${CONFIG}.pid"
     sleep 3
 
     # 5. Setup Anvil state
     if [[ "$SKIP_ANVIL_SETUP" == "false" ]]; then
         log_info "Setting up Anvil state..."
-        "${SCRIPT_DIR}/01-setup-anvil.sh" \
+        "${SCRIPT_DIR}/../../lib/01-setup-anvil.sh" \
             --no-anvil \
             --anvil-rpc "$ANVIL_RPC" \
             --last-finalized "$LAST_FINALIZED" \
@@ -330,8 +330,8 @@ log_info "  Config:    $CONFIG"
 log_info "  Bundles:   $BUNDLE_RANGE"
 log_info "  Phase:     $PHASE"
 
-# Ensure .work dir exists
-mkdir -p "${SCRIPT_DIR}/../.work"
+# Ensure .work dir exists (shared by both modes at tests/shadow-testing/.work)
+mkdir -p "${SCRIPT_DIR}/../../.work"
 
 case "$PHASE" in
     env)

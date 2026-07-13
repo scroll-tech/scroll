@@ -18,4 +18,6 @@ states/*.json
 
 # Actual config files with secrets (use .template files instead)
 configs/*.json
+follow/configs/*.json
+snapshot/configs/*.json
 __pycache__/

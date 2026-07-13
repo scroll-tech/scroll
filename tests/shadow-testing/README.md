@@ -1,42 +1,42 @@
 # Shadow Testing Toolkit
 
-One-command toolkit for running Scroll shadow fork tests against Anvil.
+Toolkit for running Scroll shadow fork tests against Anvil: a local coordinator + local prover fed by production task data, without interfering with the live system. There are two test modes, each in its own directory with its own Makefile, scripts, configs and guide.
+
+## Choose a Mode
+
+| Mode | What It Does | When To Use |
+|------|--------------|-------------|
+| **[Follow mode](follow/)** (primary) | Fork the **current** ETH mainnet state, baseline-sync the shadow DB, then follow mainnet indefinitely — poll-syncing new chunk/batch/bundle rows, proving them locally, finalizing on the fork — until a preset duration (default 48h) or a failure | **Default acceptance test** for prover/guest upgrades |
+| **[Snapshot replay mode](snapshot/)** | Fork a historical block, import a fixed bundle range, prove & finalize ~N bundles | Reproducing a specific incident, debugging one bundle, Sepolia testing, targeted codec-migration checks |
 
 ## Quick Start
 
-### Docker (Recommended)
-
 ```bash
-cd tests/shadow-testing
-make docker-all CONFIG=mainnet BUNDLE_RANGE=17302:17305
+# Follow mode (primary acceptance test)
+cd tests/shadow-testing/follow
+make follow         # one-shot bring-up of the full follow-mode stack
+make follow-status  # latest monitor snapshot + lag summary
+make follow-report  # final report, windowed to this run (SHADOW_REPORT_START)
+make follow-stop    # tear down (script supports --keep-anvil)
+
+# Snapshot replay mode (fixed bundle range)
+cd tests/shadow-testing/snapshot
+make docker-all CONFIG=mainnet BUNDLE_RANGE=17302:17305   # Docker (recommended)
+make all CONFIG=mainnet BUNDLE_RANGE=17297:17301          # bare-metal
 ```
 
-### Bare-Metal
-
-```bash
-cd tests/shadow-testing
-make all CONFIG=mainnet BUNDLE_RANGE=17297:17301
-```
-
-See `make help` for all targets.
+The root `Makefile` is a thin dispatcher (`make follow-up`, `make snapshot-all ...`, `make help`). `lib/` holds scripts shared by both modes (`01-setup-anvil.sh`, `03-deploy-verifier.sh`, `04-prover-up.sh`, `06-run-relayer.sh`, `anvil-utils.sh`, `sync-queue-hashes.py`, `configs/relayer.json.template`). Runtime state (`.work/` — logs, pidfiles, Anvil state, `follow-run.env`) is shared by both modes at `tests/shadow-testing/.work`.
 
 ## Documentation
 
 | Document | What It Covers |
 |----------|----------------|
-| [`docs/GUIDE.md`](docs/GUIDE.md) | Full setup guide — step-by-step manual setup, architecture, configuration |
-| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Structured pitfalls, traps, and agent checklists |
+| [`follow/GUIDE.md`](follow/GUIDE.md) | Follow mode — bring-up, daemons, steady state, recovery, acceptance criteria |
+| [`snapshot/GUIDE.md`](snapshot/GUIDE.md) | Snapshot replay mode — step-by-step manual setup, architecture, configuration, verifier deployment, relayer dry-run |
+| [`docs/COMMON-TROUBLESHOOTING.md`](docs/COMMON-TROUBLESHOOTING.md) | Mode-independent pitfalls, traps, and agent checklists |
+| [`follow/TROUBLESHOOTING.md`](follow/TROUBLESHOOTING.md) | Follow-mode-specific traps (poll sync, starvation, live finalization) |
+| [`snapshot/TROUBLESHOOTING.md`](snapshot/TROUBLESHOOTING.md) | Snapshot-replay-mode-specific traps (historical fork, fixed bundle range, Sepolia) |
 | [`docs/contract-addresses.md`](docs/contract-addresses.md) | L1 contract addresses per network |
-
-## Directory Structure
-
-```
-configs/          # JSON config templates (copy and edit)
-scripts/          # Numbered pipeline scripts (01-setup-anvil.sh …)
-docs/             # Documentation
-states/           # Anvil state files (gitignored)
-.work/            # Runtime logs, pid files (gitignored)
-```
 
 ## Prerequisites
 
@@ -48,46 +48,17 @@ states/           # Anvil state files (gitignored)
 
 ## Configurations
 
-Copy templates and fill in secrets:
+Each mode has its own `configs/`; copy templates and fill in secrets:
 
 ```bash
-cp configs/mainnet.json.template configs/mainnet.json
-cp configs/sepolia.json.template configs/sepolia.json
-cp configs/coordinator.json.template configs/coordinator.json
+cp follow/configs/mainnet.json.template follow/configs/mainnet.json
+cp follow/configs/coordinator.json.template follow/configs/coordinator.json
+cp snapshot/configs/sepolia.json.template snapshot/configs/sepolia.json
 # Edit the files and replace placeholders:
 #   - YOUR_ALCHEMY_API_KEY   (in mainnet.json / sepolia.json fork.url)
 #   - YOUR_SHADOW_DB_PASSWORD (in mainnet.json / sepolia.json db.dsn)
 ```
 
-## Real-Time Catch-Up Mode
-
-To follow mainnet's real bundle cadence (instead of replaying a fixed bundle
-range), disable the relayer's local proposers and run the polling sync:
-
-```bash
-python3 scripts/sync-mainnet-db.py --poll-interval 60   # DB rows + l2_block/parent links
-python3 scripts/sync-queue-hashes.py                    # L1 queue rolling hashes (also runs inside sync-mainnet-db.py poll loop)
-scripts/sweep-stale-proving.sh                          # stale task sweeper (cron every 10 min)
-```
-
-See `docs/GUIDE.md` → "Real-Time Catch-Up Mode" for the full setup, the
-automation table, and the expected steady state. `docs/TROUBLESHOOTING.md`
-Traps 19–23 cover the failure modes this mode hits (fork-state desync, stale
-prover caches, silent task starvation, post-fork L1 queue hashes).
-
-## How It Works
-
-The pipeline has three phases:
-
-1. **Environment Setup** (`make env` or `make docker-env`)  
-   Start Anvil fork, import bundle data from production RDS, reset status.
-
-2. **Proving** (`make prove` or `make docker-prove`)  
-   Start coordinator + provers, wait for proofs to complete.
-
-3. **Finalization** (`make finalize` or `make docker-finalize`)  
-   Start relayer, wait for on-chain finalization.
-
 ## Contributing
 
-When you discover a new trap or workaround, add it to `docs/TROUBLESHOOTING.md` (structured).
+When you discover a new trap or workaround, add it to `docs/COMMON-TROUBLESHOOTING.md` (mode-independent) or the per-mode `follow/TROUBLESHOOTING.md` / `snapshot/TROUBLESHOOTING.md` (structured).

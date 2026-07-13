@@ -13,7 +13,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 DB_DSN="${DB_DSN:-postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup}"
@@ -44,6 +44,15 @@ if [[ -z "$BUNDLE_RANGE" && -z "$BATCH_RANGE" ]]; then
 fi
 
 require_cmd psql
+
+# Attribute every write in the postgres server log (aids debugging "ghost"
+# status writes — see TROUBLESHOOTING Trap 27 tail). ALTER SYSTEM persists in
+# postgresql.auto.conf inside the data volume, so re-assert it on every setup:
+# it is silently lost whenever the postgres container/volume is recreated.
+psql "$DB_DSN" -Atq -c "ALTER SYSTEM SET log_statement = 'mod';" >/dev/null \
+    && psql "$DB_DSN" -Atq -c "SELECT pg_reload_conf();" >/dev/null \
+    && log_ok "postgres log_statement='mod' asserted (writes visible in the postgres server log)" \
+    || log_warn "failed to set log_statement='mod' (non-fatal)"
 
 # ─── Resolve batch range from bundles ────────────────────────────────────────
 if [[ -n "$BUNDLE_RANGE" && -z "$BATCH_RANGE" ]]; then

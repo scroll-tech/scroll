@@ -1,6 +1,8 @@
-# Shadow Coordinator + Prover Testing Guide
+# Snapshot Replay Mode Guide — Shadow Coordinator + Prover Testing
 
-This guide documents how to set up a **shadow coordinator** + **local prover** environment for testing proof generation without interfering with production. This approach is significantly simpler than a full shadow fork — we use a local coordinator with imported production task data and a local prover that fetches tasks from it.
+This guide documents the **snapshot replay mode** of the shadow coordinator + local prover environment: fork a **historical** ETH mainnet block, import a fixed bundle range, and prove + finalize ~N bundles. Use it when follow mode is the wrong tool: reproducing a specific incident, debugging one specific bundle, Sepolia testing, or targeted codec-migration checks.
+
+For the primary acceptance workflow (follow live mainnet in real time), see the [Follow Mode Guide](../follow/GUIDE.md). Shared scripts live in [`../lib/`](../lib/), pitfalls in [`./TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) (snapshot replay mode) and [`../docs/COMMON-TROUBLESHOOTING.md`](../docs/COMMON-TROUBLESHOOTING.md) (mode-independent). Runtime state (`.work/`) is shared by both modes at `tests/shadow-testing/.work` (i.e. `../.work` from here).
 
 ## Architecture
 
@@ -37,7 +39,11 @@ This guide documents how to set up a **shadow coordinator** + **local prover** e
 - Access to IDC machine with port-forward to mainnet RDS (e.g., `idc-us-1-19`)
 - Internet access for L2 RPC and S3 circuit downloads
 
-## Quick Start
+# Snapshot Replay Mode
+
+Snapshot replay forks a **historical** ETH mainnet block, imports a fixed bundle range, and proves + finalizes ~N bundles. Use it when follow mode is the wrong tool: reproducing a specific incident, debugging one specific bundle, Sepolia testing, or targeted codec-migration checks. For the primary acceptance workflow, see the [Follow Mode Guide](../follow/GUIDE.md).
+
+## Quick Start (Snapshot Replay)
 
 If you just want to get running, use the provided script:
 
@@ -174,7 +180,7 @@ The coordinator needs `l2_block` records to format chunk tasks (for block hashes
 Use the provided Python script or fetch blocks via L2 RPC:
 
 ```bash
-python3 tests/shadow-testing/scripts/fetch-l2-blocks.py \
+python3 tests/shadow-testing/snapshot/scripts/fetch-l2-blocks.py \
   --rpc https://mainnet-rpc.scroll.io \
   --db "postgresql://$SHADOW_DB_USER:$SHADOW_DB_PASSWORD@$SHADOW_DB_HOST:$SHADOW_DB_PORT/$SHADOW_DB_NAME" \
   --start-block 26000000 \
@@ -991,54 +997,6 @@ All 5 bundles finalized consecutively without manual intervention. Each bundle p
 
 7. **Local E2E proofs cannot be used on mainnet fork**: Local E2E proofs are generated against a different chain state (genesis batch, different state roots, different message queue). Even if you deploy matching verifier digests, the public input (state roots, batch hashes, message queue hash) will not match the forked mainnet contract state, causing `VerificationFailed`.
 
-## Automated DB Replication from Mainnet RDS
-
-The `~/.pgpass` file on this machine contains valid credentials for the mainnet RDS read-only replica:
-
-```bash
-# Verify access
-cast psql -h localhost -p 15432 -U mainnet_infra_team_read_only -d mainnet_rollup -c "SELECT COUNT(*) FROM batch;"
-# → 517,830 batches
-```
-
-For automated DB sync, see `scroll-devnets/charts/shadow-fork/rollup-relayer/scripts/copy-db.sh` which uses `postgres-tunnel` to stream data from mainnet RDS to local shadow DB via `COPY ... TO STDOUT | COPY ... FROM STDIN`.
-
-## Real-Time Catch-Up Mode (Follow Mainnet Cadence)
-
-To test whether the local prover fleet can keep up with real mainnet bundle production, run the shadow fork in catch-up mode:
-
-1. **Relayer proposers disabled** — in the relayer config, set `l2_config.{chunk,batch,bundle}_proposer_config.disable = true`. The relayer then only commits/finalizes what the DB contains, instead of synthesizing bundles at an unrealistic rate.
-2. **Poll the production DB** — `scripts/sync-mainnet-db.py --poll-interval 60` copies new chunk/batch/bundle rows (plus referenced `l2_block`/`l1_message` on baseline) from the mainnet read replica (`localhost:15432`) into the shadow DB every 60s. Proof columns are never copied; everything is re-proven locally.
-
-Critical behavior of the sync (do not bypass):
-
-- Newly inserted rows carry **mainnet's** `rollup_status`/commit/finalize columns, which are meaningless on the fork. The sync resets them per row range:
-  - `batch.index <= fork miscData.lastCommittedBatchIndex` → `rollup_status = 3` (already committed on the fork).
-  - `batch.index > boundary` → `rollup_status = 1` so the shadow relayer commits them on Anvil (requires `parentBatchHash == committedBatches[lastCommittedBatchIndex]`; keep Trap 19's boundary accurate).
-  - `bundle` → always `rollup_status = 1`.
-- The boundary is queried from Anvil each poll cycle (`ANVIL_RPC` / `SCROLL_CHAIN` env vars to override), so it advances automatically as the shadow relayer commits new batches.
-- `ON CONFLICT DO NOTHING` everywhere: rows already advanced by the shadow relayer are never overwritten. **Consequence**: columns populated lazily on mainnet after the row is first copied stay stale in the shadow DB. The sync re-derives them every cycle instead:
-  - `sync_l2_blocks()` — links `l2_block.chunk_hash` for recent chunks (the blocks usually exist from baseline import but with NULL `chunk_hash`; an UPDATE, not an INSERT, is what fixes it). Missing this starves chunk task formatting (Trap 22).
-  - `sync_parent_links()` — re-derives `chunk.batch_hash` and `batch.bundle_hash` from parent index ranges (mainnet sets them at proposal time; rows copied before that keep NULL forever and are invisible to the coordinator's proof-status promotion, Trap 22).
-
-Watch item: the first bundle whose batches were committed on mainnet **after** the fork block exercises the relayer's commit path on Anvil (blob-carrying `commitBatches` tx). Keep `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts the blob sidecar.
-
-**L1 message queue follow-along (mandatory for long runs)**: bundles that pop L1 messages enqueued after the fork block fail finalization (`VerificationFailed` / `ErrorFinalizedIndexTooLarge`, Trap 23). `sync-mainnet-db.py` poll mode runs `scripts/sync-queue-hashes.py` every cycle — it copies `getMessageRollingHash(i)` from a mainnet RPC into the fork's `messageRollingHashes` mapping (slot 101) and aligns `nextCrossDomainMessageIndex` (slot 103) with mainnet.
-
-**Recommended automation** (what the 48-hour test ran with):
-
-| Cadence | Job | Purpose |
-|---------|-----|---------|
-| 60s loop | `sync-mainnet-db.py --poll-interval 60` | DB row sync + l2_block/parent-link repair |
-| 10 min cron | `scripts/sweep-stale-proving.sh` | Reset stale proving rows **and `total_attempts`** (attempt exhaustion silently starves tasks, Trap 22) |
-| every poll cycle (in `sync-mainnet-db.py`) | `scripts/sync-queue-hashes.py` | L1 queue rolling hashes + cursor follow mainnet (Trap 23) |
-| 1 h cron | `scripts/monitor-catchup.py >> .work/catchup-metrics.log` | Hourly metrics snapshot for the final report |
-
-Final report: `SHADOW_REPORT_START=<ISO8601> python3 scripts/generate-catchup-report.py` — the env var windows the report to the current run (the metrics log accumulates across runs).
-
-Expected steady state: mainnet produces ~1 bundle/hour; a 4-GPU fleet proves + finalizes a single-batch bundle in ~10 minutes, so once the initial backlog is cleared the pipeline idles most of the time — provers polling with `CoordinatorEmptyProofData` every ~20s is the normal idle state, not an error.
-
-
 ## Common DB Fixes
 
 After importing production data or running for extended periods, these SQL fixes resolve common coordinator deadlocks:
@@ -1080,9 +1038,12 @@ WHERE chunk_proofs_status != 0
 |--------|---------|
 | `setup.sh` | One-command setup for PostgreSQL, coordinator, or prover |
 | `import-production-data.sh` | Export from production RDS and import to shadow DB |
-| `fetch-l2-blocks.py` | Fetch block headers from L2 RPC and populate `l2_block` table |
-| `sync-mainnet-db.py` | Poll-mode sync of chunk/batch/bundle rows from mainnet RDS, with `rollup_status` boundary fixup, `l2_block` linkage and parent-link (`batch_hash`/`bundle_hash`) repair every cycle |
-| `sync-queue-hashes.py` | Copy `L1MessageQueueV2` rolling hashes + `nextCrossDomainMessageIndex` from ETH mainnet into the Anvil fork (Trap 23) |
-| `sweep-stale-proving.sh` | Reset stale proving rows (chunk/batch 30 min, bundle 180 min) including `total_attempts` |
-| `monitor-catchup.py` | Append one hourly metrics snapshot to `.work/catchup-metrics.log` |
-| `generate-catchup-report.py` | Build the final catch-up report from the metrics log (`SHADOW_REPORT_START` windows it to the current run) |
+| `scripts/fetch-l2-blocks.py` | Fetch block headers from L2 RPC and populate `l2_block` table |
+| `../follow/scripts/sync-mainnet-db.py` | Poll-mode sync of chunk/batch/bundle rows from mainnet RDS, with `rollup_status` boundary fixup, `l2_block` linkage and parent-link (`batch_hash`/`bundle_hash`) repair every cycle |
+| `../lib/sync-queue-hashes.py` | Copy `L1MessageQueueV2` rolling hashes + `nextCrossDomainMessageIndex` from ETH mainnet into the Anvil fork (Trap 23) |
+| `../follow/scripts/sweep-stale-proving.sh` | Reset stale proving rows (chunk/batch 30 min, bundle 180 min) including `total_attempts` |
+| `../follow/scripts/monitor-catchup.py` | Append one hourly metrics snapshot to `.work/catchup-metrics.log` (`finalized_lag`, lag > 3 alerts, verifier `protocolVersion` drift detection) |
+| `../follow/scripts/generate-catchup-report.py` | Build the final catch-up report from the metrics log (`SHADOW_REPORT_START` windows it to the current run) |
+| `../follow/scripts/10-follow-up.sh` | One-shot bring-up of the full follow-mode stack (`make follow`); records `SHADOW_REPORT_START` / `FOLLOW_RUN_HOURS` in `.work/follow-run.env` |
+| `../follow/scripts/11-follow-stop.sh` | Tear down the follow-mode stack (`make follow-stop`; `--keep-anvil` keeps the fork) |
+| `../follow/scripts/re-fork.sh` | Follow-mode recovery (`make re-fork`): re-fork Anvil at the latest block, redeploy wrapper, re-fund EOAs, re-mirror L1 queue hashes, restart relayer |

@@ -22,12 +22,17 @@ Follow the structured testing guide in [`docs/testing/openvm-upgrade-testing-gui
 
 ## Shadow Coordinator + Prover Testing (Production Task Replay)
 
-For testing proof generation against **real mainnet production tasks** without interfering with the live system, use the **Shadow Coordinator** approach. This is significantly faster than a full shadow fork:
+For testing proof generation against **real mainnet production tasks** without interfering with the live system, use the **Shadow Coordinator** approach. This is significantly faster than a full shadow fork. There are two test modes, each in its own directory under `tests/shadow-testing/`:
 
-- **Architecture**: Local coordinator (`:8390`) + local prover (GPU), fed by imported production task data.
-- **Docs**: [`tests/shadow-testing/docs/GUIDE.md`](tests/shadow-testing/docs/GUIDE.md) — full setup guide, troubleshooting, config reference.
-- **Quick Start**: [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md)
-- **Automation**: [`tests/shadow-testing/Makefile`](tests/shadow-testing/Makefile) — Makefile targets for Docker and bare-metal shadow fork testing.
+- **Follow mode (primary/default)** — `cd tests/shadow-testing/follow && make follow` forks the current ETH mainnet state and follows mainnet bundle production in real time (poll-sync → prove → finalize, default 48h window). This is the default acceptance test for prover/guest upgrades. Operations: `make follow-status`, `make follow-report`, `make follow-stop`, `make re-fork`.
+- **Snapshot replay mode (specialized)** — `cd tests/shadow-testing/snapshot`: fork a historical block, import a fixed bundle range, prove & finalize ~N bundles (`make all` / `make docker-all` / `make sepolia-all`). Use for incident reproduction, single-bundle debugging, Sepolia testing, targeted codec-migration checks.
+
+Shared details:
+
+- **Architecture**: Local coordinator (`:8390`) + local prover (GPU), fed by imported production task data. Scripts shared by both modes live in `tests/shadow-testing/lib/`; runtime state is shared at `tests/shadow-testing/.work/`.
+- **Docs**: [`tests/shadow-testing/follow/GUIDE.md`](tests/shadow-testing/follow/GUIDE.md) and [`tests/shadow-testing/snapshot/GUIDE.md`](tests/shadow-testing/snapshot/GUIDE.md) — per-mode setup guides, troubleshooting, config reference.
+- **Quick Start**: [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) (mode chooser)
+- **Automation**: `tests/shadow-testing/{follow,snapshot}/Makefile` — per-mode Makefile targets; the root `tests/shadow-testing/Makefile` is a thin dispatcher (`make follow-up`, `make snapshot-all ...`).
 
 Key hard-won rules:
 - **L2 RPC for coordinator task generation** (must support `debug_executionWitness`):
@@ -43,12 +48,15 @@ Key hard-won rules:
 - **L1 messages**: If chunks contain L1 messages, prover needs `scroll_getL1MessagesInBlock` RPC support. Most chunks at current mainnet height do NOT contain L1 messages, so this is usually non-blocking.
 - **Anvil MUST fork Ethereum L1, NOT Scroll L2**: The ScrollChain proxy address `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` is on **Ethereum mainnet** (chainId=1), not Scroll mainnet (chainId=534352). If you accidentally point Anvil at a Scroll L2 RPC (e.g., `scroll-mainnet.g.alchemy.com`), the proxy address will have no code or wrong code, and all contract interactions will fail. Always verify `eth_chainId` returns `1` after forking.
 
-### Real-Time Catch-Up Mode — Additional Rules
+### Follow Mode — Additional Rules
 
-For continuously proving mainnet bundles in real time (poll-syncing the mainnet DB into the shadow DB), three silent starvation traps apply — see `tests/shadow-testing/docs/TROUBLESHOOTING.md` Trap 22/23:
+For continuously proving mainnet bundles in real time (poll-syncing the mainnet DB into the shadow DB), three silent starvation traps apply — see `tests/shadow-testing/follow/TROUBLESHOOTING.md` Trap 22/23:
 - Poll sync must also maintain `l2_block.chunk_hash` links (UPDATE, not INSERT) and `chunk.batch_hash`/`batch.bundle_hash` parent links, or tasks become invisible to the coordinator with no ERROR logged.
 - `sweep-stale-proving.sh` must reset `total_attempts`, not just `proving_status` — the coordinator skips tasks with `total_attempts >= 5`.
-- Bundles popping L1 messages enqueued after the Anvil fork block fail with `VerificationFailed(0x439cc0cd)`: `sync-mainnet-db.py` poll mode runs `tests/shadow-testing/scripts/sync-queue-hashes.py` every cycle to mirror `messageRollingHashes` + `nextCrossDomainMessageIndex` from mainnet onto the fork.
+- Bundles popping L1 messages enqueued after the Anvil fork block fail with `VerificationFailed(0x439cc0cd)`: the queue-hash sync (`tests/shadow-testing/lib/sync-queue-hashes.py`) runs inside the `sync-mainnet-db.py` poll loop every cycle to mirror `messageRollingHashes` + `nextCrossDomainMessageIndex` from mainnet onto the fork.
+- Never run a poll sync against an empty/reset DB: watermark=0 makes it backfill all of mainnet history (Trap 25). Baseline first (handled by `10-follow-up.sh`), and stop daemons with `11-follow-stop.sh` which kills whole process groups — an orphaned python sync is invisible to pidfile checks.
+
+Daemons: poll-sync (with integrated queue-hash sync), the sweeper, and the hourly monitor all run as plain background processes with pidfiles in `.work/`, started by `follow/scripts/10-follow-up.sh` (the sweeper loops every 10 min) — **no agent/session cron is required**. Fork recovery: `make re-fork` (re-fork, redeploy wrapper, re-fund EOAs, re-mirror queue hashes, restart relayer).
 
 ### Sepolia Shadow Fork — Additional Rules
 
@@ -208,9 +216,9 @@ make coordinator_setup
 | [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, component relationships, common operations |
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
 | [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
-| [`tests/shadow-testing/docs/GUIDE.md`](tests/shadow-testing/docs/GUIDE.md) | Shadow coordinator + local prover setup for production task replay |
-| [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | Structured pitfalls and agent checklists for shadow testing |
-| [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | Structured pitfalls and agent checklists for shadow testing |
+| [`tests/shadow-testing/follow/GUIDE.md`](tests/shadow-testing/follow/GUIDE.md) | Follow mode: shadow coordinator + local prover following live mainnet (primary acceptance test) |
+| [`tests/shadow-testing/snapshot/GUIDE.md`](tests/shadow-testing/snapshot/GUIDE.md) | Snapshot replay mode: historical fork + fixed bundle range (incident reproduction, Sepolia) |
+| [`tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md`](tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md) | Mode-independent pitfalls and agent checklists for shadow testing; per-mode traps live in `tests/shadow-testing/follow/TROUBLESHOOTING.md` and `tests/shadow-testing/snapshot/TROUBLESHOOTING.md` |
 | [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) | Quick reference for common shadow testing commands |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
 | [`docs/testing/single-chunk-reproving.md`](docs/testing/single-chunk-reproving.md) | Re-proving one specific mainnet chunk using shadow DB + local coordinator/prover |

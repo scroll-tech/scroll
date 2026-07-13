@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/anvil-utils.sh"
 
 CONFIG="${CONFIG:-mainnet}"
 GPUS="${GPUS:-0,1}"
@@ -21,9 +21,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-CONFIG_FILE="${SCRIPT_DIR}/../configs/${CONFIG}.json"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    log_error "Config not found: $CONFIG_FILE"
+# lib/ is shared by both modes: resolve the config from whichever mode dir has it.
+CONFIG_FILE=""
+for d in "${SCRIPT_DIR}/../follow/configs" "${SCRIPT_DIR}/../snapshot/configs"; do
+    if [[ -f "$d/${CONFIG}.json" ]]; then CONFIG_FILE="$d/${CONFIG}.json"; break; fi
+done
+if [[ -z "$CONFIG_FILE" ]]; then
+    log_error "Config not found: follow/configs/${CONFIG}.json or snapshot/configs/${CONFIG}.json"
     exit 1
 fi
 
@@ -103,8 +107,17 @@ for i in "${!GPU_ARRAY[@]}"; do
 }
 EOF
 
-    # Kill existing prover on this GPU
-    pkill -f "prover.*${prover_name}" 2>/dev/null || true
+    # Kill existing prover on this GPU. The prover name lives inside the
+    # config file, not the cmdline, so match on the config path instead;
+    # prefer the pidfile when it is valid. Skipping this leaves the old
+    # process holding the LevelDB lock — the new one then dies on startup
+    # and the pidfile ends up pointing at a corpse.
+    if [[ -f "${work_dir}/prover.pid" ]] && kill -0 "$(cat "${work_dir}/prover.pid")" 2>/dev/null; then
+        kill "$(cat "${work_dir}/prover.pid")" 2>/dev/null || true
+        sleep 2
+    fi
+    pkill -f "prover-${gpu_id}/prover.json" 2>/dev/null || true
+    sleep 1
 
     log_info "Starting prover on GPU $gpu_id..."
 

@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/anvil-utils.sh"
 
 CONFIG="${CONFIG:-mainnet}"
 BUILD=false
@@ -21,9 +21,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-CONFIG_FILE="${SCRIPT_DIR}/../configs/${CONFIG}.json"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    log_error "Config not found: $CONFIG_FILE"
+# lib/ is shared by both modes: resolve the config from whichever mode dir has it.
+CONFIG_FILE=""
+for d in "${SCRIPT_DIR}/../follow/configs" "${SCRIPT_DIR}/../snapshot/configs"; do
+    if [[ -f "$d/${CONFIG}.json" ]]; then CONFIG_FILE="$d/${CONFIG}.json"; break; fi
+done
+if [[ -z "$CONFIG_FILE" ]]; then
+    log_error "Config not found: follow/configs/${CONFIG}.json or snapshot/configs/${CONFIG}.json"
     exit 1
 fi
 
@@ -33,7 +37,7 @@ DB_DSN=$(jq -r '.db.dsn' "$CONFIG_FILE")
 SCROLL_CHAIN=$(jq -r '.contracts.scroll_chain' "$CONFIG_FILE")
 L2_ENDPOINT=$(jq -r '.e2e.l2_rpc' "$CONFIG_FILE")
 VALIDIUM_MODE=$(jq -r '.relayer.validium_mode' "$CONFIG_FILE")
-MIN_CODEC=$(jq -r '.relayer.min_codec_version' "$CONFIG_FILE")
+MIN_CODEC="${MIN_CODEC:-$(jq -r '.relayer.min_codec_version' "$CONFIG_FILE")}"
 CHAIN_MONITOR=$(jq -r '.relayer.chain_monitor_enabled' "$CONFIG_FILE")
 GENESIS=$(jq -r '.genesis' "$CONFIG_FILE")
 
@@ -61,7 +65,7 @@ sed \
     -e "s|{{FINALIZE_KEY}}|$FINALIZE_KEY|g" \
     -e "s|{{VALIDIUM_MODE}}|$VALIDIUM_MODE|g" \
     -e "s|{{CHAIN_MONITOR_ENABLED}}|$CHAIN_MONITOR|g" \
-    "${SCRIPT_DIR}/../configs/relayer.json.template" > "$RELAYER_CONFIG"
+    "${SCRIPT_DIR}/configs/relayer.json.template" > "$RELAYER_CONFIG"
 
 log_ok "  Config written to $RELAYER_CONFIG"
 

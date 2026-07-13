@@ -37,7 +37,7 @@ services:
     ports:
       - "8390:8390"
     volumes:
-      - ./configs/coordinator.json:/app/conf/config.json:ro
+      - ./follow/configs/coordinator.json:/app/conf/config.json:ro
       - ../../coordinator/build/bin/assets_v2:/app/assets:ro
       - ../../tests/prover-e2e/mainnet-galileoV2/genesis.json:/app/conf/genesis.json:ro
     depends_on:

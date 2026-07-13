@@ -18,6 +18,31 @@ LOG_FILE = os.environ.get("SHADOW_METRICS_LOG", "/home/scroll/zzhang/scroll/test
 DB_DSN = os.environ.get("DB_DSN", "postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup")
 RPC = os.environ.get("ANVIL_RPC", "http://localhost:18545")
 WORK_DIR = "/home/scroll/zzhang/scroll/tests/shadow-testing/.work"
+FOLLOW_RUN_ENV = os.path.join(WORK_DIR, "follow-run.env")
+VERIFIER_ENV = os.path.join(WORK_DIR, "verifier.env")
+CONFIG_FILE = os.environ.get(
+    "SHADOW_CONFIG",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "configs", "mainnet.json"),
+)
+FINALIZED_LAG_ALERT_THRESHOLD = int(os.environ.get("FINALIZED_LAG_ALERT_THRESHOLD", "3"))
+
+
+def load_env_file(path):
+    """Parse a simple KEY=VALUE env file (written by 10-follow-up.sh / 03-deploy-verifier.sh)."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return out
 
 
 def run_psql(sql):
@@ -72,6 +97,43 @@ def process_health():
     return health
 
 
+def verifier_drift():
+    """Compare the fork wrapper's protocolVersion() with the expected value.
+
+    Wrapper address comes from .work/verifier.env (written by
+    03-deploy-verifier.sh), falling back to follow/configs/mainnet.json. The expected
+    version comes from .work/follow-run.env (EXPECTED_PROTOCOL_VERSION,
+    default 10). Never raises: failures are recorded as "error: ...".
+    """
+    info = {"wrapper": None, "protocol_version": None, "expected": None, "drift": False}
+    try:
+        venv = load_env_file(VERIFIER_ENV)
+        wrapper = os.environ.get("VERIFIER_WRAPPER_ADDR") or venv.get("WRAPPER_ADDR")
+        if not wrapper and os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE) as f:
+                wrapper = json.load(f).get("contracts", {}).get("deployed_verifier")
+        info["wrapper"] = wrapper
+        expected = os.environ.get("EXPECTED_PROTOCOL_VERSION") \
+            or load_env_file(FOLLOW_RUN_ENV).get("EXPECTED_PROTOCOL_VERSION") or "10"
+        info["expected"] = expected
+        if not wrapper:
+            info["protocol_version"] = "error: no wrapper address (verifier.env/config missing)"
+            return info
+        out = subprocess.run(
+            ["cast", "call", wrapper, "protocolVersion()(uint256)", "--rpc-url", RPC],
+            capture_output=True, text=True, timeout=30,
+        )
+        if out.returncode != 0:
+            info["protocol_version"] = f"error: {out.stderr.strip()[:200]}"
+            return info
+        pv = out.stdout.strip().split()[0]
+        info["protocol_version"] = pv
+        info["drift"] = str(pv) != str(expected)
+    except Exception as e:
+        info["protocol_version"] = f"error: {e}"
+    return info
+
+
 def main():
     now = datetime.now(timezone.utc).isoformat()
     block = anvil_block()
@@ -80,6 +142,7 @@ def main():
     summary = run_psql("""
         SELECT
             (SELECT MAX(index) FROM bundle) AS max_bundle,
+            (SELECT MAX(index) FROM bundle WHERE rollup_status = 5) AS max_finalized_bundle,
             (SELECT COUNT(*) FROM bundle WHERE rollup_status = 5) AS finalized_bundles,
             (SELECT COUNT(*) FROM bundle WHERE proving_status = 4) AS proved_bundles,
             (SELECT COUNT(*) FROM bundle WHERE rollup_status IN (3, 4) AND proving_status = 4) AS pending_finalize,
@@ -124,6 +187,30 @@ def main():
             "coordinator": coordinator_errors,
         },
     }
+
+    # Finalization lag: how far the newest synced bundle is ahead of the
+    # newest bundle the shadow fork has actually finalized (rollup_status=5).
+    alerts = []
+    try:
+        lag = int(summary.get("max_bundle") or 0) - int(summary.get("max_finalized_bundle") or 0)
+    except Exception as e:
+        lag = f"error: {e}"
+    record["finalized_lag"] = lag
+    if isinstance(lag, int) and lag > FINALIZED_LAG_ALERT_THRESHOLD:
+        alerts.append(
+            f"finalized_lag {lag} > {FINALIZED_LAG_ALERT_THRESHOLD}: "
+            "shadow finalization is falling behind mainnet bundle production"
+        )
+
+    # Verifier drift: fork wrapper protocolVersion() vs expected.
+    vdrift = verifier_drift()
+    record["verifier_drift"] = vdrift
+    if vdrift.get("drift"):
+        alerts.append(
+            f"verifier drift: fork wrapper protocolVersion={vdrift.get('protocol_version')} "
+            f"!= expected {vdrift.get('expected')} (wrapper {vdrift.get('wrapper')})"
+        )
+    record["alerts"] = alerts
 
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "a") as f:

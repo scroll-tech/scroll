@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
 
 ANVIL_RPC="${ANVIL_RPC:-http://localhost:18545}"
 SCROLL_CHAIN="${SCROLL_CHAIN:-0xa13BAF47339d63B743e7Da8741db5456DAc1E556}"

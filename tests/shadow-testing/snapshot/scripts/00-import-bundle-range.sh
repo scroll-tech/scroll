@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/lib/anvil-utils.sh"
+source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 PROD_DSN="${PROD_DSN:-postgresql://postgres:postgres@localhost:15432/rollup}"

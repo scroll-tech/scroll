@@ -34,9 +34,11 @@ logging.basicConfig(
 log = logging.getLogger("sync-mainnet-db")
 
 # sync-queue-hashes.py (Trap 23) is loaded as a module so each poll cycle can
-# also mirror L1MessageQueueV2 rolling hashes onto the Anvil fork.
+# also mirror L1MessageQueueV2 rolling hashes onto the Anvil fork. It lives in
+# the shared lib/ directory (follow/scripts -> follow -> shadow-testing).
 _sqh_spec = importlib.util.spec_from_file_location(
-    "sync_queue_hashes", Path(__file__).parent / "sync-queue-hashes.py"
+    "sync_queue_hashes",
+    Path(__file__).resolve().parent.parent.parent / "lib" / "sync-queue-hashes.py",
 )
 _sqh = importlib.util.module_from_spec(_sqh_spec)
 _sqh_spec.loader.exec_module(_sqh)
@@ -63,6 +65,10 @@ PK_COLUMNS = {
 # l2_block and l1_message are excluded from incremental poll sync because
 # querying MAX() on the 181 GB mainnet l2_block table frequently times out.
 # They are copied during the initial baseline sync instead.
+
+# Poll mode never bulk-backfills: deltas larger than this (or an empty shadow
+# table) require a baseline sync instead.
+MAX_POLL_DELTA = int(os.environ.get("MAX_POLL_DELTA", "5000"))
 
 CONFLICT_CLAUSES = {
     "l2_block": "ON CONFLICT (number) WHERE deleted_at IS NULL DO NOTHING",
@@ -125,6 +131,18 @@ def dsn_to_env(dsn):
 
 def connect(dsn):
     return psycopg2.connect(dsn)
+
+
+def connect_env_cursor(pg_env):
+    """Open a psycopg2 cursor from libpq-style env vars (PGHOST etc.)."""
+    conn = psycopg2.connect(
+        host=pg_env.get("PGHOST"),
+        port=pg_env.get("PGPORT"),
+        user=pg_env.get("PGUSER"),
+        password=pg_env.get("PGPASSWORD"),
+        dbname=pg_env.get("PGDATABASE"),
+    )
+    return conn.cursor()
 
 
 def get_watermarks(cur):
@@ -250,18 +268,45 @@ def get_columns(src_cur, table):
 
 
 def copy_table_pipe(src_env, dst_env, table, where_clause, columns=None):
-    """Copy a table slice from mainnet into the shadow DB via a psql pipe."""
+    """Copy a table slice from mainnet into the shadow DB via a psql pipe.
+
+    Idempotent: rows are piped into a staging table first, then merged with
+    INSERT ... ON CONFLICT DO NOTHING so re-running a baseline over a shadow
+    DB that already has data (and local proving/rollup state) never fails on
+    duplicate keys and never clobbers existing rows.
+    """
     log.info("copy %s WHERE %s", table, where_clause)
     src_env_vars = {k: v for k, v in src_env.items() if k.startswith("PG")}
     dst_env_vars = {k: v for k, v in dst_env.items() if k.startswith("PG")}
+    staging = f"staging_{table}"
 
     if columns:
         col_sql = ", ".join(columns)
         copy_out_cmd = f"COPY (SELECT {col_sql} FROM public.{table} WHERE {where_clause}) TO STDOUT WITH (FORMAT text)"
-        copy_in_cmd = f"COPY public.{table} ({col_sql}) FROM STDIN WITH (FORMAT text)"
+        copy_in_cmd = f"COPY public.{staging} ({col_sql}) FROM STDIN WITH (FORMAT text)"
     else:
+        col_sql = None
         copy_out_cmd = f"COPY (SELECT * FROM public.{table} WHERE {where_clause}) TO STDOUT WITH (FORMAT text)"
-        copy_in_cmd = f"COPY public.{table} FROM STDIN WITH (FORMAT text)"
+        copy_in_cmd = f"COPY public.{staging} FROM STDIN WITH (FORMAT text)"
+
+    env_in = os.environ.copy()
+    env_in.update(dst_env_vars)
+
+    # Recreate the staging table (no constraints/indexes: source duplicates
+    # must not abort the COPY; dedupe happens at merge time). INCLUDING
+    # DEFAULTS so columns excluded from the copy (proof-related) get their
+    # defaults instead of violating NOT NULL.
+    prep = subprocess.run(
+        ["psql", "--quiet", "--set", "ON_ERROR_STOP=1", "--command",
+         f"DROP TABLE IF EXISTS public.{staging}; "
+         f"CREATE TABLE public.{staging} (LIKE public.{table} INCLUDING DEFAULTS);"],
+        env=env_in,
+        capture_output=True,
+    )
+    if prep.returncode != 0:
+        raise RuntimeError(
+            f"psql staging prep failed for {table}: {prep.stderr.decode(errors='replace')}"
+        )
 
     copy_out = [
         "psql",
@@ -280,8 +325,6 @@ def copy_table_pipe(src_env, dst_env, table, where_clause, columns=None):
 
     env_out = os.environ.copy()
     env_out.update(src_env_vars)
-    env_in = os.environ.copy()
-    env_in.update(dst_env_vars)
 
     with subprocess.Popen(
         copy_out,
@@ -302,11 +345,26 @@ def copy_table_pipe(src_env, dst_env, table, where_clause, columns=None):
 
     if in_proc.returncode != 0:
         raise RuntimeError(
-            f"psql COPY IN failed for {table}: rc={in_proc.returncode} stderr={in_stderr.decode(errors='replace')}"
+            f"psql COPY IN failed for {staging}: rc={in_proc.returncode} stderr={in_stderr.decode(errors='replace')}"
         )
     if out_proc.returncode != 0:
         raise RuntimeError(
             f"psql COPY OUT failed for {table}: rc={out_proc.returncode} stderr={out_stderr.decode(errors='replace')}"
+        )
+
+    # Merge into the real table, skipping rows that already exist.
+    select_cols = col_sql if col_sql else ", ".join(get_columns(connect_env_cursor(dst_env), table))
+    merge = subprocess.run(
+        ["psql", "--quiet", "--set", "ON_ERROR_STOP=1", "--command",
+         f"INSERT INTO public.{table} ({select_cols}) SELECT {select_cols} FROM public.{staging} "
+         f"{CONFLICT_CLAUSES[table]}; "
+         f"DROP TABLE public.{staging};"],
+        env=env_in,
+        capture_output=True,
+    )
+    if merge.returncode != 0:
+        raise RuntimeError(
+            f"psql merge failed for {table}: {merge.stderr.decode(errors='replace')}"
         )
     log.info("copy %s complete", table)
 
@@ -561,24 +619,38 @@ def poll_sync(src_dsn, dst_dsn, interval):
                 log.info("mainnet %s, shadow %s", src_wm, dst_wm)
 
                 for table, pk in PK_COLUMNS.items():
-                    if src_wm[table] > dst_wm[table]:
-                        copy_range(
-                            src,
+                    delta = src_wm[table] - dst_wm[table]
+                    if delta <= 0:
+                        continue
+                    if dst_wm[table] == 0 or delta > MAX_POLL_DELTA:
+                        # Never bulk-backfill from poll mode: an empty or far-
+                        # behind watermark means the DB was just reset, and
+                        # copying millions of historical rows here would bury
+                        # the coordinator in ancient tasks. Baseline sync
+                        # (--init-from-batch) owns backfill.
+                        log.warning(
+                            "poll sync skipping %s: shadow watermark %s, mainnet %s "
+                            "(delta %d > %d or empty) — run baseline sync instead",
+                            table, dst_wm[table], src_wm[table], delta, MAX_POLL_DELTA,
+                        )
+                        continue
+                    copy_range(
+                        src,
+                        dst_cur,
+                        table,
+                        pk,
+                        dst_wm[table],
+                        src_wm[table],
+                        columns=sync_columns[table],
+                    )
+                    if table in ("batch", "bundle"):
+                        fixup_rollup_status(
                             dst_cur,
                             table,
-                            pk,
                             dst_wm[table],
                             src_wm[table],
-                            columns=sync_columns[table],
+                            fork_committed,
                         )
-                        if table in ("batch", "bundle"):
-                            fixup_rollup_status(
-                                dst_cur,
-                                table,
-                                dst_wm[table],
-                                src_wm[table],
-                                fork_committed,
-                            )
 
                 update_bundle_seq(dst_cur)
                 sync_parent_links(dst_cur)

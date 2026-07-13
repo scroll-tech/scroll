@@ -17,7 +17,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
-CONFIG_FILE="${PROJECT_ROOT}/configs/mainnet.json"
+CONFIG_FILE="${PROJECT_ROOT}/follow/configs/mainnet.json"
 ASSETS_DIR="${PROJECT_ROOT}/../../coordinator/build/bin/assets_v2"
 DB_BUNDLE_INDEX="17302"
 
@@ -51,7 +51,7 @@ Deploy a new ZkEvmVerifierPostFeynman (with new plonk verifier + digests
 fetched from S3) and register it on Anvil.
 
 Options:
-  --config <path>         Config file (default: configs/mainnet.json)
+  --config <path>         Config file (default: follow/configs/mainnet.json)
   --assets-dir <path>     Path to coordinator assets_v2/ (default: ../../coordinator/build/bin/assets_v2)
   --bundle-index <idx>    Unused legacy option (kept for compatibility)
   --skip-plonk            Skip deploying a new plonk verifier (reuse existing)
@@ -300,6 +300,18 @@ log_info "Updating config file: $CONFIG_FILE"
 tmp=$(mktemp)
 jq --arg addr "$WRAPPER_ADDR" '.contracts.deployed_verifier = $addr' "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
 log_info "Config updated with deployed_verifier = $WRAPPER_ADDR"
+
+# Also record the deployment in .work/verifier.env so monitor-catchup.py
+# (verifier drift check) and re-fork.sh can find the wrapper without parsing
+# the config file.
+mkdir -p "${PROJECT_ROOT}/.work"
+cat > "${PROJECT_ROOT}/.work/verifier.env" <<EOF
+WRAPPER_ADDR=${WRAPPER_ADDR}
+PLONK_VERIFIER=${PLONK_VERIFIER}
+PROTOCOL_VERSION=${PROTOCOL_VERSION}
+DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%S%z)
+EOF
+log_info "Wrote ${PROJECT_ROOT}/.work/verifier.env"
 
 log_info "Done! 🎉"
 log_info ""
