@@ -50,7 +50,12 @@ func InitDB(config *Config) (*gorm.DB, error) {
 		gethLogger: log.Root(),
 	}
 
-	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
+	dialector, err := newDialector(config)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := gorm.Open(dialector, &gorm.Config{
 		CreateBatchSize: 1000,
 		Logger:          &tmpGormLogger,
 		NowFunc: func() time.Time {
@@ -78,6 +83,22 @@ func InitDB(config *Config) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(config.MaxIdleNum)
 
 	return db, nil
+}
+
+// newDialector builds the gorm postgres dialector. With IAM auth it wraps a
+// token-refreshing connector in a *sql.DB; otherwise it opens the DSN directly.
+func newDialector(config *Config) (gorm.Dialector, error) {
+	if !config.UseIAMAuth {
+		log.Info("connecting to database with password auth")
+		return postgres.Open(config.DSN), nil
+	}
+
+	log.Info("connecting to database with AWS RDS IAM auth", "region", config.AWSRegion)
+	connector, err := NewRDSIAMConnector(context.Background(), config.DSN, config.AWSRegion)
+	if err != nil {
+		return nil, err
+	}
+	return postgres.New(postgres.Config{Conn: sql.OpenDB(connector)}), nil
 }
 
 // CloseDB close the db handler. notice the db handler only can close when then program exit.
