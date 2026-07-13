@@ -1,6 +1,6 @@
 # Follow Mode Guide — Shadow Coordinator + Prover Testing
 
-This guide documents the **follow mode** of the shadow coordinator + local prover environment: fork the current ETH mainnet state and follow mainnet bundle production in real time. This is the **default acceptance test for prover/guest upgrades**.
+This guide documents the **follow mode** of the shadow coordinator + local prover environment: fork the ETH mainnet state from `FOLLOW_FORK_HOURS_BACK` hours in the past (default 5h), catch up the resulting backlog, then follow mainnet bundle production in real time. This is the **default acceptance test for prover/guest upgrades**.
 
 For a fixed historical bundle range (incident reproduction, single-bundle debugging, Sepolia testing, targeted codec-migration checks), see the [Snapshot Replay Mode Guide](../snapshot/GUIDE.md). Shared scripts live in [`../lib/`](../lib/), pitfalls in [`./TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) (follow mode) and [`../docs/COMMON-TROUBLESHOOTING.md`](../docs/COMMON-TROUBLESHOOTING.md) (mode-independent). Runtime state (`.work/`) is shared by both modes at `tests/shadow-testing/.work` (i.e. `../.work` from here).
 
@@ -41,7 +41,7 @@ For a fixed historical bundle range (incident reproduction, single-bundle debugg
 
 # Follow Mode (Primary)
 
-Follow mode forks the **current** ETH mainnet state with Anvil, baseline-syncs the shadow DB from the mainnet read replica, then keeps following mainnet indefinitely — poll-syncing new chunk/batch/bundle rows, proving them with local GPU provers, and finalizing bundles on the fork — until a preset duration (`FOLLOW_RUN_HOURS`, default 48) or a failure. It answers the question a snapshot cannot: *can this prover fleet keep pace with real mainnet bundle production?*
+Follow mode forks the ETH mainnet state from **`FOLLOW_FORK_HOURS_BACK` hours in the past** (default 5; `0` = fork at the current tip) with Anvil, baseline-syncs the shadow DB from the mainnet read replica, then **catches up the backlog** (every bundle committed-but-not-finalized at the fork block, plus everything mainnet produced since) before **following** mainnet indefinitely — poll-syncing new chunk/batch/bundle rows, proving them with local GPU provers, and finalizing bundles on the fork — until a preset duration (`FOLLOW_RUN_HOURS`, default 48) or a failure. It answers the question a snapshot cannot: *can this prover fleet catch up a backlog and then keep pace with real mainnet bundle production?* The fork block is `tip - FOLLOW_FORK_HOURS_BACK*300` (12s L1 blocks); `lastFinalizedBatchIndex` and `lastCommittedBatchIndex` are read **at the fork block**, so the baseline window (fork-finalized → mainnet tip) is exactly the backlog. `make follow-report` splits metrics into catch-up and steady-state phases using `MAINNET_BUNDLE_TIP_AT_START` recorded in `.work/follow-run.env`.
 
 For a fixed historical bundle range (incident reproduction, single-bundle debugging, Sepolia, codec-migration checks), use the [Snapshot Replay Mode Guide](../snapshot/GUIDE.md).
 

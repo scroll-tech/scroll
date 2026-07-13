@@ -59,7 +59,51 @@ def main():
     anvil_end = records[-1].get("anvil_block", 0)
 
     bundles_created = last_summary.get("max_bundle", 0) - first_summary.get("max_bundle", 0)
-    bundles_finalized = last_summary.get("finalized_bundles", 0) - first_summary.get("finalized_bundles", 0)
+    # max_finalized_bundle is a monotonic watermark (shadow fork's finalized
+    # bundle index); finalized_bundles per record is an interval count, so the
+    # watermark delta is the robust total.
+    bundles_finalized = last_summary.get("max_finalized_bundle", 0) - first_summary.get("max_finalized_bundle", 0)
+
+    # Run metadata (written by 10-follow-up.sh) — used to split the report into
+    # a catch-up phase (fork finalized index climbing to the mainnet bundle tip
+    # recorded at run start) and a steady-state phase (everything after).
+    run_env = {}
+    env_path = os.environ.get(
+        "SHADOW_FOLLOW_ENV",
+        os.path.join(os.path.dirname(LOG_FILE), "follow-run.env"),
+    )
+    if os.path.exists(env_path):
+        for line in open(env_path):
+            if "=" in line:
+                k, v = line.strip().split("=", 1)
+                run_env[k] = v
+    bundle_tip_at_start = run_env.get("MAINNET_BUNDLE_TIP_AT_START")
+    bundle_tip_at_start = int(bundle_tip_at_start) if bundle_tip_at_start else None
+    fork_hours_back = run_env.get("FORK_HOURS_BACK")
+
+    catchup_end_idx = None
+    if bundle_tip_at_start is not None:
+        for i, r in enumerate(records):
+            if r["summary"].get("max_finalized_bundle", 0) >= bundle_tip_at_start:
+                catchup_end_idx = i
+                break
+
+    def phase_stats(recs):
+        """Return (hours, bundles_created_delta, bundles_finalized_sum, avg proof times)."""
+        if not recs:
+            return 0.0, 0, 0, None, None, None
+        hours = (datetime.fromisoformat(recs[-1]["timestamp"]) - datetime.fromisoformat(recs[0]["timestamp"])).total_seconds() / 3600
+        created = recs[-1]["summary"].get("max_bundle", 0) - recs[0]["summary"].get("max_bundle", 0)
+        finalized = recs[-1]["summary"].get("max_finalized_bundle", 0) - recs[0]["summary"].get("max_finalized_bundle", 0)
+
+        def mean(key):
+            vals = [r["summary"][key] for r in recs if r["summary"].get(key)]
+            return round(sum(vals) / len(vals)) if vals else None
+
+        return hours, created, finalized, mean("avg_chunk_proof_time"), mean("avg_batch_proof_time"), mean("avg_bundle_proof_time")
+
+    catchup_stats = phase_stats(records[: catchup_end_idx + 1]) if catchup_end_idx is not None else None
+    steady_stats = phase_stats(records[catchup_end_idx + 1 :]) if catchup_end_idx is not None else None
 
     # Pull average proof times from the latest record
     avg_chunk = last_summary.get("avg_chunk_proof_time")
@@ -92,8 +136,24 @@ def main():
     print("# 48-Hour Shadow Catch-Up Report")
     print(f"- Duration: {duration_hours:.2f} hours ({start.isoformat()} -> {end.isoformat()})")
     print(f"- Anvil blocks: {anvil_start} -> {anvil_end} ({anvil_end - anvil_start} blocks)")
+    if fork_hours_back is not None:
+        print(f"- Fork: {fork_hours_back}h back, mainnet bundle tip at start: {bundle_tip_at_start}")
     print()
-    print("## Bundle Throughput")
+    if catchup_stats is not None:
+        ch, cc, cf, c_chunk, c_batch, c_bundle = catchup_stats
+        sh, sc, sf, s_chunk, s_batch, s_bundle = steady_stats
+        print("## Catch-Up Phase (backlog at fork)")
+        print(f"- Duration to catch up: {ch:.2f} hours")
+        print(f"- Bundles finalized during catch-up: {cf}")
+        print(f"- Avg proof times (interval means): chunk {c_chunk}s / batch {c_batch}s / bundle {c_bundle}s")
+        print()
+        print("## Steady-State Phase (following mainnet)")
+        print(f"- Duration: {sh:.2f} hours")
+        print(f"- Bundles created on mainnet: {sc}")
+        print(f"- Bundles finalized on fork: {sf}")
+        print(f"- Avg proof times (interval means): chunk {s_chunk}s / batch {s_batch}s / bundle {s_bundle}s")
+        print()
+    print("## Bundle Throughput (whole window)")
     print(f"- Bundles created (max_bundle delta): {bundles_created}")
     print(f"- Bundles finalized: {bundles_finalized}")
     print(f"- Finalization / creation ratio: {(bundles_finalized / bundles_created * 100):.1f}%" if bundles_created else "- No bundles created")

@@ -24,7 +24,7 @@ Follow the structured testing guide in [`docs/testing/openvm-upgrade-testing-gui
 
 For testing proof generation against **real mainnet production tasks** without interfering with the live system, use the **Shadow Coordinator** approach. This is significantly faster than a full shadow fork. There are two test modes, each in its own directory under `tests/shadow-testing/`:
 
-- **Follow mode (primary/default)** — `cd tests/shadow-testing/follow && make follow` forks the current ETH mainnet state and follows mainnet bundle production in real time (poll-sync → prove → finalize, default 48h window). This is the default acceptance test for prover/guest upgrades. Operations: `make follow-status`, `make follow-report`, `make follow-stop`, `make re-fork`.
+- **Follow mode (primary/default)** — `cd tests/shadow-testing/follow && make follow` forks the ETH mainnet state `FOLLOW_FORK_HOURS_BACK` hours in the past (default 5h; `0` = current tip), catches up the resulting backlog, then follows mainnet bundle production in real time (poll-sync → prove → finalize, default 48h window). This is the default acceptance test for prover/guest upgrades. Operations: `make follow-status`, `make follow-report`, `make follow-stop`, `make re-fork`.
 - **Snapshot replay mode (specialized)** — `cd tests/shadow-testing/snapshot`: fork a historical block, import a fixed bundle range, prove & finalize ~N bundles (`make all` / `make docker-all` / `make sepolia-all`). Use for incident reproduction, single-bundle debugging, Sepolia testing, targeted codec-migration checks.
 
 Shared details:

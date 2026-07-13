@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # 10-follow-up.sh — one-shot orchestrator for "follow mode" shadow testing.
 #
-# Brings up the full follow-mode stack against the CURRENT mainnet tip:
+# Brings up the full follow-mode stack against a RECENT mainnet state:
 #   a. sanity checks (postgres 5433, mainnet DSN, alchemy key, stale ports)
 #   b. baseline DB sync from the mainnet read replica
-#   c. Anvil fork at the current latest L1 block (via 01-setup-anvil.sh)
+#   c. Anvil fork at tip - FOLLOW_FORK_HOURS_BACK*300 blocks (default 5h back,
+#      via 01-setup-anvil.sh) so the run opens with a real backlog to catch up
 #   d. verifier wrapper deploy + registration (via 03-deploy-verifier.sh)
 #   e. initial L1 queue rolling-hash sync (Trap 23)
 #   f. coordinator_api + coordinator_cron
@@ -14,7 +15,8 @@
 #   j. records run metadata in .work/follow-run.env
 #
 # Idempotent-ish: a component whose pidfile exists and is alive is skipped.
-# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run]
+# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run] [--reset]
+# Env: FOLLOW_FORK_HOURS_BACK=0 forks at the current tip (no backlog).
 
 set -euo pipefail
 
@@ -31,6 +33,11 @@ WORK_DIR="${WORK_DIR:-${PROJECT_ROOT}/../.work}"
 # Default mirrors sync-mainnet-db.py; override via env if the tunnel differs.
 MAINNET_DSN="${MAINNET_DSN:-postgresql://mainnet_infra_team_read_only:AuexDUuaarskbG6tr9CH9gXsJqp4at67mddAbMrt@localhost:15432/mainnet_rollup}"
 FOLLOW_RUN_HOURS="${FOLLOW_RUN_HOURS:-48}"
+# Fork the L1 state this many hours in the PAST, so the run starts with a
+# real backlog (all bundles committed-but-not-finalized at the fork block,
+# plus everything mainnet produced since) to catch up before steady-state
+# following. 0 = fork at the current tip (old behavior, near-idle start).
+FOLLOW_FORK_HOURS_BACK="${FOLLOW_FORK_HOURS_BACK:-5}"
 SYNC_POLL_INTERVAL="${SYNC_POLL_INTERVAL:-60}"
 SWEEP_INTERVAL="${SWEEP_INTERVAL:-600}"
 MONITOR_INTERVAL="${MONITOR_INTERVAL:-3600}"
@@ -157,12 +164,33 @@ check_port_free 8391 coordinator-cron
 check_port_free 18545 anvil
 
 # ─── b. Baseline DB sync ─────────────────────────────────────────────────────
-# Window = mainnet's finalization lag, NOT history: L1 finalization is
-# sequential (each finalize tx chains prevBatchHash), so the shadow must prove
-# and finalize every committed-but-not-finalized bundle starting from the
-# fork's lastFinalizedBatchIndex. Anything older is already finalized on the
-# fork and is copied only as a parent reference (marked done post-baseline).
+# Window = everything NOT finalized at the fork block, up to the mainnet tip:
+# L1 finalization is sequential (each finalize tx chains prevBatchHash), so the
+# shadow must prove and finalize every committed-but-not-finalized bundle
+# starting from the fork's lastFinalizedBatchIndex. With FOLLOW_FORK_HOURS_BACK
+# > 0 this window covers the fork-back backlog PLUS everything mainnet produced
+# between the fork block and now — that backlog is the run's catch-up phase.
+# Anything older is already finalized on the fork and is copied only as a
+# parent reference (marked done post-baseline).
+#
+# Resolve the fork block FIRST (rather than passing "latest") so that (a) the
+# point is logged and reproducible, and (b) lastFinalized/lastCommitted below
+# are read AT the fork block, not at the tip — with a fork-back hours this
+# difference is exactly the backlog size. 300 blocks/hour = 12s L1 block time.
 log_info "=== b. Baseline DB sync ==="
+LATEST_BLOCK=$(cast block-number --rpc-url "$FORK_URL")
+if [[ "$FOLLOW_FORK_HOURS_BACK" -gt 0 ]]; then
+    FORK_BLOCK_NUMBER=$((LATEST_BLOCK - FOLLOW_FORK_HOURS_BACK * 300))
+else
+    FORK_BLOCK_NUMBER=$LATEST_BLOCK
+fi
+log_info "  fork block:        $FORK_BLOCK_NUMBER (latest $LATEST_BLOCK, ${FOLLOW_FORK_HOURS_BACK}h back)"
+LAST_FINALIZED=$(cast call "$SCROLL_CHAIN" "lastFinalizedBatchIndex()(uint256)" --rpc-url "$FORK_URL" --block "$FORK_BLOCK_NUMBER" | awk '{print $1}')
+MAINNET_TIP=$(psql "$MAINNET_DSN" -Atq -c "SELECT MAX(index) FROM batch" | tr -d ' ')
+MAINNET_BUNDLE_TIP=$(psql "$MAINNET_DSN" -Atq -c "SELECT MAX(index) FROM bundle" | tr -d ' ')
+BASELINE_START=$((LAST_FINALIZED - 1))
+log_info "  lastFinalizedBatchIndex@fork: $LAST_FINALIZED; mainnet batch tip: $MAINNET_TIP"
+log_info "  baseline window: ${BASELINE_START}..${MAINNET_TIP} ($((MAINNET_TIP - BASELINE_START)) batches = backlog + finalization lag)"
 if $RESET_DB; then
     # --reset: wipe task tables so the DB contains ONLY the finalization-lag
     # window. Without this, stale rows from earlier runs/imports (thousands of
@@ -198,11 +226,6 @@ if $RESET_DB; then
         rm -f "${WORK_DIR}/anvil-${CONFIG_NAME}.state.json" "${WORK_DIR}/verifier.env" "${WORK_DIR}/follow-run.env"
     fi
 fi
-LAST_FINALIZED=$(cast call "$SCROLL_CHAIN" "lastFinalizedBatchIndex()(uint256)" --rpc-url "$FORK_URL" | awk '{print $1}')
-MAINNET_TIP=$(psql "$MAINNET_DSN" -Atq -c "SELECT MAX(index) FROM batch" | tr -d ' ')
-BASELINE_START=$((LAST_FINALIZED - 1))
-log_info "  lastFinalizedBatchIndex: $LAST_FINALIZED; mainnet batch tip: $MAINNET_TIP"
-log_info "  baseline window: ${BASELINE_START}..${MAINNET_TIP} ($((MAINNET_TIP - BASELINE_START)) batches = finalization lag)"
 export MAINNET_DSN
 run_step python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --init-from-batch "$BASELINE_START"
 # Boundary rows (<= lastFinalized) are already finalized on the fork: mark
@@ -214,7 +237,7 @@ run_step python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --init-from-batch "$BASELINE
 # so the relayer re-commits/re-finalizes them in chain order. Proofs already
 # generated stay valid (proof content depends on L2 data, not L1 state).
 if ! $DRY_RUN; then
-    MISC_RAW=$(cast call "$SCROLL_CHAIN" 0x06582acb --rpc-url "$FORK_URL")
+    MISC_RAW=$(cast call "$SCROLL_CHAIN" 0x06582acb --rpc-url "$FORK_URL" --block "$FORK_BLOCK_NUMBER")
     FORK_COMMITTED=$((16#${MISC_RAW:2:64}))
     log_info "  fork lastCommittedBatchIndex: $FORK_COMMITTED"
     psql "$SHADOW_DSN" -Atq -c "
@@ -234,11 +257,10 @@ if ! $DRY_RUN; then
     log_ok "  rollup_status aligned to fork boundaries (finalized<=${LAST_FINALIZED}, committed<=${FORK_COMMITTED})"
 fi
 
-# ─── c. Anvil fork at the CURRENT latest block ───────────────────────────────
-log_info "=== c. Anvil fork at latest mainnet block ==="
-# Resolve the block number explicitly (rather than passing "latest") so the
-# fork point is logged and reproducible.
-FORK_BLOCK_NUMBER=$(cast block-number --rpc-url "$FORK_URL")
+# ─── c. Anvil fork at the chosen block ───────────────────────────────────────
+log_info "=== c. Anvil fork setup ==="
+# FORK_BLOCK_NUMBER was resolved in step b (tip, or tip - FOLLOW_FORK_HOURS_BACK
+# * 300). lastFinalized was read at that same block there.
 log_info "  fork block:        $FORK_BLOCK_NUMBER"
 log_info "  lastFinalized:     $LAST_FINALIZED (read from mainnet at fork block)"
 log_info "  nextQueueIndex:    $NEXT_QUEUE"
@@ -435,7 +457,10 @@ SHADOW_REPORT_START=${REPORT_START}
 FOLLOW_RUN_HOURS=${FOLLOW_RUN_HOURS}
 EXPECTED_PROTOCOL_VERSION=${EXPECTED_PROTOCOL_VERSION}
 FORK_BLOCK=${FORK_BLOCK_NUMBER}
+FORK_HOURS_BACK=${FOLLOW_FORK_HOURS_BACK}
 BASELINE_START_BATCH=${BASELINE_START}
+MAINNET_TIP_AT_START=${MAINNET_TIP}
+MAINNET_BUNDLE_TIP_AT_START=${MAINNET_BUNDLE_TIP}
 EOF
     log_ok "  wrote $FOLLOW_ENV (SHADOW_REPORT_START=$REPORT_START, FOLLOW_RUN_HOURS=$FOLLOW_RUN_HOURS)"
 fi
