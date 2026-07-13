@@ -125,22 +125,26 @@ fi
 wait_for_anvil "$ANVIL_RPC"
 
 # ─── Step 1b: Drain inherited excess blob gas ────────────────────────────────
-# Anvil 1.0.0 predates Fusaka: when forking post-Fusaka mainnet state it keeps
+# Anvil ≤1.5.x predates Fusaka: when forking post-Fusaka mainnet state it keeps
 # the forked excessBlobGas but prices blob gas with the Dencun formula, so the
 # blob base fee explodes (~1e18 wei) and every commit tx fails with
 # "Insufficient funds". Mine empty blocks until the excess drains away
-# (excess decays by ~1/8 per empty block under Dencun rules).
-log_info "Draining inherited excess blob gas..."
+# (excess decays by ~1/8 per empty block under Dencun rules). On Anvil ≥1.6.0
+# (Osaka/Fusaka-aware) the forked fee is already sane and this loop is a no-op.
+# Note: `cast blob-base-fee` was removed in cast 1.6+; query eth_blobBaseFee.
+log_info "Checking inherited blob base fee..."
 for _ in $(seq 1 8); do
-    blob_fee=$(cast blob-base-fee --rpc-url "$ANVIL_RPC" 2>/dev/null || echo 0)
-    # Stop once the blob base fee is below 1 gwei (1e9 wei).
-    if [[ -z "$blob_fee" || "$blob_fee" -lt 1000000000 ]]; then
+    blob_fee_hex=$(cast rpc eth_blobBaseFee --rpc-url "$ANVIL_RPC" 2>/dev/null | tr -d '"')
+    blob_fee=$(printf '%d' "$blob_fee_hex" 2>/dev/null || echo 0)
+    # Stop once the blob base fee is below 1e16 wei. The old bug produced
+    # ~1e18; a Fusaka-aware fork sits around 1e13 (EIP-7918 floor is
+    # 2^13 × execution base fee), which the relayer can afford.
+    if [[ "$blob_fee" -lt 10000000000000000 ]]; then
         break
     fi
     log_info "  blob base fee = $blob_fee wei; mining 100 empty blocks..."
     cast rpc anvil_mine 100 --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
 done
-blob_fee=$(cast blob-base-fee --rpc-url "$ANVIL_RPC" 2>/dev/null || echo unknown)
 log_ok "  blob base fee = $blob_fee wei"
 
 # ─── Step 2: Reset ScrollChain miscData ──────────────────────────────────────
