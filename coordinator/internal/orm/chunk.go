@@ -422,3 +422,32 @@ func (o *Chunk) DecreaseActiveAttemptsByHash(ctx context.Context, chunkHash stri
 	}
 	return nil
 }
+
+// RefundAttemptsByHash refunds a full assignment attempt of a chunk given its hash:
+// it decrements both total_attempts and active_attempts and resets proving_status to unassigned.
+// It is used to roll back UpdateChunkAttempts when the coordinator fails to dispatch the task
+// (e.g. task formatting or prover task insertion failure), so the attempt is not burned permanently.
+func (o *Chunk) RefundAttemptsByHash(ctx context.Context, chunkHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", chunkHash)
+	db = db.Where("total_attempts > ?", 0)
+	db = db.Where("active_attempts > ?", 0)
+	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
+	result := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts - 1"),
+		"active_attempts": gorm.Expr("active_attempts - 1"),
+		"proving_status":  int(types.ProvingTaskUnassigned),
+	})
+	if result.Error != nil {
+		return fmt.Errorf("Chunk.RefundAttemptsByHash error: %w, chunk hash: %v", result.Error, chunkHash)
+	}
+	if result.RowsAffected == 0 {
+		log.Warn("No rows were affected in RefundAttemptsByHash", "chunk hash", chunkHash)
+	}
+	return nil
+}
