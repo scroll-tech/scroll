@@ -265,9 +265,16 @@ if [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x00000000000000000000
 
     # Use eth_sendTransaction directly to avoid cast send --unlocked bugs with impersonation
     verifier_calldata=$(cast calldata "updateVerifier(uint256,uint64,address)" "$CODEC_VERSION" "$start_batch_index" "$DEPLOYED_VERIFIER")
-    cast rpc eth_sendTransaction \
+    verifier_tx=$(cast rpc eth_sendTransaction \
         "{\"from\":\"$OWNER\",\"to\":\"$ROLLUP_VERIFIER\",\"data\":\"$verifier_calldata\",\"gas\":\"0x4c4b40\"}" \
-        --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
+        --rpc-url "$ANVIL_RPC" 2>/dev/null | tr -d '"')
+    # Wait for the tx to seal before continuing: the next step (addProver)
+    # signs with the owner's pending nonce — if this tx is still in the pool,
+    # addProver collides with it ("replacement transaction underpriced").
+    for _ in $(seq 1 20); do
+        cast receipt "$verifier_tx" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1 && break
+        sleep 0.5
+    done
 
     stop_impersonate "$OWNER" "$ANVIL_RPC"
 
