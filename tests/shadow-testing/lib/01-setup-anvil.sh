@@ -124,6 +124,25 @@ fi
 
 wait_for_anvil "$ANVIL_RPC"
 
+# ─── Step 1b: Drain inherited excess blob gas ────────────────────────────────
+# Anvil 1.0.0 predates Fusaka: when forking post-Fusaka mainnet state it keeps
+# the forked excessBlobGas but prices blob gas with the Dencun formula, so the
+# blob base fee explodes (~1e18 wei) and every commit tx fails with
+# "Insufficient funds". Mine empty blocks until the excess drains away
+# (excess decays by ~1/8 per empty block under Dencun rules).
+log_info "Draining inherited excess blob gas..."
+for _ in $(seq 1 8); do
+    blob_fee=$(cast blob-base-fee --rpc-url "$ANVIL_RPC" 2>/dev/null || echo 0)
+    # Stop once the blob base fee is below 1 gwei (1e9 wei).
+    if [[ -z "$blob_fee" || "$blob_fee" -lt 1000000000 ]]; then
+        break
+    fi
+    log_info "  blob base fee = $blob_fee wei; mining 100 empty blocks..."
+    cast rpc anvil_mine 100 --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
+done
+blob_fee=$(cast blob-base-fee --rpc-url "$ANVIL_RPC" 2>/dev/null || echo unknown)
+log_ok "  blob base fee = $blob_fee wei"
+
 # ─── Step 2: Reset ScrollChain miscData ──────────────────────────────────────
 log_info "Resetting ScrollChain state..."
 log_info "  lastFinalizedBatchIndex → $LAST_FINALIZED"

@@ -95,3 +95,17 @@ Three independent things must hold for the relayer to send its first on-fork com
 
 Also note: the relayer writes `rollup_status` **only** through its commit/finalize confirmation path (GORM `UPDATE … SET finalize_tx_hash, rollup_status`). If a batch/bundle shows `rollup_status = 5` with NULL `finalize_tx_hash` while `lastFinalizedBatchIndex` on the fork hasn't moved, do not trust the DB row — cross-check on-chain. `log_statement = 'mod'` on the shadow postgres is a cheap way to attribute every status write; it is asserted automatically by `02-prepare-db.sh` and `10-follow-up.sh` (re-applied on every setup, since `ALTER SYSTEM` lives in the container's data volume and is lost when the volume is recreated). Read the writes with `docker logs shadow-postgres` (or the postgres server log on a non-docker setup).
 
+
+### Trap 28: Post-Fusaka Fork + Anvil 1.0.0 → Blob Base Fee Explosion, Commits Fail "Insufficient funds" [follow mode]
+
+- **Symptom**: Right after a fresh fork, every `commitBatches` attempt fails with `estimateGasLimit failure ... Insufficient funds` (EOA balance is fine — verified 100 ETH). Batches sit at `rollup_status = 1` forever; `cast blob-base-fee` on the fork returns ~1e18 wei.
+- **Cause**: Anvil 1.0.0 predates the Fusaka fork. Forking post-Fusaka mainnet state inherits a large `excessBlobGas` (~1.8e8 when the mainnet blob market is congested), but Anvil prices blob gas with the **Dencun** update fraction (3338477), so the inherited excess maps to an astronomical blob base fee. Commit txs carry blob versioned hashes and become unaffordable.
+- **Fix (codified)**: `lib/01-setup-anvil.sh` now mines empty blocks right after `wait_for_anvil` until `cast blob-base-fee` drops below 1 gwei (excess decays ~1/8 per empty block; ~400 blocks suffice from 1.8e8). Manual equivalent: `cast rpc anvil_mine 400 --rpc-url http://localhost:18545`.
+- **Note**: Forking at tip does NOT dodge this — it only depends on the fork block's `excessBlobGas`, which is high whenever mainnet blob backlog is high. Long-term fix is upgrading Anvil to a Fusaka-aware release.
+
+### Trap 29: Same-Block Ordering — Manual `addProver` Mined After the Failing Finalize [follow mode]
+
+- **Symptom**: A `finalizeBundlePostEuclidV2` tx lands on-chain but reverts with `ErrorCallerIsNotProver` (0x7b263b17) even though `addProver` was sent first; the bundle ends up at `rollup_status = 7` (RollupFinalizeFailed), which `ProcessPendingBundles` **never retries**.
+- **Cause**: Anvil mines both txs in the same block and orders the finalize (txIndex 0) before the `addProver` (txIndex 1). The finalize legitimately reverts at execution time. (Also reachable via an Anvil state restore from a pre-addProver backup — see Trap 27.)
+- **Fix (codified)**: `10-follow-up.sh` step h now re-ensures `isProver(finalize_sender)` idempotently on every run, alongside the Trap-27 balance/sequencer checks. Manual recovery: impersonate the owner, `cast send … "addProver(address)" <finalize_eoa> --unlocked`, verify `isProver` = true, then `UPDATE bundle SET rollup_status = 1 WHERE index = <n>` so the relayer retries.
+- **Rule of thumb**: a bundle at `rollup_status = 7` is stranded by design (relayer logs it loudly). It always needs the manual `rollup_status = 1` reset after fixing the underlying cause.

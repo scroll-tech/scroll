@@ -404,7 +404,19 @@ if ! $DRY_RUN; then
             || { cast rpc anvil_stopImpersonatingAccount "$OWNER" --rpc-url "$ANVIL_RPC" >/dev/null; log_error "addSequencer failed"; exit 1; }
         cast rpc anvil_stopImpersonatingAccount "$OWNER" --rpc-url "$ANVIL_RPC" >/dev/null
     fi
-    log_ok "  relayer EOAs funded (100 ETH), commit sender is sequencer"
+    # isProver gates finalizeBundlePostEuclidV2 (ErrorCallerIsNotProver
+    # 0x7b263b17). An Anvil state restore from a pre-addProver backup silently
+    # drops it, and a failed finalize then strands the bundle at
+    # rollup_status=7 (not retried). Re-ensure it here, idempotently.
+    if [[ "$(cast call "$SCROLL_CHAIN" "isProver(address)(bool)" "$FINALIZE_SENDER" --rpc-url "$ANVIL_RPC" 2>/dev/null)" != "true" ]]; then
+        log_warn "  authorizing $FINALIZE_SENDER as prover on the fork"
+        cast rpc anvil_impersonateAccount "$OWNER" --rpc-url "$ANVIL_RPC" >/dev/null
+        cast send --gas-limit 5000000 "$SCROLL_CHAIN" "addProver(address)" "$FINALIZE_SENDER" \
+            --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked >/dev/null \
+            || { cast rpc anvil_stopImpersonatingAccount "$OWNER" --rpc-url "$ANVIL_RPC" >/dev/null; log_error "addProver failed"; exit 1; }
+        cast rpc anvil_stopImpersonatingAccount "$OWNER" --rpc-url "$ANVIL_RPC" >/dev/null
+    fi
+    log_ok "  relayer EOAs funded (100 ETH), commit sender is sequencer, finalize sender is prover"
 fi
 if pid_alive "${WORK_DIR}/relayer-${CONFIG_NAME}.pid"; then
     log_info "  relayer already running (pid $(cat "${WORK_DIR}/relayer-${CONFIG_NAME}.pid")), skipping"
