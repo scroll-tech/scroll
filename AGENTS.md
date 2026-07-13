@@ -43,6 +43,13 @@ Key hard-won rules:
 - **L1 messages**: If chunks contain L1 messages, prover needs `scroll_getL1MessagesInBlock` RPC support. Most chunks at current mainnet height do NOT contain L1 messages, so this is usually non-blocking.
 - **Anvil MUST fork Ethereum L1, NOT Scroll L2**: The ScrollChain proxy address `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` is on **Ethereum mainnet** (chainId=1), not Scroll mainnet (chainId=534352). If you accidentally point Anvil at a Scroll L2 RPC (e.g., `scroll-mainnet.g.alchemy.com`), the proxy address will have no code or wrong code, and all contract interactions will fail. Always verify `eth_chainId` returns `1` after forking.
 
+### Real-Time Catch-Up Mode — Additional Rules
+
+For continuously proving mainnet bundles in real time (poll-syncing the mainnet DB into the shadow DB), three silent starvation traps apply — see `tests/shadow-testing/docs/TROUBLESHOOTING.md` Trap 22/23:
+- Poll sync must also maintain `l2_block.chunk_hash` links (UPDATE, not INSERT) and `chunk.batch_hash`/`batch.bundle_hash` parent links, or tasks become invisible to the coordinator with no ERROR logged.
+- `sweep-stale-proving.sh` must reset `total_attempts`, not just `proving_status` — the coordinator skips tasks with `total_attempts >= 5`.
+- Bundles popping L1 messages enqueued after the Anvil fork block fail with `VerificationFailed(0x439cc0cd)`: run `tests/shadow-testing/scripts/sync-queue-hashes.py` (cron, 10 min) to mirror `messageRollingHashes` + `nextCrossDomainMessageIndex` from mainnet onto the fork.
+
 ### Sepolia Shadow Fork — Additional Rules
 
 | Dimension | Mainnet | Sepolia | Trap |

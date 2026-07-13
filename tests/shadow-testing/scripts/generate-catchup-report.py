@@ -34,6 +34,16 @@ def main():
             except json.JSONDecodeError:
                 continue
 
+    # Optional window filter: only count records at/after SHADOW_REPORT_START
+    # (ISO timestamp), so the report covers the current 48h test rather than
+    # older runs that share the same log file.
+    report_start = os.environ.get("SHADOW_REPORT_START")
+    if report_start:
+        cutoff = datetime.fromisoformat(report_start)
+        if cutoff.tzinfo is None:
+            cutoff = cutoff.replace(tzinfo=timezone.utc)
+        records = [r for r in records if datetime.fromisoformat(r["timestamp"]) >= cutoff]
+
     if not records:
         print("No metrics records found.")
         sys.exit(1)

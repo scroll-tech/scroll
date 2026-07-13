@@ -59,6 +59,22 @@ cp configs/coordinator.json.template configs/coordinator.json
 #   - YOUR_SHADOW_DB_PASSWORD (in mainnet.json / sepolia.json db.dsn)
 ```
 
+## Real-Time Catch-Up Mode
+
+To follow mainnet's real bundle cadence (instead of replaying a fixed bundle
+range), disable the relayer's local proposers and run the polling sync:
+
+```bash
+python3 scripts/sync-mainnet-db.py --poll-interval 60   # DB rows + l2_block/parent links
+python3 scripts/sync-queue-hashes.py                    # L1 queue rolling hashes (cron every 10 min)
+scripts/sweep-stale-proving.sh                          # stale task sweeper (cron every 10 min)
+```
+
+See `docs/GUIDE.md` → "Real-Time Catch-Up Mode" for the full setup, the
+automation table, and the expected steady state. `docs/TROUBLESHOOTING.md`
+Traps 19–23 cover the failure modes this mode hits (fork-state desync, stale
+prover caches, silent task starvation, post-fork L1 queue hashes).
+
 ## How It Works
 
 The pipeline has three phases:

@@ -1017,9 +1017,26 @@ Critical behavior of the sync (do not bypass):
   - `batch.index > boundary` → `rollup_status = 1` so the shadow relayer commits them on Anvil (requires `parentBatchHash == committedBatches[lastCommittedBatchIndex]`; keep Trap 19's boundary accurate).
   - `bundle` → always `rollup_status = 1`.
 - The boundary is queried from Anvil each poll cycle (`ANVIL_RPC` / `SCROLL_CHAIN` env vars to override), so it advances automatically as the shadow relayer commits new batches.
-- `ON CONFLICT DO NOTHING` everywhere: rows already advanced by the shadow relayer are never overwritten.
+- `ON CONFLICT DO NOTHING` everywhere: rows already advanced by the shadow relayer are never overwritten. **Consequence**: columns populated lazily on mainnet after the row is first copied stay stale in the shadow DB. The sync re-derives them every cycle instead:
+  - `sync_l2_blocks()` — links `l2_block.chunk_hash` for recent chunks (the blocks usually exist from baseline import but with NULL `chunk_hash`; an UPDATE, not an INSERT, is what fixes it). Missing this starves chunk task formatting (Trap 22).
+  - `sync_parent_links()` — re-derives `chunk.batch_hash` and `batch.bundle_hash` from parent index ranges (mainnet sets them at proposal time; rows copied before that keep NULL forever and are invisible to the coordinator's proof-status promotion, Trap 22).
 
 Watch item: the first bundle whose batches were committed on mainnet **after** the fork block exercises the relayer's commit path on Anvil (blob-carrying `commitBatches` tx). Keep `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts the blob sidecar.
+
+**L1 message queue follow-along (mandatory for long runs)**: bundles that pop L1 messages enqueued after the fork block fail finalization (`VerificationFailed` / `ErrorFinalizedIndexTooLarge`, Trap 23). Run `scripts/sync-queue-hashes.py` periodically — it copies `getMessageRollingHash(i)` from a mainnet RPC into the fork's `messageRollingHashes` mapping (slot 101) and aligns `nextCrossDomainMessageIndex` (slot 103) with mainnet.
+
+**Recommended automation** (what the 48-hour test ran with):
+
+| Cadence | Job | Purpose |
+|---------|-----|---------|
+| 60s loop | `sync-mainnet-db.py --poll-interval 60` | DB row sync + l2_block/parent-link repair |
+| 10 min cron | `scripts/sweep-stale-proving.sh` | Reset stale proving rows **and `total_attempts`** (attempt exhaustion silently starves tasks, Trap 22) |
+| 10 min cron | `scripts/sync-queue-hashes.py` | L1 queue rolling hashes + cursor follow mainnet (Trap 23) |
+| 1 h cron | `scripts/monitor-catchup.py >> .work/catchup-metrics.log` | Hourly metrics snapshot for the final report |
+
+Final report: `SHADOW_REPORT_START=<ISO8601> python3 scripts/generate-catchup-report.py` — the env var windows the report to the current run (the metrics log accumulates across runs).
+
+Expected steady state: mainnet produces ~1 bundle/hour; a 4-GPU fleet proves + finalizes a single-batch bundle in ~10 minutes, so once the initial backlog is cleared the pipeline idles most of the time — provers polling with `CoordinatorEmptyProofData` every ~20s is the normal idle state, not an error.
 
 
 ## Common DB Fixes
@@ -1064,3 +1081,8 @@ WHERE chunk_proofs_status != 0
 | `setup.sh` | One-command setup for PostgreSQL, coordinator, or prover |
 | `import-production-data.sh` | Export from production RDS and import to shadow DB |
 | `fetch-l2-blocks.py` | Fetch block headers from L2 RPC and populate `l2_block` table |
+| `sync-mainnet-db.py` | Poll-mode sync of chunk/batch/bundle rows from mainnet RDS, with `rollup_status` boundary fixup, `l2_block` linkage and parent-link (`batch_hash`/`bundle_hash`) repair every cycle |
+| `sync-queue-hashes.py` | Copy `L1MessageQueueV2` rolling hashes + `nextCrossDomainMessageIndex` from ETH mainnet into the Anvil fork (Trap 23) |
+| `sweep-stale-proving.sh` | Reset stale proving rows (chunk/batch 30 min, bundle 180 min) including `total_attempts` |
+| `monitor-catchup.py` | Append one hourly metrics snapshot to `.work/catchup-metrics.log` |
+| `generate-catchup-report.py` | Build the final catch-up report from the metrics log (`SHADOW_REPORT_START` windows it to the current run) |

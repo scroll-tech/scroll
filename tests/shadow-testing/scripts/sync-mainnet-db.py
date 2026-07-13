@@ -342,6 +342,69 @@ def update_bundle_seq(cur):
     )
 
 
+def sync_parent_links(dst_cur):
+    """Backfill parent links on synced rows.
+
+    Mainnet sets chunk.batch_hash when its batch proposer assigns chunks,
+    and batch.bundle_hash on bundle proposal. Chunks/batches copied by poll
+    sync before that assignment keep the NULL link forever (ON CONFLICT DO
+    NOTHING never updates them), which silently blocks the coordinator:
+    batches need chunk.batch_hash for the chunk_proofs_status promotion,
+    bundles need batch.bundle_hash for batch_proofs_status. Re-derive the
+    links every cycle from the parent rows' index ranges instead.
+    """
+    dst_cur.execute(
+        "UPDATE chunk c SET batch_hash = b.hash FROM batch b "
+        "WHERE c.index BETWEEN b.start_chunk_index AND b.end_chunk_index "
+        "AND b.index > (SELECT COALESCE(MAX(index), 0) - 500 FROM batch) "
+        "AND (c.batch_hash IS NULL OR c.batch_hash = '' OR c.batch_hash <> b.hash)"
+    )
+    if dst_cur.rowcount:
+        log.info("chunk: linked batch_hash on %d rows", dst_cur.rowcount)
+    dst_cur.execute(
+        "UPDATE batch b SET bundle_hash = u.hash FROM bundle u "
+        "WHERE b.index BETWEEN u.start_batch_index AND u.end_batch_index "
+        "AND u.index > (SELECT COALESCE(MAX(index), 0) - 500 FROM bundle) "
+        "AND (b.bundle_hash IS NULL OR b.bundle_hash = '' OR b.bundle_hash <> u.hash)"
+    )
+    if dst_cur.rowcount:
+        log.info("batch: linked bundle_hash on %d rows", dst_cur.rowcount)
+
+
+def sync_l2_blocks(src, dst_cur):
+    """Copy l2_block rows for recent shadow chunks that have none.
+
+    The coordinator needs l2_block (linked via chunk_hash) to format chunk
+    prover tasks; without it every task fails with "failed to fetch block
+    hashes of a chunk". Poll mode cannot watermark l2_block by MAX(number)
+    (the 181 GB mainnet table times out), so instead we look for recent
+    shadow chunks with no blocks and copy their block range from mainnet.
+
+    Note the blocks usually already exist in the shadow DB (imported by
+    block number during baseline) but with chunk_hash NULL, in which case
+    the INSERT is a no-op due to ON CONFLICT — the linkage must be
+    established with an UPDATE from the chunk rows themselves.
+    """
+    dst_cur.execute(
+        "UPDATE l2_block b SET chunk_hash = c.hash FROM chunk c "
+        "WHERE b.number BETWEEN c.start_block_number AND c.end_block_number "
+        "AND c.index > (SELECT COALESCE(MAX(index), 0) - 2000 FROM chunk) "
+        "AND (b.chunk_hash IS NULL OR b.chunk_hash <> c.hash)"
+    )
+    if dst_cur.rowcount:
+        log.info("l2_block: linked chunk_hash on %d existing rows", dst_cur.rowcount)
+    dst_cur.execute(
+        "SELECT MIN(start_block_number), MAX(end_block_number) FROM chunk c "
+        "WHERE c.index > (SELECT COALESCE(MAX(index), 0) - 2000 FROM chunk) "
+        "AND NOT EXISTS (SELECT 1 FROM l2_block b WHERE b.chunk_hash = c.hash)"
+    )
+    lo, hi = dst_cur.fetchone()
+    if lo is None:
+        return 0
+    # Include the parent block (start - 1) for hash-chain continuity.
+    return copy_range(src, dst_cur, "l2_block", "number", max(lo - 2, 0), hi)
+
+
 def baseline_sync(src_dsn, dst_dsn, start_batch):
     src = connect(src_dsn)
     dst = connect(dst_dsn)
@@ -508,6 +571,8 @@ def poll_sync(src_dsn, dst_dsn, interval):
                             )
 
                 update_bundle_seq(dst_cur)
+                sync_parent_links(dst_cur)
+                sync_l2_blocks(src, dst_cur)
                 dst.commit()
                 log.info("Poll cycle complete; sleeping %ds", interval)
             except Exception:
