@@ -123,7 +123,8 @@ def main():
             subprocess.run(
                 [
                     "cast", "rpc", "anvil_setStorageAt", QUEUE, hex(103),
-                    hex(mainnet_next), "--rpc-url", FORK_RPC,
+                    "0x" + mainnet_next.to_bytes(32, "big").hex(),
+                    "--rpc-url", FORK_RPC,
                 ],
                 check=True,
                 capture_output=True,
