@@ -155,6 +155,24 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
+// GetLatestCommittedBatch retrieves the highest-index batch that has a commit tx hash set.
+// It returns nil if no such batch exists.
+func (o *Batch) GetLatestCommittedBatch(ctx context.Context) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("commit_tx_hash IS NOT NULL AND commit_tx_hash != ''")
+	db = db.Order("index desc")
+
+	var latestBatch Batch
+	if err := db.First(&latestBatch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Batch.GetLatestCommittedBatch error: %w", err)
+	}
+	return &latestBatch, nil
+}
+
 // GetFirstUnbatchedChunkIndex retrieves the first unbatched chunk index.
 func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error) {
 	// Get the latest batch
