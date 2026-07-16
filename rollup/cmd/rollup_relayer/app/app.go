@@ -148,15 +148,19 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Watcher loop to fetch missing blocks
-	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2ethClient, cfg.L2Config.Confirmations)
-		if loopErr != nil {
-			log.Error("failed to get block number", "err", loopErr)
-			return
-		}
-		// errors are logged in the try method as well
-		_ = l2watcher.TryFetchRunningMissingBlocks(number)
-	})
+	if cfg.L2Config.DisableL2Watcher {
+		log.Info("L2 watcher is disabled (disable_l2_watcher=true), skipping missing-blocks fetch loop")
+	} else {
+		go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+			number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2ethClient, cfg.L2Config.Confirmations)
+			if loopErr != nil {
+				log.Error("failed to get block number", "err", loopErr)
+				return
+			}
+			// errors are logged in the try method as well
+			_ = l2watcher.TryFetchRunningMissingBlocks(number)
+		})
+	}
 
 	go utils.Loop(subCtx, time.Duration(cfg.L2Config.ChunkProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, chunkProposer.TryProposeChunk)
 
