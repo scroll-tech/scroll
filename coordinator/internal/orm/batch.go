@@ -211,13 +211,25 @@ func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 func (o *Batch) CheckIfBundleBatchProofsAreReady(ctx context.Context, bundleHash string) (bool, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ?", bundleHash)
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return false, fmt.Errorf("Batch.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
+	}
+	if totalCount == 0 {
+		return false, nil
+	}
+
+	db = o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
 	db = db.Where("bundle_hash = ? AND proving_status != ?", bundleHash, types.ProvingTaskVerified)
 
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
-		return false, fmt.Errorf("Chunk.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
+	var unreadyCount int64
+	if err := db.Count(&unreadyCount).Error; err != nil {
+		return false, fmt.Errorf("Batch.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
 	}
-	return count == 0, nil
+	return unreadyCount == 0, nil
 }
 
 // GetBatchByHash retrieves the given batch.
