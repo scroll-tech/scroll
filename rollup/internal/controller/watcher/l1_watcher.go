@@ -44,7 +44,7 @@ func NewL1WatcherClient(ctx context.Context, rpcClient *rpc.Client, startHeight 
 		savedL1BlockHeight = startHeight
 	}
 
-	return &L1WatcherClient{
+	w := &L1WatcherClient{
 		ctx:        ctx,
 		rpcClient:  rpcClient,
 		client:     ethclient.NewClient(rpcClient),
@@ -53,6 +53,11 @@ func NewL1WatcherClient(ctx context.Context, rpcClient *rpc.Client, startHeight 
 		processedBlockHeight: savedL1BlockHeight,
 		metrics:              initL1WatcherMetrics(reg),
 	}
+
+	// Seed the gauge from the resumed height instead of starting from 0.
+	w.metrics.l1WatcherFetchBlockHeaderProcessedBlockHeight.Set(float64(w.processedBlockHeight))
+
+	return w
 }
 
 // ProcessedBlockHeight get processedBlockHeight
