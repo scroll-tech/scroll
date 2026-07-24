@@ -133,18 +133,45 @@ Also note: the relayer writes `rollup_status` **only** through its commit/finali
 - **Fix**: restore the exact HEAD edges instead of letting the resolver choose. Inspect with `git diff Cargo.lock`; the two hand-edits that fixed it (2026-07, zkvm master bf887150): (1) in `alloy-evm 0.22.6`'s dependency list change `"revm 30.2.0"` back to `"revm 30.1.1"`; (2) in the six crates.io revm-family packages that flipped (`revm-context 10.1.2`, `revm-context-interface 11.1.2`, `revm-handler 11.2.0`, `revm-inspector 11.2.0`, `revm-interpreter 28.0.0`, `revm 30.2.0`) change `"revm-primitives 21.0.2"` back to `"revm-primitives 21.0.1"` (the fork). Verify with `cargo metadata --locked` before rebuilding. You cannot fix this with `cargo update -p revm --precise ...` — `op-revm` legitimately requires `revm ^30.2.0`, so both versions must coexist.
 - **Prevention**: after any `cargo update -p scroll-zkvm-*`, always `git diff Cargo.lock` and revert every revm-family drift before building.
 
-### Trap 33: v0.9.0+ Master Prover Hard-Requires `agg_vk.bin` on S3 (and `batch_root_verifier_vk` for the Coordinator) [follow mode / upgrade]
+### Trap 33: v0.9.0+ Master Requires `agg_vk.bin` on S3 (Prover) and in Coordinator Assets [follow mode / upgrade]
 
-- **Symptom**: New-stack prover exits at startup with `Failed to download agg_vk.bin: HTTP status 403` (or silently falls back to "deriving agg VK from SDK (slow, may allocate GPU memory)" and later OOMs the 24 GB card during SNARK proving). Coordinator panics with `batch_root_verifier_vk missing from assets` when its first batch proof arrives.
-- **Cause**: zkvm-prover master (bf887150, halo2-gpu) writes a per-circuit `agg_vk.bin` next to `app.vmexe` at `build-guest` time, and `Prover::load_agg_vk()` reads it to avoid constructing the GPU aggregation prover just to obtain the VK. The scroll prover downloads circuits from the **flat** S3 layout `<base>/<circuit>/app.vmexe` (no VK subdir) and expects `agg_vk.bin` in the same dir; the v0.9.0 S3 assets predate this file. Similarly the coordinator's batch-proof verification (deferral) needs `batch_root_verifier_vk` in its assets dir, which is also new.
+- **Symptom**: New-stack prover exits at startup with `Failed to download agg_vk.bin: HTTP status 403` (or silently falls back to "deriving agg VK from SDK (slow, may allocate GPU memory)" and later OOMs the 24 GB card during SNARK proving). Coordinator panics with `agg_vk.bin missing from assets` when its first batch proof arrives.
+- **Cause**: zkvm-prover master (bf887150, halo2-gpu) writes a per-circuit `agg_vk.bin` next to `app.vmexe` at `build-guest` time, and `Prover::load_agg_vk()` reads it to avoid constructing the GPU aggregation prover just to obtain the VK. The scroll prover downloads circuits from the **flat** S3 layout `<base>/<circuit>/app.vmexe` (no VK subdir) and expects `agg_vk.bin` in the same dir; the v0.9.0 S3 assets predate this file. The coordinator's batch-proof verification (deferral) reads the same key as `agg_vk.bin` from its own assets dir (`crates/libzkp/src/verifier/universal.rs`).
 - **Fix**: after every guest rebuild that bumps the zkvm pin, upload the new artifacts (bucket layout is flat per circuit):
   ```bash
   Z=<zkvm-prover>/releases/dev
   B=s3://circuit-release/scroll-zkvm/releases/v0.9.0
   for c in chunk batch bundle; do aws s3 cp $Z/$c/agg_vk.bin $B/$c/agg_vk.bin; done
-  aws s3 cp $Z/batch_root_verifier_vk $B/verifier/batch_root_verifier_vk
   # verify: anonymous GET must succeed (403 = wrong key or missing object)
   curl -s -o /dev/null -w '%{http_code}\n' https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/chunk/agg_vk.bin
   ```
-  For the local coordinator, also copy `batch_root_verifier_vk` into `coordinator/build/bin/assets_v2/`.
+  For the local coordinator, copy the batch circuit's `agg_vk.bin` into `coordinator/build/bin/assets_v2/agg_vk.bin` (no separate S3 object needed — it is the same file the prover downloads from `batch/agg_vk.bin`).
 - **Note**: `agg_vk.bin` contents are identical for batch and bundle (same agg config) and equal to `root_verifier_vk` for chunk — matching md5s are expected, not a copy/paste bug. And always re-run `make build-guest` after switching zkvm commits: a stale `releases/dev/` once produced a wrong `digest_1.hex` that only a fresh build corrected (digests must match the canonical values in docs/bundle-digest-encoding.md).
+
+### Trap 34: Stale `prover_task` Failure Rows Starve Batch Assignment Silently [follow mode]
+
+- **Symptom**: Chunks all prove, batches sit at `proving_status = 1` with `chunk_proofs_status = 2` (ready) forever, provers idle-poll `CoordinatorEmptyProofData: get empty prover task`, and the coordinator never logs `start batch proof generation session`. No ERROR anywhere.
+- **Cause**: The coordinator's batch assignment returns the lowest-index unassigned batch (`ORDER BY index LIMIT 1`) and then applies the "don't dispatch the same failing job to the same prover" rule: if `prover_task` contains a `proving_status = 3` (ProverProofInvalid) row for that batch hash *and* the polling prover, the assignment silently returns empty — and because the query always picks the *same* lowest batch first, later batches are never considered. If every prover has a failure row for that one batch, all batch proving starves permanently. The sweeper (`sweep-stale-proving.sh`) resets `batch.proving_status`/`total_attempts` but does NOT clear `prover_task` failure rows, so the poison survives sweeps and coordinator restarts.
+- **How it happens here**: a previous coordinator instance (e.g. a sanity run whose assets lacked `agg_vk.bin`, Trap 33) rejects a valid proof as `ProverProofInvalid`. The failure is the coordinator's fault, but the row pins the *prover* as having failed the task.
+- **Fix**: delete the bogus failure rows (verify they are bogus first — `created_at` predating the current coordinator instance is a strong hint):
+  ```sql
+  SELECT task_type, task_id, prover_name, failure_type, created_at FROM prover_task WHERE proving_status = 3;
+  DELETE FROM prover_task WHERE proving_status = 3 AND task_type = 2 AND task_id = '<batch_hash>';
+  ```
+- **Note**: task type is chosen at RANDOM per poll (`proofType()` in `get_task.go` shuffles chunk/batch/bundle), and a busy prover does not poll — so even a healthy system picks up batch tasks only on lucky idle polls; a few minutes of delay after unblocking is normal, hours is not.
+
+### Trap 35: Post-Upgrade — Coordinator Loops "Generate universal prover task failure" on Old-Format Proofs [upgrade]
+
+- **Symptom**: Right after the 20-upgrade.sh cutover, the new coordinator repeatedly logs `Generate universal prover task failure ... data did not match any variant of untagged enum ProofEnum` for the same one or two task ids, provers error on every poll (`CoordinatorGetTaskFailure`), and NO new tasks of any type get assigned (chunks included) — the whole fleet starves.
+- **Cause**: three leftover-state problems stack up:
+  1. **Stale assigned `prover_task` rows** — tasks that were in-flight at the cutover keep `proving_status = 1` (ProverAssigned) rows; the new coordinator's `hasAssignedTask` path rebuilds them from old-circuit child proofs, which the new libzkp cannot parse.
+  2. **Stale ready flags on never-assigned rows** — a naive reset (`WHERE proving_status <> 1`) misses rows that were *already* unproved: bundles whose `batch_proofs_status = Ready` and batches whose `chunk_proofs_status = Ready` from old-circuit proving stay assignable, and their DB proof blobs are old-format.
+  3. **Priority dispatch amplifies the poison** — the branch's GetTasks tries Bundle > Batch > Chunk and ABORTS the whole request when a higher-priority `Assign` errors (unlike develop's random pick), so one poisoned bundle blocks chunk/batch assignment too.
+- **Fix (codified)**: 20-upgrade.sh step (e) now resets `batch_proofs_status`/`chunk_proofs_status` and clears `proof` blobs for ALL unfinalized rows at/after N (not just `proving_status <> 1`), and `DELETE FROM prover_task WHERE proving_status = 1` while the provers are stopped. Manual recovery is the same SQL; after cleanup the pipeline recovers within one poll cycle.
+- **Related**: first chunk task generation after an assets swap is SLOW (the coordinator fetches `debug_executionWitness` block-by-block — ~550 blocks ≈ 10-15 min for two chunks — at 0% CPU). This is normal; the prover-side `connection_timeout_sec = 1800` covers it. Do not restart the coordinator just because it looks idle.
+
+### Trap 36: `cast receipt <tx> status` Output Format Changed in Foundry ≥ 1.6 [tooling]
+
+- **Symptom**: `03-deploy-verifier.sh` aborts with `updateVerifier reverted (tx ..., status 'true')` (or `status '1 (success)'`) even though the tx succeeded on-chain — `latestVerifier`/`getVerifier` already show the new wrapper.
+- **Cause**: older cast prints `0x1`; foundry ≥ 1.6 prints `1 (success)`. A literal string comparison against `0x1`/`1` misreads success as failure. Same class of drift as the `cast blob-base-fee` removal (commit b4d41624).
+- **Fix (codified)**: the status check now accepts `0x1`, `1`, and `1 (success)`. When in doubt, verify on-chain state instead of trusting the script's verdict: `cast call $MVRV "latestVerifier(uint256)(uint64,address)" 10 --rpc-url $RPC`.

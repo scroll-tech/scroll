@@ -230,20 +230,29 @@ stop_component "coordinator_api"  "${WORK_DIR}/coordinator-api.pid"  "coordinato
 # ─── e. Reset in-flight tasks >= N; wipe prover proof caches ─────────────────
 log_info "=== e. Reset task rows at/after batch $N ==="
 RESET_SQL="
+-- Trap 35: the reset must also cover rows ALREADY at proving_status = 1 —
+-- their ready flags (batch_proofs_status / chunk_proofs_status) and proof
+-- blobs may still reference old-circuit proofs, and the new coordinator
+-- will happily build tasks from them and fail to parse the proofs.
 UPDATE bundle SET proving_status = 1, total_attempts = 0, active_attempts = 0, batch_proofs_status = 1
-  WHERE rollup_status <> 5 AND end_batch_index >= ${N} AND proving_status <> 1;
-UPDATE batch SET proving_status = 1, total_attempts = 0, active_attempts = 0, chunk_proofs_status = 0
-  WHERE rollup_status <> 5 AND index >= ${N} AND proving_status <> 1;
+  WHERE rollup_status <> 5 AND end_batch_index >= ${N};
+UPDATE batch SET proving_status = 1, total_attempts = 0, active_attempts = 0, chunk_proofs_status = 1, proof = NULL
+  WHERE rollup_status <> 5 AND index >= ${N};
 -- Chunks: keep proofs ONLY for chunks of batches below N (they feed the
 -- proven bundles we are keeping). Everything else — batches >= N and
 -- not-yet-batched chunks — re-proves with the new circuits.
-UPDATE chunk c SET proving_status = 1, total_attempts = 0, active_attempts = 0
-  WHERE c.proving_status <> 1
+UPDATE chunk c SET proving_status = 1, total_attempts = 0, active_attempts = 0, proof = NULL
+  WHERE (c.proving_status <> 1 OR c.proof IS NOT NULL)
     AND NOT EXISTS (
       SELECT 1 FROM batch b
       WHERE c.index BETWEEN b.start_chunk_index AND b.end_chunk_index
         AND b.index < ${N}
     );
+-- Trap 35: in-flight assignments from the old stack are stale the moment the
+-- provers are stopped; if left behind, the new coordinator keeps rebuilding
+-- them from old-format proofs and errors on every poll (and with the
+-- priority dispatcher this starves ALL task types, not just one).
+DELETE FROM prover_task WHERE proving_status = 1;
 "
 if $DRY_RUN; then
     log_info "[dry-run] psql reset SQL:"; echo "$RESET_SQL"

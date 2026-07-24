@@ -185,7 +185,7 @@ make coordinator_setup
 - The prover config `base_url` must match the actual S3 object path. Verify with `curl -sI` before running.
 - For v0.9.0, both coordinator **verifier** assets and prover **circuit** assets are under `scroll-zkvm/releases/v0.9.0/`. Earlier v0.8.0 assets used `scroll-zkvm/v0.X.X/` for verifier assets and `scroll-zkvm/galileov2/` for prover circuits.
 - If you see HTTP 403 from S3, check whether the URL uses the correct `releases/` prefix for the target version.
-- Prover circuit assets use a **flat** layout: `<base>/<circuit>/app.vmexe` (no VK subdirectory). zkvm master ≥ bf887150 additionally requires `agg_vk.bin` in each circuit dir (else the halo2-gpu prover wastes GPU memory deriving the VK), and the coordinator needs `batch_root_verifier_vk` in its assets dir — both are new build-guest artifacts that must be uploaded to S3 after a guest rebuild (see `tests/shadow-testing/follow/TROUBLESHOOTING.md` Trap 33).
+- Prover circuit assets use a **flat** layout: `<base>/<circuit>/app.vmexe` (no VK subdirectory). zkvm master ≥ bf887150 additionally requires `agg_vk.bin` in each circuit dir (else the halo2-gpu prover wastes GPU memory deriving the VK), and the coordinator reads the batch circuit's `agg_vk.bin` from its assets dir — both are new build-guest artifacts that must be uploaded to S3 after a guest rebuild (see `tests/shadow-testing/follow/TROUBLESHOOTING.md` Trap 33).
 - After bumping the `scroll-zkvm-*` Cargo pin, always `git diff Cargo.lock` and revert revm-family drift before building (Trap 32).
 
 ### Multiple Coordinator Instances

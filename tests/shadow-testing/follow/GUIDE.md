@@ -211,8 +211,8 @@ New-stack checklist (learned on the v0.9.0/halo2-gpu upgrade, 2026-07):
   `prover --features halo2-gpu` (superset of `cuda`), packaged as the
   `prover_halo2gpu` Makefile target. Needs a 24 GB-class GPU.
 - **New mandatory assets**: the prover downloads `agg_vk.bin` next to each
-  circuit's `app.vmexe` (flat S3 layout), and the coordinator needs
-  `batch_root_verifier_vk` in its assets dir. Both are produced by
+  circuit's `app.vmexe` (flat S3 layout), and the coordinator reads the batch
+  circuit's `agg_vk.bin` from its own assets dir. Both are produced by
   `make build-guest` in the zkvm-prover repo and must be uploaded to S3 /
   copied into `assets_v2` before the cutover (TROUBLESHOOTING.md Trap 33).
 - **Re-run `make build-guest`** in the zkvm-prover checkout after switching
@@ -250,6 +250,8 @@ Ground truth, in increasing order of effort:
 
 - **In-flight old proofs always fail after the cutover.** The coordinator re-wraps submitted universal proofs with the VK it has *at submission time* (same fork name = single VK slot, `coordinator/internal/logic/submitproof/proof_receiver.go`), so proofs from old-circuit tasks are rejected once the new assets are live. This is why step (e) resets all task rows ≥ N — do not skip it.
 - **Prover-local proof caches** (`.work/prover-*/db`) are wiped for the same reason (Trap 21: stale proofs replay as VData mismatches).
+- **The reset in step (e) is deliberately aggressive** (Trap 35): it resets ready flags and clears proof blobs for ALL unfinalized rows at/after N — including rows that were never assigned — and deletes in-flight `prover_task` assignment rows. Anything less leaves old-format proofs reachable by the new coordinator, which then errors on every poll and (via the priority dispatcher) starves all task types.
+- **First task generation after an assets swap is slow.** The coordinator fetches `debug_executionWitness` block-by-block (~550 blocks ≈ 10-15 min for two chunks) at 0% CPU — it is not hung, and the prover-side `connection_timeout_sec = 1800` covers it. Subsequent tasks reuse no cache but generate in seconds-to-minutes.
 - **The prover binary is whatever is at `target/release/prover`.** The script logs its build time and git rev but does not rebuild it — a stale binary silently re-runs the old stack.
 - The monitor's verifier-drift check follows MVRV routing (`getVerifier(10, lastFinalized+1)`), so it tracks whichever wrapper currently serves the next batch — no false alarm after the cutover.
 - Sepolia variant: same flow with the Sepolia configs, but mind the Sepolia table in the root AGENTS.md (EOA re-funding, `--min-codec-version`, etc.).

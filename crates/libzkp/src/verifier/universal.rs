@@ -14,7 +14,8 @@ use std::path::Path;
 pub struct Verifier {
     verifier: UniversalVerifier,
     /// Deferral-enabled root verifier VK for batch proofs (v0.9.0+).
-    /// Loaded from `batch_root_verifier_vk` if present in the assets directory.
+    /// Loaded from `agg_vk.bin` (the batch circuit's aggregation VK, written by
+    /// build-guest) if present in the assets directory.
     batch_mvk: Option<openvm_stark_sdk::openvm_stark_backend::keygen::types::MultiStarkVerifyingKey<SC>>,
     version: Version,
 }
@@ -26,7 +27,7 @@ impl Verifier {
         let verifier =
             UniversalVerifier::setup(verifier_bin).expect("Setting up universal verifier");
 
-        let batch_mvk_path = verifier_bin.join("batch_root_verifier_vk");
+        let batch_mvk_path = verifier_bin.join("agg_vk.bin");
         let batch_mvk = if batch_mvk_path.exists() {
             Some(
                 openvm_sdk::fs::read_object_from_file(&batch_mvk_path)
@@ -60,7 +61,7 @@ impl ProofVerifier for Verifier {
                 let mvk = self
                     .batch_mvk
                     .as_ref()
-                    .expect("batch_root_verifier_vk missing from assets");
+                    .expect("agg_vk.bin missing from assets");
                 UniversalVerifier::verify_stark_proof_with_vk(
                     mvk,
                     proof.as_root_proof(),
