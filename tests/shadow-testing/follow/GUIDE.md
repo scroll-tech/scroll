@@ -127,6 +127,112 @@ Sizing conclusion: **1 GPU suffices** (~26% duty cycle), **2 recommended** for b
 - **RDS tunnel watchdog** — keep the RDS port-forward under `autossh`; poll-sync stalls silently if the tunnel dies.
 - **Verifier-drift alerting** — the hourly monitor snapshot detects verifier `protocolVersion` drift. If it fires, re-check the deployed wrapper and MVRV routing (Snapshot guide, "[Verify MVRV Routing](../snapshot/GUIDE.md#verify-mvrv-routing)") before trusting any finalize result.
 
+## Mid-Run Upgrade Test (Continuous Finalization Across a zk Upgrade)
+
+This scenario answers a question a plain follow run cannot: *can the system keep finalizing bundles continuously while the zk stack (guest circuits / prover / on-chain verifier) is upgraded underneath it?* It mirrors a production upgrade: Phase 1 runs the **current production release**, then a single cutover switches to the **new release** — same Anvil fork, same DB, daemons and relayer untouched, `lastFinalizedBatchIndex` advancing the whole time.
+
+Why it adds coverage over a fresh follow run:
+
+- **MVRV legacy routing is genuinely exercised** — the new wrapper is registered via the real `updateVerifier(10, N, wrapper)` contract call, so batches below the boundary `N` still route to the old wrapper through `legacyVerifiers`. (A normal follow run force-overwrites the `latestVerifier` storage slot and never tests routing.)
+- **Mixed finalization** — bundles already proven with the old circuits finalize *after* the upgrade event, through the old wrapper, interleaved with new-stack bundles.
+- **The operational runbook itself** — coordinator assets swap + restart (with its keygen window), prover fleet rollover, in-flight task reset.
+
+### Procedure
+
+> ⚠️ **Phase 1 must run the ACTUAL production zk stack, not the current
+> checkout.** Do not trust `mainnet.json.template`'s `s3_base_url` or your
+> branch's zkvm version to tell you what production runs — verify it (see
+> "Determining the Production zk Stack" below). On 2026-07 we learned this
+> the hard way: the branch under test was already v0.9.0 while mainnet still
+> ran guest v0.8.0, so a Phase-1 run built from the branch produced proofs
+> the production wrapper could never verify (`VerificationFailed`).
+
+**Step 0 — determine the production stack and build it.** Production is
+usually `develop`; the new stack is your feature branch. Build each in its
+own checkout so both binary sets coexist — a git worktree is ideal:
+
+```bash
+cd ~/scroll  # the repo with your feature branch checked out
+git worktree add ../scroll-develop develop
+cd ../scroll-develop
+cargo build --release -p libzkp-c
+make -C coordinator coordinator_api coordinator_cron
+make -C zkvm-prover prover          # GPU build, ~30-60 min
+
+# Production verifier assets (mind the S3 prefix: v0.8.0 has NO /releases/)
+mkdir -p coordinator/build/bin/assets_v0.8.0
+for f in verifier.bin root_verifier_vk openVmVk.json; do
+  curl -fsSL "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/v0.8.0/verifier/$f" \
+    -o "coordinator/build/bin/assets_v0.8.0/$f"
+done
+# Runtime conf: copy build/bin/conf/config.json from your main checkout but
+# point verifiers[].assets_path at assets_v0.8.0, and copy conf/genesis.json.
+```
+
+Point `follow/configs/mainnet.json` at the production release:
+`prover.s3_base_url = .../scroll-zkvm/v0.8.0/` (no `/releases/`),
+`assets.assets_v2 = <develop-worktree>/coordinator/build/bin/assets_v0.8.0`.
+
+**Step 1 — Phase 1 bring-up (old stack).** The forked production MVRV
+already routes to a verifier matching production circuits, so NO wrapper is
+deployed (`--skip-verifier` asserts routing instead). The env overrides aim
+the stack at the production worktree:
+
+```bash
+cd tests/shadow-testing/follow
+COORD_DIR=<develop-worktree>/coordinator/build/bin \
+PROVER_BIN=<develop-worktree>/target/release/prover \
+ASSETS_DIR=<develop-worktree>/coordinator/build/bin/assets_v0.8.0 \
+  ./scripts/10-follow-up.sh --skip-verifier --reset
+# ... let it follow mainnet until a few bundles have finalized (lag <= 1) ...
+```
+
+**Step 2 — prepare the new stack (feature branch, usually your main
+checkout):**
+
+```bash
+cd ~/scroll && make -C zkvm-prover prover   # new prover binary
+make -C coordinator coordinator_api coordinator_cron   # if coordinator changed
+# Download the NEW verifier assets into the dir named by
+# mainnet-next.json's assets.assets_v2, and fill in mainnet-next.json
+# (prover.s3_base_url of the new release, e.g. .../releases/v0.9.0/).
+```
+
+**Step 3 — the cutover (one command).** Aim COORD_DIR at the NEW binaries;
+`PROVER_BIN` defaults to `<main-checkout>/target/release/prover`:
+
+```bash
+cd tests/shadow-testing/follow
+COORD_DIR=<main-checkout>/coordinator/build/bin \
+  ./scripts/20-upgrade.sh --next-config configs/mainnet-next.json
+# or simply: make follow-upgrade   (uses COORD_DIR from the environment)
+```
+
+### Determining the Production zk Stack
+
+Ground truth, in increasing order of effort:
+
+1. **On-chain wrapper vs S3 digests** — `cast call $MVRV "latestVerifier(uint256)(uint64,address)" 10 --rpc-url <mainnet>` gives the production wrapper; compare its `verifierDigest1/2()` against the candidate release's S3 `digest_*.hex`. For v0.8.0 remember the S3 files are Montgomery-encoded — see [`../docs/bundle-digest-encoding.md`](../docs/bundle-digest-encoding.md).
+2. **A real production proof** — pull the newest `bundle.proof` JSON from the production DB, base64-decode `proof.instances`, read digest words at bytes 384–416/416–448 (always canonical). The `git_version` field names the guest build commit.
+3. **Repo pins** — `git show develop:Cargo.lock | grep zkvm-prover` vs your branch's, plus `zkvm-prover/print_high_zkvm_version.sh` (run it from inside `zkvm-prover/`).
+
+`20-upgrade.sh` computes the boundary batch `N` from the DB: bundles already proven (old circuit) but not yet finalized keep their proofs and stay on the old verifier; everything at/after `N` is reset (`proving_status=1`, attempts cleared) and re-proven with the new stack. If proven and unproven bundles interleave so no clean cut exists, it falls back to a hard cutover at `lastFinalized+1` (re-proving all pending bundles) and logs a warning. It then stops provers + coordinators, swaps the coordinator's `galileoV2` assets to the new release, restarts the coordinators, deploys + registers the new wrapper via the genuine `updateVerifier` path, restarts the provers with the new circuit version, and records `UPGRADE_AT_BATCH`/`UPGRADE_AT_TIME` in `.work/follow-run.env`.
+
+### Acceptance criteria
+
+- Every bundle with `end_batch < N` finalizes via the **old** wrapper (check `getVerifier(10, end_batch)` against `UPGRADE_OLD_WRAPPER` in `follow-run.env`).
+- The first bundle with `end_batch >= N` finalizes via the **new** wrapper — the key moment.
+- `finalized_lag` returns to ≤ 1 after the re-proving burst (coordinator keygen + re-proving pending tasks causes a temporary lag spike; that is expected, mirroring production deploy downtime).
+- `make follow-report` splits metrics into pre/post upgrade phases.
+
+### Notes & traps
+
+- **In-flight old proofs always fail after the cutover.** The coordinator re-wraps submitted universal proofs with the VK it has *at submission time* (same fork name = single VK slot, `coordinator/internal/logic/submitproof/proof_receiver.go`), so proofs from old-circuit tasks are rejected once the new assets are live. This is why step (e) resets all task rows ≥ N — do not skip it.
+- **Prover-local proof caches** (`.work/prover-*/db`) are wiped for the same reason (Trap 21: stale proofs replay as VData mismatches).
+- **The prover binary is whatever is at `target/release/prover`.** The script logs its build time and git rev but does not rebuild it — a stale binary silently re-runs the old stack.
+- The monitor's verifier-drift check follows MVRV routing (`getVerifier(10, lastFinalized+1)`), so it tracks whichever wrapper currently serves the next batch — no false alarm after the cutover.
+- Sepolia variant: same flow with the Sepolia configs, but mind the Sepolia table in the root AGENTS.md (EOA re-funding, `--min-codec-version`, etc.).
+
 ## Run Completion & Acceptance Criteria
 
 A follow run ends after `FOLLOW_RUN_HOURS` (default 48) or on failure. The run **passes** when:

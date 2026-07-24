@@ -12,6 +12,9 @@
 #   --committed-batch-hash HASH  Set committedBatches[last-committed] to this hash
 #   --next-queue NUM        Reset nextUnfinalizedQueueIndex to this value
 #   --deployed-verifier ADDR  Address of ZkEvmVerifierPostFeynman to register
+#   --skip-verifier       Skip verifier deploy/copy AND registration entirely
+#                         (use the fork's inherited production MVRV state —
+#                         Phase 1 of the mid-run upgrade test)
 #   --prover-eoa ADDR       EOA to authorize as prover
 #   --commit-eoa ADDR       EOA to authorize as sequencer (optional)
 #   --owner ADDR            Contract owner address for impersonation
@@ -44,6 +47,7 @@ COMMIT_EOA="${COMMIT_EOA:-}"
 CODEC_VERSION="${CODEC_VERSION:-10}"
 
 NO_ANVIL=false
+SKIP_VERIFIER=false
 ANVIL_PID=""
 
 # ─── Parse args ──────────────────────────────────────────────────────────────
@@ -58,6 +62,7 @@ while [[ $# -gt 0 ]]; do
         --committed-batch-hash) COMMITTED_BATCH_HASH="$2"; shift 2 ;;
         --next-queue)     NEXT_QUEUE="$2"; shift 2 ;;
         --deployed-verifier) DEPLOYED_VERIFIER="$2"; shift 2 ;;
+        --skip-verifier)  SKIP_VERIFIER=true; shift ;;
         --prover-eoa)     PROVER_EOA="$2"; shift 2 ;;
         --commit-eoa)     COMMIT_EOA="$2"; shift 2 ;;
         --owner)          OWNER="$2"; shift 2 ;;
@@ -234,7 +239,13 @@ fi
 log_ok "  nextCrossDomainMessageIndex = $(cast call "$L1_MSG_QUEUE_V2" "nextCrossDomainMessageIndex()(uint256)" --rpc-url "$ANVIL_RPC" 2>/dev/null)"
 
 # ─── Step 4: Deploy / copy verifier ──────────────────────────────────────────
-if [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x0000000000000000000000000000000000000000" ]]; then
+if $SKIP_VERIFIER; then
+    # Phase-1 of the mid-run upgrade test: keep the fork's inherited production
+    # MVRV state completely untouched — the production verifier (already
+    # registered on mainnet) verifies phase-1 proofs. 10-follow-up.sh step d
+    # asserts the routing separately.
+    log_info "--skip-verifier: leaving the fork's production MVRV state untouched"
+elif [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x0000000000000000000000000000000000000000" ]]; then
     log_info "Using provided verifier..."
     log_info "  Verifier: $DEPLOYED_VERIFIER"
 else
@@ -249,7 +260,10 @@ else
     verifier_code=$(cast code "$SHADOW_VERIFIER" --rpc-url "$SRC_RPC" 2>/dev/null || echo "")
     plonk_code=$(cast code "$SHADOW_PLONK" --rpc-url "$SRC_RPC" 2>/dev/null || echo "")
     
-    if [[ -n "$verifier_code" && -n "$plonk_code" ]]; then
+    # NOTE: `cast code` returns "0x" for an account with no code — a plain -n
+    # test is NOT enough, otherwise we anvil_setCode an EMPTY blob and then
+    # register a codeless contract on the MVRV (silent VerificationFailed).
+    if [[ -n "$verifier_code" && "$verifier_code" != "0x" && -n "$plonk_code" && "$plonk_code" != "0x" ]]; then
         cast rpc anvil_setCode "$SHADOW_PLONK" "$plonk_code" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
         cast rpc anvil_setCode "$SHADOW_VERIFIER" "$verifier_code" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
         DEPLOYED_VERIFIER="$SHADOW_VERIFIER"
@@ -276,7 +290,9 @@ if [[ -n "$COMMIT_EOA" ]]; then
 fi
 
 # ─── Step 5: Register verifier ───────────────────────────────────────────────
-if [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x0000000000000000000000000000000000000000" ]]; then
+if $SKIP_VERIFIER; then
+    log_info "--skip-verifier: skipping verifier registration"
+elif [[ -n "$DEPLOYED_VERIFIER" && "$DEPLOYED_VERIFIER" != "0x0000000000000000000000000000000000000000" ]]; then
     log_info "Registering verifier..."
     log_info "  Verifier: $DEPLOYED_VERIFIER"
     log_info "  Codec:    $CODEC_VERSION"

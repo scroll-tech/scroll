@@ -97,27 +97,64 @@ def process_health():
     return health
 
 
-def verifier_drift():
-    """Compare the fork wrapper's protocolVersion() with the expected value.
+def cast_call(args):
+    """Run `cast call ...` against the Anvil fork; return stdout or None."""
+    try:
+        out = subprocess.run(
+            ["cast", "call", *args, "--rpc-url", RPC],
+            capture_output=True, text=True, timeout=30,
+        )
+        if out.returncode != 0:
+            return None
+        return out.stdout.strip()
+    except Exception:
+        return None
 
-    Wrapper address comes from .work/verifier.env (written by
-    03-deploy-verifier.sh), falling back to follow/configs/mainnet.json. The expected
-    version comes from .work/follow-run.env (EXPECTED_PROTOCOL_VERSION,
-    default 10). Never raises: failures are recorded as "error: ...".
+
+def verifier_drift():
+    """Check the protocolVersion() of the wrapper that MVRV routes the NEXT
+    batch to, against the expected value.
+
+    Primary source: query the forked MVRV directly —
+    getVerifier(10, lastFinalizedBatchIndex + 1). This follows the routing
+    across a mid-run upgrade automatically (old batches -> legacy wrapper,
+    new batches -> new wrapper), so it works with two registered wrappers.
+    Fallback: .work/verifier.env / config deployed_verifier (pre-upgrade
+    single-wrapper behavior). Never raises: failures are recorded as
+    "error: ...".
     """
     info = {"wrapper": None, "protocol_version": None, "expected": None, "drift": False}
     try:
-        venv = load_env_file(VERIFIER_ENV)
-        wrapper = os.environ.get("VERIFIER_WRAPPER_ADDR") or venv.get("WRAPPER_ADDR")
-        if not wrapper and os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE) as f:
-                wrapper = json.load(f).get("contracts", {}).get("deployed_verifier")
-        info["wrapper"] = wrapper
         expected = os.environ.get("EXPECTED_PROTOCOL_VERSION") \
             or load_env_file(FOLLOW_RUN_ENV).get("EXPECTED_PROTOCOL_VERSION") or "10"
         info["expected"] = expected
+
+        wrapper = None
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE) as f:
+                contracts = json.load(f).get("contracts", {})
+            scroll_chain = contracts.get("scroll_chain")
+            mvrv = contracts.get("rollup_verifier")
+            if scroll_chain and mvrv:
+                last_fin = cast_call([scroll_chain, "lastFinalizedBatchIndex()(uint256)"])
+                if last_fin:
+                    next_batch = int(last_fin.split()[0]) + 1
+                    routed = cast_call([mvrv, "getVerifier(uint256,uint256)(address)", expected, str(next_batch)])
+                    if routed and int(routed, 16) != 0:
+                        wrapper = routed
+                        info["wrapper_source"] = f"mvrv getVerifier({expected}, {next_batch})"
+
         if not wrapper:
-            info["protocol_version"] = "error: no wrapper address (verifier.env/config missing)"
+            venv = load_env_file(VERIFIER_ENV)
+            wrapper = os.environ.get("VERIFIER_WRAPPER_ADDR") or venv.get("WRAPPER_ADDR")
+            if not wrapper and os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE) as f:
+                    wrapper = json.load(f).get("contracts", {}).get("deployed_verifier")
+            info["wrapper_source"] = "verifier.env/config fallback"
+        info["wrapper"] = wrapper
+
+        if not wrapper:
+            info["protocol_version"] = "error: no wrapper address (MVRV route + verifier.env/config missing)"
             return info
         out = subprocess.run(
             ["cast", "call", wrapper, "protocolVersion()(uint256)", "--rpc-url", RPC],

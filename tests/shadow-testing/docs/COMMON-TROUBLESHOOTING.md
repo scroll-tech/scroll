@@ -196,6 +196,24 @@ Before executing a single command:
   - **Remember**: the timeout checker runs in `coordinator_cron`, so the **cron's** config is the one that matters, not `coordinator_api`'s.
 - **Structural gap**: **Note (fixed upstream)**: the coordinator now refunds the charged attempt (both `total_attempts` and `active_attempts`, status back to unassigned) when dispatch fails after `Update*Attempts` — see `recoverAttempts` in `internal/logic/provertask/*_prover_task.go` and `orm.RefundAttemptsByHash` — so format-failure paths no longer leave invisible half-charged tasks; the sweeper reset below is belt-and-braces. Historical description: if task formatting fails *after* attempts are incremented but *before* the `prover_task` row is inserted (e.g. the Trap 22 block-hash failure), no `prover_task` row exists and the timeout checker can never see it. The `sweep-stale-proving.sh` daemon is the safety net — this is why the sweeper also resets `total_attempts`, not just `proving_status`.
 
+### Trap 32: `cast code` Returns `0x` for Codeless Accounts — Non-Empty Checks Are Not Enough [both]
+
+- **Symptom** (historical, fixed): `01-setup-anvil.sh`'s verifier fallback logged "Copied verifier to 0xb1F2..." and registered it on the MVRV via a genuine `updateVerifier`, but the address had **no code** on the fork — every subsequent finalization would have failed `VerificationFailed`, and `10-follow-up.sh` died silently right after the step-d header.
+- **Cause**: `cast code` prints `0x` for an EOA / nonexistent contract, so `[[ -n "$code" ]]` passes and `anvil_setCode` writes the empty blob. The address in question (`0xb1F2...`) only ever existed on a previous shadow Anvil, never on mainnet, so the "copy from source RPC" read nothing.
+- **Fix (codified)**: `01-setup-anvil.sh` now explicitly rejects `"0x"` before copying, and in `--skip-verifier` mode it leaves the MVRV completely untouched. `10-follow-up.sh` step d asserts the routed wrapper **has code** and the expected `protocolVersion`. General rule: after any `cast code`, check for non-empty AND non-`0x`; after any registration, verify `cast code <addr>` is non-trivial.
+
+### Trap 33: `set -euo pipefail` + Failing `cast`/`psql` Inside `$( )` → Silent Script Death [both]
+
+- **Symptom**: an orchestration script stops mid-step with NO error line — `make` just reports `Error 1` and the last log line is the step header.
+- **Cause**: a failing command substitution (`VAR=$(cast call ... | tr -d ' ')`) makes the assignment return non-zero; under `pipefail` + `set -e` the script exits before reaching the validation / `log_error` written below it.
+- **Fix (codified)**: every `$( )` around `cast`/`psql` in `lib/` and `follow/scripts/` now appends `|| true` and validates the value explicitly (empty/zero checks with `log_error` + `exit 1`). Follow the same pattern when adding new probes — and when a script dies silently, suspect this first.
+
+### Trap 34: `coordinator_api` Reads `conf/genesis.json` Relative to Its CWD [both]
+
+- **Symptom**: `coordinator_api` exits immediately: `failed to read genesis ... open conf/genesis.json: no such file or directory`.
+- **Cause**: `10-follow-up.sh` starts `coordinator_api` from `coordinator/build/bin/` and the binary defaults its genesis path to `./conf/genesis.json`. A freshly created `build/bin/conf/` (new machine, new worktree) only has `config.json`.
+- **Fix**: copy the fork's genesis into place, e.g. `cp tests/prover-e2e/mainnet-galileoV2/genesis.json coordinator/build/bin/conf/genesis.json`. `coordinator_cron` takes `--genesis` explicitly and is unaffected.
+
 ## Step-by-Step Checklist
 
 ### Phase 0: Environment Validation
@@ -204,6 +222,10 @@ Before executing a single command:
 - [ ] Anvil not already running on target port
 - [ ] Coordinator port 8390 free
 - [ ] Prover GPU available (`nvidia-smi`)
+- [ ] Toolchain present: `cast`/`forge`/`anvil` (foundry), `psql`, `jq`, `curl`, `go` (coordinator/relayer builds), `cargo` + `nvcc` (GPU prover build)
+- [ ] `libclang` installed — `librocksdb-sys` (via scroll-proving-sdk) runs bindgen during the prover build and panics with "Unable to find libclang" without it (`sudo apt install libclang-dev`)
+- [ ] Python deps: `psycopg2` AND `pycryptodome` (import name `Crypto`). Note Ubuntu's `python3-pycryptodome` ships the **`Cryptodome`** namespace, which does NOT satisfy `from Crypto.Hash import keccak` in `lib/sync-queue-hashes.py` — install the pycryptodome wheel into the user site (`~/.local/lib/python3.x/site-packages`) instead
+- [ ] Fresh shadow DB migrated before first baseline (`db_cli migrate` — Trap 30)
 
 ### Phase 1: DB Setup
 - [ ] Import bundle range from production RDS

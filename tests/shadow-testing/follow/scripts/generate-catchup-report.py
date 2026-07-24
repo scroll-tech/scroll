@@ -105,6 +105,24 @@ def main():
     catchup_stats = phase_stats(records[: catchup_end_idx + 1]) if catchup_end_idx is not None else None
     steady_stats = phase_stats(records[catchup_end_idx + 1 :]) if catchup_end_idx is not None else None
 
+    # Mid-run upgrade split (written by 20-upgrade.sh): pre/post upgrade phases.
+    upgrade_at_time = run_env.get("UPGRADE_AT_TIME")
+    upgrade_at_batch = run_env.get("UPGRADE_AT_BATCH")
+    upgrade_circuit = run_env.get("UPGRADE_CIRCUIT_VERSION")
+    pre_upgrade_stats = post_upgrade_stats = None
+    upgrade_dt = None
+    if upgrade_at_time:
+        try:
+            upgrade_dt = datetime.fromisoformat(upgrade_at_time)
+            if upgrade_dt.tzinfo is None:
+                upgrade_dt = upgrade_dt.replace(tzinfo=timezone.utc)
+            pre_recs = [r for r in records if datetime.fromisoformat(r["timestamp"]) < upgrade_dt]
+            post_recs = [r for r in records if datetime.fromisoformat(r["timestamp"]) >= upgrade_dt]
+            pre_upgrade_stats = phase_stats(pre_recs)
+            post_upgrade_stats = phase_stats(post_recs)
+        except ValueError:
+            upgrade_dt = None
+
     # Pull average proof times from the latest record
     avg_chunk = last_summary.get("avg_chunk_proof_time")
     avg_batch = last_summary.get("avg_batch_proof_time")
@@ -152,6 +170,23 @@ def main():
         print(f"- Bundles created on mainnet: {sc}")
         print(f"- Bundles finalized on fork: {sf}")
         print(f"- Avg proof times (interval means): chunk {s_chunk}s / batch {s_batch}s / bundle {s_bundle}s")
+        print()
+    if upgrade_dt is not None:
+        ph, pc, pf, p_chunk, p_batch, p_bundle = pre_upgrade_stats
+        qh, qc, qf, q_chunk, q_batch, q_bundle = post_upgrade_stats
+        print(f"## Mid-Run Upgrade (boundary batch {upgrade_at_batch}, circuit -> {upgrade_circuit})")
+        print(f"- Upgrade at: {upgrade_dt.isoformat()}")
+        print()
+        print("### Pre-Upgrade Phase (old stack)")
+        print(f"- Duration: {ph:.2f} hours")
+        print(f"- Bundles finalized: {pf}")
+        print(f"- Avg proof times (interval means): chunk {p_chunk}s / batch {p_batch}s / bundle {p_bundle}s")
+        print()
+        print("### Post-Upgrade Phase (new stack)")
+        print(f"- Duration: {qh:.2f} hours")
+        print(f"- Bundles created on mainnet: {qc}")
+        print(f"- Bundles finalized on fork: {qf}")
+        print(f"- Avg proof times (interval means): chunk {q_chunk}s / batch {q_batch}s / bundle {q_bundle}s")
         print()
     print("## Bundle Throughput (whole window)")
     print(f"- Bundles created (max_bundle delta): {bundles_created}")

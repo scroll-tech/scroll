@@ -109,3 +109,19 @@ Also note: the relayer writes `rollup_status` **only** through its commit/finali
 - **Cause**: Anvil mines both txs in the same block and orders the finalize (txIndex 0) before the `addProver` (txIndex 1). The finalize legitimately reverts at execution time. (Also reachable via an Anvil state restore from a pre-addProver backup — see Trap 27.)
 - **Fix (codified)**: `10-follow-up.sh` step h now re-ensures `isProver(finalize_sender)` idempotently on every run, alongside the Trap-27 balance/sequencer checks. Manual recovery: impersonate the owner, `cast send … "addProver(address)" <finalize_eoa> --unlocked`, verify `isProver` = true, then `UPDATE bundle SET rollup_status = 1 WHERE index = <n>` so the relayer retries.
 - **Rule of thumb**: a bundle at `rollup_status = 7` is stranded by design (relayer logs it loudly). It always needs the manual `rollup_status = 1` reset after fixing the underlying cause.
+
+### Trap 30: Fresh Shadow DB — Baseline Sync Fails, Schema Never Migrated [follow mode]
+
+- **Symptom**: First-ever `10-follow-up.sh` on a brand-new shadow DB dies in step b: `sync-mainnet-db.py` aborts with `psql staging prep failed for chunk/batch/...: relation "public.<table>" does not exist`.
+- **Cause**: `copy_table_pipe()` creates staging tables with `CREATE TABLE staging_x (LIKE public.x INCLUDING DEFAULTS)` — the real tables must already exist. Nothing in the follow bring-up migrates the schema before the baseline sync; the coordinator's auto-migration only happens later, when `coordinator_api` starts in step f. On the original author's machine the DB always carried schema from previous runs, so the gap went unnoticed.
+- **Fix**: migrate once per fresh DB before first bring-up:
+  ```bash
+  cd database && go build -o /tmp/db_cli ./cmd
+  /tmp/db_cli migrate --config <config-with-shadow-dsn>   # goose -> version 28
+  ```
+
+### Trap 31: Upgrade-Test Phase 1 Built From the Branch Under Test, Not From Production [follow mode]
+
+- **Symptom**: Phase-1 chunks/batches prove fine, but every bundle finalize reverts with `VerificationFailed(0x439cc0cd)` even though `--skip-verifier` routing checks pass.
+- **Cause**: Assuming the current checkout == the production zk stack. The branch under test and the config templates describe the NEW version (e.g. zkvm v0.9.0 / OpenVM 2.0.0), while mainnet may still run the previous guest (e.g. v0.8.0 / OpenVM 1.6.0 from `develop`). New-guest proofs can never verify against the production wrapper's digests — the mismatch only shows up at finalization, after hours of proving.
+- **Fix**: determine the production stack FIRST (follow/GUIDE.md "Determining the Production zk Stack": on-chain wrapper `verifierDigest1/2()` vs S3 `digest_*.hex` — Montgomery conversion needed for v0.8.0, see docs/bundle-digest-encoding.md — plus `git_version` inside a production `bundle.proof` JSON, and `Cargo.lock` zkvm pins per branch). Build production in a separate `git worktree` and aim `COORD_DIR` / `PROVER_BIN` / `ASSETS_DIR` at it for Phase 1. Also remember the v0.8.0 S3 prefix has **no** `/releases/` segment.

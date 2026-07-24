@@ -25,6 +25,8 @@ deploy_plonk=true
 extract_digests=true
 deploy_wrapper=true
 register=true
+genuine_register=false
+START_BATCH_OVERRIDE=""
 
 # ---------------------------------------------------------------------------
 # Parse args
@@ -37,6 +39,10 @@ while [[ $# -gt 0 ]]; do
             ASSETS_DIR="$2"; shift 2 ;;
         --bundle-index)
             DB_BUNDLE_INDEX="$2"; shift 2 ;;
+        --start-batch)
+            START_BATCH_OVERRIDE="$2"; shift 2 ;;
+        --genuine-register)
+            genuine_register=true; shift ;;
         --skip-plonk)
             deploy_plonk=false; shift ;;
         --skip-wrapper)
@@ -54,6 +60,13 @@ Options:
   --config <path>         Config file (default: follow/configs/mainnet.json)
   --assets-dir <path>     Path to coordinator assets_v2/ (default: ../../coordinator/build/bin/assets_v2)
   --bundle-index <idx>    Unused legacy option (kept for compatibility)
+  --start-batch <N>       Register the new verifier at startBatchIndex=N instead
+                          of the computed max(lastFinalized+1, existing start)
+  --genuine-register      Register ONLY via the real updateVerifier() contract
+                          call (production upgrade path; the previous verifier
+                          stays in legacyVerifiers). Default is to also force
+                          the latestVerifier storage slot, which bypasses MVRV
+                          routing and is wrong for mid-run upgrade tests.
   --skip-plonk            Skip deploying a new plonk verifier (reuse existing)
   --skip-wrapper          Skip deploying the ZkEvmVerifierPostFeynman wrapper
   --skip-register         Skip registering on MultipleVersionRollupVerifier
@@ -96,6 +109,9 @@ if [[ "$EXISTING_START" -gt "$MIN_START" ]]; then
     START_BATCH="$EXISTING_START"
 else
     START_BATCH="$MIN_START"
+fi
+if [[ -n "$START_BATCH_OVERRIDE" ]]; then
+    START_BATCH="$START_BATCH_OVERRIDE"
 fi
 
 log_info "Anvil RPC:      $ANVIL_RPC"
@@ -176,6 +192,9 @@ if $extract_digests; then
 
     log_info "Fetching digests from S3: ${S3_BASE_URL}bundle/digest_*.hex"
 
+    # CAUTION: digest files are usable as-is ONLY for v0.9.0+ (canonical form).
+    # v0.8.0 S3 digests are Montgomery-encoded and must be converted first —
+    # see tests/shadow-testing/docs/bundle-digest-encoding.md.
     DIGEST1_HEX=$(curl -fsSL "${S3_BASE_URL}bundle/digest_1.hex" 2>/dev/null | tr -d '[:space:]')
     DIGEST2_HEX=$(curl -fsSL "${S3_BASE_URL}bundle/digest_2.hex" 2>/dev/null | tr -d '[:space:]')
 
@@ -253,35 +272,64 @@ fi
 if $register; then
     log_info "Registering verifier on MultipleVersionRollupVerifier ..."
     log_info "  version:       10"
-    log_info "  startBatch:    $MIN_START"
+    log_info "  startBatch:    $START_BATCH"
     log_info "  verifier:      $WRAPPER_ADDR"
 
-    # The contract enforces startBatchIndex >= existing latest.startBatchIndex.
-    # On a shadow fork the production verifier may already be registered at a
-    # later batch (e.g. 517767), so a normal updateVerifier at 517761 would be
-    # rejected or ignored. We therefore force the storage slot for
-    # latestVerifier[10] to point to our wrapper at the desired start batch.
-    # This is acceptable for a local shadow fork because we only care about the
-    # target batch range.
+    if $genuine_register; then
+        # Production upgrade path: a single updateVerifier() call. The contract
+        # moves the current latest verifier into legacyVerifiers, so batches
+        # below START_BATCH still route to the OLD verifier — this is exactly
+        # what a mid-run upgrade test needs. No storage-slot forcing.
+        UPDATE_CALLDATA=$(cast calldata "updateVerifier(uint256,uint64,address)" 10 "$START_BATCH" "$WRAPPER_ADDR")
+        UPDATE_TX=$(cast rpc eth_sendTransaction \
+            "{\"from\":\"$OWNER\",\"to\":\"$MVRV\",\"data\":\"$UPDATE_CALLDATA\",\"gas\":\"0x4c4b40\"}" \
+            --rpc-url "$ANVIL_RPC" 2>/dev/null | tr -d '"')
+        if [[ -z "$UPDATE_TX" || "$UPDATE_TX" != 0x* ]]; then
+            log_error "updateVerifier eth_sendTransaction failed (impersonated owner $OWNER)"
+            exit 1
+        fi
+        # Wait for the tx to seal, then check it did not revert.
+        for _ in $(seq 1 20); do
+            cast receipt "$UPDATE_TX" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1 && break
+            sleep 0.5
+        done
+        TX_STATUS=$(cast receipt "$UPDATE_TX" status --rpc-url "$ANVIL_RPC" 2>/dev/null || echo "")
+        if [[ "$TX_STATUS" != "0x1" && "$TX_STATUS" != "1" ]]; then
+            log_error "updateVerifier reverted (tx $UPDATE_TX, status '$TX_STATUS')"
+            exit 1
+        fi
+        log_info "updateVerifier tx: $UPDATE_TX"
+    else
+        # The contract enforces startBatchIndex >= existing latest.startBatchIndex.
+        # On a shadow fork the production verifier may already be registered at a
+        # later batch (e.g. 517767), so a normal updateVerifier at 517761 would be
+        # rejected or ignored. We therefore force the storage slot for
+        # latestVerifier[10] to point to our wrapper at the desired start batch.
+        # This is acceptable for a local shadow fork because we only care about the
+        # target batch range.
+        #
+        # NOTE: this bypasses MVRV legacy routing. Mid-run upgrade tests must use
+        # --genuine-register instead, otherwise the old verifier is lost.
 
-    # latestVerifier is state slot 2 (slot 0 = Ownable owner, slot 1 = legacyVerifiers).
-    LATEST_VERIFIER_SLOT=$(cast index uint256 10 2 2>/dev/null)
-    START_BATCH_HEX=$(printf '%016x' "$MIN_START")
-    WRAPPER_NO_0X=${WRAPPER_ADDR#0x}
-    NEW_SLOT_VALUE="0x00000000${WRAPPER_NO_0X}${START_BATCH_HEX}"
+        # latestVerifier is state slot 2 (slot 0 = Ownable owner, slot 1 = legacyVerifiers).
+        LATEST_VERIFIER_SLOT=$(cast index uint256 10 2 2>/dev/null)
+        START_BATCH_HEX=$(printf '%016x' "$START_BATCH")
+        WRAPPER_NO_0X=${WRAPPER_ADDR#0x}
+        NEW_SLOT_VALUE="0x00000000${WRAPPER_NO_0X}${START_BATCH_HEX}"
 
-    cast rpc anvil_setStorageAt "$MVRV" "$LATEST_VERIFIER_SLOT" "$NEW_SLOT_VALUE" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
+        cast rpc anvil_setStorageAt "$MVRV" "$LATEST_VERIFIER_SLOT" "$NEW_SLOT_VALUE" --rpc-url "$ANVIL_RPC" >/dev/null 2>&1
 
-    # Also push the previous production verifier into legacyVerifiers so that
-    # getVerifier still behaves reasonably for older batches. This is optional
-    # but keeps the MVRV state closer to reality.
-    cast send "$MVRV" \
-        "updateVerifier(uint256,uint64,address)" \
-        10 "$MIN_START" "$WRAPPER_ADDR" \
-        --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked >/dev/null 2>&1 || true
+        # Also push the previous production verifier into legacyVerifiers so that
+        # getVerifier still behaves reasonably for older batches. This is optional
+        # but keeps the MVRV state closer to reality.
+        cast send "$MVRV" \
+            "updateVerifier(uint256,uint64,address)" \
+            10 "$START_BATCH" "$WRAPPER_ADDR" \
+            --from "$OWNER" --rpc-url "$ANVIL_RPC" --unlocked >/dev/null 2>&1 || true
+    fi
 
     # Verify registration for the target batch range
-    for BATCH_IDX in $MIN_START $((MIN_START + 1)) $((MIN_START + 2)) $((MIN_START + 3)) $((MIN_START + 4)); do
+    for BATCH_IDX in $START_BATCH $((START_BATCH + 1)) $((START_BATCH + 2)) $((START_BATCH + 3)) $((START_BATCH + 4)); do
         REGISTERED=$(cast call "$MVRV" "getVerifier(uint256,uint256)(address)" 10 "$BATCH_IDX" --rpc-url "$ANVIL_RPC")
         log_info "getVerifier(10, $BATCH_IDX) = $REGISTERED"
         if [[ "${REGISTERED,,}" != "${WRAPPER_ADDR,,}" ]]; then

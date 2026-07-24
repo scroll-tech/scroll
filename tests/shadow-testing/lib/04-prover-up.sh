@@ -42,13 +42,18 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # Load circuit VKs from coordinator assets so we can set per-circuit S3 detours.
 # v0.9.0 stores app.vmexe at <base_url><proof_type>/app.vmexe (no VK subdir),
 # while the prover's default URL builder appends <proof_type>/<vk>/.
-ASSETS_V2="${REPO_ROOT}/coordinator/build/bin/assets_v2"
+# ASSETS_DIR env override: the mid-run upgrade test (20-upgrade.sh) points this
+# at the NEW release's assets dir so the generated prover config carries the
+# new VKs.
+ASSETS_V2="${ASSETS_DIR:-${REPO_ROOT}/coordinator/build/bin/assets_v2}"
 CHUNK_VK=$(jq -r '.chunk_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
 BATCH_VK=$(jq -r '.batch_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
 BUNDLE_VK=$(jq -r '.bundle_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo "")
 
 # ─── Build prover if needed ──────────────────────────────────────────────────
-PROVER_BIN="${REPO_ROOT}/target/release/prover"
+# PROVER_BIN env override: the mid-run upgrade test points this at the binary
+# built from another checkout (Phase 1 = develop/production worktree).
+PROVER_BIN="${PROVER_BIN:-${REPO_ROOT}/target/release/prover}"
 
 if [[ ! -f "$PROVER_BIN" ]]; then
     log_info "Building prover (GPU)..."

@@ -621,6 +621,8 @@ For v0.9.0 release assets are under `scroll-zkvm/releases/v0.9.0/`:
 | Bundle digests | `.../releases/v0.9.0/bundle/{digest_1.hex,digest_2.hex}` |
 
 > ✅ **Use the S3 digest files directly.** For guest v0.9.0, `digest_1.hex` / `digest_2.hex` are published in the canonical form expected by the Plonk verifier. You no longer need to extract digests from a proof's `instances` array.
+>
+> ⚠️ **v0.8.0 is different**: its S3 digest files are in **Montgomery form** and must be converted to canonical before deployment. See [`docs/bundle-digest-encoding.md`](docs/bundle-digest-encoding.md).
 
 ### Important: `finalizeBundlePostEuclidV2` uses a `ZkEvmVerifierPostFeynman` verifier
 

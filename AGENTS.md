@@ -43,10 +43,17 @@ Key hard-won rules:
   - ✅ **Primary**: `https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY`
   - 📋 **Credential source**: Check `local-secrets.md`, `.env`, or `.pgpass` first. If not found, **ask a human** — do not guess or invent keys.
 - **S3 circuit URLs**: v0.9.0 uses `releases/v0.9.0/` prefix. (v0.8.0 historically used `v0.8.0/` without `/releases/`.)
+- **S3 digest encoding**: v0.8.0 `digest_*.hex` files are **Montgomery form** — convert to canonical before deploying a verifier; v0.9.0+ files are canonical and usable directly. See [`tests/shadow-testing/docs/bundle-digest-encoding.md`](tests/shadow-testing/docs/bundle-digest-encoding.md).
 - **l2_block table**: Coordinator needs this for block hash lookups. Must be populated and linked via `chunk_hash`.
 - **Blocks**: Must be post-fork (GalileoV2 / codec V10 = blocks ≥ 33,750,000 on mainnet).
 - **L1 messages**: If chunks contain L1 messages, prover needs `scroll_getL1MessagesInBlock` RPC support. Most chunks at current mainnet height do NOT contain L1 messages, so this is usually non-blocking.
 - **Anvil MUST fork Ethereum L1, NOT Scroll L2**: The ScrollChain proxy address `0xa13BAF47339d63B743e7Da8741db5456DAc1E556` is on **Ethereum mainnet** (chainId=1), not Scroll mainnet (chainId=534352). If you accidentally point Anvil at a Scroll L2 RPC (e.g., `scroll-mainnet.g.alchemy.com`), the proxy address will have no code or wrong code, and all contract interactions will fail. Always verify `eth_chainId` returns `1` after forking.
+
+### Follow Mode — Mid-Run Upgrade Test
+
+The **mid-run upgrade test** (`cd tests/shadow-testing/follow && make follow-old` … `make follow-upgrade`, script `follow/scripts/20-upgrade.sh`) simulates a production zk-stack upgrade with **continuous finalization**: Phase 1 runs the current production release against the fork's production MVRV verifier (`--skip-verifier` — no wrapper deployed), then one command swaps coordinator assets, restarts provers with the new circuits, and registers the new `ZkEvmVerifierPostFeynman` wrapper via the **genuine `updateVerifier` path** (old wrapper moves to `legacyVerifiers`) — same fork, same DB, relayer/daemons untouched. Bundles proven pre-boundary finalize through the old wrapper (real legacy-routing coverage); everything at/after the boundary batch `N` is reset and re-proven by the new stack. See `tests/shadow-testing/follow/GUIDE.md` "Mid-Run Upgrade Test" for procedure, acceptance criteria, and traps (in-flight old proofs always fail post-cutover — the reset is mandatory; the script never rebuilds binaries).
+
+> ⚠️ **Phase 1 must run the ACTUAL production zk stack** (usually a `develop` build in a separate `git worktree`, aimed via `COORD_DIR`/`PROVER_BIN`/`ASSETS_DIR`) — never assume the current checkout == production. Verify the production guest version first (follow/GUIDE.md "Determining the Production zk Stack"; digest encoding in `tests/shadow-testing/docs/bundle-digest-encoding.md`), or Phase-1 finalizations will all fail `VerificationFailed` (Trap 31).
 
 ### Follow Mode — Additional Rules
 

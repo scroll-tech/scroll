@@ -15,8 +15,12 @@
 #   j. records run metadata in .work/follow-run.env
 #
 # Idempotent-ish: a component whose pidfile exists and is alive is skipped.
-# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run] [--reset]
+# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run] [--reset] [--skip-verifier]
 # Env: FOLLOW_FORK_HOURS_BACK=0 forks at the current tip (no backlog).
+# --skip-verifier: do NOT deploy a verifier wrapper in step d; use the
+# production verifier already registered on the forked MVRV. This is the
+# Phase-1 ("old stack") bring-up for the mid-run upgrade test — see
+# scripts/20-upgrade.sh.
 
 set -euo pipefail
 
@@ -53,13 +57,15 @@ NEXT_QUEUE="${NEXT_QUEUE:-0}"
 COORD_DIR="${COORD_DIR:-${REPO_ROOT}/coordinator/build/bin}"
 DRY_RUN=false
 RESET_DB=false
+SKIP_VERIFIER=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --config)  CONFIG_FILE="$2"; shift 2 ;;
         --dry-run) DRY_RUN=true; shift ;;
         --reset)   RESET_DB=true; shift ;;
-        -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+        --skip-verifier) SKIP_VERIFIER=true; shift ;;
+        -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -289,6 +295,7 @@ else
         --last-finalized "$LAST_FINALIZED" \
         --next-queue "$NEXT_QUEUE" \
         --deployed-verifier "" \
+        ${SKIP_VERIFIER:+--skip-verifier} \
         --prover-eoa "$PROVER_EOA" \
         --commit-eoa "$COMMIT_EOA" \
         --owner "$OWNER" \
@@ -305,9 +312,50 @@ fi
 # EOA funding (owner/prover/commit) is already handled by 01-setup-anvil.sh
 # step 7, so nothing extra is needed here.
 log_info "=== d. Deploy verifier wrapper ==="
+if $SKIP_VERIFIER; then
+    # Phase-1 ("old stack" = current production release) of the mid-run upgrade
+    # test: the forked MVRV already routes GalileoV2 batches to the production
+    # verifier, whose digests match production circuits — nothing to deploy.
+    # Assert routing is sane, then record it in verifier.env so the monitor and
+    # re-fork.sh have a wrapper address to reference. 20-upgrade.sh later
+    # registers the NEW wrapper via the genuine updateVerifier path.
+    if ! $DRY_RUN; then
+        # NOTE: every cast here needs `|| true` — a failing cast inside $( )
+        # would otherwise kill the script silently under set -e/pipefail.
+        PROD_WRAPPER=$(cast call "$ROLLUP_VERIFIER" \
+            "getVerifier(uint256,uint256)(address)" 10 "$((LAST_FINALIZED + 1))" \
+            --rpc-url "$ANVIL_RPC" 2>/dev/null | tr -d ' ' || true)
+        if [[ -z "$PROD_WRAPPER" || "$PROD_WRAPPER" == "0x0000000000000000000000000000000000000000" ]]; then
+            log_error "--skip-verifier: MVRV routes batch $((LAST_FINALIZED + 1)) to no verifier —"
+            log_error "the forked production MVRV state cannot verify phase-1 proofs. Deploy a"
+            log_error "wrapper instead (drop --skip-verifier)."
+            exit 1
+        fi
+        PROD_CODE=$(cast code "$PROD_WRAPPER" --rpc-url "$ANVIL_RPC" 2>/dev/null || echo "0x")
+        if [[ -z "$PROD_CODE" || "$PROD_CODE" == "0x" ]]; then
+            log_error "--skip-verifier: routed wrapper $PROD_WRAPPER has NO CODE on the fork —"
+            log_error "it cannot verify anything. (A previous 01-setup-anvil fallback may have"
+            log_error "registered a codeless address; re-fork.)"
+            exit 1
+        fi
+        PROD_PV=$(cast call "$PROD_WRAPPER" "protocolVersion()(uint256)" --rpc-url "$ANVIL_RPC" 2>/dev/null | awk '{print $1}' || true)
+        if [[ "$PROD_PV" != "$EXPECTED_PROTOCOL_VERSION" ]]; then
+            log_error "--skip-verifier: production wrapper $PROD_WRAPPER has protocolVersion=${PROD_PV:-unknown},"
+            log_error "expected $EXPECTED_PROTOCOL_VERSION — it cannot verify phase-1 proofs."
+            exit 1
+        fi
+        log_ok "  using production verifier $PROD_WRAPPER (protocolVersion=$PROD_PV) from the forked MVRV"
+        cat > "${WORK_DIR}/verifier.env" <<EOF
+WRAPPER_ADDR=${PROD_WRAPPER}
+PLONK_VERIFIER=production
+PROTOCOL_VERSION=${PROD_PV}
+DEPLOYED_AT=$(date -u +%Y-%m-%dT%H:%M:%S%z)
+EOF
+        log_ok "  wrote ${WORK_DIR}/verifier.env (production wrapper)"
+    fi
 # Skip only when this is a re-entry into an already-running stack (Anvil not
 # restarted by us) and a wrapper was previously deployed onto that same fork.
-if [[ "$ANVIL_FRESH" != "true" && -s "${WORK_DIR}/verifier.env" && "${FORCE_REDEPLOY:-false}" != "true" ]]; then
+elif [[ "$ANVIL_FRESH" != "true" && -s "${WORK_DIR}/verifier.env" && "${FORCE_REDEPLOY:-false}" != "true" ]]; then
     log_info "  verifier.env present and Anvil unchanged, reusing $(grep '^WRAPPER_ADDR=' "${WORK_DIR}/verifier.env" | cut -d= -f2)"
 else
     run_step "${LIB_DIR}/03-deploy-verifier.sh" --config "$CONFIG_FILE"

@@ -5,6 +5,11 @@
 #
 # Usage:
 #   make follow          Bring up the full follow-mode stack
+#   make follow-old      Bring up Phase 1 of the mid-run upgrade test
+#                        (old stack = production release, production verifier)
+#   make follow-upgrade  Mid-run upgrade: cut over to the NEW zk stack
+#                        (configs/mainnet-next.json) WITHOUT resetting the
+#                        fork/DB — finalization stays continuous
 #   make follow-status   Latest monitor snapshot + finalize lag
 #   make follow-report   Throughput report for the current run
 #   make re-fork         Re-fork Anvil at latest block (recovery)
@@ -12,15 +17,22 @@
 
 SCRIPT_DIR    := $(shell cd "$(dir $(lastword $(MAKEFILE_LIST)))" && pwd)
 CONFIG_FILE   := $(SCRIPT_DIR)/configs/mainnet.json
+NEXT_CONFIG   := $(SCRIPT_DIR)/configs/mainnet-next.json
 # .work is shared by both modes and stays at tests/shadow-testing/.work.
 WORK_DIR      := $(SCRIPT_DIR)/../.work
 
 DB_DSN        := $(shell jq -r '.db.dsn' $(CONFIG_FILE) 2>/dev/null)
 
-.PHONY: follow follow-stop follow-status follow-report re-fork help
+.PHONY: follow follow-old follow-upgrade follow-stop follow-status follow-report re-fork help
 
 follow:
 	$(SCRIPT_DIR)/scripts/10-follow-up.sh
+
+follow-old:
+	$(SCRIPT_DIR)/scripts/10-follow-up.sh --skip-verifier
+
+follow-upgrade:
+	$(SCRIPT_DIR)/scripts/20-upgrade.sh --next-config $(NEXT_CONFIG)
 
 follow-stop:
 	$(SCRIPT_DIR)/scripts/11-follow-stop.sh
@@ -44,6 +56,10 @@ help:
 	@echo "Follow Mode Makefile (fork current mainnet tip, follow indefinitely)"
 	@echo ""
 	@echo "  make follow                    Bring up the full follow-mode stack"
+	@echo "  make follow-old                Phase 1 of the upgrade test (old stack ="
+	@echo "                                 production release + production verifier)"
+	@echo "  make follow-upgrade            Cut over to the NEW zk stack mid-run"
+	@echo "                                 (configs/mainnet-next.json; fork/DB untouched)"
 	@echo "  make follow-status             Latest monitor snapshot + finalize lag"
 	@echo "  make follow-report             Throughput report for the current run"
 	@echo "  make re-fork                   Re-fork Anvil at latest block (recovery)"
