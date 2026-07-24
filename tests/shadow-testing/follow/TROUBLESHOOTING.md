@@ -125,3 +125,26 @@ Also note: the relayer writes `rollup_status` **only** through its commit/finali
 - **Symptom**: Phase-1 chunks/batches prove fine, but every bundle finalize reverts with `VerificationFailed(0x439cc0cd)` even though `--skip-verifier` routing checks pass.
 - **Cause**: Assuming the current checkout == the production zk stack. The branch under test and the config templates describe the NEW version (e.g. zkvm v0.9.0 / OpenVM 2.0.0), while mainnet may still run the previous guest (e.g. v0.8.0 / OpenVM 1.6.0 from `develop`). New-guest proofs can never verify against the production wrapper's digests — the mismatch only shows up at finalization, after hours of proving.
 - **Fix**: determine the production stack FIRST (follow/GUIDE.md "Determining the Production zk Stack": on-chain wrapper `verifierDigest1/2()` vs S3 `digest_*.hex` — Montgomery conversion needed for v0.8.0, see docs/bundle-digest-encoding.md — plus `git_version` inside a production `bundle.proof` JSON, and `Cargo.lock` zkvm pins per branch). Build production in a separate `git worktree` and aim `COORD_DIR` / `PROVER_BIN` / `ASSETS_DIR` at it for Phase 1. Also remember the v0.8.0 S3 prefix has **no** `/releases/` segment.
+
+### Trap 32: `cargo update -p scroll-zkvm-*` Drifts `revm`, Breaking the `[patch]` Fork Resolution [build]
+
+- **Symptom**: After bumping the `scroll-zkvm-*` workspace pin (e.g. `tag = "v0.9.0"` → `rev = <master>`) and running `cargo update -p scroll-zkvm-prover ...`, the build fails deep in the dependency graph with `E0308 mismatched types ... expected revm_primitives::hardfork::SpecId, found SpecId` and the note "there are multiple different versions of crate `revm_primitives`" (crates.io vs the scroll `scroll-v91` fork).
+- **Cause**: `cargo update -p` re-resolves more than the named crates. It flipped `alloy-evm 0.22.6`'s edge from `revm 30.1.1` to `revm 30.2.0` (and several `revm-primitives` edges from the patched fork `21.0.1` to crates.io `21.0.2`). The workspace `[patch.crates-io]` only redirects a revm crate to the scroll fork when the fork's version satisfies the requirement; the bumped crates.io `revm` family mixes fork and non-fork `revm-primitives` in one crate and cannot compile.
+- **Fix**: restore the exact HEAD edges instead of letting the resolver choose. Inspect with `git diff Cargo.lock`; the two hand-edits that fixed it (2026-07, zkvm master bf887150): (1) in `alloy-evm 0.22.6`'s dependency list change `"revm 30.2.0"` back to `"revm 30.1.1"`; (2) in the six crates.io revm-family packages that flipped (`revm-context 10.1.2`, `revm-context-interface 11.1.2`, `revm-handler 11.2.0`, `revm-inspector 11.2.0`, `revm-interpreter 28.0.0`, `revm 30.2.0`) change `"revm-primitives 21.0.2"` back to `"revm-primitives 21.0.1"` (the fork). Verify with `cargo metadata --locked` before rebuilding. You cannot fix this with `cargo update -p revm --precise ...` — `op-revm` legitimately requires `revm ^30.2.0`, so both versions must coexist.
+- **Prevention**: after any `cargo update -p scroll-zkvm-*`, always `git diff Cargo.lock` and revert every revm-family drift before building.
+
+### Trap 33: v0.9.0+ Master Prover Hard-Requires `agg_vk.bin` on S3 (and `batch_root_verifier_vk` for the Coordinator) [follow mode / upgrade]
+
+- **Symptom**: New-stack prover exits at startup with `Failed to download agg_vk.bin: HTTP status 403` (or silently falls back to "deriving agg VK from SDK (slow, may allocate GPU memory)" and later OOMs the 24 GB card during SNARK proving). Coordinator panics with `batch_root_verifier_vk missing from assets` when its first batch proof arrives.
+- **Cause**: zkvm-prover master (bf887150, halo2-gpu) writes a per-circuit `agg_vk.bin` next to `app.vmexe` at `build-guest` time, and `Prover::load_agg_vk()` reads it to avoid constructing the GPU aggregation prover just to obtain the VK. The scroll prover downloads circuits from the **flat** S3 layout `<base>/<circuit>/app.vmexe` (no VK subdir) and expects `agg_vk.bin` in the same dir; the v0.9.0 S3 assets predate this file. Similarly the coordinator's batch-proof verification (deferral) needs `batch_root_verifier_vk` in its assets dir, which is also new.
+- **Fix**: after every guest rebuild that bumps the zkvm pin, upload the new artifacts (bucket layout is flat per circuit):
+  ```bash
+  Z=<zkvm-prover>/releases/dev
+  B=s3://circuit-release/scroll-zkvm/releases/v0.9.0
+  for c in chunk batch bundle; do aws s3 cp $Z/$c/agg_vk.bin $B/$c/agg_vk.bin; done
+  aws s3 cp $Z/batch_root_verifier_vk $B/verifier/batch_root_verifier_vk
+  # verify: anonymous GET must succeed (403 = wrong key or missing object)
+  curl -s -o /dev/null -w '%{http_code}\n' https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/chunk/agg_vk.bin
+  ```
+  For the local coordinator, also copy `batch_root_verifier_vk` into `coordinator/build/bin/assets_v2/`.
+- **Note**: `agg_vk.bin` contents are identical for batch and bundle (same agg config) and equal to `root_verifier_vk` for chunk — matching md5s are expected, not a copy/paste bug. And always re-run `make build-guest` after switching zkvm commits: a stale `releases/dev/` once produced a wrong `digest_1.hex` that only a fresh build corrected (digests must match the canonical values in docs/bundle-digest-encoding.md).

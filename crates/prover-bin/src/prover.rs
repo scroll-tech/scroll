@@ -93,7 +93,10 @@ impl AssetsLocationData {
         url_base: &url::Url,
         base_path: impl AsRef<Path>,
     ) -> Result<PathBuf> {
-        let download_files = ["app.vmexe", "openvm.toml"];
+        // agg_vk.bin is the pre-built aggregation verifying key (zkvm-prover
+        // v0.9.0+); without it the prover derives the VK from the SDK, which is
+        // slow and allocates GPU memory that is never reclaimed.
+        let download_files = ["app.vmexe", "openvm.toml", "agg_vk.bin"];
 
         // Step 1: Create a local path for storage
         let storage_path = base_path.as_ref().join(vk);

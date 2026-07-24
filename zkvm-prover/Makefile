@@ -43,6 +43,11 @@ version:
 prover: version
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features cuda -p prover
 
+# GPU prover with halo2-gpu: SNARK (bundle) aggregation also runs on GPU.
+# Needs a 24 GB-class GPU (RTX 3090/4090); superset of the `cuda` feature.
+prover_halo2gpu: version
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release --features halo2-gpu -p prover
+
 prover_cpu: version
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --locked --release -p prover
 

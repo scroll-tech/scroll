@@ -192,11 +192,32 @@ checkout):**
 
 ```bash
 cd ~/scroll && make -C zkvm-prover prover   # new prover binary
+# or, on 24 GB-class GPUs, with GPU-accelerated SNARK (bundle) proving:
+#   make -C zkvm-prover prover_halo2gpu
 make -C coordinator coordinator_api coordinator_cron   # if coordinator changed
 # Download the NEW verifier assets into the dir named by
 # mainnet-next.json's assets.assets_v2, and fill in mainnet-next.json
 # (prover.s3_base_url of the new release, e.g. .../releases/v0.9.0/).
 ```
+
+New-stack checklist (learned on the v0.9.0/halo2-gpu upgrade, 2026-07):
+
+- **Bumping the zkvm pin** (e.g. `tag = "v0.9.0"` → `rev = <master>`): after
+  `cargo update -p scroll-zkvm-*`, ALWAYS `git diff Cargo.lock` and revert any
+  revm-family drift before building — `cargo update` silently breaks the
+  `[patch]` fork resolution (TROUBLESHOOTING.md Trap 32).
+- **`halo2-gpu` cargo feature** (zkvm master ≥ bf887150): runs the SNARK
+  bundle prover on GPU too. Scroll-side it is
+  `prover --features halo2-gpu` (superset of `cuda`), packaged as the
+  `prover_halo2gpu` Makefile target. Needs a 24 GB-class GPU.
+- **New mandatory assets**: the prover downloads `agg_vk.bin` next to each
+  circuit's `app.vmexe` (flat S3 layout), and the coordinator needs
+  `batch_root_verifier_vk` in its assets dir. Both are produced by
+  `make build-guest` in the zkvm-prover repo and must be uploaded to S3 /
+  copied into `assets_v2` before the cutover (TROUBLESHOOTING.md Trap 33).
+- **Re-run `make build-guest`** in the zkvm-prover checkout after switching
+  commits, and compare `digest_*.hex` against the canonical values — a stale
+  build once produced a wrong `digest_1` (Trap 33).
 
 **Step 3 — the cutover (one command).** Aim COORD_DIR at the NEW binaries;
 `PROVER_BIN` defaults to `<main-checkout>/target/release/prover`:

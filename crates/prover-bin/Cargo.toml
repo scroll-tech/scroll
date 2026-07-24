@@ -45,3 +45,5 @@ bincode = { version = "2.0", features = ["serde",] }
 [features]
 default = []
 cuda = ["scroll-zkvm-prover/cuda"]
+# GPU acceleration for the halo2 (SNARK) bundle prover; needs 24 GB-class VRAM.
+halo2-gpu = ["cuda", "scroll-zkvm-prover/halo2-gpu"]
