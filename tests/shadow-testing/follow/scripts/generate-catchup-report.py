@@ -39,10 +39,16 @@ def main():
     # older runs that share the same log file.
     report_start = os.environ.get("SHADOW_REPORT_START")
     if report_start:
-        cutoff = datetime.fromisoformat(report_start)
+        # follow-run.env writes offsets like +0000; fromisoformat (<3.11) wants +00:00
+        def _parse_iso(s):
+            if len(s) >= 5 and (s[-5] in "+-") and s[-2] != ":":
+                s = s[:-2] + ":" + s[-2:]
+            return datetime.fromisoformat(s)
+
+        cutoff = _parse_iso(report_start)
         if cutoff.tzinfo is None:
             cutoff = cutoff.replace(tzinfo=timezone.utc)
-        records = [r for r in records if datetime.fromisoformat(r["timestamp"]) >= cutoff]
+        records = [r for r in records if _parse_iso(r["timestamp"]) >= cutoff]
 
     if not records:
         print("No metrics records found.")

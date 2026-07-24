@@ -363,6 +363,34 @@ impl LocalProver {
                 let child_handler = self
                     .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
                     .await?;
+
+                // A bundle's child (batch) must itself have deferral-over-chunk
+                // initialized: the bundle verify circuit needs the batch prover's
+                // def_hook_commit, which only exists after the batch prover's own
+                // enable_deferral ran (OpenVM v2+). Without it the bundle prover
+                // panics with "def_hook_commit must be defined to verify child
+                // proof with deferrals".
+                if req.proof_type == ProofType::Bundle {
+                    let grandchild_vk = self
+                        .config
+                        .circuits
+                        .get(&req.hard_fork_name)
+                        .and_then(|c| c.child_circuit_vks.get(&ProofType::Chunk))
+                        .ok_or_else(|| {
+                            eyre::eyre!(
+                                "missing chunk circuit vk for fork {}",
+                                req.hard_fork_name
+                            )
+                        })?
+                        .clone();
+                    let grandchild_handler = self
+                        .get_or_load_handler(&req.hard_fork_name, ProofType::Chunk, &grandchild_vk)
+                        .await?;
+                    let mut child_guard = child_handler.lock().await;
+                    let grandchild_guard = grandchild_handler.lock().await;
+                    child_guard.enable_deferral(&*grandchild_guard)?;
+                }
+
                 let mut parent_guard = parent_handler.lock().await;
                 let child_guard = child_handler.lock().await;
                 parent_guard.enable_deferral(&*child_guard)?;

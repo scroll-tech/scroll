@@ -37,9 +37,15 @@ impl UniversalHandler {
     }
 
     /// Return the child aggregation VK needed to build deferral data.
+    /// Reads the pre-built agg_vk.bin asset instead of sdk.agg_vk(): building
+    /// the (GPU) aggregation prover just to obtain the VK uploads ~5.7 GiB of
+    /// proving keys into the VPMM pool, which is never reclaimed and starves
+    /// the halo2-gpu SNARK phase of VRAM (quotient.cu cudaErrorInvalidConfiguration).
     pub fn agg_vk(&self) -> Result<openvm_stark_sdk::openvm_stark_backend::keygen::types::MultiStarkVerifyingKey<openvm_sdk::SC>> {
-        let sdk = self.prover.sdk().map_err(|e| eyre::eyre!("failed to get sdk: {e}"))?;
-        Ok(sdk.agg_vk().as_ref().clone())
+        self.prover
+            .load_agg_vk()
+            .map(|mvk| mvk.as_ref().clone())
+            .map_err(|e| eyre::eyre!("failed to load agg vk: {e}"))
     }
 
     /// Return the cached commit of the verify-stark deferral circuit (def_idx 0).

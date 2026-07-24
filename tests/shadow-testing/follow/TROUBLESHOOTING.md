@@ -175,3 +175,25 @@ Also note: the relayer writes `rollup_status` **only** through its commit/finali
 - **Symptom**: `03-deploy-verifier.sh` aborts with `updateVerifier reverted (tx ..., status 'true')` (or `status '1 (success)'`) even though the tx succeeded on-chain — `latestVerifier`/`getVerifier` already show the new wrapper.
 - **Cause**: older cast prints `0x1`; foundry ≥ 1.6 prints `1 (success)`. A literal string comparison against `0x1`/`1` misreads success as failure. Same class of drift as the `cast blob-base-fee` removal (commit b4d41624).
 - **Fix (codified)**: the status check now accepts `0x1`, `1`, and `1 (success)`. When in doubt, verify on-chain state instead of trusting the script's verdict: `cast call $MVRV "latestVerifier(uint256)(uint64,address)" 10 --rpc-url $RPC`.
+
+### Trap 37: `make coordinator_api` Does NOT Refresh the Embedded `libzkp.so` [build / upgrade]
+
+- **Symptom**: After rebuilding `target/release/libzkp.so` (e.g. for the `agg_vk.bin` verifier change) and restarting the coordinator, batch proof verification still runs the OLD code — valid proofs are rejected (`Batch verify failed, error: <old-asset-name> missing from assets`) and the rejections poison `prover_task` exactly like Trap 34.
+- **Cause**: the coordinator Go binary CGO-links `coordinator/internal/logic/libzkp/lib/libzkp.so` — a **separate copy** that `make coordinator_api` does not rebuild or re-copy. Only `make -C coordinator libzkp` (or a manual `cp target/release/libzkp.so coordinator/internal/logic/libzkp/lib/`) refreshes it.
+- **Fix**: after every libzkp-c rebuild that changes verifier/prover logic, sync the copy and restart the coordinators:
+  ```bash
+  cargo build --release -p libzkp-c
+  cp target/release/libzkp.so coordinator/internal/logic/libzkp/lib/libzkp.so
+  strings coordinator/internal/logic/libzkp/lib/libzkp.so | grep -c "<new-marker-string>"  # sanity check
+  ```
+  Then clear any `ProverProofInvalid` rows created while the stale .so was live (Trap 34 recovery SQL).
+
+### Trap 38: halo2-gpu Bundle Prover Crashes — VRAM Starvation and `def_hook_commit` [upgrade / halo2-gpu]
+
+- **Symptom 1**: Both provers die mid-bundle: `panicked ... called Result::unwrap() on an Err value: HaloGpu(Cuda(CudaError { code: 9, name: "cudaErrorInvalidConfiguration", ... quotient.cu }))` right after the halo2 `create_proof` phase, with the log showing `GPU mem ... peak=22.9 GiB`.
+- **Cause 1**: scroll's prover-bin obtained the child aggregation VK via `sdk.agg_vk()`, which **builds the child's full GPU aggregation prover (~5.7 GiB per circuit)** just to read the VK. The openvm VPMM pool never returns those pages to the OS, so by SNARK time `cudaMemGetInfo` free ≈ 0 and the quotient chunking computes `batch_size = 0` → `cudaErrorInvalidConfiguration` (not a clean OOM). zkvm-prover master (bf887150) documents exactly this failure mode in its AGENTS.md "VRAM budgeting" section.
+- **Fix 1**: `UniversalHandler::agg_vk()` now uses `Prover::load_agg_vk()`, which reads the pre-built `agg_vk.bin` asset (downloaded alongside `app.vmexe`) instead of materializing the GPU prover. Post-fix SNARK-phase peak dropped enough for 24 GB cards (observed halo2_outer ~8 s + wrapper ~2.3 s per bundle).
+- **Symptom 2**: After fixing #1, the prover panics with `def_hook_commit must be defined to verify child proof with deferrals` as soon as a **bundle** task arrives before any batch task in a fresh process.
+- **Cause 2**: the bundle verify circuit's `def_hook_commit` comes from the *batch child* SDK's deferral prover, which only exists after the batch prover's own `enable_deferral(chunk)` ran. Previously `sdk.agg_vk()` accidentally initialized it as a side effect; with the file-based `load_agg_vk()` that side effect is gone. (Batch tasks are unaffected: chunk children carry no deferral merkle proofs, so the assert passes with a `None` hook commit.)
+- **Fix 2**: `do_prove` now initializes the batch child's deferral (`batch.enable_deferral(chunk_handler)`) before `bundle.enable_deferral(batch)` for bundle tasks — mirroring the zkvm integration tester's flow.
+- **Operational note**: after a prover crash, also `DELETE FROM prover_task WHERE proving_status = 1` and reset the affected `bundle`/`batch` rows — a task proved from a *deleted* assignment row is rejected with `validator failure get none prover task for the proof`, and the SDK will happily re-prove its locally-cached stale task instead of picking up the fresh assignment.
