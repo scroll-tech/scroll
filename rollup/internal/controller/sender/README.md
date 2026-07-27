@@ -33,7 +33,8 @@ so all transaction types — including blob transactions — are supported.
 - **`key_id`** — id, alias, or ARN of an asymmetric KMS key with key spec
   `ECC_SECG_P256K1` and key usage `SIGN_VERIFY`.
 - **`region`** — optional; falls back to the ambient AWS config
-  (`AWS_REGION`, shared config, instance/IRSA role) when empty.
+  (`AWS_REGION`, shared config, instance/IRSA role) when empty. Startup fails if
+  no region resolves from either.
 - **`signer_address`** — **required**. The expected Ethereum address of the key.
   It is validated at startup against the address derived from the KMS public key,
   so a misconfigured `key_id` fails fast instead of signing from an unexpected
@@ -56,9 +57,16 @@ role, or environment) — never put credentials in the config file.
 There are two ways to get a key into KMS. Whichever you use, the signer never
 needs the raw private key — it derives the Ethereum address from the KMS public
 key (`keccak256(pubkey)[12:]`) at startup, and you put that address in
-`signer_address`. Get the address from `GetPublicKey` (the relayer logs it on
-startup, or derive it yourself from the returned point) and **fund it** before
-the sender goes live.
+`signer_address`. To get it, take the `PublicKey` returned by
+`aws kms get-public-key` (base64 SPKI DER), whose last 65 bytes are the
+uncompressed point `0x04 || X || Y`, and keccak256-hash the 64 bytes after the
+`0x04` prefix; the address is the last 20 bytes of that hash. Alternatively, start
+the relayer with a placeholder `signer_address`: startup fails with an error that
+names the address derived from the KMS key, which you then put in the config.
+
+**Fund the address** before the sender goes live. Once configured correctly, the
+relayer logs `initialized AWS KMS signer` with the key id and address, so you can
+confirm which account a workload signs from.
 
 **Option A — generate in KMS (recommended).** The private key is created inside
 the KMS HSM and is non-exportable: it provably never exists outside KMS.

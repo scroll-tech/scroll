@@ -12,7 +12,9 @@ import (
 	kmstypes "github.com/aws/aws-sdk-go-v2/service/kms/types"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/rollup/internal/config"
 )
@@ -24,24 +26,29 @@ type kmsAPI interface {
 	Sign(ctx context.Context, params *kms.SignInput, optFns ...func(*kms.Options)) (*kms.SignOutput, error)
 }
 
-// kmsSigner produces ECDSA secp256k1 signatures over transaction hashes using an
-// AWS KMS asymmetric key. The private key never leaves KMS: only the 32-byte
-// signing hash is sent, and KMS returns a DER-encoded signature which we turn
-// into Ethereum's 65-byte [R || S || V] form locally.
+// kmsSigner signs transactions with an AWS KMS asymmetric secp256k1 key. The
+// private key never leaves KMS: only the 32-byte signing hash is sent, and KMS
+// returns a DER-encoded signature which we turn into Ethereum's 65-byte
+// [R || S || V] form and apply to the transaction locally. Because the tx is
+// assembled locally, every tx type the sender builds is supported, including BlobTx.
 type kmsSigner struct {
-	client kmsAPI
-	keyID  string
-	addr   common.Address
+	client   kmsAPI
+	keyID    string
+	addr     common.Address
+	txSigner gethTypes.Signer
+}
+
+// asn1AlgorithmIdentifier is the AlgorithmIdentifier of a SubjectPublicKeyInfo.
+type asn1AlgorithmIdentifier struct {
+	Algorithm  asn1.ObjectIdentifier
+	Parameters asn1.ObjectIdentifier
 }
 
 // asn1Spki mirrors the SubjectPublicKeyInfo DER structure returned by KMS
 // GetPublicKey for an ECC_SECG_P256K1 key. PublicKey holds the uncompressed
 // point (0x04 || X || Y).
 type asn1Spki struct {
-	Algorithm struct {
-		Algorithm  asn1.ObjectIdentifier
-		Parameters asn1.ObjectIdentifier
-	}
+	Algorithm asn1AlgorithmIdentifier
 	PublicKey asn1.BitString
 }
 
@@ -67,7 +74,7 @@ var (
 // newKMSSigner constructs a signer backed by a live AWS KMS key. cfg.SignerAddress
 // is required and validated against the address derived from the KMS public key,
 // so a wrong key id fails fast instead of signing from an unexpected account.
-func newKMSSigner(ctx context.Context, cfg *config.AWSKMSSignerConfig) (*kmsSigner, error) {
+func newKMSSigner(ctx context.Context, cfg *config.AWSKMSSignerConfig, chainID *big.Int) (*kmsSigner, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("aws_kms_signer_config is nil")
 	}
@@ -89,13 +96,16 @@ func newKMSSigner(ctx context.Context, cfg *config.AWSKMSSignerConfig) (*kmsSign
 	if err != nil {
 		return nil, fmt.Errorf("aws kms signer: failed to load aws config: %w", err)
 	}
+	if awsCfg.Region == "" {
+		return nil, fmt.Errorf("aws kms signer: aws region is not set (configure region or AWS_REGION)")
+	}
 
-	return newKMSSignerWithClient(ctx, kms.NewFromConfig(awsCfg), cfg.KeyID, common.HexToAddress(cfg.SignerAddress))
+	return newKMSSignerWithClient(ctx, kms.NewFromConfig(awsCfg), cfg.KeyID, common.HexToAddress(cfg.SignerAddress), chainID)
 }
 
 // newKMSSignerWithClient is the testable core: it derives the key's address from
 // the KMS public key and asserts it matches expectedAddr.
-func newKMSSignerWithClient(ctx context.Context, client kmsAPI, keyID string, expectedAddr common.Address) (*kmsSigner, error) {
+func newKMSSignerWithClient(ctx context.Context, client kmsAPI, keyID string, expectedAddr common.Address, chainID *big.Int) (*kmsSigner, error) {
 	pub, err := publicKeyFromKMS(ctx, client, keyID)
 	if err != nil {
 		return nil, err
@@ -104,7 +114,13 @@ func newKMSSignerWithClient(ctx context.Context, client kmsAPI, keyID string, ex
 	if derivedAddr != expectedAddr {
 		return nil, fmt.Errorf("aws kms signer: configured signer_address %s does not match address %s derived from KMS key %s", expectedAddr.Hex(), derivedAddr.Hex(), keyID)
 	}
-	return &kmsSigner{client: client, keyID: keyID, addr: derivedAddr}, nil
+	log.Info("initialized AWS KMS signer", "keyID", keyID, "address", derivedAddr.Hex(), "chainID", chainID)
+	return &kmsSigner{
+		client:   client,
+		keyID:    keyID,
+		addr:     derivedAddr,
+		txSigner: gethTypes.LatestSignerForChainID(chainID),
+	}, nil
 }
 
 func publicKeyFromKMS(ctx context.Context, client kmsAPI, keyID string) (*ecdsa.PublicKey, error) {
@@ -138,6 +154,19 @@ func publicKeyFromKMS(ctx context.Context, client kmsAPI, keyID string) (*ecdsa.
 // address returns the Ethereum address of the KMS key.
 func (k *kmsSigner) address() common.Address {
 	return k.addr
+}
+
+// signTx returns tx signed by the KMS key.
+func (k *kmsSigner) signTx(ctx context.Context, tx *gethTypes.Transaction) (*gethTypes.Transaction, error) {
+	sig, err := k.sign(ctx, k.txSigner.Hash(tx).Bytes())
+	if err != nil {
+		return nil, err
+	}
+	signedTx, err := tx.WithSignature(k.txSigner, sig)
+	if err != nil {
+		return nil, fmt.Errorf("aws kms signer: failed to apply signature to tx: %w", err)
+	}
+	return signedTx, nil
 }
 
 // sign returns the 65-byte [R || S || V] Ethereum signature over the given 32-byte hash.

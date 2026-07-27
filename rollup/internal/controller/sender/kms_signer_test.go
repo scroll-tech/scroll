@@ -34,10 +34,7 @@ type fakeKMS struct {
 func (f *fakeKMS) GetPublicKey(_ context.Context, _ *kms.GetPublicKeyInput, _ ...func(*kms.Options)) (*kms.GetPublicKeyOutput, error) {
 	pubBytes := crypto.FromECDSAPub(&f.priv.PublicKey) // 0x04 || X || Y
 	der, err := asn1.Marshal(asn1Spki{
-		Algorithm: struct {
-			Algorithm  asn1.ObjectIdentifier
-			Parameters asn1.ObjectIdentifier
-		}{Algorithm: ecPublicKeyOID, Parameters: secp256k1OID},
+		Algorithm: asn1AlgorithmIdentifier{Algorithm: ecPublicKeyOID, Parameters: secp256k1OID},
 		PublicKey: asn1.BitString{Bytes: pubBytes, BitLength: len(pubBytes) * 8},
 	})
 	if err != nil {
@@ -66,10 +63,10 @@ func (f *fakeKMS) Sign(_ context.Context, in *kms.SignInput, _ ...func(*kms.Opti
 	return &kms.SignOutput{Signature: der}, nil
 }
 
-func newTestKMSSigner(t *testing.T, fake *fakeKMS) *kmsSigner {
+func newTestKMSSigner(t *testing.T, fake *fakeKMS, chainID *big.Int) *kmsSigner {
 	t.Helper()
 	expected := crypto.PubkeyToAddress(fake.priv.PublicKey)
-	ks, err := newKMSSignerWithClient(context.Background(), fake, "test-key-id", expected)
+	ks, err := newKMSSignerWithClient(context.Background(), fake, "test-key-id", expected, chainID)
 	require.NoError(t, err)
 	assert.Equal(t, expected, ks.address())
 	return ks
@@ -81,10 +78,10 @@ func TestKMSSigner_AddressValidation(t *testing.T) {
 	fake := &fakeKMS{priv: priv}
 
 	// matching address succeeds
-	newTestKMSSigner(t, fake)
+	newTestKMSSigner(t, fake, big.NewInt(534352))
 
 	// mismatching address fails fast
-	_, err = newKMSSignerWithClient(context.Background(), fake, "test-key-id", common.HexToAddress("0xdeadbeef00000000000000000000000000000000"))
+	_, err = newKMSSignerWithClient(context.Background(), fake, "test-key-id", common.HexToAddress("0xdeadbeef00000000000000000000000000000000"), big.NewInt(534352))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match")
 }
@@ -134,12 +131,11 @@ func TestKMSSigner_SignAllTxTypes(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ks := newTestKMSSigner(t, &fakeKMS{priv: priv, forceHi: tc.forceHi})
+			ks := newTestKMSSigner(t, &fakeKMS{priv: priv, forceHi: tc.forceHi}, chainID)
 			ts := &TransactionSigner{
-				config:      &config.SignerConfig{SignerType: AWSKMSSignerType},
-				kmsSigner:   ks,
-				kmsTxSigner: gethTypes.LatestSignerForChainID(chainID),
-				addr:        ks.address(),
+				config:    &config.SignerConfig{SignerType: AWSKMSSignerType},
+				kmsSigner: ks,
+				addr:      ks.address(),
 			}
 
 			tx := gethTypes.NewTx(tc.txData)
@@ -183,10 +179,7 @@ func (f *rawKMS) Sign(_ context.Context, _ *kms.SignInput, _ ...func(*kms.Option
 func marshalSPKI(t *testing.T, algo, curve asn1.ObjectIdentifier, point []byte, bitLen int) []byte {
 	t.Helper()
 	der, err := asn1.Marshal(asn1Spki{
-		Algorithm: struct {
-			Algorithm  asn1.ObjectIdentifier
-			Parameters asn1.ObjectIdentifier
-		}{Algorithm: algo, Parameters: curve},
+		Algorithm: asn1AlgorithmIdentifier{Algorithm: algo, Parameters: curve},
 		PublicKey: asn1.BitString{Bytes: point, BitLength: bitLen},
 	})
 	require.NoError(t, err)
@@ -207,7 +200,7 @@ func TestKMSSigner_MalformedPublicKey(t *testing.T) {
 	evenPoint[len(evenPoint)-1] &^= 1
 
 	// control: a well-formed SPKI must still be accepted.
-	_, err = newKMSSignerWithClient(context.Background(), &rawKMS{pub: marshalSPKI(t, ecPublicKeyOID, secp256k1OID, point, full)}, "k", addr)
+	_, err = newKMSSignerWithClient(context.Background(), &rawKMS{pub: marshalSPKI(t, ecPublicKeyOID, secp256k1OID, point, full)}, "k", addr, big.NewInt(534352))
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -222,7 +215,7 @@ func TestKMSSigner_MalformedPublicKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := newKMSSignerWithClient(context.Background(), &rawKMS{pub: tc.pub}, "k", addr)
+			_, err := newKMSSignerWithClient(context.Background(), &rawKMS{pub: tc.pub}, "k", addr, big.NewInt(534352))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.want)
 		})
@@ -264,7 +257,7 @@ func TestKMSSigner_InvalidSignerAddress(t *testing.T) {
 	_, err := newKMSSigner(context.Background(), &config.AWSKMSSignerConfig{
 		KeyID:         "some-key-id",
 		SignerAddress: "not-a-hex-address",
-	})
+	}, big.NewInt(534352))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a valid hex address")
 }

@@ -146,8 +146,9 @@ type AWSKMSSignerConfig struct {
 	// KeyID is the KMS key id, alias or ARN of an asymmetric ECC_SECG_P256K1 / SIGN_VERIFY key.
 	KeyID string `json:"key_id"`
 	// Region is the AWS region of the key. Optional; falls back to the ambient AWS config
-	// (AWS_REGION, shared config, instance/IRSA role) when empty.
-	Region string `json:"region,omitempty"`
+	// (AWS_REGION, shared config, instance/IRSA role) when empty, and startup fails if
+	// no region resolves from either.
+	Region string `json:"region"`
 	// SignerAddress is the expected Ethereum address of the key. Required: it is validated
 	// against the address derived from the KMS public key at startup so a misconfigured
 	// key id fails fast instead of signing from an unexpected account.
