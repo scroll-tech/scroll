@@ -49,7 +49,7 @@ func testBothSignerTypes(t *testing.T) {
 			RemoteSignerUrl: endpoint,
 		},
 	}
-	remoteSigner, err := NewTransactionSigner(remoteSignerConf, big.NewInt(int64(chainId)))
+	remoteSigner, err := NewTransactionSigner(context.Background(), remoteSignerConf, big.NewInt(int64(chainId)))
 	assert.NoError(t, err)
 	remoteSigner.SetNonce(2)
 
@@ -60,7 +60,7 @@ func testBothSignerTypes(t *testing.T) {
 			PrivateKey: "1212121212121212121212121212121212121212121212121212121212121212",
 		},
 	}
-	privateKeySigner, err := NewTransactionSigner(privateKeySignerConf, big.NewInt(int64(chainId)))
+	privateKeySigner, err := NewTransactionSigner(context.Background(), privateKeySignerConf, big.NewInt(int64(chainId)))
 	assert.NoError(t, err)
 	privateKeySigner.SetNonce(2)
 
