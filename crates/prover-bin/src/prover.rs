@@ -387,17 +387,25 @@ impl LocalProver {
                         .get_or_load_handler(&req.hard_fork_name, ProofType::Chunk, &grandchild_vk)
                         .await?;
                     let mut child_guard = child_handler.lock().await;
-                    let grandchild_guard = grandchild_handler.lock().await;
+                    let mut grandchild_guard = grandchild_handler.lock().await;
                     child_guard.enable_deferral(&*grandchild_guard)?;
+                    // The grandchild (chunk) SDK was only needed to initialize the
+                    // batch prover's deferral hook; release its GPU proving keys
+                    // before the bundle STARK/SNARK phase (see UniversalHandler::reset).
+                    grandchild_guard.reset();
                 }
 
                 let mut parent_guard = parent_handler.lock().await;
-                let child_guard = child_handler.lock().await;
+                let mut child_guard = child_handler.lock().await;
                 parent_guard.enable_deferral(&*child_guard)?;
 
                 let child_agg_vk = child_guard
                     .agg_vk()
                     .map_err(|e| eyre::eyre!("failed to get child agg vk: {e}"))?;
+                // The child SDK is no longer needed once deferral is configured on
+                // the parent and the (file-based) child agg vk is extracted; release
+                // its GPU proving keys before proving (see UniversalHandler::reset).
+                child_guard.reset();
                 let cached_commit = parent_guard
                     .deferral_cached_commit()
                     .map_err(|e| eyre::eyre!("failed to get parent deferral cached commit: {e}"))?;

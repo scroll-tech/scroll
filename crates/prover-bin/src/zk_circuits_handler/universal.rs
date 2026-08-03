@@ -36,6 +36,19 @@ impl UniversalHandler {
         Ok(())
     }
 
+    /// Release the lazily-built SDK (GPU proving keys) of this circuit.
+    ///
+    /// The openvm VPMM pool never returns physical pages to the OS, but freed
+    /// allocations become reusable pool regions; dropping a child circuit's SDK
+    /// once deferral is configured lowers the live GPU set (and thus the pool
+    /// high-water mark) before the parent's STARK/SNARK phase. Mirrors the
+    /// zkvm integration tester, which calls `Prover::reset()` on child provers
+    /// after `enable_deferral` for the same reason. The SDK is rebuilt lazily
+    /// on the next task that needs this circuit.
+    pub fn reset(&mut self) {
+        self.prover.reset();
+    }
+
     /// Return the child aggregation VK needed to build deferral data.
     /// Reads the pre-built agg_vk.bin asset instead of sdk.agg_vk(): building
     /// the (GPU) aggregation prover just to obtain the VK uploads ~5.7 GiB of
