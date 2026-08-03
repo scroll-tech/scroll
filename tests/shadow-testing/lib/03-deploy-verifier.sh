@@ -294,8 +294,9 @@ if $register; then
             sleep 0.5
         done
         TX_STATUS=$(cast receipt "$UPDATE_TX" status --rpc-url "$ANVIL_RPC" 2>/dev/null || echo "")
-        # cast >= 1.6 prints "1 (success)" instead of "0x1" — accept both.
-        if ! grep -qE '^(0x1|1( \(success\))?)$' <<<"$TX_STATUS"; then
+        # cast >= 1.6 prints "1 (success)" instead of "0x1"; cast >= 1.7 prints
+        # "true"/"false" — accept all success spellings.
+        if ! grep -qiE '^(0x1|1( \(success\))?|true)$' <<<"$TX_STATUS"; then
             log_error "updateVerifier reverted (tx $UPDATE_TX, status '$TX_STATUS')"
             exit 1
         fi
