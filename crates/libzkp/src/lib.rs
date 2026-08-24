@@ -55,43 +55,8 @@ pub fn checkout_chunk_task(
 
 /// Convert the universal task json into compatible form for old prover
 pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
-    use scroll_zkvm_types::proof::VmInternalStarkProof;
-
-    let task: tasks::ProvingTask = serde_json::from_str(task_json)?;
-    let aggregated_proofs: Vec<VmInternalStarkProof> = task
-        .aggregated_proofs
-        .into_iter()
-        .map(|proof| VmInternalStarkProof {
-            proofs: proof.proofs,
-            public_values: proof.public_values,
-        })
-        .collect();
-
-    #[derive(Serialize)]
-    struct CompatibleProvingTask {
-        /// seralized witness which should be written into stdin first
-        pub serialized_witness: Vec<Vec<u8>>,
-        /// aggregated proof carried by babybear fields, should be written into stdin
-        /// followed `serialized_witness`
-        pub aggregated_proofs: Vec<VmInternalStarkProof>,
-        /// Fork name specify
-        pub fork_name: String,
-        /// The vk of app which is expcted to prove this task
-        pub vk: Vec<u8>,
-        /// An identifier assigned by coordinator, it should be kept identify for the
-        /// same task (for example, using chunk, batch and bundle hashes)
-        pub identifier: String,
-    }
-
-    let compatible_u_task = CompatibleProvingTask {
-        serialized_witness: task.serialized_witness,
-        aggregated_proofs,
-        fork_name: task.fork_name,
-        vk: task.vk,
-        identifier: task.identifier,
-    };
-
-    Ok(serde_json::to_string(&compatible_u_task)?)
+    // v0.9.0+ provers consume the new ProvingTask format directly; no translation needed.
+    Ok(task_json.to_string())
 }
 
 /// Generate required staff for proving tasks

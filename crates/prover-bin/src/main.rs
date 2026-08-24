@@ -1,3 +1,4 @@
+mod deferral;
 mod dumper;
 mod prover;
 mod types;
