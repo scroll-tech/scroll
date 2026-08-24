@@ -385,7 +385,7 @@ impl LocalProver {
                         .await?;
                     let mut child_guard = child_handler.lock().await;
                     let mut grandchild_guard = grandchild_handler.lock().await;
-                    child_guard.enable_deferral(&*grandchild_guard)?;
+                    child_guard.enable_deferral(&grandchild_guard)?;
                     // The grandchild (chunk) SDK was only needed to initialize the
                     // batch prover's deferral hook; release its GPU proving keys
                     // before the bundle STARK/SNARK phase (see UniversalHandler::reset).
@@ -394,7 +394,7 @@ impl LocalProver {
 
                 let mut parent_guard = parent_handler.lock().await;
                 let mut child_guard = child_handler.lock().await;
-                parent_guard.enable_deferral(&*child_guard)?;
+                parent_guard.enable_deferral(&child_guard)?;
 
                 let child_agg_vk = child_guard
                     .agg_vk()

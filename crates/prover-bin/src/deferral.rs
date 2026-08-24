@@ -16,17 +16,21 @@ use std::io::Cursor;
 /// additionally supply `DeferralInput`s and `DeferralState`s to the SDK prover. This function
 /// derives all three from the child STARK proofs, the child aggregation VK and the parent's
 /// deferral cached commit.
+/// Deferral data derived from child proofs: stdin `input_commits`, plus the
+/// `DeferralInput`s and `DeferralState`s supplied to the SDK prover.
+pub type DeferralData = (
+    Vec<[u8; 32]>,
+    Vec<DeferralInput>,
+    Vec<openvm_circuit::arch::deferral::DeferralState>,
+);
+
 pub fn compute_deferral_data(
     child_agg_vk: &openvm_stark_sdk::openvm_stark_backend::keygen::types::MultiStarkVerifyingKey<
         SC,
     >,
     parent_deferral_cached_commit: openvm_continuations::CommitBytes,
     proofs: &[&StarkProof],
-) -> Result<(
-    Vec<[u8; 32]>,
-    Vec<DeferralInput>,
-    Vec<openvm_circuit::arch::deferral::DeferralState>,
-)> {
+) -> Result<DeferralData> {
     let mvk = (*child_agg_vk).clone();
 
     let (vm_proofs, baselines): (Vec<VmStarkProof>, Vec<VerificationBaseline>) = proofs
