@@ -229,7 +229,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		case message.ProofTypeChunk:
 			fallthrough
 		case message.ProofTypeBatch:
-			encodeData, err := json.Marshal(&message.OpenVMProof{})
+			encodeData, err := json.Marshal(&message.OpenVMStarkProof{})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
@@ -245,7 +245,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		case message.ProofTypeChunk:
 			fallthrough
 		case message.ProofTypeBatch:
-			encodeData, err := json.Marshal(&message.OpenVMProof{Proof: []byte(verifier.InvalidTestProof)})
+			encodeData, err := json.Marshal(&message.OpenVMStarkProof{Proof: []byte(verifier.InvalidTestProof), UserPvsProof: []byte{0x01}})
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData

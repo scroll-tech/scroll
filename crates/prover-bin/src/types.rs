@@ -18,8 +18,9 @@ pub struct ProofDetail {
     pub error: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ProofFailureType {
+    #[default]
     Undefined,
     Panic,
     NoPanic,
@@ -58,14 +59,9 @@ impl<'de> Deserialize<'de> for ProofFailureType {
     }
 }
 
-impl Default for ProofFailureType {
-    fn default() -> Self {
-        Self::Undefined
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ProofStatus {
+    #[default]
     Ok,
     Error,
 }
@@ -98,11 +94,5 @@ impl<'de> Deserialize<'de> for ProofStatus {
     {
         let v: u8 = u8::deserialize(deserializer)?;
         Ok(ProofStatus::from_u8(v))
-    }
-}
-
-impl Default for ProofStatus {
-    fn default() -> Self {
-        Self::Ok
     }
 }

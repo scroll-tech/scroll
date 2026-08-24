@@ -39,7 +39,7 @@ impl Dumper {
             let mut agg_writer = std::io::BufWriter::new(agg_file);
             for proof in &task.aggregated_proofs {
                 let sz = bincode::serde::encode_into_std_write(
-                    &proof.proofs,
+                    &proof.proof,
                     &mut agg_writer,
                     bincode::config::standard(),
                 )?;

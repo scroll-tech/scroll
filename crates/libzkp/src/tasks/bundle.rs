@@ -38,6 +38,7 @@ impl BundleProvingTask {
                 .collect(),
             serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
+            input_commits: Vec::new(),
         };
 
         Ok((proving_task, bundle_info, bundle_pi_hash))
