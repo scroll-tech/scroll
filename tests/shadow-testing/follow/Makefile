@@ -10,6 +10,14 @@
 #   make follow-upgrade  Mid-run upgrade: cut over to the NEW zk stack
 #                        (configs/mainnet-next.json) WITHOUT resetting the
 #                        fork/DB — finalization stays continuous
+#   make follow-canary   Bring up Phase A of the CANARY parallel-upgrade test
+#                        (no local proving; production proofs imported and
+#                        finalized through the forked production wrapper)
+#   make canary-upgrade  Canary t1: register the NEW wrapper at boundary N and
+#                        start the new coordinator+provers alongside the old
+#                        (configs/mainnet-next.json; nothing is reset)
+#   make canary-rollback Roll back the canary upgrade: restore the old wrapper
+#                        at N and apply quarantined production proofs >= N
 #   make follow-status   Latest monitor snapshot + finalize lag
 #   make follow-report   Throughput report for the current run
 #   make re-fork         Re-fork Anvil at latest block (recovery)
@@ -23,7 +31,7 @@ WORK_DIR      := $(SCRIPT_DIR)/../.work
 
 DB_DSN        := $(shell jq -r '.db.dsn' $(CONFIG_FILE) 2>/dev/null)
 
-.PHONY: follow follow-old follow-upgrade follow-stop follow-status follow-report re-fork help
+.PHONY: follow follow-old follow-upgrade follow-canary canary-upgrade canary-rollback follow-stop follow-status follow-report re-fork help
 
 follow:
 	$(SCRIPT_DIR)/scripts/10-follow-up.sh
@@ -33,6 +41,15 @@ follow-old:
 
 follow-upgrade:
 	$(SCRIPT_DIR)/scripts/20-upgrade.sh --next-config $(NEXT_CONFIG)
+
+follow-canary:
+	$(SCRIPT_DIR)/scripts/10-follow-up.sh --import-proofs
+
+canary-upgrade:
+	$(SCRIPT_DIR)/scripts/30-canary-upgrade.sh --next-config $(NEXT_CONFIG)
+
+canary-rollback:
+	$(SCRIPT_DIR)/scripts/31-canary-rollback.sh
 
 follow-stop:
 	$(SCRIPT_DIR)/scripts/11-follow-stop.sh
@@ -60,6 +77,12 @@ help:
 	@echo "                                 production release + production verifier)"
 	@echo "  make follow-upgrade            Cut over to the NEW zk stack mid-run"
 	@echo "                                 (configs/mainnet-next.json; fork/DB untouched)"
+	@echo "  make follow-canary             Phase A of the canary parallel-upgrade test"
+	@echo "                                 (imported production proofs, no local proving)"
+	@echo "  make canary-upgrade            Canary t1: new wrapper + new stack alongside"
+	@echo "                                 the old (configs/mainnet-next.json)"
+	@echo "  make canary-rollback           Roll back the canary upgrade (old wrapper"
+	@echo "                                 restored at N, quarantined proofs applied)"
 	@echo "  make follow-status             Latest monitor snapshot + finalize lag"
 	@echo "  make follow-report             Throughput report for the current run"
 	@echo "  make re-fork                   Re-fork Anvil at latest block (recovery)"

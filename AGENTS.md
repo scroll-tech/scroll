@@ -55,6 +55,10 @@ The **mid-run upgrade test** (`cd tests/shadow-testing/follow && make follow-old
 
 > ⚠️ **Phase 1 must run the ACTUAL production zk stack** (usually a `develop` build in a separate `git worktree`, aimed via `COORD_DIR`/`PROVER_BIN`/`ASSETS_DIR`) — never assume the current checkout == production. Verify the production guest version first (follow/GUIDE.md "Determining the Production zk Stack"; digest encoding in `tests/shadow-testing/docs/bundle-digest-encoding.md`), or Phase-1 finalizations will all fail `VerificationFailed` (Trap 31).
 
+### Follow Mode — Canary Parallel-Upgrade Test
+
+The **canary parallel-upgrade test** (`make follow-canary` … `make canary-upgrade`, optionally `make canary-rollback`) is an alternative to the hard-switch upgrade test: Phase A imports **production bundle proofs from the mainnet DB** (poll-sync `--import-proofs` / `SYNC_PROOFS=1`, quarantined in the shadow-private `remote_bundle_proof` table) and finalizes them through the forked production wrapper with **no local proving and no old-stack build**; `30-canary-upgrade.sh` then registers the new wrapper at boundary `N` (oldest unfinalized bundle without a remote proof) and starts the new coordinator+provers, so old (< N, imported proofs) and new (≥ N, local proofs) bundles genuinely finalize in parallel. `31-canary-rollback.sh` restores the old wrapper at N and applies the quarantined proofs. See `tests/shadow-testing/follow/GUIDE.md` "Canary Parallel-Upgrade Test" and TROUBLESHOOTING Trap 39.
+
 ### Follow Mode — Additional Rules
 
 For continuously proving mainnet bundles in real time (poll-syncing the mainnet DB into the shadow DB), three silent starvation traps apply — see `tests/shadow-testing/follow/TROUBLESHOOTING.md` Trap 22/23:
@@ -191,6 +195,20 @@ make coordinator_setup
 ### Multiple Coordinator Instances
 - Running `make coordinator_setup` rebuilds the binary but does not stop running instances. If the old instance holds port 8390, the new one fails with `bind: address already in use`.
 - Always check with `ss -tlnp | grep 8390` before launching.
+
+### Querying the Remote Mainnet DB (RDS via tunnel)
+Rules learned the hard way querying the production read-only DB (`192.168.1.108:15432`, an RDS tunnel — sizes as of 2026-08):
+
+- **Every `l2_block` index is partial: `WHERE deleted_at IS NULL`.** Any query on `l2_block` (and `chunk`) without that predicate **cannot use any index** and seq-scans the whole heap (62 GB for `l2_block`) — even innocent-looking ones like `SELECT MAX(number) FROM l2_block`. Always write `... WHERE deleted_at IS NULL AND ...`. (Same pattern on `chunk`; its indexes are partial too.)
+- **Never run unbounded `count(*)` on `l2_block`.** Plain `count(*)` = parallel seq scan ≈ **2 minutes** (33.5M rows / 62 GB heap, 183 GB incl. TOAST). Even `count(*) WHERE deleted_at IS NULL` (parallel index-only scan) ran **>5 minutes** — the index itself is multi-GB. Just don't count this table.
+- For row-count estimates use the planner stats instead — instant:
+  ```sql
+  SELECT reltuples::bigint FROM pg_class WHERE relname = 'l2_block';
+  ```
+- Bounded counts are fine when they carry the partial-index predicate plus a range on the indexed column: `SELECT count(*) FROM l2_block WHERE deleted_at IS NULL AND number > X AND number <= Y;` (an 8.4k-block range ≈ 8 s). `MAX(number) ... WHERE deleted_at IS NULL` is instant.
+- `chunk` / `batch` / `bundle` are small enough (heaps ≤ 5 GB) that `count(*) WHERE deleted_at IS NULL` returns in seconds — but still always include the predicate, or you seq-scan.
+- Each `psql` invocation pays ~0.7 s TLS+SCRAM setup and ~80 ms RTT per query (the tunnel forwards to a remote RDS; the LAN hop itself is <1 ms). Batch multiple statements into one session (one `psql` with several `-c`, or interactive) instead of one invocation per query.
+- The follow-mode poll-sync daemon only issues indexed queries (`MAX(index)`, range-bound `COPY`, small proof windows), so it is unaffected — this section is for ad-hoc/manual queries.
 
 ## Agent Discipline: Research Before Experimentation
 

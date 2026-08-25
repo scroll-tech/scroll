@@ -15,12 +15,17 @@
 #   j. records run metadata in .work/follow-run.env
 #
 # Idempotent-ish: a component whose pidfile exists and is alive is skipped.
-# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run] [--reset] [--skip-verifier]
+# Usage: ./10-follow-up.sh [--config configs/mainnet.json] [--dry-run] [--reset] [--skip-verifier] [--import-proofs]
 # Env: FOLLOW_FORK_HOURS_BACK=0 forks at the current tip (no backlog).
 # --skip-verifier: do NOT deploy a verifier wrapper in step d; use the
 # production verifier already registered on the forked MVRV. This is the
 # Phase-1 ("old stack") bring-up for the mid-run upgrade test — see
 # scripts/20-upgrade.sh.
+# --import-proofs: canary parallel-upgrade Phase A. Implies --skip-verifier;
+# additionally skips the local coordinator_api/coordinator_cron/provers
+# entirely (Phase A needs no local proving) and passes SYNC_PROOFS=1 to the
+# baseline sync and the poll-sync daemon, so proved mainnet bundle proofs are
+# imported and applied to the shadow DB (see scripts/30-canary-upgrade.sh).
 
 set -euo pipefail
 
@@ -58,6 +63,7 @@ COORD_DIR="${COORD_DIR:-${REPO_ROOT}/coordinator/build/bin}"
 DRY_RUN=false
 RESET_DB=false
 SKIP_VERIFIER=false
+IMPORT_PROOFS=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -65,7 +71,8 @@ while [[ $# -gt 0 ]]; do
         --dry-run) DRY_RUN=true; shift ;;
         --reset)   RESET_DB=true; shift ;;
         --skip-verifier) SKIP_VERIFIER=true; shift ;;
-        -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
+        --import-proofs) IMPORT_PROOFS=true; SKIP_VERIFIER=true; shift ;;
+        -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -230,10 +237,22 @@ if $RESET_DB; then
         # preserves SHADOW_REPORT_START on re-entry) — drop it on --reset so
         # the new run gets a fresh report start time.
         rm -f "${WORK_DIR}/anvil-${CONFIG_NAME}.state.json" "${WORK_DIR}/verifier.env" "${WORK_DIR}/follow-run.env"
+        # Trap 39: canary proof-import state must not survive a reset either —
+        # a stale canary.env boundary silently caps which proofs get applied,
+        # and a stale import cursor strands the quarantine table out of sync
+        # with the truncated bundle table.
+        rm -f "${WORK_DIR}/canary.env" "${WORK_DIR}/proof-import.cursor"
+        psql "$SHADOW_DSN" -Atq -c "DROP TABLE IF EXISTS remote_bundle_proof" >/dev/null || true
     fi
 fi
 export MAINNET_DSN
-run_step python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --init-from-batch "$BASELINE_START"
+if $IMPORT_PROOFS; then
+    # Canary Phase A: also import proved mainnet bundle proofs into the
+    # quarantine table and apply them (boundary = +inf until 30-canary-upgrade).
+    run_step env SYNC_PROOFS=1 python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --init-from-batch "$BASELINE_START"
+else
+    run_step python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --init-from-batch "$BASELINE_START"
+fi
 # Boundary rows (<= lastFinalized) are already finalized on the fork: mark
 # them done so the coordinator never wastes work proving them. Their proof
 # columns stay NULL — safe, they are only referenced via row fields
@@ -368,6 +387,13 @@ run_step python3 "${LIB_DIR}/sync-queue-hashes.py"
 
 # ─── f. Coordinator api + cron ───────────────────────────────────────────────
 log_info "=== f. Coordinator ==="
+if $IMPORT_PROOFS; then
+    # Canary Phase A: no local proving — finalization runs on imported
+    # production proofs. Coordinator + provers come up later via
+    # 30-canary-upgrade.sh. No pidfiles are created, so 11-follow-stop.sh
+    # and re-entry idempotency are unaffected.
+    log_info "  --import-proofs: skipping coordinator_api/coordinator_cron (canary Phase A)"
+else
 [[ -x "${COORD_DIR}/coordinator_api" ]] || { log_error "missing ${COORD_DIR}/coordinator_api (build: cd coordinator && make coordinator_api)"; exit 1; }
 [[ -x "${COORD_DIR}/coordinator_cron" ]] || { log_error "missing ${COORD_DIR}/coordinator_cron"; exit 1; }
 
@@ -416,11 +442,15 @@ else
         pid_alive "${WORK_DIR}/coordinator-cron.pid" || { log_error "coordinator_cron died; tail .work/coordinator-cron.log"; exit 1; }
     fi
 fi
+fi  # ! IMPORT_PROOFS (step f)
 
 # ─── g. Provers ──────────────────────────────────────────────────────────────
 log_info "=== g. GPU provers ==="
-PROVERS_RUNNING=true
 IFS=',' read -ra GPU_ARRAY <<< "$GPUS"
+if $IMPORT_PROOFS; then
+    log_info "  --import-proofs: skipping provers (canary Phase A — no local proving)"
+else
+PROVERS_RUNNING=true
 for gpu in "${GPU_ARRAY[@]}"; do
     pid_alive "${WORK_DIR}/prover-${gpu}/prover.pid" || PROVERS_RUNNING=false
 done
@@ -429,6 +459,7 @@ if $PROVERS_RUNNING; then
 else
     run_step env GPUS="$GPUS" "${LIB_DIR}/04-prover-up.sh" --config "$CONFIG_NAME"
 fi
+fi  # ! IMPORT_PROOFS (step g)
 
 # ─── h. Relayer ──────────────────────────────────────────────────────────────
 log_info "=== h. Rollup relayer ==="
@@ -494,8 +525,14 @@ start_loop() {  # name interval logfile command...
     fi
 }
 
-start_loop sync-mainnet-db "$SYNC_POLL_INTERVAL" "${WORK_DIR}/sync-mainnet-db.log" \
-    python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --poll-interval "$SYNC_POLL_INTERVAL"
+if $IMPORT_PROOFS; then
+    # Canary Phase A: poll sync also imports proved mainnet bundle proofs.
+    start_loop sync-mainnet-db "$SYNC_POLL_INTERVAL" "${WORK_DIR}/sync-mainnet-db.log" \
+        env SYNC_PROOFS=1 python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --poll-interval "$SYNC_POLL_INTERVAL"
+else
+    start_loop sync-mainnet-db "$SYNC_POLL_INTERVAL" "${WORK_DIR}/sync-mainnet-db.log" \
+        python3 "${SCRIPT_DIR}/sync-mainnet-db.py" --poll-interval "$SYNC_POLL_INTERVAL"
+fi
 # Sweeper resets proving_status AND total_attempts (Trap 22/23 starvation traps).
 start_loop sweeper "$SWEEP_INTERVAL" "${WORK_DIR}/sweeper.log" \
     bash "${SCRIPT_DIR}/sweep-stale-proving.sh"
@@ -522,6 +559,9 @@ BASELINE_START_BATCH=${BASELINE_START}
 MAINNET_TIP_AT_START=${MAINNET_TIP}
 MAINNET_BUNDLE_TIP_AT_START=${MAINNET_BUNDLE_TIP}
 EOF
+    if $IMPORT_PROOFS; then
+        echo "CANARY_MODE=1" >> "$FOLLOW_ENV"
+    fi
     log_ok "  wrote $FOLLOW_ENV (SHADOW_REPORT_START=$REPORT_START, FOLLOW_RUN_HOURS=$FOLLOW_RUN_HOURS)"
 fi
 

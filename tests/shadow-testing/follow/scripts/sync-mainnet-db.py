@@ -13,6 +13,12 @@ Incremental polling uses simple INSERT ... ON CONFLICT because the delta is smal
 
 For chunk/batch/bundle we deliberately do NOT copy proof columns; the shadow
 fork is meant to exercise the local v0.9.0 prover, not reuse mainnet proofs.
+
+Canary parallel-upgrade mode (opt-in via --import-proofs or SYNC_PROOFS=1):
+mainnet bundle proofs ARE imported, into a shadow-private quarantine table
+`remote_bundle_proof`, and applied to local bundle rows below a boundary batch
+(Phase A of the canary upgrade test finalizes the backlog with production
+proofs instead of local proving). Default mode (flag off) is unchanged.
 """
 
 import argparse
@@ -54,6 +60,23 @@ DST_DSN = os.environ.get(
 ANVIL_RPC = os.environ.get("ANVIL_RPC", "http://localhost:18545")
 SCROLL_CHAIN = os.environ.get(
     "SCROLL_CHAIN", "0xa13BAF47339d63B743e7Da8741db5456DAc1E556"
+)
+
+# ── Canary proof import (opt-in: --import-proofs / SYNC_PROOFS=1) ────────────
+# .work is shared by both modes and stays at tests/shadow-testing/.work
+# (follow/scripts -> follow -> shadow-testing). Overridable for testability.
+WORK_DIR = Path(
+    os.environ.get(
+        "WORK_DIR", Path(__file__).resolve().parent.parent.parent / ".work"
+    )
+)
+# Boundary file written by 30-canary-upgrade.sh: PROOF_IMPORT_MAX_END_BATCH=N.
+# Missing file/key = infinity (Phase A applies every quarantined proof).
+CANARY_ENV_FILE = Path(os.environ.get("CANARY_ENV_FILE", WORK_DIR / "canary.env"))
+# Persistent cursor (last remote bundle index scanned) so proof import is
+# restart-safe; upserts are idempotent, so duplicates are harmless.
+PROOF_CURSOR_FILE = Path(
+    os.environ.get("PROOF_CURSOR_FILE", WORK_DIR / "proof-import.cursor")
 )
 
 PK_COLUMNS = {
@@ -473,7 +496,126 @@ def sync_l2_blocks(src, dst_cur):
     return copy_range(src, dst_cur, "l2_block", "number", max(lo - 2, 0), hi)
 
 
-def baseline_sync(src_dsn, dst_dsn, start_batch):
+def ensure_proof_table(dst_cur):
+    """Create the shadow-private quarantine table for imported mainnet proofs.
+
+    `proof`/`proved_at` mirror the bundle table's column types (BYTEA /
+    TIMESTAMP(0)) so applying them is a plain assignment. Not a goose
+    migration: this table is canary-mode local state, created on demand.
+    """
+    dst_cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS remote_bundle_proof (
+            bundle_hash     TEXT PRIMARY KEY,
+            end_batch_index BIGINT NOT NULL,
+            proof           BYTEA,
+            proved_at       TIMESTAMP(0),
+            synced_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """
+    )
+
+
+def read_proof_cursor():
+    """Last remote bundle index already scanned for proved bundles."""
+    try:
+        return int(PROOF_CURSOR_FILE.read_text().strip())
+    except Exception:
+        return 0
+
+
+def write_proof_cursor(value):
+    """Persist the proof-import cursor. Call only AFTER dst.commit()."""
+    PROOF_CURSOR_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PROOF_CURSOR_FILE.write_text(f"{value}\n")
+
+
+def read_proof_boundary():
+    """Upper bound (exclusive) on end_batch_index for applying proofs.
+
+    Read every cycle from the canary env file so flipping the boundary at the
+    upgrade point needs no poll-sync restart. Missing file/key = infinity.
+    """
+    try:
+        for line in CANARY_ENV_FILE.read_text().splitlines():
+            if line.startswith("PROOF_IMPORT_MAX_END_BATCH="):
+                return int(line.split("=", 1)[1].strip())
+    except Exception:
+        pass
+    return None
+
+
+def import_remote_proofs(src, dst_cur):
+    """One proof-import cycle (canary mode only). Returns the new cursor.
+
+    1) Upsert newly-proved remote bundles (proving_status=4) into the
+       remote_bundle_proof quarantine table, advancing the persistent cursor.
+    2) Apply quarantined proofs to local bundle rows below the boundary:
+       only rows with proof IS NULL and rollup_status<>5 are touched, so
+       relayer-finalized rows and locally-proved rows are never clobbered.
+    """
+    ensure_proof_table(dst_cur)
+    cursor = read_proof_cursor()
+
+    upsert_sql = (
+        "INSERT INTO remote_bundle_proof (bundle_hash, end_batch_index, proof, proved_at) "
+        "VALUES (%s, %s, %s, %s) ON CONFLICT (bundle_hash) DO NOTHING"
+    )
+    upserted = 0
+    # Lookback: mainnet creates the bundle row first and proves it minutes
+    # later, so a plain "index > cursor" high-watermark permanently skips any
+    # bundle that was still unproven when the cursor moved past it. Re-scan a
+    # small trailing window instead; ON CONFLICT DO NOTHING makes re-upserts
+    # free.
+    LOOKBACK = 200
+    with src.cursor(name="sync_proof_cur") as cur:
+        cur.itersize = 50
+        cur.execute(
+            "SELECT hash, end_batch_index, proof, proved_at FROM bundle "
+            "WHERE proving_status = 4 AND index > %s ORDER BY index",
+            (max(cursor - LOOKBACK, 0),),
+        )
+        while True:
+            rows = cur.fetchmany(50)
+            if not rows:
+                break
+            dst_cur.executemany(upsert_sql, rows)
+            upserted += dst_cur.rowcount
+    # Advance the cursor past PROVED bundles only — never past an unproven
+    # row, or its later-arriving proof would fall behind the cursor (the
+    # lookback above bounds how far the query reaches back, so the cursor
+    # must not outrun unproven rows by more than LOOKBACK either; proved-only
+    # advancement keeps that invariant).
+    with src.cursor() as cur:
+        cur.execute(
+            "SELECT COALESCE(MAX(index), %s) FROM bundle WHERE proving_status = 4",
+            (cursor,),
+        )
+        new_cursor = cur.fetchone()[0]
+    if upserted:
+        log.info("proof import: upserted %d remote proofs (cursor %d -> %d)",
+                 upserted, cursor, new_cursor)
+
+    boundary = read_proof_boundary()
+    apply_sql = (
+        "UPDATE bundle b SET proof = r.proof, proving_status = 4, proved_at = r.proved_at "
+        "FROM remote_bundle_proof r "
+        "WHERE b.hash = r.bundle_hash AND b.rollup_status <> 5 AND b.proof IS NULL"
+    )
+    if boundary is None:
+        dst_cur.execute(apply_sql)
+    else:
+        dst_cur.execute(apply_sql + " AND b.end_batch_index < %s", (boundary,))
+    if dst_cur.rowcount:
+        log.info(
+            "proof import: applied %d proofs to local bundles (boundary=%s)",
+            dst_cur.rowcount,
+            boundary if boundary is not None else "+inf",
+        )
+    return new_cursor
+
+
+def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
     src = connect(src_dsn)
     dst = connect(dst_dsn)
     src_cur = src.cursor()
@@ -564,7 +706,12 @@ def baseline_sync(src_dsn, dst_dsn, start_batch):
             fixup_rollup_status(dst_cur, "bundle", min_bundle - 1, max_bundle, fork_committed)
 
         update_bundle_seq(dst_cur)
+        proof_cursor = None
+        if import_proofs:
+            proof_cursor = import_remote_proofs(src, dst_cur)
         dst.commit()
+        if proof_cursor is not None:
+            write_proof_cursor(proof_cursor)
         log.info("Baseline sync complete")
     except Exception:
         dst.rollback()
@@ -576,7 +723,7 @@ def baseline_sync(src_dsn, dst_dsn, start_batch):
         dst.close()
 
 
-def poll_sync(src_dsn, dst_dsn, interval):
+def poll_sync(src_dsn, dst_dsn, interval, import_proofs=False):
     src = connect(src_dsn)
     dst = connect(dst_dsn)
 
@@ -655,7 +802,12 @@ def poll_sync(src_dsn, dst_dsn, interval):
                 update_bundle_seq(dst_cur)
                 sync_parent_links(dst_cur)
                 sync_l2_blocks(src, dst_cur)
+                proof_cursor = None
+                if import_proofs:
+                    proof_cursor = import_remote_proofs(src, dst_cur)
                 dst.commit()
+                if proof_cursor is not None:
+                    write_proof_cursor(proof_cursor)
                 log.info("Poll cycle complete; sleeping %ds", interval)
             except Exception:
                 dst.rollback()
@@ -689,13 +841,21 @@ def main():
         default=60,
         help="Polling interval in seconds (default 60)",
     )
+    parser.add_argument(
+        "--import-proofs",
+        action="store_true",
+        default=os.environ.get("SYNC_PROOFS", "") == "1",
+        help="Canary mode: also import proved mainnet bundle proofs into the "
+        "remote_bundle_proof quarantine table and apply them to local bundles "
+        "below the canary boundary (env SYNC_PROOFS=1 works too)",
+    )
     args = parser.parse_args()
 
     if args.init_from_batch is not None:
-        baseline_sync(SRC_DSN, DST_DSN, args.init_from_batch)
+        baseline_sync(SRC_DSN, DST_DSN, args.init_from_batch, import_proofs=args.import_proofs)
     else:
         log.info("Starting poll mode with interval=%ds", args.poll_interval)
-        poll_sync(SRC_DSN, DST_DSN, args.poll_interval)
+        poll_sync(SRC_DSN, DST_DSN, args.poll_interval, import_proofs=args.import_proofs)
 
 
 if __name__ == "__main__":

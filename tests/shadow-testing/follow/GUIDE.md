@@ -256,6 +256,57 @@ Ground truth, in increasing order of effort:
 - The monitor's verifier-drift check follows MVRV routing (`getVerifier(10, lastFinalized+1)`), so it tracks whichever wrapper currently serves the next batch — no false alarm after the cutover.
 - Sepolia variant: same flow with the Sepolia configs, but mind the Sepolia table in the root AGENTS.md (EOA re-funding, `--min-codec-version`, etc.).
 
+## Canary Parallel-Upgrade Test (Old and New Stacks Finalizing Side by Side)
+
+The canary mode answers a stronger question than the hard-switch upgrade test: *can the old and new zk stacks finalize bundles in parallel on the same chain, split purely by MVRV batch-index routing — with a clean rollback path?* It is an **extension** of follow mode; the hard-switch `20-upgrade.sh` flow above is untouched.
+
+How it differs from the hard-switch upgrade test:
+
+| Dimension | Hard switch (`follow-old` → `follow-upgrade`) | Canary (`follow-canary` → `canary-upgrade`) |
+|-----------|-----------------------------------------------|----------------------------------------------|
+| Old proofs | Produced locally by a Phase-1 production build | Imported from the mainnet DB into `remote_bundle_proof` |
+| Phase 1/Phase A build | Must build the production worktree (Trap 31) | **No old-stack build needed** |
+| At the boundary N | Rows ≥ N are reset and re-proven; in-flight old proofs are discarded | **Nothing is reset** — < N finalizes on imported proofs, ≥ N is proven for the first time by the new stack |
+| Rollback | Not supported | `canary-rollback` restores the old wrapper at N and applies quarantined proofs — "as if the upgrade never happened" |
+
+Semantics: poll-sync (with `SYNC_PROOFS=1`) upserts every remotely-proved bundle (`proving_status=4`) into the shadow-private quarantine table `remote_bundle_proof`, then applies proofs to local `bundle` rows with `proof IS NULL AND rollup_status <> 5 AND end_batch_index < boundary`. The boundary starts at +∞ (Phase A) and is flipped to N by `30-canary-upgrade.sh` via `.work/canary.env` (`PROOF_IMPORT_MAX_END_BATCH`) — no daemon restart needed. After t1, remote proofs ≥ N keep accumulating in the quarantine table, which is what makes rollback safe. The relayer is completely unaware of any of this (MVRV routing happens on-chain).
+
+### Runbook
+
+```bash
+cd tests/shadow-testing/follow
+
+# Phase A — old system only, zero local proving:
+make follow-canary            # = 10-follow-up.sh --import-proofs
+# ... watch the backlog finalize purely on imported production proofs ...
+
+# t1 — the upgrade point (new stack must already be built; see Step 2 of the
+# hard-switch section for the new-stack checklist):
+make canary-upgrade           # = 30-canary-upgrade.sh --next-config configs/mainnet-next.json
+
+# Parallel period — old (< N) and new (>= N) bundles interleave on-chain.
+# Rollback drill (recommended BEFORE the first >= N bundle finalizes):
+make canary-rollback          # = 31-canary-rollback.sh
+make canary-upgrade           # upgrade again afterwards — 30 is re-runnable
+```
+
+`30-canary-upgrade.sh` computes `N = MIN(end_batch_index)` over unfinalized bundles with **no** quarantined remote proof (fallback `lastFinalized+1`; override with `--start-batch`), so no local GPU time is wasted re-proving what mainnet already proved. It records `CANARY_AT_BATCH` / `CANARY_OLD_WRAPPER` / `CANARY_NEW_WRAPPER` in `.work/follow-run.env`.
+
+### Acceptance criteria
+
+- Phase A: ≥ 3 backlog bundles finalize (`rollup_status=5`, `lastFinalizedBatchIndex` advancing) with **zero local proving** — coordinator/prover pidfiles absent.
+- After t1: routing assertions pass (`getVerifier(10, N-1)` → old wrapper, `getVerifier(10, N)` → new wrapper).
+- Parallel period: bundles with `end_batch < N` finalize via the old wrapper from imported proofs while bundles with `end_batch >= N` finalize via the new wrapper from local proofs, both reaching `rollup_status=5` in the same window. The first ≥ N finalize is t2, the de-facto cutover.
+- Rollback drill: after `canary-rollback`, `getVerifier(10, N)` routes to the old wrapper again and ≥ N bundles finalize from quarantined proofs; a subsequent `canary-upgrade` re-establishes the parallel state.
+- `finalized_lag` (make follow-status) returns to ≤ 1 and stays there.
+
+### Notes & traps
+
+- **The imported proofs must match the forked production wrapper's digests.** They do by construction (same production system) — unless the fork point is so old that the wrapper/proofs straddle a production upgrade. Verify the production guest version first (see "Determining the Production zk Stack" above and `../docs/bundle-digest-encoding.md`).
+- **Proof import never clobbers local state**: the apply rule only touches `proof IS NULL AND rollup_status <> 5` rows, and after t1 the boundary partitions the work — the new coordinator only sees unproven ≥ N bundles, the importer only applies < N.
+- The quarantine table `remote_bundle_proof` is shadow-private (created by the sync script, not goose) and survives `--reset` truncations; `make follow-stop` does not remove it either. Drop it manually if you switch the shadow DB to a different purpose.
+- New trap entry: TROUBLESHOOTING.md Trap 39 (proof-import mode pitfalls).
+
 ## Run Completion & Acceptance Criteria
 
 A follow run ends after `FOLLOW_RUN_HOURS` (default 48) or on failure. The run **passes** when:
