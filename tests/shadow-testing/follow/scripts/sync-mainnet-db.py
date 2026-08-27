@@ -89,6 +89,13 @@ PK_COLUMNS = {
 # querying MAX() on the 181 GB mainnet l2_block table frequently times out.
 # They are copied during the initial baseline sync instead.
 
+# Every mainnet index on chunk/batch/bundle/l2_block/l1_message is partial
+# `WHERE deleted_at IS NULL` (except a couple of non-key chunk indexes).
+# A src-side query without that predicate cannot use those indexes and
+# seq-scans the whole heap (62 GB l2_block, 5 GB chunk) — on RDS that turns
+# every poll cycle into real money. Always include it in src-side queries.
+NOT_DELETED = "deleted_at IS NULL"
+
 # Poll mode never bulk-backfills: deltas larger than this (or an empty shadow
 # table) require a baseline sync instead.
 MAX_POLL_DELTA = int(os.environ.get("MAX_POLL_DELTA", "5000"))
@@ -171,7 +178,7 @@ def connect_env_cursor(pg_env):
 def get_watermarks(cur):
     res = {}
     for table, pk in PK_COLUMNS.items():
-        cur.execute(f"SELECT MAX({pk}) FROM {table}")
+        cur.execute(f"SELECT MAX({pk}) FROM {table} WHERE {NOT_DELETED}")
         row = cur.fetchone()
         res[table] = row[0] if row and row[0] is not None else 0
     return res
@@ -401,7 +408,7 @@ def copy_range(src, dst_cur, table, pk, min_val, max_val, page_size=500, columns
     col_sql = ", ".join(cols)
     placeholders = ", ".join(["%s"] * len(cols))
     insert_sql = f"INSERT INTO {table} ({col_sql}) VALUES ({placeholders}) {CONFLICT_CLAUSES[table]}"
-    where = f"WHERE {pk} > %s AND {pk} <= %s"
+    where = f"WHERE {NOT_DELETED} AND {pk} > %s AND {pk} <= %s"
 
     with src.cursor() as count_cur:
         count_cur.execute(f"SELECT COUNT(*) FROM {table} {where}", (min_val, max_val))
@@ -572,7 +579,7 @@ def import_remote_proofs(src, dst_cur):
         cur.itersize = 50
         cur.execute(
             "SELECT hash, end_batch_index, proof, proved_at FROM bundle "
-            "WHERE proving_status = 4 AND index > %s ORDER BY index",
+            f"WHERE proving_status = 4 AND index > %s AND {NOT_DELETED} ORDER BY index",
             (max(cursor - LOOKBACK, 0),),
         )
         while True:
@@ -588,7 +595,7 @@ def import_remote_proofs(src, dst_cur):
     # advancement keeps that invariant).
     with src.cursor() as cur:
         cur.execute(
-            "SELECT COALESCE(MAX(index), %s) FROM bundle WHERE proving_status = 4",
+            f"SELECT COALESCE(MAX(index), %s) FROM bundle WHERE proving_status = 4 AND {NOT_DELETED}",
             (cursor,),
         )
         new_cursor = cur.fetchone()[0]
@@ -625,7 +632,7 @@ def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
     dst_env = dsn_to_env(dst_dsn)
 
     try:
-        src_cur.execute("SELECT MAX(index) FROM batch")
+        src_cur.execute(f"SELECT MAX(index) FROM batch WHERE {NOT_DELETED}")
         end_batch = src_cur.fetchone()[0]
         log.info("Baseline sync: batches %d -> %d", start_batch, end_batch)
 
@@ -640,14 +647,14 @@ def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
             src_env,
             dst_env,
             "batch",
-            f"index > {start_batch} AND index <= {end_batch}",
+            f"{NOT_DELETED} AND index > {start_batch} AND index <= {end_batch}",
             columns=sync_columns["batch"],
         )
 
         # 2) chunks referenced by those batches (include parent chunk for continuity)
         src_cur.execute(
             "SELECT MIN(start_chunk_index), MAX(end_chunk_index) FROM batch "
-            "WHERE index > %s AND index <= %s",
+            f"WHERE index > %s AND index <= %s AND {NOT_DELETED}",
             (start_batch, end_batch),
         )
         min_chunk, max_chunk = src_cur.fetchone()
@@ -656,14 +663,14 @@ def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
                 src_env,
                 dst_env,
                 "chunk",
-                f"index > {min_chunk - 1} AND index <= {max_chunk}",
+                f"{NOT_DELETED} AND index > {min_chunk - 1} AND index <= {max_chunk}",
                 columns=sync_columns["chunk"],
             )
 
             # 3) l2_block rows referenced by those chunks (include parent block)
             src_cur.execute(
                 "SELECT MIN(start_block_number), MAX(end_block_number) FROM chunk "
-                "WHERE index > %s AND index <= %s",
+                f"WHERE index > %s AND index <= %s AND {NOT_DELETED}",
                 (min_chunk - 1, max_chunk),
             )
             min_block, max_block = src_cur.fetchone()
@@ -672,20 +679,20 @@ def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
                     src_env,
                     dst_env,
                     "l2_block",
-                    f"number > {min_block - 1} AND number <= {max_block}",
+                    f"{NOT_DELETED} AND number > {min_block - 1} AND number <= {max_block}",
                 )
                 # l1_message is referenced by height, not number. Use block range as approximation.
                 copy_table_pipe(
                     src_env,
                     dst_env,
                     "l1_message",
-                    f"height > {min_block - 1} AND height <= {max_block}",
+                    f"{NOT_DELETED} AND height > {min_block - 1} AND height <= {max_block}",
                 )
 
         # 4) bundles that overlap the batch range
         src_cur.execute(
             "SELECT MIN(index), MAX(index) FROM bundle "
-            "WHERE start_batch_index <= %s AND end_batch_index >= %s",
+            f"WHERE start_batch_index <= %s AND end_batch_index >= %s AND {NOT_DELETED}",
             (end_batch, start_batch + 1),
         )
         min_bundle, max_bundle = src_cur.fetchone()
@@ -694,7 +701,7 @@ def baseline_sync(src_dsn, dst_dsn, start_batch, import_proofs=False):
                 src_env,
                 dst_env,
                 "bundle",
-                f"index > {min_bundle - 1} AND index <= {max_bundle}",
+                f"{NOT_DELETED} AND index > {min_bundle - 1} AND index <= {max_bundle}",
                 columns=sync_columns["bundle"],
             )
 
