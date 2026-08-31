@@ -10,6 +10,10 @@ source "${SCRIPT_DIR}/anvil-utils.sh"
 CONFIG="${CONFIG:-mainnet}"
 GPUS="${GPUS:-0,1}"
 DOCKER=false
+# Docker mode: image must already exist locally (built via
+# build/dockerfiles/prover.Dockerfile from THIS checkout). The devops
+# prover-image-build workflow produces the same packaging in CI.
+PROVER_IMAGE="${PROVER_IMAGE:-scrolltech/prover:e2e-test}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -55,7 +59,13 @@ BUNDLE_VK=$(jq -r '.bundle_vk' "${ASSETS_V2}/openVmVk.json" 2>/dev/null || echo 
 # built from another checkout (Phase 1 = develop/production worktree).
 PROVER_BIN="${PROVER_BIN:-${REPO_ROOT}/target/release/prover}"
 
-if [[ ! -f "$PROVER_BIN" ]]; then
+if $DOCKER; then
+    docker image inspect "$PROVER_IMAGE" >/dev/null 2>&1 || {
+        log_error "missing image $PROVER_IMAGE — build it first: docker build -f build/dockerfiles/prover.Dockerfile -t $PROVER_IMAGE ."
+        exit 1
+    }
+    log_info "  prover image: $PROVER_IMAGE"
+elif [[ ! -f "$PROVER_BIN" ]]; then
     log_info "Building prover (GPU)..."
     cd "${REPO_ROOT}/zkvm-prover"
     make prover
@@ -69,10 +79,13 @@ for i in "${!GPU_ARRAY[@]}"; do
     gpu_id="${GPU_ARRAY[$i]}"
     prover_name="${PROVER_NAME}-${gpu_id}"
     work_dir="${SCRIPT_DIR}/../.work/prover-${gpu_id}"
+    mkdir -p "$work_dir"
+    # Canonicalize (resolve the lib/.. component): docker bind-mount targets are
+    # path-cleaned by dockerd, but the prover opens the config by the literal
+    # path, which fails inside the container if it still contains "..".
+    work_dir="$(cd "$work_dir" && pwd)"
     config_file="${work_dir}/prover.json"
     log_file="${work_dir}/prover.log"
-
-    mkdir -p "$work_dir"
 
     # Generate per-GPU config
     cat > "$config_file" <<EOF
@@ -127,13 +140,37 @@ EOF
     log_info "Starting prover on GPU $gpu_id..."
 
     export RUST_MIN_STACK=16777216
-    CUDA_VISIBLE_DEVICES="$gpu_id" nohup "$PROVER_BIN" \
-        --config "$config_file" \
-        >> "$log_file" 2>&1 &
+    if $DOCKER; then
+        # Same-path mounts + host network keep the generated config (host
+        # absolute paths, localhost coordinator URL) valid inside the
+        # container. --user + recorded host PID keep the shared stop
+        # scripts (pidfile kill / pkill on the config path) working.
+        docker rm -f "shadow-prover-${gpu_id}" >/dev/null 2>&1 || true
+        docker run -d --name "shadow-prover-${gpu_id}" --network host \
+            --gpus "device=${gpu_id}" \
+            --user "$(id -u):$(id -g)" -e HOME=/home/prover \
+            -e RUST_MIN_STACK=16777216 \
+            -v "${work_dir}:${work_dir}" \
+            -v "${HOME}/.openvm/params:/home/prover/.openvm/params:ro" \
+            "$PROVER_IMAGE" --config "$config_file" >/dev/null
+        sleep 2
+        pid=$(docker inspect -f '{{.State.Pid}}' "shadow-prover-${gpu_id}")
+        if [[ -z "$pid" || "$pid" = "0" ]]; then
+            docker logs "shadow-prover-${gpu_id}" 2>&1 | tail -20 || true
+            log_error "  prover container shadow-prover-${gpu_id} failed to start"
+            exit 1
+        fi
+        echo "$pid" > "${work_dir}/prover.pid"
+        log_ok "  Prover $gpu_id started in docker (container shadow-prover-${gpu_id}, host PID $pid, health :$((10080 + gpu_id)); logs: docker logs shadow-prover-${gpu_id})"
+    else
+        CUDA_VISIBLE_DEVICES="$gpu_id" nohup "$PROVER_BIN" \
+            --config "$config_file" \
+            >> "$log_file" 2>&1 &
 
-    pid=$!
-    echo "$pid" > "${work_dir}/prover.pid"
-    log_ok "  Prover $gpu_id started (PID $pid, health :$((10080 + gpu_id)))"
+        pid=$!
+        echo "$pid" > "${work_dir}/prover.pid"
+        log_ok "  Prover $gpu_id started (PID $pid, health :$((10080 + gpu_id)))"
+    fi
 done
 
 log_ok "All provers launched"

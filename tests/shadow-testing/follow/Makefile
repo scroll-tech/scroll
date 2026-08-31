@@ -26,6 +26,9 @@
 SCRIPT_DIR    := $(shell cd "$(dir $(lastword $(MAKEFILE_LIST)))" && pwd)
 CONFIG_FILE   := $(SCRIPT_DIR)/configs/mainnet.json
 NEXT_CONFIG   := $(SCRIPT_DIR)/configs/mainnet-next.json
+# Docker provers: make canary-upgrade DOCKER_PROVERS=1 PROVER_IMAGE=scrolltech/prover:<tag>
+DOCKER_PROVERS ?=
+PROVER_IMAGE   ?=
 # .work is shared by both modes and stays at tests/shadow-testing/.work.
 WORK_DIR      := $(SCRIPT_DIR)/../.work
 
@@ -46,7 +49,8 @@ follow-canary:
 	$(SCRIPT_DIR)/scripts/10-follow-up.sh --import-proofs
 
 canary-upgrade:
-	$(SCRIPT_DIR)/scripts/30-canary-upgrade.sh --next-config $(NEXT_CONFIG)
+	$(if $(PROVER_IMAGE),PROVER_IMAGE=$(PROVER_IMAGE) ,)$(SCRIPT_DIR)/scripts/30-canary-upgrade.sh --next-config $(NEXT_CONFIG) \
+		$(if $(DOCKER_PROVERS),--docker-provers,)
 
 canary-rollback:
 	$(SCRIPT_DIR)/scripts/31-canary-rollback.sh

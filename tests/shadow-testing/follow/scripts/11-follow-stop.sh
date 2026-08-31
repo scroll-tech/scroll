@@ -101,6 +101,12 @@ if [[ "$FOUND_PROVER" == "false" && -f "$CONFIG_FILE" ]]; then
 fi
 # Remove legacy top-level prover pidfiles if present
 rm -f "${WORK_DIR}"/prover-[0-9]*.pid
+# Docker-mode provers (04-prover-up.sh --docker): the pidfile kill above
+# normally stops them (host PID recorded), but make sure no container lingers.
+if command -v docker >/dev/null 2>&1 && docker ps -aq --filter 'name=^shadow-prover-' 2>/dev/null | grep -q .; then
+    docker rm -f $(docker ps -aq --filter 'name=^shadow-prover-') >/dev/null 2>&1 || true
+    log_info "  removed shadow-prover-* containers"
+fi
 
 # 4. Coordinators
 stop_pid "coordinator_cron" "${WORK_DIR}/coordinator-cron.pid" "coordinator_cron" \

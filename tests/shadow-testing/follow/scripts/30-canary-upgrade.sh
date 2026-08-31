@@ -29,7 +29,10 @@
 # Idempotent: safe to re-run after 31-canary-rollback.sh (N is recomputed).
 #
 # Usage: ./30-canary-upgrade.sh --next-config configs/mainnet-next.json
-#                               [--config configs/mainnet.json] [--start-batch N] [--dry-run]
+#                               [--config configs/mainnet.json] [--start-batch N]
+#                               [--docker-provers] [--dry-run]
+#         --docker-provers: run provers as containers (PROVER_IMAGE, default
+#                           scrolltech/prover:e2e-test) instead of bare metal
 
 set -euo pipefail
 
@@ -49,12 +52,14 @@ GPUS="${GPUS:-0,1}"
 FORK_NAME="${FORK_NAME:-galileoV2}"
 START_BATCH_OVERRIDE=""
 DRY_RUN=false
+DOCKER_PROVERS=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --config)      CONFIG_FILE="$2"; shift 2 ;;
         --next-config) NEXT_CONFIG_FILE="$2"; shift 2 ;;
         --start-batch) START_BATCH_OVERRIDE="$2"; shift 2 ;;
+        --docker-provers) DOCKER_PROVERS=true; shift ;;
         --dry-run)     DRY_RUN=true; shift ;;
         -h|--help)     sed -n '2,33p' "$0"; exit 0 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
@@ -170,10 +175,19 @@ if [[ "$QUAR_COUNT" == "missing" ]]; then
 fi
 log_ok "  quarantine table remote_bundle_proof: $QUAR_COUNT proofs imported"
 
-PROVER_BIN="${REPO_ROOT}/target/release/prover"
-[[ -x "$PROVER_BIN" ]] || { log_error "missing $PROVER_BIN — build the NEW prover first (cd zkvm-prover && make prover)"; exit 1; }
-log_info "  prover binary: built $(stat -c '%y' "$PROVER_BIN" | cut -d. -f1), git $(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo '?')"
-log_warn "  make sure the checked-out prover/coordinator binaries ARE the new version — this script does not rebuild them"
+if $DOCKER_PROVERS; then
+    PROVER_IMAGE="${PROVER_IMAGE:-scrolltech/prover:e2e-test}"
+    docker image inspect "$PROVER_IMAGE" >/dev/null 2>&1 || {
+        log_error "missing image $PROVER_IMAGE — build it first: docker build -f build/dockerfiles/prover.Dockerfile -t $PROVER_IMAGE ."
+        exit 1
+    }
+    log_info "  prover image: $PROVER_IMAGE (docker mode)"
+else
+    PROVER_BIN="${REPO_ROOT}/target/release/prover"
+    [[ -x "$PROVER_BIN" ]] || { log_error "missing $PROVER_BIN — build the NEW prover first (cd zkvm-prover && make prover)"; exit 1; }
+    log_info "  prover binary: built $(stat -c '%y' "$PROVER_BIN" | cut -d. -f1), git $(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo '?')"
+fi
+log_warn "  make sure the checked-out prover/coordinator binaries (or PROVER_IMAGE) ARE the new version — this script does not rebuild them"
 
 [[ -x "${COORD_DIR}/coordinator_api" ]]  || { log_error "missing ${COORD_DIR}/coordinator_api"; exit 1; }
 [[ -x "${COORD_DIR}/coordinator_cron" ]] || { log_error "missing ${COORD_DIR}/coordinator_cron"; exit 1; }
@@ -392,8 +406,10 @@ else
     pid_alive "${WORK_DIR}/coordinator-cron.pid" || { log_error "coordinator_cron died; tail .work/coordinator-cron.log"; exit 1; }
     log_ok "  coordinators starting (OpenVM keygen takes ~2-3 min — prover logins retry)"
 fi
-run_step env GPUS="$GPUS" ASSETS_DIR="$NEW_ASSETS" \
-    "${LIB_DIR}/04-prover-up.sh" --config "$NEXT_CONFIG_NAME"
+DOCKER_FLAG=()
+$DOCKER_PROVERS && DOCKER_FLAG=(--docker)
+run_step env GPUS="$GPUS" ASSETS_DIR="$NEW_ASSETS" PROVER_IMAGE="${PROVER_IMAGE:-scrolltech/prover:e2e-test}" \
+    "${LIB_DIR}/04-prover-up.sh" --config "$NEXT_CONFIG_NAME" "${DOCKER_FLAG[@]}"
 
 # ─── j. Record the boundary in follow-run.env ────────────────────────────────
 log_info "=== j. Record canary boundary ==="

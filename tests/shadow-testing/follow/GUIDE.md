@@ -284,6 +284,12 @@ make follow-canary            # = 10-follow-up.sh --import-proofs
 # hard-switch section for the new-stack checklist):
 make canary-upgrade           # = 30-canary-upgrade.sh --next-config configs/mainnet-next.json
 
+# t1 with DOCKER provers instead of bare metal (production-style packaging):
+# build the image from THIS checkout first, then pass it in:
+docker build -f build/dockerfiles/prover.Dockerfile \
+    -t scrolltech/prover:$(target/release/prover --version | awk '{print $NF}') .
+make canary-upgrade DOCKER_PROVERS=1 PROVER_IMAGE=scrolltech/prover:<tag>
+
 # Parallel period — old (< N) and new (>= N) bundles interleave on-chain.
 # Rollback drill (recommended BEFORE the first >= N bundle finalizes):
 make canary-rollback          # = 31-canary-rollback.sh
@@ -306,6 +312,7 @@ make canary-upgrade           # upgrade again afterwards — 30 is re-runnable
 - **Proof import never clobbers local state**: the apply rule only touches `proof IS NULL AND rollup_status <> 5` rows, and after t1 the boundary partitions the work — the new coordinator only sees unproven ≥ N bundles, the importer only applies < N.
 - The quarantine table `remote_bundle_proof` is shadow-private (created by the sync script, not goose) and survives `--reset` truncations; `make follow-stop` does not remove it either. Drop it manually if you switch the shadow DB to a different purpose.
 - New trap entry: TROUBLESHOOTING.md Trap 39 (proof-import mode pitfalls).
+- **Docker provers**: `04-prover-up.sh --docker` (driven via `30-canary-upgrade.sh --docker-provers` / `make canary-upgrade DOCKER_PROVERS=1`) runs each prover as a `shadow-prover-<gpu>` container of `PROVER_IMAGE` with same-path work-dir mounts, host networking, `--user $(id -u)` and the SRS mounted at `$HOME/.openvm/params` inside the container (HOME is overridden so the path matches). The container's host PID is written to the usual pidfile, so `11-follow-stop.sh` / `31-canary-rollback.sh` work unchanged (plus a `docker rm -f shadow-prover-*` sweep as backstop). Prover logs: `docker logs shadow-prover-<gpu>` (the per-GPU `prover.log` file stays empty in this mode). Build the image from the checkout under test with `build/dockerfiles/prover.Dockerfile` — the same "production-style packaging" the devops `prover-image-build.yml` workflow produces in CI.
 
 ## Run Completion & Acceptance Criteria
 

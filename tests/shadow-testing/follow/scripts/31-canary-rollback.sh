@@ -120,6 +120,13 @@ for pf in "${WORK_DIR}"/prover-*/prover.pid; do
     stop_component "$gpu" "$pf" "prover.json"
 done
 if ! $DRY_RUN; then pkill -f "target/release/prover" 2>/dev/null || true; fi
+# Docker-mode provers: pidfile kills above normally suffice (host PIDs), but
+# remove any lingering containers so the next start cannot hit a name clash.
+if ! $DRY_RUN && command -v docker >/dev/null 2>&1 \
+    && docker ps -aq --filter 'name=^shadow-prover-' 2>/dev/null | grep -q .; then
+    docker rm -f $(docker ps -aq --filter 'name=^shadow-prover-') >/dev/null 2>&1 || true
+    log_info "  removed shadow-prover-* containers"
+fi
 stop_component "coordinator_cron" "${WORK_DIR}/coordinator-cron.pid" "coordinator_cron"
 stop_component "coordinator_api"  "${WORK_DIR}/coordinator-api.pid"  "coordinator_api"
 
