@@ -12,6 +12,9 @@ set -uo pipefail  # no -e: a single dead pidfile must not abort the cleanup
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${SCRIPT_DIR}/../../lib/anvil-utils.sh"
+# anvil-utils.sh re-enables -e (set -euo pipefail at its top) — undo that:
+# this script's contract is best-effort cleanup that never aborts midway.
+set +e
 
 CONFIG_FILE="${CONFIG_FILE:-${PROJECT_ROOT}/configs/mainnet.json}"
 # .work is shared by both modes and stays at tests/shadow-testing/.work.
@@ -88,12 +91,15 @@ stop_pid "relayer" "${WORK_DIR}/relayer-${CONFIG_NAME}.pid" "rollup_relayer" \
     || fallback_pkill "relayer" "rollup_relayer.*relayer-${CONFIG_NAME}"
 
 # 3. Provers (per-GPU pidfiles written by 04-prover-up.sh)
+# The expect pattern is the config path ("prover.json"), which matches both
+# bare-metal (target/release/prover --config …/prover.json) and docker-mode
+# (prover --config …/prover.json) cmdlines.
 FOUND_PROVER=false
 for pf in "${WORK_DIR}"/prover-*/prover.pid; do
     [[ -f "$pf" ]] || continue
     FOUND_PROVER=true
     gpu=$(basename "$(dirname "$pf")")
-    stop_pid "$gpu" "$pf" "target/release/prover"
+    stop_pid "$gpu" "$pf" "prover.json"
 done
 if [[ "$FOUND_PROVER" == "false" && -f "$CONFIG_FILE" ]]; then
     PROVER_PREFIX=$(jq -r '.prover.name_prefix // empty' "$CONFIG_FILE" 2>/dev/null)
@@ -145,3 +151,4 @@ else
     printf '  - %s\n' "${STOPPED[@]}"
 fi
 $KEEP_ANVIL && log_info "Anvil + shadow DB left running (restart stack with scripts/10-follow-up.sh)."
+exit 0

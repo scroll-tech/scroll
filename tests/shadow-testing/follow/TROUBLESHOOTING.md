@@ -244,3 +244,9 @@ Also note: the relayer writes `rollup_status` **only** through its commit/finali
 - **Symptom 3**: after a prover restart, the new container logs `already assigned a task` forever.
 - **Cause 3**: the coordinator still holds the previous process's assignment row. `DELETE FROM prover_task WHERE proving_status IN (1,3);` (or wait for the sweeper, ~10 min).
 - **Env note**: scripts default `MAINNET_DSN` to `localhost:15432` (RDS-tunnel convention). On hosts where the DB lives at a direct address, export `MAINNET_DSN` explicitly — every follow-mode script honors the env var.
+
+### Trap 43: `11-follow-stop.sh` Aborts Midway — sourced lib re-enables `set -e` [follow mode / stop]
+
+- **Symptom**: `make follow-stop` stops the daemons/relayer, prints a `pidfile stale ... not killing` warning for a prover, then exits (`make: *** [follow-stop] Error 2`) leaving docker provers, coordinators, and Anvil running.
+- **Cause**: the script deliberately starts with `set -uo pipefail` ("no -e: a single dead pidfile must not abort the cleanup"), but it then sources `lib/anvil-utils.sh` whose first line is `set -euo pipefail` — silently re-enabling `-e`. `stop_pid` returning 2 (stale-pidfile branch) inside the bare `for` loop then aborts the whole script. Latent until docker-mode provers made the stale branch fire: the old expect pattern `target/release/prover` never matches a containerized prover's cmdline (`prover --config …/prover.json`).
+- **Fix (2026-09-04)**: `set +e` immediately after the `source`, and the prover loop now matches on `prover.json` (works for both bare-metal and docker cmdlines). Also added a trailing `exit 0` — the script previously exited 1 whenever `--keep-anvil` was absent (trailing `&&` idiom), which made `make` always report `Error 1` even on full success.
