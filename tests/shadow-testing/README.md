@@ -38,13 +38,17 @@ The root `Makefile` is a thin dispatcher (`make follow-up`, `make snapshot-all .
 
 | Document | What It Covers |
 |----------|----------------|
-| [`follow/GUIDE.md`](follow/GUIDE.md) | Follow mode — bring-up, daemons, steady state, recovery, acceptance criteria |
-| [`snapshot/GUIDE.md`](snapshot/GUIDE.md) | Snapshot replay mode — step-by-step manual setup, architecture, configuration, verifier deployment, relayer dry-run |
-| [`docs/COMMON-TROUBLESHOOTING.md`](docs/COMMON-TROUBLESHOOTING.md) | Mode-independent pitfalls, traps, and agent checklists |
-| [`docs/bundle-digest-encoding.md`](docs/bundle-digest-encoding.md) | Bundle verifier digests: S3 files are Montgomery for v0.8.0, canonical for v0.9.0+ — wrong encoding = `VerificationFailed` |
-| [`follow/TROUBLESHOOTING.md`](follow/TROUBLESHOOTING.md) | Follow-mode-specific traps (poll sync, starvation, live finalization) |
-| [`snapshot/TROUBLESHOOTING.md`](snapshot/TROUBLESHOOTING.md) | Snapshot-replay-mode-specific traps (historical fork, fixed bundle range, Sepolia) |
+| [`follow/GUIDE.md`](follow/GUIDE.md) | Follow mode — bring-up, daemons, steady state, recovery, mid-run hard-switch upgrade, canary parallel-upgrade |
+| [`snapshot/GUIDE.md`](snapshot/GUIDE.md) | Snapshot replay mode — step-by-step manual setup, verifier deployment, relayer dry-run |
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | **Trap index** — all numbered traps → per-file locations |
+| [`docs/COMMON-TROUBLESHOOTING.md`](docs/COMMON-TROUBLESHOOTING.md) | Mode-independent traps, pre-flight ritual, checklists, symptom table |
+| [`docs/CURRENT-STACK.md`](docs/CURRENT-STACK.md) | Dated version-sensitive facts (production stack, S3 prefixes, digest encoding, codec thresholds) |
+| [`docs/rds-query-rules.md`](docs/rds-query-rules.md) | Production RDS query discipline (partial indexes, `count(*)` bans) |
+| [`docs/bundle-digest-encoding.md`](docs/bundle-digest-encoding.md) | Bundle verifier digest encodings per release (Montgomery vs canonical) |
+| [`follow/TROUBLESHOOTING.md`](follow/TROUBLESHOOTING.md) | Follow-mode traps (poll sync, starvation, live finalization, canary) |
+| [`snapshot/TROUBLESHOOTING.md`](snapshot/TROUBLESHOOTING.md) | Snapshot-replay traps (historical fork, fixed bundle range, Sepolia) |
 | [`docs/contract-addresses.md`](docs/contract-addresses.md) | L1 contract addresses per network |
+| `../../docs/testing_reports/` | Dated test reports (one file per run; indexed from root `AGENTS.md`) |
 
 ## Prerequisites
 
@@ -71,6 +75,43 @@ cp snapshot/configs/sepolia.json.template snapshot/configs/sepolia.json
 #     (in mainnet-next.json — the NEW release under test)
 ```
 
-## Contributing
+## Contributing & Documentation Conventions
 
-When you discover a new trap or workaround, add it to `docs/COMMON-TROUBLESHOOTING.md` (mode-independent) or the per-mode `follow/TROUBLESHOOTING.md` / `snapshot/TROUBLESHOOTING.md` (structured).
+When you discover a new trap or workaround, **write it back** — this toolkit's value is its accumulated failure knowledge. Follow the layering below so the corpus stays navigable as it grows.
+
+### Knowledge layering — where new knowledge goes
+
+| Layer | File(s) | What belongs there | What does NOT |
+|---|---|---|---|
+| **Runbook** | `follow/GUIDE.md`, `snapshot/GUIDE.md` | How to run a mode: procedures, commands, acceptance criteria, recovery paths | One-off incidents, version-baked addresses/digests |
+| **Trap** | `docs/COMMON-TROUBLESHOOTING.md` (mode-independent), `follow/TROUBLESHOOTING.md`, `snapshot/TROUBLESHOOTING.md` (active); `docs/TRAP-ARCHIVE.md` (retired) | A failure mode with symptom → cause → fix, learned from real debugging | Procedures that never failed, plain explanations |
+| **Report** | `../../docs/testing_reports/<mode>-<variant>-YYYY-MM-DD.md` | What happened in one test run: timeline, findings, acceptance table, evidence (tx hashes, digests) | Durable procedure (promote that part to runbook/trap instead) |
+| **Facts** | `docs/CURRENT-STACK.md` | Version-sensitive values: production stack identity, S3 prefixes, digest encodings, codec block thresholds, sizing | Anything timeless |
+| **Index** | `docs/TROUBLESHOOTING.md` | The trap registry table only | Trap content |
+
+Rules of thumb:
+
+- **Link, don't duplicate.** If the same fact is needed in two places, one becomes canonical and the other links to it. Duplicated prose drifts (this has already happened once — a whole Sepolia table and verifier section lived in root `AGENTS.md` beside the canonical copies).
+- **Reports are immutable.** Post-run, extract anything durable into traps/runbooks and leave the report as a dated record. Reference reports from traps ("observed 2026-09-11, report …"), not the other way around.
+- **Facts age; procedures don't.** If you catch yourself writing an address, digest, S3 path, or block threshold into a runbook or trap, put the value in `CURRENT-STACK.md` with a `last verified` date and link to it.
+
+### Trap conventions
+
+1. **Numbering is globally unique across all trap files, including the archive.** The next free number = `max(existing) + 1` (see the "next free number" line in the registry; `make doc-check` detects collisions). Numbers are never reused — a retired number stays retired.
+2. **Lifecycle — every trap has a status** tracked in the registry: **Active** (body in its home file) / **Fixed** (patched upstream or in the harness) / **Checklist** (one-time setup issue absorbed into a COMMON checklist). When a fix lands: update the registry row, move the body to `docs/TRAP-ARCHIVE.md` with a `> **Status: …**` line naming the fix, and leave the number retired. References to retired traps keep resolving (doc-check includes the archive).
+3. **New-trap bar**: a trap must be a **recurring failure mode or a non-obvious diagnosis**. One-time-per-machine environment issues go into the Phase 0 checklist instead; pure explanations belong in a GUIDE. When in doubt, ask whether someone will grep for this symptom again — if not, it is not a trap.
+4. **Trap→hardening review**: after each significant test run (or at least quarterly), walk the Active list and ask of each trap: *"can the harness prevent this automatically?"* If yes, patch the script (a watchdog, a sanity check, a canonicalized path), verify, then retire the trap per rule 2. The Active count should trend flat or down — a forever-growing Active set means we are accumulating "traps a human must remember" instead of "failures the system prevents".
+5. **Style**: `### Trap N: Short Title [both | follow mode | snapshot mode | build | tooling]` followed by **Symptom** / **Cause** / **Fix** / **Rule** (or **Diagnosis** / **Prevention** where they fit). Keep the symptom grep-able — exact error strings and selectors (`0x439cc0cd`) beat paraphrases, and the registry's symptom column is the primary search surface.
+6. **Status markers**: `> **Fixed upstream / harness**: …` at the top when the root cause is patched but the trap is still live in some setups.
+7. **Cross-references**: `Trap N` (unique, so no file qualifier needed), or `follow/GUIDE.md "Section Name"`. Every reference is validated by `make doc-check`.
+8. **Renumbering is a last resort** and requires fixing every reference plus a note on the trap (`> Renumbered YYYY-MM-DD from "Trap N", which collided with …`).
+
+### Report conventions
+
+- One file per run: `<mode>-<variant>-YYYY-MM-DD.md` (e.g. `canary-parallel-upgrade-2026-09-11.md`).
+- Include: mode + host + checkout, stacks-under-test table (old vs new with digests/wrappers), UTC timeline, findings (each with the fix that was applied), acceptance table with evidence (tx hashes, trace excerpts, digests).
+- Update the reports index in root `AGENTS.md` when adding one.
+
+### Hygiene check
+
+Run `make doc-check` from `tests/shadow-testing/` before committing documentation changes — it fails on duplicate trap numbers and on `Trap N` references that resolve to zero or multiple definitions. Keep the registry's status column and totals accurate by hand (doc-check covers numbers and references, not statuses).

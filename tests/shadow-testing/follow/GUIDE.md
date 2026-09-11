@@ -123,7 +123,8 @@ Sizing conclusion: **1 GPU suffices** (~26% duty cycle), **2 recommended** for b
 
 ## Failure Recovery
 
-- **`make re-fork`** (`scripts/re-fork.sh`) — when the fork desyncs (Anvil crash/restart, state drift): re-fork Anvil at the latest block, redeploy the verifier wrapper, re-fund EOAs (Trap 10 — `anvil_setBalance` does not survive restarts), re-mirror L1 queue hashes (`sync-queue-hashes.py`, Trap 23), restart the relayer.
+- **Anvil relaunch from `--state` (try FIRST)** — if Anvil died or stalled mid-run (Trap 44), relaunching it with the **same command line including `--state .work/anvil-mainnet.state.json`** restores the exact fork: MVRV routing (incl. `legacyVerifiers` from a canary/mid-run upgrade), `lastFinalizedBatchIndex`, EOA balances and nonces. This is the only correct recovery mid-upgrade — a fresh `re-fork` would lose the registered wrapper routing and on-chain finalize history. Verify `eth_chainId`, `lastFinalizedBatchIndex`, and `getVerifier` on both sides of any boundary before restarting the relayer, and watch for Trap 45 (a send that timed out during warm-up may have landed on-chain unrecorded).
+- **`make re-fork`** (`scripts/re-fork.sh`) — when the fork state itself is unusable (state file corrupt/missing, or you intentionally want a fresh fork): re-fork Anvil at the latest block, redeploy the verifier wrapper, re-fund EOAs (Trap 10 — `anvil_setBalance` does not survive restarts), re-mirror L1 queue hashes (`sync-queue-hashes.py`, Trap 23), restart the relayer.
 - **RDS tunnel watchdog** — keep the RDS port-forward under `autossh`; poll-sync stalls silently if the tunnel dies.
 - **Verifier-drift alerting** — the hourly monitor snapshot detects verifier `protocolVersion` drift. If it fires, re-check the deployed wrapper and MVRV routing (Snapshot guide, "[Verify MVRV Routing](../snapshot/GUIDE.md#verify-mvrv-routing)") before trusting any finalize result.
 

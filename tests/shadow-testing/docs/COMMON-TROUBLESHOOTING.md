@@ -4,16 +4,18 @@
 > This file covers pitfalls that apply regardless of mode. Mode-specific traps live in
 > [`../follow/TROUBLESHOOTING.md`](../follow/TROUBLESHOOTING.md) (follow mode) and
 > [`../snapshot/TROUBLESHOOTING.md`](../snapshot/TROUBLESHOOTING.md) (snapshot replay mode).
-> Trap numbers are stable across all three files — "Trap 22" refers to the same trap everywhere.
-> This directory contains hard-won knowledge from multiple debugging sessions. Blind experimentation will repeat documented mistakes.
+>
+> - **Registry & statuses**: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — every trap's number, key symptom, file, and lifecycle status (Active / Fixed / Checklist).
+> - **Archive**: [`TRAP-ARCHIVE.md`](TRAP-ARCHIVE.md) — retired traps (fixed upstream/harness or absorbed into the checklists below). Numbers are retired, never reused.
+> - This directory contains hard-won knowledge from multiple debugging sessions. Blind experimentation repeats documented mistakes.
 
 ## Pre-Flight Ritual (Mandatory)
 
 Before executing a single command:
 
 1. [ ] **Read root `AGENTS.md`** — refresh the trap list.
-2. [ ] **Read this file plus the per-mode `TROUBLESHOOTING.md`** (`follow/TROUBLESHOOTING.md` or `snapshot/TROUBLESHOOTING.md`) — check if your planned task matches any documented failure mode.
-3. [ ] **Read the per-mode `GUIDE.md`** (`follow/GUIDE.md` or `snapshot/GUIDE.md`) — verify the specific section matching your task (e.g., "Real Verifier Deployment", "Multi-Bundle Relayer Finalize Test").
+2. [ ] **Read this file plus the per-mode `TROUBLESHOOTING.md`** (`follow/TROUBLESHOOTING.md` or `snapshot/TROUBLESHOOTING.md`) — check if your planned task matches any documented failure mode. The [trap registry](TROUBLESHOOTING.md) maps symptoms to traps.
+3. [ ] **Read the per-mode `GUIDE.md`** (`follow/GUIDE.md` or `snapshot/GUIDE.md`) — verify the specific section matching your task (e.g. "Real Verifier Deployment", "Relayer Finalize on the Fork").
 4. [ ] **Verify network** — confirm you are testing **Mainnet** or **Sepolia**, and all configs/ports/RPCs match that network.
 5. [ ] **Verify target bundle range** — query the DB to confirm:
    - Bundles exist and have `proving_status = 4` (or will be regenerated)
@@ -32,13 +34,31 @@ Before executing a single command:
 | L1MessageQueueV2 | `0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a` | `0xA0673eC0A48aa924f067F1274EcD281A10c5f19F` | `cast call <ADDR> "nextUnfinalizedQueueIndex()(uint256)"` |
 | Verifier | Copy from mainnet (`anvil_setCode`) | Check MVRV first; may already match | `cast call <MVRV> "getVerifier(uint256,uint256)" 10 <batchIndex>` |
 
+### Sepolia Operational Differences (beyond addresses/ports)
+
+| Dimension | Mainnet | Sepolia | Failure mode if ignored |
+|-----------|---------|---------|------|
+| **DB scope** | Imported limited range | Full production snapshot (batches 128080+) | Relayer batch committer floods logs with commit retries |
+| **`committedBatches`** | Sparse, but fork block usually covers target batches | Sparse; **every bundle end batch must exist** | Missing entry → `ErrorIncorrectBatchHash(0x2a1c1442)` (Trap 4) |
+| **`L1MessageQueueV2` reset** | `nextUnfinalizedQueueIndex = 0` usually sufficient | Set to `MIN(total_l1_messages_popped_before)` of the first target batch; **slot 104** (verify with `forge inspect`) | Wrong slot/value → `ErrorFinalizedIndexTooLarge(0x16465978)` (Trap 5, Trap 20) |
+| **Anvil gas estimation** | Same as mainnet | `eth_estimateGas` may fail with fee caps present (`Gas=0`) | Trap 9 (archived — fixed upstream; use a recent relayer build) |
+| **Sender balance** | Persisted across restarts | **Resets to 0** after Anvil restart | Re-fund EOAs before each relayer start (Trap 10) |
+| **Relayer flags** | Standard | Requires `--config <path>` AND `--min-codec-version 10` | Wrong config or immediate exit (Trap 11) |
+| **Blob version** | Usually V0 | Anvil 1.0.0 cannot decode BlobSidecar V1 | Set `fusaka_timestamp: 2000000000` in relayer config |
+| **Proofs in DB** | May already be current | Old proofs may be several guest versions behind | Must reset `proving_status = 1` to regenerate (Trap 8, Trap 16) |
+
 ## Critical Traps (Do Not Skip)
+
+Traps are grouped by theme; numbers are globally unique and stable. Retired traps (7, 9, 12, 13, 25, 26, 28, 29, 30, 36, 43, 46, 47, 48, 51) live in [`TRAP-ARCHIVE.md`](TRAP-ARCHIVE.md).
+
+### Verifier, Digests & Release Assets
 
 ### Trap 1: Wrong Verifier Contract or Wrong Digest Form
 - **Symptom**: `VerificationFailed(0x439cc0cd)` even with correct digests.
 - **Cause A**: Deployed `ZkEvmVerifierPostEuclid` instead of `ZkEvmVerifierPostFeynman`.
 - **Cause B**: Used digests in the wrong form. For v0.9.0 the S3 `digest_1.hex` / `digest_2.hex` files are published in **canonical form**, but if you are re-using an old v0.8.0 workflow that converted from Montgomery form, double-check you are not applying the conversion twice.
 - **Cause C**: **MVRV routes the batch to the wrong verifier**. The deployed verifier's digests are correct, but `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)` returns an old verifier with different digests. This happens when re-proving bundles with a new prover (new digests) whose batch indices fall in a range still mapped to a legacy verifier.
+- **Cause D**: **The wrapper was copied from mainnet via `anvil_setCode`**. `anvil_setCode` copies runtime bytecode but **preserves the original immutables** (`plonkVerifier`, `verifierDigest1/2`, `protocolVersion`). The copied wrapper assembles its `instances` array from the *mainnet* immutables + `keccak256(protocolVersion || publicInput)`, so locally-generated proofs with different digests are rejected even when the plonk verifier binary, public input hash, and proof are all individually correct. Copying is only valid when your proofs intentionally share mainnet's digests (e.g. re-using imported production proofs).
 - **Rule**: For guest v0.9.0 proofs, **always use `PostFeynman`** with digests from `.../releases/v0.9.0/bundle/digest_*.hex`, and **verify MVRV routing** before finalizing.
 - **Verification — Digests**: Fetch canonical digests from S3 and deploy with `protocolVersion = 10`:
   ```bash
@@ -61,6 +81,20 @@ Before executing a single command:
     10 $START_BATCH $NEW_VERIFIER \
     --from $OWNER --rpc-url $ANVIL_RPC --unlocked
   ```
+- **Diagnosis order when `VerificationFailed` appears** (do NOT jump to blaming the Solidity):
+  1. Verify the plonk verifier binary matches the deployed contract's runtime code.
+  2. Verify `keccak256(abi.encodePacked(protocolVersion, publicInput))` equals the proof metadata `bundle_pi_hash`.
+  3. Verify the wrapper's immutables match the proof's digest words (instances bytes 384–416 / 416–448).
+  4. Verify MVRV routing for the exact batch index (Cause C).
+  5. Only after 1–4 pass, look at contract logic — and even then, **production code is almost certainly correct**: the wrapper's `sub(0x5a0, i)` loop has finalized thousands of bundles on mainnet; "fixing" its direction inverts the hash-word layout and produces a different, equally failing instances set.
+- **Access control**: `finalizeBundlePostEuclidV2` has an `OnlyProver` modifier — on a shadow fork, authorize the finalize sender via `addProver` (or `cast rpc anvil_impersonateAccount <prover>`) before sending.
+
+### Trap 14: Coordinator Verifier Assets vs Prover Circuit S3 Paths (v0.9.0)
+- **Symptom**: coordinator asset download 403s or prover cannot find circuit apps.
+- **Cause**: Starting with v0.9.0, both verifier assets and circuit apps are released under a unified `scroll-zkvm/releases/v0.9.0/` prefix. Earlier versions split them across `v0.8.0/verifier/` and `scroll-zkvm/galileov2/`.
+- **Rule**: For v0.9.0, point both coordinator verifier assets and prover `circuits.galileoV2.base_url` at `…/scroll-zkvm/releases/v0.9.0/`. The expected layout is `{chunk,batch,bundle}/<vk>/` for circuits and `verifier/` for coordinator assets. Prefixes per release: [`CURRENT-STACK.md`](CURRENT-STACK.md).
+
+### Chain, RPC & Fork State
 
 ### Trap 2: Anvil Forks Wrong Chain
 - **Symptom**: `ScrollChain` proxy has no code, or `eth_chainId` returns `534352`.
@@ -69,79 +103,8 @@ Before executing a single command:
 
 ### Trap 3: L2 RPC Missing `debug_executionWitness`
 - **Symptom**: Coordinator panics at startup or chunks never get assigned.
-- **Cause**: Public RPC (`mainnet-rpc.scroll.io`, `sepolia-rpc.scroll.io`) blocks debug methods.
+- **Cause**: Public RPC (`mainnet-rpc.scroll.io`, `sepolia-rpc.scroll.io`) blocks debug methods. Chunks containing L1 messages additionally need `scroll_getL1MessagesInBlock` (most chunks at current mainnet height contain none).
 - **Rule**: Use **internal** L2 RPC proxies only.
-
-### Trap 7: Relayer Nonce Desync
-
-> **Fixed upstream / harness**: the relayer sender config now supports `chain_nonce_only` (default false), which initializes the nonce from the chain pending nonce only, ignoring `pending_transaction` — the shadow relayer config template sets it. Additionally `10-follow-up.sh --reset` now TRUNCATEs `pending_transaction` (the rows are not chain/fork-scoped and can also replay old calldata onto a fresh fork). The manual fix below is only needed if you run a relayer without those.
-
-- **Symptom**: Tx sent but never mined; `eth_getTransactionReceipt` returns null forever.
-- **Cause**: `pending_transaction` table retains nonces from previous runs that were never confirmed. Relayer initializes nonce from `maxDbNonce + 1`, which is ahead of the on-chain nonce.
-- **Rule**: After any relayer crash or Anvil restart:
-  ```sql
-  DELETE FROM pending_transaction WHERE sender_address = '<finalize_sender>';
-  ```
-  Then restart the relayer.
-
-### Trap 9: Anvil `eth_estimateGas` Rejects Fee Caps
-
-> **Fixed upstream**: `rollup/internal/controller/sender/estimategas.go` now sends an explicit non-zero gas cap in the estimation `CallMsg`, so Anvil no longer rejects fee-capped estimate calls. This entry is kept for reference when running older relayer builds.
-
-- **Symptom**: `failed to get fee data, err: Out of gas: gas required exceeds allowance: 0`.
-- **Cause**: Anvil's `eth_estimateGas` fails when `CallMsg` has `GasFeeCap`/`GasTipCap` set but `Gas` is 0 (Go Ethereum client's default).
-- **Rule**: If you hit this on a shadow fork, the correct fix belongs in the upstream `rollup/internal/controller/sender/estimategas.go` (do not maintain a local patch in this branch). Verify with the latest `develop` code and, if still present, fix it there so all shadow tests benefit.
-
-### Trap 10: Sender Balance Lost After Anvil Restart
-- **Symptom**: `failed to send transaction, err: Insufficient funds for gas * price + value` even after successful gas estimation.
-- **Cause**: `anvil_setBalance` funds do not persist across Anvil restarts.
-- **Rule**: After every Anvil restart, verify and re-fund sender EOAs before starting the relayer:
-  ```bash
-  cast balance 0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9 --rpc-url http://localhost:18546
-  ```
-
-### Trap 11: Relayer Started Without Required Flags
-- **Symptom**: Relayer prints help and exits with `Required flag "min-codec-version" not set`, or connects to wrong DB.
-- **Cause**: `ROLLUP_RELAYER_CONFIG` env var is NOT supported. The relayer uses `--config` CLI flag.
-- **Rule**: Always start relayer with BOTH flags:
-  ```bash
-  ./rollup_relayer --config /path/to/config.json --min-codec-version 10
-  ```
-
-### Trap 12: halo2 SRS Not in `~/.openvm/params/`
-- **Symptom**: chunk/batch proofs succeed; the **first bundle proof** crashes the prover with
-  `Params file ".../.openvm/params/kzg_bn254_23.srs" does not exist`. Bundle stuck at `proving_status=2`.
-- **Cause**: openvm reads the KZG SRS from `$HOME/.openvm/params/kzg_bn254_{22,23,24}.srs` only at the
-  bundle proof's halo2 stage; if the `.srs` files sit in `~/.openvm/` root (or anywhere else) they are
-  silently not found.
-- **Rule**: `mkdir -p ~/.openvm/params && mv ~/.openvm/kzg_bn254_2{2,3,4}.srs ~/.openvm/params/`. Mount the
-  host openvm dir to `/root/.openvm` (writable) for the prover container and confirm the path resolves.
-
-### Trap 13: Prover Docker `--gpus device=N` + Wrong `CUDA_VISIBLE_DEVICES`
-- **Symptom**: prover container exits (code 139) with `cudaErrorNoDevice: no CUDA-capable device is detected`;
-  only the GPU-0 prover works.
-- **Cause**: `--gpus "device=N"` exposes only that GPU and **renumbers it to index 0** inside the container,
-  so `CUDA_VISIBLE_DEVICES=N` points at a nonexistent device.
-- **Rule**: use `--gpus "device=$i"` with `CUDA_VISIBLE_DEVICES=0` (or `--gpus all` with `CUDA_VISIBLE_DEVICES=$i`).
-
-### Trap 14: Coordinator Verifier Assets vs Prover Circuit S3 Paths (v0.9.0)
-- **Symptom**: coordinator asset download 403s or prover cannot find circuit apps.
-- **Cause**: Starting with v0.9.0, both verifier assets and circuit apps are released under a unified `scroll-zkvm/releases/v0.9.0/` prefix. Earlier versions split them across `v0.8.0/verifier/` and `scroll-zkvm/galileov2/`.
-- **Rule**: For v0.9.0, point both coordinator verifier assets and prover `circuits.galileoV2.base_url` at `…/scroll-zkvm/releases/v0.9.0/`. The expected layout is `{chunk,batch,bundle}/<vk>/` for circuits and `verifier/` for coordinator assets.
-
-### Trap 16: Stale Proofs After Source-Code Revert / Restore
-
-- **Symptom**: Batch proof fails with `VM error: execution error: program exit code 1`, or bundle proof fails with `mismatch batch-proof exe commitment: expected=..., got=...`.
-- **Cause**: The shadow DB contains chunk/batch proofs generated by a different code version (e.g. before a `git revert` and subsequent restore of v0.9.0 source adaptations). The stored proofs verify individually because the coordinator loads the same verifier, but the next-level prover rejects their execution commitment.
-- **Rule**: After any non-trivial source change (Rust guest code, OpenVM version, `Cargo.lock`, or `rust-toolchain`), **treat existing shadow proofs as suspect**. Reset all relevant chunks, batches, and bundles to `proving_status = 1, proof = NULL` and re-prove from the lowest level. Do not rely on `proving_status = 4` alone.
-
-### Trap 17: `coordinator_cron` Re-Marks Corrupt Bundles as Ready
-
-- **Symptom**: Log is flooded with `format bundle prover task failure: unexpected end of JSON input` for high-index bundles, wasting prover cycles.
-- **Cause**: `coordinator_cron` periodically scans batches and sets `bundle.batch_proofs_status = 2` when all member batches have `proving_status = 4`. If those batch proofs are `NULL`/corrupt (Trap 16), the bundle becomes "ready" and is assigned repeatedly.
-- **Rule**: While cleaning up stale proofs, either:
-  1. Stop `coordinator_cron` until all corrupt proofs are regenerated, or
-  2. Reset **all** corrupt bundles/batches/chunks (`proving_status = 4 AND proof IS NULL`) to `proving_status = 1` so the cron never sees them as ready.
 
 ### Trap 19: `miscData.lastCommittedBatchIndex` Desync → `ErrorBatchNotCommitted` (0x227a699e)
 
@@ -180,13 +143,47 @@ Before executing a single command:
   Never lower `nextUnfinalizedQueueIndex` (slot `0x68`) below a bundle's `totalL1MessagesPoppedOverall` — that yields `ErrorFinalizedIndexTooSmall` instead.
 - **Rule**: `01-setup-anvil.sh` now defensively bumps slot `0x67` to the fork value when it is lower. Decode the revert selector first — `0x227a699e` and `0x16465978` look similar in relayer logs but have different roots.
 
+### Relayer & Senders
+
+### Trap 10: Sender Balance Lost After Anvil Restart
+- **Symptom**: `failed to send transaction, err: Insufficient funds for gas * price + value` even after successful gas estimation.
+- **Cause**: `anvil_setBalance` funds do not persist across Anvil restarts (they DO survive a `--state` relaunch — Trap 44 — but not a fresh re-fork).
+- **Rule**: After every Anvil restart, verify and re-fund sender EOAs before starting the relayer:
+  ```bash
+  cast balance 0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9 --rpc-url http://localhost:18546
+  ```
+
+### Trap 11: Relayer Started Without Required Flags
+- **Symptom**: Relayer prints help and exits with `Required flag "min-codec-version" not set`, or connects to wrong DB.
+- **Cause**: `ROLLUP_RELAYER_CONFIG` env var is NOT supported. The relayer uses `--config` CLI flag.
+- **Rule**: Always start relayer with BOTH flags:
+  ```bash
+  ./rollup_relayer --config /path/to/config.json --min-codec-version 10
+  ```
+
+### Prover Environment & Proving Pipeline
+
+### Trap 16: Stale Proofs After Source-Code Revert / Restore
+
+- **Symptom**: Batch proof fails with `VM error: execution error: program exit code 1`, or bundle proof fails with `mismatch batch-proof exe commitment: expected=..., got=...`.
+- **Cause**: The shadow DB contains chunk/batch proofs generated by a different code version (e.g. before a `git revert` and subsequent restore of v0.9.0 source adaptations). The stored proofs verify individually because the coordinator loads the same verifier, but the next-level prover rejects their execution commitment.
+- **Rule**: After any non-trivial source change (Rust guest code, OpenVM version, `Cargo.lock`, or `rust-toolchain`), **treat existing shadow proofs as suspect**. Reset all relevant chunks, batches, and bundles to `proving_status = 1, proof = NULL` and re-prove from the lowest level. Do not rely on `proving_status = 4` alone.
+
+### Trap 17: `coordinator_cron` Re-Marks Corrupt Bundles as Ready
+
+- **Symptom**: Log is flooded with `format bundle prover task failure: unexpected end of JSON input` for high-index bundles, wasting prover cycles.
+- **Cause**: `coordinator_cron` periodically scans batches and sets `bundle.batch_proofs_status = 2` when all member batches have `proving_status = 4`. If those batch proofs are `NULL`/corrupt (Trap 16), the bundle becomes "ready" and is assigned repeatedly.
+- **Rule**: While cleaning up stale proofs, either:
+  1. Stop `coordinator_cron` until all corrupt proofs are regenerated, or
+  2. Reset **all** corrupt bundles/batches/chunks (`proving_status = 4 AND proof IS NULL`) to `proving_status = 1` so the cron never sees them as ready.
+
 ### Trap 21: Stale Cached Proof in Prover Local DB → VData Shape Mismatch
 
 - **Symptom**: Coordinator logs `proof generated by prover failed ... Proof shape verification failed: Invalid VData: Proof trace_vdata length (44) does not match number of AIRs (42)` with `proofTime=2` (i.e. instant submission from cache, not a real proof run).
 - **Cause**: The prover's local LevelDB (`<prover-workdir>/db`) caches proofs keyed by task. A proof generated under a different circuit/asset version (e.g. before an S3 asset refresh or code revert/restore) is replayed and rejected by the coordinator's shape check.
 - **Rule**: Fresh proofs (proofTime ~300s for bundles) from other provers succeed for the same task, so this is self-healing as long as one prover has a clean cache. To stop a prover from repeatedly burning attempts on a poisoned cache, stop it, delete `<prover-workdir>/db`, and restart. When switching circuit versions, wipe all prover local DBs as part of the reset ritual (same spirit as Trap 16).
 
-### Trap 24: `coordinator_cron` Collection Timeouts Shorter Than Real Proof Times → False Timeouts, Duplicate Dispatch, Attempt Exhaustion [both]
+### Trap 24: `coordinator_cron` Collection Timeouts Shorter Than Real Proof Times → False Timeouts, Duplicate Dispatch, Attempt Exhaustation [both]
 
 - **Symptom**: Repeated `proof task have reach the timeout` warnings in coordinator logs for the **same task id**; the same bundle gets proved twice by different provers; submissions race and the loser gets a benign `validator failure chunk/batch have proved and verified success` reject from `proof_receiver.go`.
 - **Cause**: The timeout checker (`coordinator/internal/controller/cron/collect_proof.go`) scans the `prover_task` table every cycle and marks tasks timed out after `{chunk,batch,bundle}_collection_time_sec`. On timeout it invalidates the `prover_task`, decrements `active_attempts`, and **permanently fails the task once `total_attempts >= session_attempts` (5)**. Observed incident: `configs/coordinator.json` had `bundle_collection_time_sec = 180` while real bundle proofs take ~335 s (up to ~90 min for 30-batch bundles). Every bundle task falsely timed out at 180 s, got duplicate-dispatched to a second prover (2× GPU waste), and the two submissions raced.
@@ -196,36 +193,43 @@ Before executing a single command:
   - **Remember**: the timeout checker runs in `coordinator_cron`, so the **cron's** config is the one that matters, not `coordinator_api`'s.
 - **Structural gap**: **Note (fixed upstream)**: the coordinator now refunds the charged attempt (both `total_attempts` and `active_attempts`, status back to unassigned) when dispatch fails after `Update*Attempts` — see `recoverAttempts` in `internal/logic/provertask/*_prover_task.go` and `orm.RefundAttemptsByHash` — so format-failure paths no longer leave invisible half-charged tasks; the sweeper reset below is belt-and-braces. Historical description: if task formatting fails *after* attempts are incremented but *before* the `prover_task` row is inserted (e.g. the Trap 22 block-hash failure), no `prover_task` row exists and the timeout checker can never see it. The `sweep-stale-proving.sh` daemon is the safety net — this is why the sweeper also resets `total_attempts`, not just `proving_status`.
 
-### Trap 32: `cast code` Returns `0x` for Codeless Accounts — Non-Empty Checks Are Not Enough [both]
+### Anvil & On-Chain Reconciliation
 
-- **Symptom** (historical, fixed): `01-setup-anvil.sh`'s verifier fallback logged "Copied verifier to 0xb1F2..." and registered it on the MVRV via a genuine `updateVerifier`, but the address had **no code** on the fork — every subsequent finalization would have failed `VerificationFailed`, and `10-follow-up.sh` died silently right after the step-d header.
-- **Cause**: `cast code` prints `0x` for an EOA / nonexistent contract, so `[[ -n "$code" ]]` passes and `anvil_setCode` writes the empty blob. The address in question (`0xb1F2...`) only ever existed on a previous shadow Anvil, never on mainnet, so the "copy from source RPC" read nothing.
-- **Fix (codified)**: `01-setup-anvil.sh` now explicitly rejects `"0x"` before copying, and in `--skip-verifier` mode it leaves the MVRV completely untouched. `10-follow-up.sh` step d asserts the routed wrapper **has code** and the expected `protocolVersion`. General rule: after any `cast code`, check for non-empty AND non-`0x`; after any registration, verify `cast code <addr>` is non-trivial.
+### Trap 44: Anvil Silent Death / Stall Mid-Run — `--state` Relaunch Recovery [both]
 
-### Trap 33: `set -euo pipefail` + Failing `cast`/`psql` Inside `$( )` → Silent Script Death [both]
+- **Symptom 1**: all RPC to the Anvil port suddenly refused; the anvil process is gone; the `--state` file's mtime is minutes old (incident 2026-09-11 ~08:28, report `testing_reports/canary-parallel-upgrade-2026-09-11.md`).
+- **Symptom 2**: Anvil stops responding (RPC hangs, port/pid checks fail) and then **self-recovers** minutes later; during the stall window the relayer logs `context deadline exceeded` / `connection refused` bursts (incident 2026-09-11 ~11:00).
+- **Cause**: Anvil 1.7.1 instability under long-running fork load (periodic mining + blob txs + periodic `--state` persistence + lazy fork-backend fetches). Both incidents were silent — the default launch in `01-setup-anvil.sh` discards stdout/stderr to `/dev/null`, so no crash reason is capturable afterwards.
+- **Recovery (validated 2026-09-11)**: relaunch Anvil with the **same command line including `--state <file>`** — it loads the persisted state and resumes exactly where it left off (MVRV legacy routing, `lastFinalizedBatchIndex`, EOA balances/nonces all preserved; block number continues). This is much lighter than `make re-fork` (fresh fork + wrapper redeploy) and is the **only** correct recovery mid-canary/mid-upgrade, where a fresh re-fork would lose `legacyVerifiers` routing and on-chain finalize history. After relaunch, verify `eth_chainId == 1`, `lastFinalizedBatchIndex`, and `getVerifier` routing on both sides of any boundary before restarting the relayer.
+- **Watch out**: (a) during warm-up after relaunch Anvil RPC is slow — a relayer send can time out client-side while the tx still lands (→ Trap 45); (b) when relaunching manually, redirect output to a log file (`.work/anvil-restart.log`) instead of `/dev/null`; (c) if the original process only stalled (Symptom 2), a relaunch attempt will exit on port-in-use — check `pgrep -ax anvil` first and reuse the recovered instance.
+- **Prevention (candidate)**: an Anvil watchdog (health-check + relaunch from state file), analogous to the `autossh` RDS-tunnel watchdog; plus state-file mtime freshness in the hourly monitor.
 
-- **Symptom**: an orchestration script stops mid-step with NO error line — `make` just reports `Error 1` and the last log line is the step header.
-- **Cause**: a failing command substitution (`VAR=$(cast call ... | tr -d ' ')`) makes the assignment return non-zero; under `pipefail` + `set -e` the script exits before reaching the validation / `log_error` written below it.
-- **Fix (codified)**: every `$( )` around `cast`/`psql` in `lib/` and `follow/scripts/` now appends `|| true` and validates the value explicitly (empty/zero checks with `log_error` + `exit 1`). Follow the same pattern when adding new probes — and when a script dies silently, suspect this first.
+### Trap 45: Tx Landed On-Chain but Relayer Never Recorded It → Infinite Retries / Stuck Rows [both]
 
-### Trap 34: `coordinator_api` Reads `conf/genesis.json` Relative to Its CWD [both]
-
-- **Symptom**: `coordinator_api` exits immediately: `failed to read genesis ... open conf/genesis.json: no such file or directory`.
-- **Cause**: `10-follow-up.sh` starts `coordinator_api` from `coordinator/build/bin/` and the binary defaults its genesis path to `./conf/genesis.json`. A freshly created `build/bin/conf/` (new machine, new worktree) only has `config.json`.
-- **Fix**: copy the fork's genesis into place, e.g. `cp tests/prover-e2e/mainnet-galileoV2/genesis.json coordinator/build/bin/conf/genesis.json`. `coordinator_cron` takes `--genesis` explicitly and is unaffected.
+- **Symptom 1**: commit spam — `Failed to send commitBatch tx ... err="failed to get fee data ... execution reverted: *\x1c\x14B"` (selector `0x2a1c1442`, `ErrorIncorrectBatchHash`) repeating every ~2 s forever; the `batch` row shows `rollup_status = 5` but `commit_tx_hash IS NULL`. Observed 2026-09-11: 5,518 retry lines.
+- **Symptom 2**: a `bundle` row stuck at `rollup_status = 1` while on-chain `lastFinalizedBatchIndex` has already advanced past its end batch (the finalize tx landed during an Anvil stall, receipt lost).
+- **Cause**: the relayer's tx send hit a **client-side timeout** (slow Anvil — e.g. Trap 44 warm-up) *after* the tx was accepted by the node ("transaction already imported" on the next attempt proves it). The confirmation path never runs, so the DB columns (`commit_tx_hash` / `finalize_tx_hash` + rollup status) are never written; retries then fire against chain state that has already moved on. The relayer performs **no on-chain reconciliation before retrying**.
+- **Fix (validated twice, 2026-09-11)** — reconstruct from on-chain evidence, backfill the DB, restart the relayer so senders re-initialize nonces from the chain:
+  1. Find the tx: scan recent fork blocks for the sender (`cast rpc eth_getBlockByNumber 0x.. true | jq '.transactions[] | select(.from==…)'`) or read the nonce from the relayer error line.
+  2. Verify the receipt (`status 1`) and that the call is the expected one (`commitBatches` blob tx / `finalizeBundlePostEuclidV2`).
+  3. Backfill: `UPDATE batch|bundle SET <commit|finalize>_tx_hash = '0x…', rollup_status = 5, finalized_at = now() WHERE … AND <col> IS NULL;` then restart the relayer (`06-run-relayer.sh`) — `initializeNonce = max(db_max+1, chain_pending_nonce)` then picks the correct next nonce.
+- **Rule**: whenever the relayer error-logs a revert storm **and** the DB disagrees with on-chain `miscData()` / `lastFinalizedBatchIndex`, trust the chain and reconcile the DB first — restarting into a dirty state keeps the spam going. **Upstream improvement candidate**: reconcile against `committedBatches` / `lastFinalizedBatchIndex` / receipt-by-nonce before retrying a send.
 
 ## Step-by-Step Checklist
+
+> Phases below are snapshot-replay-shaped (manual setup); follow mode automates them via `10-follow-up.sh` — use them as a mental model there.
 
 ### Phase 0: Environment Validation
 - [ ] DB reachable on correct port
 - [ ] L2 RPC supports `debug_executionWitness`
 - [ ] Anvil not already running on target port
 - [ ] Coordinator port 8390 free
-- [ ] Prover GPU available (`nvidia-smi`)
+- [ ] Prover GPU available (`nvidia-smi`) — including **not occupied by unrelated processes** (high `memory.used` with no prover running; 2026-09-11 run used `GPUS=1` for its entirety because GPU0 held a foreign 22.4 GiB process — 1×4090 suffices for follow/canary pace)
+- [ ] halo2 SRS files present: `ls ~/.openvm/params/kzg_bn254_2{2,3,4}.srs` — only bites at the first **bundle** proof, hours in (Trap 12, archived)
 - [ ] Toolchain present: `cast`/`forge`/`anvil` (foundry), `psql`, `jq`, `curl`, `go` (coordinator/relayer builds), `cargo` + `nvcc` (GPU prover build)
 - [ ] `libclang` installed — `librocksdb-sys` (via scroll-proving-sdk) runs bindgen during the prover build and panics with "Unable to find libclang" without it (`sudo apt install libclang-dev`)
 - [ ] Python deps: `psycopg2` AND `pycryptodome` (import name `Crypto`). Note Ubuntu's `python3-pycryptodome` ships the **`Cryptodome`** namespace, which does NOT satisfy `from Crypto.Hash import keccak` in `lib/sync-queue-hashes.py` — install the pycryptodome wheel into the user site (`~/.local/lib/python3.x/site-packages`) instead
-- [ ] Fresh shadow DB migrated before first baseline (`db_cli migrate` — Trap 30)
+- [ ] Fresh shadow DB migrated before first baseline (`db_cli migrate` — Trap 30, archived)
 
 ### Phase 1: DB Setup
 - [ ] Import bundle range from production RDS
@@ -254,16 +258,16 @@ Before executing a single command:
 
 **Determine which scenario you are in:**
 
-**Scenario A — Re-using production proofs (like bundles 13445-13449)**
+**Scenario A — Re-using production proofs**
 - [ ] Extract digests from proof instances
 - [ ] Query Sepolia MVRV: `cast call <MVRV> "getVerifier(uint256,uint256)" 10 <batchIndex>`
 - [ ] Query verifier digests: `cast call <verifier> "verifierDigest1()"` / `"verifierDigest2()"`
 - [ ] If digests match → **skip deployment**, use existing verifier
 - [ ] If digests DON'T match → you are actually in Scenario B
 
-**Scenario B — Testing new guest / circuit version (0.8.0 / openvm 1.6+)**
+**Scenario B — Testing new guest / circuit version**
 - [ ] Generate new proofs with the new prover (coordinator + prover pipeline)
-- [ ] Extract digests from **newly-generated** proof instances
+- [ ] Extract digests from **newly-generated** proof instances, or fetch them from the S3 release (`digest_*.hex`, canonical for v0.9.0+)
 - [ ] Deploy plonk verifier from `coordinator/build/bin/assets_v2/verifier.bin`
 - [ ] Deploy `ZkEvmVerifierPostFeynman` with new digests + `protocolVersion = 10`
 - [ ] Register on `MultipleVersionRollupVerifier` via `updateVerifier(10, startBatch, verifier)`
@@ -272,7 +276,7 @@ Before executing a single command:
 ### Phase 4: Coordinator + Prover
 - [ ] Coordinator config points to correct `assets_v2/` directory
 - [ ] Coordinator L2 RPC is internal/debug-enabled
-- [ ] Prover config `base_url` uses correct S3 path (no `/releases/` for v0.8.0)
+- [ ] Prover config `base_url` uses correct S3 path (check [`CURRENT-STACK.md`](CURRENT-STACK.md))
 - [ ] Start coordinator, wait for `Start coordinator api successfully`
 - [ ] Start prover(s), verify `Got task from coordinator`
 
@@ -281,146 +285,53 @@ Before executing a single command:
 - [ ] Relayer config has `dry_run: false`, correct contract addresses
 - [ ] Clear stale `pending_transaction` entries
 - [ ] Reset target bundles/batches to `rollup_status = 1`
-- [ ] **Sync `batch.withdraw_root` from batch proof metadata** (shadow fork only; see Trap 10)
+- [ ] **Sync `batch.withdraw_root` from batch proof metadata** (shadow fork only; see snapshot-mode Trap 56)
 - [ ] **Start relayer with `--config <path>` AND `--min-codec-version 10`**
 - [ ] Monitor logs for `finalizeBundle in layer1` success
 - [ ] Verify `lastFinalizedBatchIndex` advanced on Anvil
 
-## When Things Go Wrong
+## When Things Go Wrong (most frequent)
+
+The full symptom→trap mapping lives in the [trap registry](TROUBLESHOOTING.md) (symptom column). The most frequent entries:
 
 | Error / Symptom | Most Likely Cause | See |
 |-----------------|-------------------|-----|
-| `VerificationFailed(0x439cc0cd)` | Wrong verifier type, digest mismatch, **or wrong bundle withdrawRoot**; in follow mode: post-fork L1 queue hashes missing | Trap 1, **Trap 10**, Trap 23 |
-| `ErrorIncorrectBatchHash(0x2a1c1442)` | Sparse `committedBatches`, end batch hash is zero | Trap 4 |
+| `VerificationFailed(0x439cc0cd)` | Wrong verifier type, digest mismatch, or wrong bundle withdrawRoot (Trap 56); in follow mode: post-fork L1 queue hashes missing (Trap 23); copied mainnet wrapper via `anvil_setCode` (Trap 1 Cause D) | Trap 1, Trap 23, Trap 56 |
+| `ErrorIncorrectBatchHash(0x2a1c1442)` | Sparse `committedBatches` (Trap 4), or a commit that already landed unrecorded (Trap 45) | Trap 4, Trap 45 |
 | `ErrorFinalizedIndexTooLarge(0x16465978)` | `nextUnfinalizedQueueIndex`/`nextCrossDomainMessageIndex` too low | Trap 5, Trap 20, Trap 23 |
 | Follow mode stalls: `failed to fetch block hashes of a chunk` | Poll-synced chunks lack `l2_block` linkage | Trap 22 |
-| Old pending chunks never get sessions, no ERROR logged | `total_attempts >= 5` starvation; sweep must reset `total_attempts` | Trap 22 |
-| Chunks verified but batch/bundle sessions never start | NULL `batch_hash`/`bundle_hash` parent links from poll sync | Trap 22 |
-| Repeated `proof task have reach the timeout` for the same task id; duplicate proving; `have proved and verified success` rejects | Collection timeout misconfiguration (`*_collection_time_sec` < real proof times) in the **cron's** config | Trap 24 |
-| `record not found` (parent batch) | Parent batch not imported | Trap 6 |
-| `Out of gas: gas required exceeds allowance: 0` | Anvil gas estimation bug with fee caps | Trap 9 |
-| `Insufficient funds for gas * price + value` | Sender balance is 0 on Anvil | Trap 10 |
-| Tx sent but never mined | Nonce desync (`pending_transaction` stale) | Trap 7 |
-| Relayer exits with `Required flag "min-codec-version" not set` | Missing CLI flags | Trap 11 |
-| Coordinator assigns but prover gets nothing | L2 RPC missing `debug_executionWitness` | README.md |
-| `CoordinatorEmptyProofData` | Prover crashed; reset stuck tasks | README.md |
-| `Params file ".../kzg_bn254_23.srs" does not exist` (bundle proof crash) | halo2 SRS not in `~/.openvm/params/` | Trap 12 |
-| Prover exits 139 `cudaErrorNoDevice` | `--gpus device=N` + wrong `CUDA_VISIBLE_DEVICES` | Trap 13 |
-| Coordinator asset download 403 (`galileov2/verifier/...`) | Wrong S3 prefix; use `v0.8.0/verifier/` | Trap 14 |
-| `l2_block` export hangs for minutes | Slow `chunk_hash` JOIN; export by block-number range | Trap 15 |
-| `mismatch batch-proof exe commitment` or batch proof `VM error: execution error: program exit code 1` | Stale chunk/batch proofs generated by an earlier/reverted code version | Trap 16 |
-| `format bundle prover task failure: unexpected end of JSON input` in a loop | `coordinator_cron` re-marks corrupt bundles as ready; stop cron or reset all stale proofs | Trap 17 |
-| Provers busy but target bundles never prove | Newer bundles/batches created by relayer compete for prover slots | Trap 18 |
+| Chunks verified but batch/bundle sessions never start | NULL `batch_hash`/`bundle_hash` parent links, or stale `prover_task` failure rows | Trap 22, Trap 34 |
+| Relayer cannot send on the fork (balance / `ErrorCallerIsNotSequencer` / nonce stuck) | EOA funding, sequencer auth, `pending_transaction` desync | Trap 27 |
+| RPC to Anvil refused, or Anvil hung then self-recovered mid-run | Anvil death/stall — relaunch with the same `--state` file (NOT `make re-fork` mid-upgrade) | Trap 44 |
+| `Failed to send commitBatch … ErrorIncorrectBatchHash` spam every ~2s, or bundle stuck `rs1` while on-chain `lastFinalized` already advanced | Tx landed on-chain but relayer never recorded it (send timeout) — reconcile DB from chain, restart relayer | Trap 45 |
+| RDS bill spikes while a stack runs | Sync/ad-hoc queries missing `deleted_at IS NULL` | Trap 41, [`rds-query-rules.md`](rds-query-rules.md) |
+| `mismatched post-state root` | Fork block predates the codec's hardfork | Trap 50 |
+| `ErrorCallerIsNotProver (0x7b263b17)` on finalize | Finalize sender not an authorized prover on the fork | Trap 29 (archived) |
+| `CoordinatorEmptyProofData` every ~20 s | **Normal idle-poll** when no task is available; only a problem when ALL provers spin AND coordinator logs task-format failures | Trap 22, Trap 21 |
 
-## Lessons from the v0.9.0 Multi-Bundle Shadow Test
+## Historical incidents (moved)
 
-The following issues were hit while finalizing bundles 17297–17301 (batches 517761–517765) on an Anvil mainnet fork with zkvm guest prover v0.9.0. Keep them in mind for future upgrades.
+The former "Lessons from the v0.9.0 Multi-Bundle Shadow Test" section (bundles 17297–17301 / 20000–20004, 2026-05–2026-07) has been redistributed:
 
-### 1. Do not `git checkout --` uncommitted source changes blindly
+- **Full postmortem** → [`../../docs/testing_reports/snapshot-early-dryrun-and-relayer-tests.md`](../../docs/testing_reports/snapshot-early-dryrun-and-relayer-tests.md)
+- **withdrawRoot from proof metadata** → snapshot-mode Trap 56
+- **`anvil_setCode` preserves immutables** → Trap 1 Cause D
+- **Stale proofs after code reverts / proof-chain resets** → Trap 16 / Trap 17
+- **S3 digest encoding (canonical vs Montgomery)** → [`bundle-digest-encoding.md`](bundle-digest-encoding.md) and [`CURRENT-STACK.md`](CURRENT-STACK.md)
+- **Cargo.lock discipline on zkvm pin bumps** → follow-mode Trap 32
 
-When cleaning up the branch, the v0.9.0 source adaptations (`libzkp`, `prover-bin`, Go `message` types, `rust-toolchain`, `Cargo.lock`) were accidentally reverted because they were not committed. They had to be reconstructed from compiler errors. Always check `git diff --stat` before a bulk revert, and stage or stash anything you intend to keep.
+Still-unique procedural knowledge from that era, kept here in condensed form:
 
-### 2. `finalizeBundlePostEuclidV2` is the only finalize function, but the verifier must be Post-Feynman
-
-`ScrollChain` exposes only one bundle-finalize selector (`0xc1aa4e19`). The name says `PostEuclidV2`, but the verifier it actually calls is chosen by `MultipleVersionRollupVerifier.getVerifier(10, batchIndex)`. For GalileoV2 / v0.9.0 this must be a `ZkEvmVerifierPostFeynman`-style wrapper whose `protocolVersion` immutable is `10`.
-
-- `ZkEvmVerifierPostEuclid` computes `keccak256(publicInput)` — this is old code and will reject current proofs.
-- `ZkEvmVerifierPostFeynman` computes `keccak256(protocolVersion || publicInput)` — this matches v0.9.0 `bundle_pi_hash`.
-
-For v0.9.0 GalileoV2 bundle proofs, `publicInput` is encoded as:
-
-```text
-| layer2ChainId | messageQueueHash | numBatches | prevStateRoot | prevBatchHash | postStateRoot | batchHash | withdrawRoot |
-|    8 bytes    |     32 bytes     |  4 bytes   |   32 bytes    |   32 bytes    |   32 bytes    | 32 bytes  |   32 bytes   |
-```
-
-The `messageQueueHash` is included in the public input (derived from `L1MessageQueueV2` by the contract). Older wrapper comments/documents may show the format without `messageQueueHash`; that format is for pre-GalileoV2 proofs.
-
-### 3. Copying the mainnet verifier via `anvil_setCode` fails for new guest versions
-
-`anvil_setCode` copies runtime bytecode but **preserves the original immutables** (`plonkVerifier`, `verifierDigest1/2`, `protocolVersion`). If your local v0.9.0 proofs use different digests than mainnet, the wrapper will return `VerificationFailed`. For a new guest version, deploy a fresh `ZkEvmVerifierPostFeynman` using the S3 release digests.
-
-### 4. MVRV routing must be verified per target batch
-
-After deploying a new verifier, confirm that `MVRV.getVerifier(10, batchIndex)` returns your wrapper for every batch you intend to finalize. If the fork block already contains a later mainnet verifier registration, a plain `updateVerifier` may be rejected; force the storage slot or impersonate the owner as needed for the shadow fork.
-
-### 5. v0.9.0 dependency graph needs a fresh `Cargo.lock`
-
-Pointing `Cargo.toml` to v0.9.0 is not enough. The first `cargo check` hit a revm version conflict because the old `Cargo.lock` pinned incompatible crate versions. Regenerating `Cargo.lock` resolved it.
-
-### 6. Prover aggregation circuits need deferral enabled
-
-OpenVM v2+ requires `Prover::enable_deferral(child_prover)` before proving aggregation tasks:
-
-- Batch proving needs a chunk child prover.
-- Bundle proving needs a batch child prover.
-
-The prover config therefore needs `child_circuit_vks` so the prover can load the correct child circuit assets.
-
-### 7. S3 digest files are canonical — no proof extraction needed
-
-For v0.9.0, `.../releases/v0.9.0/bundle/digest_1.hex` and `digest_2.hex` are published in the canonical form expected by the Plonk verifier. Do not apply Montgomery→canonical conversion and do not extract digests from proof `instances` unless you are double-checking a specific artifact.
-
-### 8. Resetting bundles may require regenerating the entire proof chain
-
-When re-testing bundles 20000–20004 after the branch's source adaptations were reverted and restored, the existing chunk and batch proofs in the shadow DB no longer matched the current prover's execution commitments. The only reliable fix was to reset **all** chunks, batches, and bundles in the target range (`proving_status = 1, proof = NULL`) and let the provers rebuild the chain from scratch.
-
-- Do not assume `proving_status = 4` means the proof is compatible with the current code.
-- Stop `coordinator_cron` while cleaning stale proofs, or it will re-mark corrupt bundles as ready and flood the log with `format bundle prover task failure`.
-- Stop the relayer if you only need a fixed imported range; otherwise live L2 blocks create new batches that compete for prover time.
-
-### 10. Relayer must use the bundle withdrawRoot from proof metadata
-
-**Symptom**: `VerificationFailed(0x439cc0cd)` during relayer finalization even though the verifier digests and MVRV routing are correct.
-
-**Root cause**: The relayer was passing `dbBatch.WithdrawRoot` to `finalizeBundlePostEuclidV2`. In shadow-test setups, the batch table's top-level `withdraw_root` column can be stale:
-
-- `fetch-l2-blocks.py` cannot read `withdraw_root` from a standard L2 RPC, so it writes `0x0...0` into `l2_block.withdraw_root`.
-- That placeholder propagates to `chunk.withdraw_root` and `batch.withdraw_root`.
-- The prover correctly recomputes the real withdraw root while generating batch proofs and stores it in `batch.proof -> metadata.batch_info.withdraw_root` (and later in the bundle proof metadata).
-- The contract uses the passed `withdrawRoot` when computing the public input hash, so a stale `0x0...0` produces a hash that does not match the proof's `bundle_pi_hash`.
-
-**Fix (relayer)**: Use the withdraw root from the verified bundle proof metadata when packing the finalize calldata:
-
-```go
-if aggProof.MetaData.BundleInfo == nil {
-    return nil, fmt.Errorf("bundle %d proof metadata missing BundleInfo", dbBatch.Index)
-}
-withdrawRoot := aggProof.MetaData.BundleInfo.WithdrawRoot
-```
-
-**Fix (shadow DB)**: After batch proofs are verified, sync the top-level `batch.withdraw_root` column from the proof metadata so the DB is consistent:
-
-```bash
-cd tests/shadow-testing/scripts
-DB_DSN="postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup" \
-    python3 09-sync-batch-withdraw-roots.py --batch-range 517766:517795
-```
-
-**Verification**: Decode the relayer's finalize calldata and confirm `withdrawRoot` equals `proof.metadata.bundle_info.withdraw_root`:
-
-```bash
-# The 4th argument of finalizeBundlePostEuclidV2(bytes,uint256,bytes32,bytes32,bytes)
-python3 -c "from eth_abi import decode; d=bytes.fromhex(open('/tmp/calldata.hex').read().strip()[8:]); \
-  print('withdrawRoot:', '0x'+decode(['bytes','uint256','bytes32','bytes32','bytes'], d)[3].hex())"
-```
-
-**Production note**: On mainnet the `l2_block.withdraw_root` column is populated correctly, so `batch.withdraw_root` is trustworthy. The relayer change is defensive; the DB sync script is only needed for shadow forks that rely on `fetch-l2-blocks.py`.
-
-### 11. Large bundles (30 batches) are much slower than single-batch bundles
-
-The first successful shadow test finalized five single-batch bundles (17297–17301). The follow-up test targeted bundles 20000–20004, which are mostly 30-batch bundles. Plan timing accordingly:
-
-- Single-batch bundle proof: ~10–20 minutes.
-- 30-batch bundle proof: ~30–90 minutes, depending on block complexity and GPU.
-
-With four GPUs, five 30-batch bundles can take 1–3 hours for the bundle proofs alone, after chunk and batch proofs are ready.
+- **`finalizeBundlePostEuclidV2` is the only finalize selector** (`0xc1aa4e19`); the verifier it calls is chosen by MVRV routing and must be a PostFeynman-style wrapper (`keccak256(protocolVersion || publicInput)`, `protocolVersion = 10` for GalileoV2). Public input layout (204 bytes): `chainId(8) | msgQueueHash(32) | numBatches(4) | prevStateRoot(32) | prevBatchHash(32) | postStateRoot(32) | batchHash(32) | withdrawRoot(32)`.
+- **Prover aggregation needs deferral enabled** (OpenVM v2+): batch proving requires the chunk child prover, bundle proving the batch child prover — the prover config must carry `child_circuit_vks` so the right child assets load.
+- **Sizing**: single-batch bundle proofs ~10–20 min; 30-batch bundles ~30–90 min per bundle on one GPU.
 
 ## Documentation Priority
 
 When debugging, read docs in this order:
 
-1. `docs/COMMON-TROUBLESHOOTING.md` + the per-mode `TROUBLESHOOTING.md` (`follow/` or `snapshot/`) — fastest path to known traps
+1. [Trap registry](TROUBLESHOOTING.md) (symptom → trap) + this file + the per-mode `TROUBLESHOOTING.md` (`follow/` or `snapshot/`) — fastest path to known traps
 2. The per-mode `GUIDE.md` (`follow/GUIDE.md` or `snapshot/GUIDE.md`) — detailed setup and procedures
-3. `README.md` — quick reference for common commands
-4. `../../AGENTS.md` (repo root) — cross-network rules and secrets reference
+3. `README.md` — quick reference for common commands + documentation conventions
+4. [`CURRENT-STACK.md`](CURRENT-STACK.md) — dated version-sensitive facts
+5. `../../AGENTS.md` (repo root) — cross-network rules and secrets reference

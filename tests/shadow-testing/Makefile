@@ -82,7 +82,26 @@ snapshot-stop:
 snapshot-clean:
 	$(MAKE) -C snapshot clean CONFIG=$(CONFIG)
 
-# --- Help --------------------------------------------------------------------
+# --- Documentation hygiene ----------------------------------------------------
+# doc-check: validate the trap registry — no duplicate trap numbers across the
+# three troubleshooting files, and every "Trap N" reference in any *.md under
+# tests/shadow-testing (plus root AGENTS.md) resolves to exactly one definition.
+.PHONY: doc-check
+
+doc-check:
+	@bash -c 'set -euo pipefail; \
+	files="docs/COMMON-TROUBLESHOOTING.md follow/TROUBLESHOOTING.md snapshot/TROUBLESHOOTING.md docs/TRAP-ARCHIVE.md"; \
+	dups=$$(grep -h "^### Trap " $$files | grep -oE "^### Trap [0-9]+" | awk "{print \$$3}" | sort -n | uniq -d); \
+	if [ -n "$$dups" ]; then echo "doc-check: DUPLICATE trap numbers: $$dups" >&2; exit 1; fi; \
+	refs_ok=0; refs_bad=0; \
+	for f in $$(grep -rlE "Trap [0-9]+" --include="*.md" . ../../../AGENTS.md 2>/dev/null); do \
+	  for n in $$(grep -oE "Trap [0-9]+" "$$f" | sort -u | grep -oE "[0-9]+"); do \
+	    cnt=$$(grep -h "^### Trap $$n[: ]" $$files | wc -l); \
+	    if [ "$$cnt" -ne 1 ]; then echo "doc-check: BAD ref Trap $$n in $$f (definitions: $$cnt)" >&2; refs_bad=$$((refs_bad+1)); else refs_ok=$$((refs_ok+1)); fi; \
+	  done; \
+	done; \
+	total=$$(grep -h "^### Trap " $$files | wc -l); \
+	echo "doc-check: OK — $$total traps defined, $$refs_ok unique refs validated, 0 duplicates"'
 .PHONY: help
 
 help:
