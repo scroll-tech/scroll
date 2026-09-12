@@ -14,10 +14,13 @@ from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-LOG_FILE = os.environ.get("SHADOW_METRICS_LOG", "/home/scroll/zzhang/scroll/tests/shadow-testing/.work/catchup-metrics.log")
+WORK_DIR = os.environ.get(
+    "SHADOW_WORK_DIR",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".work"),
+)
 DB_DSN = os.environ.get("DB_DSN", "postgresql://postgres:shadow_pass@localhost:5433/shadow_rollup")
 RPC = os.environ.get("ANVIL_RPC", "http://localhost:18545")
-WORK_DIR = "/home/scroll/zzhang/scroll/tests/shadow-testing/.work"
+LOG_FILE = os.environ.get("SHADOW_METRICS_LOG", os.path.join(WORK_DIR, "catchup-metrics.log"))
 FOLLOW_RUN_ENV = os.path.join(WORK_DIR, "follow-run.env")
 VERIFIER_ENV = os.path.join(WORK_DIR, "verifier.env")
 CONFIG_FILE = os.environ.get(
