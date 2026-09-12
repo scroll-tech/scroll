@@ -2,118 +2,91 @@
 
 ## Quick Orientation
 
-This repository is a **mixed Rust + Go monorepo** for the Scroll ZK Rollup. The two most important components for proving-related work are:
+Mixed **Rust + Go** monorepo for the Scroll ZK Rollup. Key components for proving work:
 
-- **Coordinator** (`coordinator/`) — Go service that schedules proving tasks and verifies proofs.
-- **Prover** (`crates/prover-bin/`) — Rust binary that generates ZK proofs using OpenVM.
-- **Shared library** (`crates/libzkp/`, `crates/libzkp_c/`) — Rust proof logic consumed by both prover and coordinator (via CGO).
+- **Coordinator** (`coordinator/`) — Go service scheduling proving tasks and verifying proofs
+- **Prover** (`crates/prover-bin/`) — Rust binary generating ZK proofs via OpenVM
+- **Shared library** (`crates/libzkp/`, `crates/libzkp_c/`) — proof logic consumed by both (CGO)
 
-For a detailed architecture overview, see [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md).
+Architecture overview: [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md).
 
-## When You Are Working On an OpenVM / zkvm-prover Upgrade
+## Testing Workflows (pick the right one)
 
-Follow the structured testing guide in [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md). It covers five verification levels:
+| Workflow | When | Entry point |
+|---|---|---|
+| Upgrade testing ladder (build → unit → artifact → E2E → docker) | after OpenVM / zkvm-prover upgrades | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) |
+| **Shadow follow mode** — fork mainnet, follow live bundle production (default acceptance test) | prover/guest changes | [`tests/shadow-testing/follow/GUIDE.md`](tests/shadow-testing/follow/GUIDE.md) |
+| **Shadow canary parallel-upgrade** — old/new stacks finalize side by side, with rollback drill | pre-upgrade gate (cheap, no old-stack build) | follow/GUIDE.md "Canary Parallel-Upgrade Test" |
+| **Shadow hard-switch upgrade** — production-cutover rehearsal (in-flight task reset) | mandatory for major upgrades | follow/GUIDE.md "Mid-Run Upgrade Test" |
+| **Shadow snapshot replay** — fixed historical bundle range | incident reproduction, single-bundle debug, Sepolia | [`tests/shadow-testing/snapshot/GUIDE.md`](tests/shadow-testing/snapshot/GUIDE.md) |
+| Local E2E (no fork) | quick pipeline sanity | [`tests/prover-e2e/README.md`](tests/prover-e2e/README.md) |
 
-1. Compilation & static checks
-2. Unit tests
-3. Artifact builds
-4. End-to-end proving
-5. Docker image builds
+Mode chooser + commands: [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md).
+
+## Non-Negotiable Rules (details behind each link)
+
+- **Anvil forks Ethereum L1, never Scroll L2** (ScrollChain proxy `0xa13B…E556` is on ETH mainnet; verify `eth_chainId == 1`). — COMMON Trap 2
+- **L2 RPC must support `debug_executionWitness`** (internal proxies only; `rpc.scroll.io` does not work). — COMMON Trap 3
+- **Version-sensitive facts** (S3 prefixes, digest encoding, codec block thresholds, production stack identity) live in ONE place: [`tests/shadow-testing/docs/CURRENT-STACK.md`](tests/shadow-testing/docs/CURRENT-STACK.md). Never hard-code them elsewhere.
+- **Verify the production zk stack before upgrade tests** — never assume the current checkout == production (follow/GUIDE "Determining the Production zk Stack"). — Trap 31
+- **Querying the production RDS**: partial-index and `count(*)` rules in [`tests/shadow-testing/docs/rds-query-rules.md`](tests/shadow-testing/docs/rds-query-rules.md) — violations cost real money.
+- **Stop test stacks when done** (`make follow-stop`) — an idle stack polls RDS forever.
 
 ## Useful Commands
 
 ```bash
-# Rust formatting / linting
-cargo fmt --all -- --check
-cargo clippy --all-features --all-targets -- -D warnings
-cargo check --all-features
-
-# Build shared library for coordinator
-cargo build --release -p libzkp-c
-
-# Build prover (CPU)
-cd zkvm-prover && make prover_cpu
-
-# Build prover (GPU)
-cd zkvm-prover && make prover
-
-# Build coordinator API
-cd coordinator && make coordinator_api
-
-# Coordinator unit tests (needs libzkp.so)
-cd coordinator && make test
-
-# E2E test setup
-cd tests/prover-e2e
-ln -snf <scenario> conf   # e.g., sepolia-galileoV2
-make all
-make coordinator_setup
+cargo fmt --all -- --check && cargo clippy --all-features --all-targets -- -D warnings
+cargo build --release -p libzkp-c            # shared lib for coordinator (CGO)
+make -C zkvm-prover prover                   # GPU prover  (prover_cpu / prover_halo2gpu variants)
+make -C coordinator coordinator_api coordinator_cron
+make -C coordinator test                     # unit tests (needs libzkp.so)
+cd tests/prover-e2e && ln -snf mainnet-galileoV2 conf && make all && make coordinator_setup
 ```
 
 ## Directory Guide
 
 | Directory | Purpose |
 |-----------|---------|
-| `crates/libzkp` | Core Rust proving/verification library |
-| `crates/libzkp_c` | C FFI bindings for `libzkp` |
+| `crates/libzkp`, `crates/libzkp_c` | Core proving/verification library + C FFI |
 | `crates/prover-bin` | Prover binary (`prover`) |
 | `coordinator/` | Go coordinator service |
-| `rollup/` | Go rollup services (produces tasks for coordinator) |
-| `tests/prover-e2e/` | E2E test harness for coordinator + prover |
+| `rollup/` | Go rollup services (task production, relayer) |
+| `tests/shadow-testing/` | Shadow fork/follow/canary/snapshot harness (start at its README) |
+| `tests/prover-e2e/` | Local E2E harness (coordinator + prover, no fork) |
 | `tests/integration-test/` | General integration tests |
-| `zkvm-prover/` | Build scripts and runtime config for the prover binary |
-| `build/dockerfiles/` | Dockerfiles for production images |
+| `zkvm-prover/` | Prover build scripts + runtime config |
+| `build/dockerfiles/` | Production Dockerfiles |
 
-## Troubleshooting Common E2E Test Issues
+## Agent Discipline: Research Before Experimentation
 
-### Port Conflicts (Shared Servers)
-- System PostgreSQL often occupies port 5432. If the default `DB_PORT=5432` conflicts with a system instance, edit `.env` to use an alternative (e.g., `5433`) and run `make gen-config` to regenerate all configs.
-- Kill stale coordinator processes before restarting: `pkill -f coordinator_api`.
-
-### Stale Docker Containers
-- After changing `docker-compose.yml`, old containers may persist with stale port mappings. Always use `docker rm -f <name>` before `docker compose up`.
-- The E2E container is named `local_postgres`. Verify the port mapping with `docker port local_postgres`.
-
-### Solc Version
-- The project requires **solc ≥ 0.8.24** (for `--evm-version cancun`). System-installed solc is often older.
-- Workaround: download `solc-static-linux` v0.8.24 to `/tmp/solc` and prepend `/tmp` to PATH.
-
-### goose Migration Tool
-- The E2E `setup_db` step requires `goose`. Install with: `go install github.com/pressly/goose/v3/cmd/goose@latest`.
-- Ensure `$GOPATH/bin` (typically `~/go/bin`) is in PATH.
-
-### Config Template Placeholders
-- Some config templates contain literal placeholder strings (e.g., `"<serach a public rpc endpoint like alchemy>"`). Always verify the `l2geth.endpoint` field points to a reachable RPC before launching the coordinator.
-- A bad endpoint causes the coordinator to panic at startup during `InitL2geth`.
-
-### validium_mode Consistency
-- The E2E config (`tests/prover-e2e/*/config.json`) and coordinator config (`coordinator/build/bin/conf/config.json`) must agree on `validium_mode`. Mismatch causes "invalid data length for DABatchV7" errors.
-- For mainnet testing: set `validium_mode: false`.
-- For cloak / validium testing: set `validium_mode: true` and ensure `sequencer.decryption_key` is provided.
-
-### Fork & Block Range Selection
-- Blocks must be post-fork to match the configured codec version. For GalileoV2 (codec V10) on mainnet, use blocks ≥ 33,750,000. Older blocks (e.g., 26,653,680) are Galileo (codec V9) and will fail with "mismatched post-state root".
-- To verify fork compatibility: check `codec_version` in the E2E config and ensure `SCROLL_FORK_NAME` matches the coordinator's verifier fork list.
-
-### S3 Asset URLs
-- The prover config `base_url` must match the actual S3 object path. Verify with `curl -sI` before running.
-- The coordinator downloads **verifier** assets from `v0.X.X/verifier/`; the prover downloads **circuit** assets from `<fork>/<proof_type>/<vk>/`.
-- If you see HTTP 403 from S3, check whether the URL contains a `releases/` segment that shouldn't be there.
-
-### Multiple Coordinator Instances
-- Running `make coordinator_setup` rebuilds the binary but does not stop running instances. If the old instance holds port 8390, the new one fails with `bind: address already in use`.
-- Always check with `ss -tlnp | grep 8390` before launching.
+> **Rule**: When encountering a problem that is **non-trivial**, **time-consuming**, or **has failed more than once**, search existing documentation before attempting new fixes.
+>
+> 1. Read the relevant markdown in the task directory (e.g., `tests/shadow-testing/docs/*.md`).
+> 2. Search for similar error messages, selectors, or symptoms in codebase and docs — start from the **trap index**: [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) (56 numbered traps with symptom tables).
+> 3. Only after confirming the issue is **not documented** should you design a new experiment.
+>
+> **Why**: this repo documents its pitfalls extensively. Blind experimentation repeats solved mistakes. When you discover a new trap or workaround, **write it back** (see the documentation conventions in `tests/shadow-testing/README.md`).
 
 ## Coordination with Humans
 
-- **Code / logic issues**: agents should reason independently and propose fixes.
-- **Environment / secrets issues** (database passwords, RPC endpoints, cloud credentials, sudo access): ask the human and wait for a response. Do not time out and make unilateral decisions.
+- **Code / logic issues**: reason independently and propose fixes.
+- **Environment / secrets issues** (DB passwords, RPC endpoints, cloud credentials, sudo): ask the human and wait. Do not time out and make unilateral decisions.
+
+## Secrets & Credentials
+
+All local-development secrets are in [`local-secrets.md`](local-secrets.md) (git-ignored). Before any shadow/E2E test, cross-reference it; if a secret is missing, **ask a human** — never invent URLs or credentials. Categories inside: RPC endpoints (ETH L1 / Scroll L2), DB DSNs (shadow / Sepolia / mainnet RDS tunnel), contract addresses per network, sender EOA keys, S3 base URLs.
 
 ## Documentation Index
 
-| Document | What It Covers |
-|----------|----------------|
-| [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, component relationships, common operations |
-| [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
-| [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
-| [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
+| Document | Covers |
+|----------|--------|
+| [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, common operations |
+| [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Five-level upgrade verification ladder |
+| [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) | Mode chooser + documentation conventions |
+| [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | **Trap index** (all 56 traps → per-file locations) |
+| [`tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md`](tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md) | Mode-independent traps, pre-flight ritual, checklists, symptom table |
+| `tests/shadow-testing/{follow,snapshot}/GUIDE.md` + `TROUBLESHOOTING.md` | Per-mode runbooks and traps |
+| [`tests/shadow-testing/docs/CURRENT-STACK.md`](tests/shadow-testing/docs/CURRENT-STACK.md) | Dated version-sensitive facts (S3, digests, thresholds, production identity) |
+| [`tests/shadow-testing/docs/rds-query-rules.md`](tests/shadow-testing/docs/rds-query-rules.md) | Production RDS query discipline |
+| [`docs/testing/single-chunk-reproving.md`](docs/testing/single-chunk-reproving.md) | Re-proving one mainnet chunk |
+| `docs/testing_reports/*.md` | Dated test reports: [canary 2026-09-11](docs/testing_reports/canary-parallel-upgrade-2026-09-11.md) · [canary docker 2026-08-31](docs/testing_reports/canary-parallel-upgrade-docker-2026-08-31.md) · [canary 2026-08-25](docs/testing_reports/canary-parallel-upgrade-2026-08-25.md) · [snapshot early experiments](docs/testing_reports/snapshot-early-dryrun-and-relayer-tests.md) · [OpenVM 1.6.0 / guest v0.8.0](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) |

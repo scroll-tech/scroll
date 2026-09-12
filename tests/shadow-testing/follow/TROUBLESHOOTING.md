@@ -1,0 +1,200 @@
+# Follow Mode — Troubleshooting & Pitfalls
+
+Follow-mode-specific traps (poll sync, starvation, live-mainnet finalization, upgrades/canary).
+Mode-independent traps (environment, verifier deployment, relayer flags, prover setup) and the
+step-by-step checklist live in [`../docs/COMMON-TROUBLESHOOTING.md`](../docs/COMMON-TROUBLESHOOTING.md);
+see also the [Follow Mode Guide](./GUIDE.md).
+
+- **Registry & statuses**: [`../docs/TROUBLESHOOTING.md`](../docs/TROUBLESHOOTING.md) — every trap's status (Active/Fixed/Checklist) and key symptom.
+- **Retired traps** (fixed in harness/upstream or absorbed into checklists — e.g. 25, 26, 28, 29, 30, 36, 43): [`../docs/TRAP-ARCHIVE.md`](../docs/TRAP-ARCHIVE.md). Numbers are retired, never reused.
+
+## Critical Traps (Follow Mode)
+
+### Poll-Sync & Task Visibility
+
+### Trap 22: Poll-Synced Chunks Missing `l2_block` Linkage → "failed to fetch block hashes of a chunk" [follow mode]
+
+- **Symptom**: In follow mode, after the initial backlog is proved, finalization stalls. Coordinator logs `format prover task failure ... failed to fetch block hashes of a chunk, chunk hash:0x... err:<nil>` on every dispatch attempt; provers spin on `CoordinatorEmptyProofData: get empty prover task` every ~20s; chunks pile up in `proving_status = 1` (with sweeps resetting stale `proving_status = 2` rows every 30 min).
+- **Cause**: `sync-mainnet-db.py` poll mode copies new chunk/batch/bundle rows but historically skipped `l2_block` (watermarking the 181 GB mainnet table by `MAX(number)` times out). New chunks therefore had no block rows linked via `chunk_hash`, and the coordinator cannot format chunk tasks without them. Subtlety: the block rows usually **already exist** in the shadow DB (imported by block number during baseline) but with `chunk_hash = NULL`, so a plain `INSERT ... ON CONFLICT (number) DO NOTHING` copy is a no-op — the linkage must be established with an UPDATE.
+- **Fix**: `sync_l2_blocks()` in `sync-mainnet-db.py` now runs every poll cycle: (1) `UPDATE l2_block SET chunk_hash = chunk.hash` for recent chunks (last 2000) whose blocks lack the link, then (2) copy any genuinely missing block rows from mainnet. One-off manual backfill if needed:
+  ```sql
+  UPDATE l2_block b SET chunk_hash = c.hash FROM chunk c
+  WHERE b.number BETWEEN c.start_block_number AND c.end_block_number
+    AND c.index > (SELECT COALESCE(MAX(index),0) - 2000 FROM chunk)
+    AND (b.chunk_hash IS NULL OR b.chunk_hash <> c.hash);
+  ```
+- **Diagnosis query**: chunks lacking block linkage —
+  ```sql
+  SELECT count(*) FROM chunk c
+  WHERE NOT EXISTS (SELECT 1 FROM l2_block b WHERE b.chunk_hash = c.hash);
+  ```
+- **Note**: `CoordinatorEmptyProofData` every 20s from an idle prover is the **normal** "no task available" poll response, not an error — chunk dispatch is serialized by parent-chunk proof dependency, so only 2-3 chunks prove concurrently even with 4 provers. It only indicates this trap when ALL provers spin AND the coordinator logs block-hash failures.
+- **Secondary damage — attempt exhaustion starvation**: **Note (fixed upstream)**: this is now fixed in the coordinator itself — coordinator-side dispatch failures (task formatting, universal-task generation, prover-task insertion) refund the charged attempt via `orm.RefundAttemptsByHash` (`recoverAttempts` in `internal/logic/provertask/*_prover_task.go`), so `total_attempts` is no longer permanently burned by such failures. The sweeper's `total_attempts` reset described below is now belt-and-braces only. Historical description: the coordinator picks chunk tasks oldest-first but **skips tasks with `total_attempts >= 5`** (`chunk.go GetUnassignedChunk`: `total_attempts < maxAttempts`). Every failed dispatch during the outage burns one attempt, and `sweep-stale-proving.sh` historically reset only `proving_status`/`active_attempts`, not `total_attempts`. Result: the 44 backlog chunks hit 5/5 attempts and became permanently invisible — the coordinator silently leapfrogged to freshly-synced tip chunks while the backlog starved (symptom: only tip chunks prove, old pending chunks never get sessions, no ERROR logged). Fix: reset attempts after the root cause is repaired —
+  ```sql
+  UPDATE chunk SET total_attempts=0, active_attempts=0
+  WHERE proving_status=1 AND total_attempts>0;
+  ```
+  (same shape for `batch`/`bundle`). `sweep-stale-proving.sh` now resets `total_attempts = 0` on every swept row so future outages self-heal.
+- **Diagnosis query for starvation**: oldest pending chunk with maxed attempts —
+  ```sql
+  SELECT index, total_attempts, active_attempts FROM chunk
+  WHERE proving_status = 1 ORDER BY index LIMIT 5;
+  ```
+- **Tertiary damage — NULL parent links block proof-status promotion**: poll sync copies chunk/batch rows with `ON CONFLICT DO NOTHING`, so rows copied *before* mainnet's proposer assigned them keep `batch_hash` / `bundle_hash` NULL forever. The coordinator_cron promotes `batch.chunk_proofs_status = Ready` only when all chunks joined via `chunk.batch_hash` are verified (`collect_proof.go checkBatchAllChunkReady`), and likewise `bundle.batch_proofs_status` via `batch.bundle_hash`. NULL links → promotion never happens → the batch/bundle is silently invisible to task selection (oldest-first query filters on the status flag; no ERROR is ever logged). Symptom: chunks all verified but batch sessions never start; one stray batch/bundle proves while its older siblings starve. Fix: re-derive links from the parent rows' index ranges —
+  ```sql
+  UPDATE chunk c SET batch_hash = b.hash FROM batch b
+  WHERE c.index BETWEEN b.start_chunk_index AND b.end_chunk_index
+    AND (c.batch_hash IS NULL OR c.batch_hash = '' OR c.batch_hash <> b.hash);
+  UPDATE batch b SET bundle_hash = u.hash FROM bundle u
+  WHERE b.index BETWEEN u.start_batch_index AND u.end_batch_index
+    AND (b.bundle_hash IS NULL OR b.bundle_hash = '' OR b.bundle_hash <> u.hash);
+  ```
+  `sync-mainnet-db.py` runs both every poll cycle (`sync_parent_links()`, bounded to the recent 500 parents).
+
+### Trap 23: Bundles Popping Post-Fork L1 Messages → VerificationFailed (0x439cc0cd), then ErrorFinalizedIndexTooLarge (0x16465978) [follow mode]
+
+- **Symptom**: Most bundles finalize fine, but a bundle whose batches pop L1 messages enqueued **after the Anvil fork block** reverts on-chain with `VerificationFailed` (`0x439cc0cd`). After patching the queue hashes, it then reverts with `ErrorFinalizedIndexTooLarge` (`0x16465978`, appears as raw bytes `\x16FYx` in relayer logs).
+- **Diagnosis flow (all verified during the 2026-07-13 incident, bundle 18070)**:
+  1. Decode the bundle proof's `metadata.bundle_info` from the DB (`bundle.proof` is a JSON blob) and confirm every field matches mainnet DB values.
+  2. Recompute `keccak256(abi.encodePacked(protocolVersion, publicInput))` with the wrapper's packed layout (`chainId 8B | msgQueueHash 32B | numBatches 4B | prevStateRoot | prevBatchHash | postStateRoot | batchHash | withdrawRoot`) and confirm it equals `metadata.bundle_pi_hash`.
+  3. Call the wrapper's `verify(bundleProof, publicInput)` directly with the metadata-derived publicInput. **If it succeeds**, proof/digests are fine and the mismatch is contract-side — ScrollChain computes `messageQueueHash` itself via `L1MessageQueueV2.getMessageRollingHash()`.
+  4. Compare `getMessageRollingHash(i)` on fork vs mainnet (public RPC e.g. `https://ethereum-rpc.publicnode.com` works; Alchemy demo key is 429-rate-limited).
+- **Root cause**: `L1MessageQueueV2` keeps `mapping(uint256=>bytes32) messageRollingHashes` at **storage slot 101** (value = rolling hash with low 32 bits overwritten by enqueue timestamp; the getter clears those bits). Entries for messages enqueued after the fork block are zero on the fork, so the contract builds a publicInput whose `messageQueueHash` differs from the prover's → plonk rejects. Note the **off-by-one**: rh[i] is the hash *after* message i, so a bundle popping to index N needs rh[N-1]; DB `prev/post_l1_message_queue_hash` at popped_before=N equals `getMessageRollingHash(N-1)`.
+- **Fix**: `scripts/sync-queue-hashes.py` copies `getMessageRollingHash(i)` from a mainnet RPC into the fork via `anvil_setStorageAt(queue, keccak256(pad32(i)‖pad32(101)), hash)` and also bumps `nextCrossDomainMessageIndex` (slot 103 = 0x67) to mainnet's value (this is what clears the follow-up `ErrorFinalizedIndexTooLarge`). It is idempotent and runs inside the `sync-mainnet-db.py` poll loop during follow mode (failures there only log a warning, never kill the DB sync). Run it manually after any Anvil restart/re-fork, and whenever a finalize reverts with either selector.
+- **Rule of thumb**: if finalization fails only for bundles whose `post_l1_message_queue_hash != prev_l1_message_queue_hash` (i.e. the batch pops messages), suspect this trap before touching proofs or the verifier wrapper.
+
+### Relayer on the Fork
+
+### Trap 27: Relayer Cannot Commit/Finalize on the Fork — Balance, Sequencer, Nonce Checklist [follow mode]
+
+Three independent things must hold for the relayer to send its first on-fork commit; each fails with a distinct signature:
+
+1. **Zero EOA balance** → `Out of gas: gas required exceeds allowance: 0`. `10-follow-up.sh`'s idempotent restart skips `01-setup-anvil.sh` when Anvil is already running, so EOA funding never re-runs. Fix: `cast rpc anvil_setBalance <eoa> 0x56bc75e2d63100000` for both the commit sender and the finalize sender.
+2. **`ErrorCallerIsNotSequencer` (0x3cddbade)** on `commitBatches` → the commit sender is not authorized on the fork. `configs/mainnet.json` `accounts.commit_eoa` **must equal** the address derived from the `COMMIT_KEY` hardcoded in `06-run-relayer.sh` — they had drifted apart (`0xf39F…` vs `0xBC73…`), so `01-setup-anvil.sh` authorized an account the relayer never uses. Authorize manually: impersonate the ScrollChain owner and `cast send … "addSequencer(address)" <commit_eoa> --unlocked`.
+3. **Tx stuck in txpool `queued` forever** → `pending_transaction` nonce desync (Trap 7 variant). The relayer's sender initializes its nonce as `max(db_max_nonce + 1, chain_pending_nonce)` (`rollup/internal/controller/sender/sender.go` `initializeNonce`). `pending_transaction` rows survive Anvil state-file restores, but the on-fork account nonce does not (a restored state can reset it to 0). The relayer then signs with a high nonce, Anvil queues the tx behind a gap that never fills, and *nothing ever mines* — commits silently stall with no error after the initial send. Diagnose with `cast nonce <eoa>` vs `cast rpc txpool_content`; fix: stop relayer, `DELETE FROM pending_transaction WHERE sender_address = '<eoa>'` (or all rows), restart relayer so it re-initializes from the chain nonce.
+
+Also note that the relayer writes `rollup_status` **only** through its commit/finalize confirmation path (GORM `UPDATE … SET finalize_tx_hash, rollup_status`). If a batch/bundle shows `rollup_status = 5` with NULL `finalize_tx_hash` while `lastFinalizedBatchIndex` on the fork hasn't moved, do not trust the DB row — cross-check on-chain. `log_statement = 'mod'` on the shadow postgres is a cheap way to attribute every status write; it is asserted automatically by `02-prepare-db.sh` and `10-follow-up.sh` (re-applied on every setup, since `ALTER SYSTEM` lives in the container's data volume and is lost when the volume is recreated). Read the writes with `docker logs shadow-postgres` (or the postgres server log on a non-docker setup).
+
+### Upgrades, Canary & Builds
+
+### Trap 31: Upgrade-Test Phase 1 Built From the Branch Under Test, Not From Production [follow mode]
+
+- **Symptom**: Phase-1 chunks/batches prove fine, but every bundle finalize reverts with `VerificationFailed (0x439cc0cd)` even though `--skip-verifier` routing checks pass.
+- **Cause**: Assuming the current checkout == the production zk stack. The branch under test and the config templates describe the NEW version (e.g. zkvm v0.9.0 / OpenVM 2.0.0), while mainnet may still run the previous guest (e.g. v0.8.0 / OpenVM 1.6.0 from `develop`). New-guest proofs can never verify against the production wrapper's digests — the mismatch only shows up at finalization, after hours of proving.
+- **Fix**: determine the production stack FIRST (follow/GUIDE.md "Determining the Production zk Stack": on-chain wrapper `verifierDigest1/2()` vs S3 `digest_*.hex` — Montgomery conversion needed for v0.8.0, see docs/bundle-digest-encoding.md — plus `git_version` inside a production `bundle.proof` JSON, and `Cargo.lock` zkvm pins per branch). Build production in a separate `git worktree` and aim `COORD_DIR` / `PROVER_BIN` / `ASSETS_DIR` at it for Phase 1. Also remember the v0.8.0 S3 prefix has **no** `/releases/` segment.
+
+### Trap 32: `cargo update -p scroll-zkvm-*` Drifts `revm`, Breaking the `[patch]` Fork Resolution [build]
+
+- **Symptom**: After bumping the `scroll-zkvm-*` workspace pin (e.g. `tag = "v0.9.0"` → `rev = <master>`) and running `cargo update -p scroll-zkvm-prover ...`, the build fails deep in the dependency graph with `E0308 mismatched types ... expected revm_primitives::hardfork::SpecId, found SpecId` and the note "there are multiple different versions of crate `revm_primitives`" (crates.io vs the scroll `scroll-v91` fork).
+- **Cause**: `cargo update -p` re-resolves more than the named crates. It flipped `alloy-evm 0.22.6`'s edge from `revm 30.1.1` to `revm 30.2.0` (and several `revm-primitives` edges from the patched fork `21.0.1` to crates.io `21.0.2`). The workspace `[patch.crates-io]` only redirects a revm crate to the scroll fork when the fork's version satisfies the requirement; the bumped crates.io `revm` family mixes fork and non-fork `revm-primitives` in one crate and cannot compile.
+- **Fix**: restore the exact HEAD edges instead of letting the resolver choose. Inspect with `git diff Cargo.lock`; the two hand-edits that fixed it (2026-07, zkvm master bf887150): (1) in `alloy-evm 0.22.6`'s dependency list change `"revm 30.2.0"` back to `"revm 30.1.1"`; (2) in the six crates.io revm-family packages that flipped (`revm-context 10.1.2`, `revm-context-interface 11.1.2`, `revm-handler 11.2.0`, `revm-inspector 11.2.0`, `revm-interpreter 28.0.0`, `revm 30.2.0`) change `"revm-primitives 21.0.2"` back to `"revm-primitives 21.0.1"` (the fork). Verify with `cargo metadata --locked` before rebuilding. You cannot fix this with `cargo update -p revm --precise ...` — `op-revm` legitimately requires `revm ^30.2.0`, so both versions must coexist.
+- **Prevention**: after any `cargo update -p scroll-zkvm-*`, always `git diff Cargo.lock` and revert every revm-family drift before building.
+
+### Trap 33: v0.9.0+ Master Requires `agg_vk.bin` on S3 (Prover) and in Coordinator Assets [follow mode / upgrade]
+
+- **Symptom**: New-stack prover exits at startup with `Failed to download agg_vk.bin: HTTP status 403` (or silently falls back to "deriving agg VK from SDK (slow, may allocate GPU memory)" and later OOMs the 24 GB card during SNARK proving). Coordinator panics with `agg_vk.bin missing from assets` when its first batch proof arrives.
+- **Cause**: zkvm-prover master (bf887150, halo2-gpu) writes a per-circuit `agg_vk.bin` next to `app.vmexe` at `build-guest` time, and `Prover::load_agg_vk()` reads it to avoid constructing the GPU aggregation prover just to obtain the VK. The scroll prover downloads circuits from the **flat** S3 layout `<base>/<circuit>/app.vmexe` (no VK subdir) and expects `agg_vk.bin` in the same dir; the v0.9.0 S3 assets predate this file. The coordinator's batch-proof verification (deferral) reads the same key as `agg_vk.bin` from its own assets dir (`crates/libzkp/src/verifier/universal.rs`).
+- **Fix**: after every guest rebuild that bumps the zkvm pin, upload the new artifacts (bucket layout is flat per circuit):
+  ```bash
+  Z=<zkvm-prover>/releases/dev
+  B=s3://circuit-release/scroll-zkvm/releases/v0.9.0
+  for c in chunk batch bundle; do aws s3 cp $Z/$c/agg_vk.bin $B/$c/agg_vk.bin; done
+  # verify: anonymous GET must succeed (403 = wrong key or missing object)
+  curl -s -o /dev/null -w '%{http_code}\n' https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/chunk/agg_vk.bin
+  ```
+  For the local coordinator, copy the batch circuit's `agg_vk.bin` into `coordinator/build/bin/assets_v2/agg_vk.bin` (no separate S3 object needed — it is the same file the prover downloads from `batch/agg_vk.bin`).
+- **Note**: `agg_vk.bin` contents are identical for batch and bundle (same agg config) and equal to `root_verifier_vk` for chunk — matching md5s are expected, not a copy/paste bug. And always re-run `make build-guest` after switching zkvm commits: a stale `releases/dev/` once produced a wrong `digest_1.hex` that only a fresh build corrected (digests must match the canonical values in docs/bundle-digest-encoding.md).
+
+### Trap 34: Stale `prover_task` Failure Rows Starve Batch Assignment Silently [follow mode]
+
+- **Symptom**: Chunks all prove, batches sit at `proving_status = 1` with `chunk_proofs_status = 2` (ready) forever, provers idle-poll `CoordinatorEmptyProofData: get empty prover task`, and the coordinator never logs `start batch proof generation session`. No ERROR anywhere.
+- **Cause**: The coordinator's batch assignment returns the lowest-index unassigned batch (`ORDER BY index LIMIT 1`) and then applies the "don't dispatch the same failing job to the same prover" rule: if `prover_task` contains a `proving_status = 3` (ProverProofInvalid) row for that batch hash *and* the polling prover, the assignment silently returns empty — and because the query always picks the *same* lowest batch first, later batches are never considered. If every prover has a failure row for that one batch, all batch proving starves permanently. The sweeper (`sweep-stale-proving.sh`) resets `batch.proving_status`/`total_attempts` but does NOT clear `prover_task` failure rows, so the poison survives sweeps and coordinator restarts.
+- **How it happens here**: a previous coordinator instance (e.g. a sanity run whose assets lacked `agg_vk.bin`, Trap 33) rejects a valid proof as `ProverProofInvalid`. The failure is the coordinator's fault, but the row pins the *prover* as having failed the task.
+- **Fix**: delete the bogus failure rows (verify they are bogus first — `created_at` predating the current coordinator instance is a strong hint):
+  ```sql
+  SELECT task_type, task_id, prover_name, failure_type, created_at FROM prover_task WHERE proving_status = 3;
+  DELETE FROM prover_task WHERE proving_status = 3 AND task_type = 2 AND task_id = '<batch_hash>';
+  ```
+- **Note**: task type is chosen at RANDOM per poll (`proofType()` in `get_task.go` shuffles chunk/batch/bundle), and a busy prover does not poll — so even a healthy system picks up batch tasks only on lucky idle polls; a few minutes of delay after unblocking is normal, hours is not.
+
+### Trap 35: Post-Upgrade — Coordinator Loops "Generate universal prover task failure" on Old-Format Proofs [upgrade]
+
+- **Symptom**: Right after the 20-upgrade.sh cutover, the new coordinator repeatedly logs `Generate universal prover task failure ... data did not match any variant of untagged enum ProofEnum` for the same one or two task ids, provers error on every poll (`CoordinatorGetTaskFailure`), and NO new tasks of any type get assigned (chunks included) — the whole fleet starves.
+- **Cause**: three leftover-state problems stack up:
+  1. **Stale assigned `prover_task` rows** — tasks that were in-flight at the cutover keep `proving_status = 1` (ProverAssigned) rows; the new coordinator's `hasAssignedTask` path rebuilds them from old-circuit child proofs, which the new libzkp cannot parse.
+  2. **Stale ready flags on never-assigned rows** — a naive reset (`WHERE proving_status <> 1`) misses rows that were *already* unproved: bundles whose `batch_proofs_status = Ready` and batches whose `chunk_proofs_status = Ready` from old-circuit proving stay assignable, and their DB proof blobs are old-format.
+  3. **Priority dispatch amplifies the poison** — the branch's GetTasks tries Bundle > Batch > Chunk and ABORTS the whole request when a higher-priority `Assign` errors (unlike develop's random pick), so one poisoned bundle blocks chunk/batch assignment too.
+- **Fix (codified)**: 20-upgrade.sh step (e) now resets `batch_proofs_status`/`chunk_proofs_status` and clears `proof` blobs for ALL unfinalized rows at/after N (not just `proving_status <> 1`), and `DELETE FROM prover_task WHERE proving_status = 1` while the provers are stopped. Manual recovery is the same SQL; after cleanup the pipeline recovers within one poll cycle.
+- **Related**: first chunk task generation after an assets swap is SLOW (the coordinator fetches `debug_executionWitness` block-by-block — ~550 blocks ≈ 10-15 min for two chunks — at 0% CPU). This is normal; the prover-side `connection_timeout_sec = 1800` covers it. Do not restart the coordinator just because it looks idle.
+
+### Trap 37: `make coordinator_api` Does NOT Refresh the Embedded `libzkp.so` [build / upgrade]
+
+- **Symptom**: After rebuilding `target/release/libzkp.so` (e.g. for the `agg_vk.bin` verifier change) and restarting the coordinator, batch proof verification still runs the OLD code — valid proofs are rejected (`Batch verify failed, error: <old-asset-name> missing from assets`) and the rejections poison `prover_task` exactly like Trap 34.
+- **Cause**: the coordinator Go binary CGO-links `coordinator/internal/logic/libzkp/lib/libzkp.so` — a **separate copy** that `make coordinator_api` does not rebuild or re-copy. Only `make -C coordinator libzkp` (or a manual `cp target/release/libzkp.so coordinator/internal/logic/libzkp/lib/`) refreshes it.
+- **Fix**: after every libzkp-c rebuild that changes verifier/prover logic, sync the copy and restart the coordinators:
+  ```bash
+  cargo build --release -p libzkp-c
+  cp target/release/libzkp.so coordinator/internal/logic/libzkp/lib/libzkp.so
+  strings coordinator/internal/logic/libzkp/lib/libzkp.so | grep -c "<new-marker-string>"  # sanity check
+  ```
+  Then clear any `ProverProofInvalid` rows created while the stale .so was live (Trap 34 recovery SQL).
+
+### Trap 38: halo2-gpu Bundle Prover Crashes — VRAM Starvation and `def_hook_commit` [upgrade / halo2-gpu]
+
+- **Symptom 1**: Both provers die mid-bundle: `panicked ... called Result::unwrap() on an Err value: HaloGpu(Cuda(CudaError { code: 9, name: "cudaErrorInvalidConfiguration", ... quotient.cu }))` right after the halo2 `create_proof` phase, with the log showing `GPU mem ... peak=22.9 GiB`.
+- **Cause 1**: scroll's prover-bin obtained the child aggregation VK via `sdk.agg_vk()`, which **builds the child's full GPU aggregation prover (~5.7 GiB per circuit)** just to read the VK. The openvm VPMM pool never returns those pages to the OS, so by SNARK time `cudaMemGetInfo` free ≈ 0 and the quotient chunking computes `batch_size = 0` → `cudaErrorInvalidConfiguration` (not a clean OOM). zkvm-prover master (bf887150) documents exactly this failure mode in its AGENTS.md "VRAM budgeting" section.
+- **Fix 1**: `UniversalHandler::agg_vk()` now uses `Prover::load_agg_vk()`, which reads the pre-built `agg_vk.bin` asset (downloaded alongside `app.vmexe`) instead of materializing the GPU prover. Post-fix SNARK-phase peak dropped enough for 24 GB cards (observed halo2_outer ~8 s + wrapper ~2.3 s per bundle).
+- **Symptom 2**: After fixing #1, the prover panics with `def_hook_commit must be defined to verify child proof with deferrals` as soon as a **bundle** task arrives before any batch task in a fresh process.
+- **Cause 2**: The bundle verify circuit's `def_hook_commit` comes from the *batch child* SDK's deferral prover, which only exists after the batch prover's own `enable_deferral(chunk)` ran. Previously `sdk.agg_vk()` accidentally initialized it as a side effect; with the file-based `load_agg_vk()` that side effect is gone. (Batch tasks are unaffected: chunk children carry no deferral merkle proofs, so the assert passes with a `None` hook commit.)
+- **Fix 2**: `do_prove` now initializes the batch child's deferral (`batch.enable_deferral(chunk_handler)`) before `bundle.enable_deferral(batch)` for bundle tasks — mirroring the zkvm integration tester's flow.
+- **Symptom 3** (2026-08-03, post-Fix-1 binary): the *same* `quotient.cu ... invalid configuration` panic returns, peak ~22.8 GiB — but only when the prover process proved **chunk/batch tasks earlier in its lifetime** and then picks up a bundle task. A process that goes straight to bundle tasks (the post-Fix-1 verification scenario) survives.
+- **Cause 3**: Fix 1 removed the 5.7 GiB/circuit agg-VK derivation, but the GPU circuit provers of every task type the process has served stay resident (VPMM pool never returns pages). Chunk+batch+bundle+halo2_outer together still exceed what the SNARK quotient chunking needs on a 24 GB card → `batch_size = 0` again. Mixed task types re-create the starvation Fix 1 only narrowed.
+- **Workaround 3 (ops)**: pin task types per GPU so bundle proofs always run in a clean process — edit `.work/prover-<i>/prover.json` `sdk_config.prover.supported_proof_types` to `[1,2]` on one GPU and `[3]` on the other, then restart both provers.
+- **Fix 3 (code, verified 2026-08-03)**: `crates/prover-bin` now calls `Prover::reset()` on the child/grandchild handlers right after `enable_deferral` (+ file-based `agg_vk()`) in `do_prove` — the child SDK exists only to configure the parent's deferral (agg_vk / cached commit / hook commit are captured by value), so its GPU proving keys are released before the parent's STARK/SNARK phase, mirroring the zkvm integration tester (`crates/integration/src/testers/bundle.rs`). Verified live on this shadow fork: bundle 18394 was proven by a **mixed-type process** (same process had proved chunk tasks minutes earlier, `supported_proof_types=[1,2,3]`) and finalized via the new wrapper — halo2_outer `create_proof` live peak was **8.6 GiB** (vs 22.8 GiB in the crash), and the quotient phase ran with `current` 6.4–8.6 GiB instead of 14.7–22.7 GiB. Note the VPMM `in pool=` number still shows the historical high-water mark (~22.4 GiB from earlier chunk proving) — the pool never shrinks, but its free regions are reusable; what matters for the quotient chunking heuristic is that *physical* free stays > ~256 MiB, which on 24 GB cards remains a thin margin.
+- **Root-cause note for upstream**: halo2-axiom-gpu's `query_device_free_bytes_for_chunking()` budgets from raw `cudaMemGetInfo` (physical free) while its own allocations go through the VPMM pool — pool-internal free regions are usable but not counted. A minimal upstream fix: add `MemoryManager::pool_free_bytes()` (sum of `free_regions`) to openvm-cuda-common and budget `physical_free + pool_free_bytes() - RESERVED` in `cuda/utils.rs`.
+- **Operational note**: after a prover crash, also `DELETE FROM prover_task WHERE proving_status = 1` and reset the affected `bundle`/`batch` rows — a task proved from a *deleted* assignment row is rejected with `validator failure get none prover task for the proof`, and the SDK will happily re-prove its locally-cached stale task instead of picking up the fresh assignment. Three corollaries learned on 2026-08-03:
+  1. **Also reset `active_attempts = 0`** on the reset `bundle`/`batch` rows. `GetUnassignedBundle` requires `active_attempts < max`, and once the `prover_task` rows are deleted, coordinator-cron's `DecreaseActiveAttemptsByHash` matches nothing ("No rows were affected") — the row sits at `active_attempts = 1` forever and is never re-dispatched, with no ERROR logged.
+  2. **Wipe the crashed prover's local SDK db** (`.work/prover-<i>/db`) *before* restarting it, or it loops forever on the cached task: build fails (`unsupported task type` if you also narrowed `supported_proof_types`) and every submit is rejected (`get none prover task`).
+  3. Restart order: SQL cleanup first, then db wipe, then prover restart — restarting against a dirty SDK db just re-poisons the loop.
+
+### Trap 39: Canary Proof-Import Mode — Stale Cursor, Missing Boundary, and Fork-Point Version Skew [follow mode / canary]
+
+- **Symptom 1**: After `make follow-canary`, backlog bundles never finalize even though `remote_bundle_proof` keeps growing — `bundle.proof` stays NULL.
+- **Cause 1a**: The apply rule only touches rows with `proof IS NULL AND rollup_status <> 5 AND end_batch_index < boundary`. If `.work/canary.env` contains a stale `PROOF_IMPORT_MAX_END_BATCH` from a PREVIOUS canary run (the file is never deleted by `follow-stop`/`--reset`), the boundary silently caps which proofs get applied. Check `grep PROOF_IMPORT_MAX_END_BATCH tests/shadow-testing/.work/canary.env` against the current `lastFinalizedBatchIndex`; delete the file (or the key) to return to +∞ before re-running Phase A.
+- **Cause 1b**: The import cursor (`.work/proof-import.cursor`) survived a `--reset` while the shadow DB was truncated, so bundles already scanned are never re-upserted. The quarantine table also survives `--reset`, so normally the apply rule still finds them — but if you dropped `remote_bundle_proof` manually without deleting the cursor file, no proofs will ever re-import. Fix: delete both `remote_bundle_proof` and `.work/proof-import.cursor` together and let one poll cycle re-scan. (Since 2026-08-25, `10-follow-up.sh --reset` deletes both automatically.)
+- **Cause 1c (cursor high-watermark vs. late proofs)**: mainnet creates the `bundle` row first and attaches the proof minutes later. An earlier version of the importer advanced its cursor to remote `MAX(index)` over ALL bundles, so any bundle still unproven at scan time was skipped forever — `remote_bundle_proof` stopped growing while mainnet kept proving. Fixed: the cursor only advances over rows with `proving_status=4`, and the scan re-reads a 200-row lookback window (`ON CONFLICT DO NOTHING` makes re-upserts free). If you run an older checkout and see this, hand-import once: run `import_remote_proofs()` from `sync-mainnet-db.py` with `SYNC_PROOFS=1` in a one-off python snippet, then restart the poll-sync python process (the bash wrapper re-launches it within 60s).
+- **Symptom 2**: Imported proofs fail on-chain with `VerificationFailed (0x439cc0cd)` during Phase A.
+- **Cause 2**: Fork-point version skew (Trap 31 variant): the forked production MVRV wrapper's digests belong to a NEWER/OLDER production guest than the proofs being imported. Production proofs and the production wrapper only match if the fork block post-dates the last production verifier upgrade AND the imported proofs were generated after it. Verify the production guest version before forking (follow/GUIDE.md "Determining the Production zk Stack"; digest encoding in `tests/shadow-testing/docs/bundle-digest-encoding.md`).
+- **Symptom 3**: After `31-canary-rollback.sh`, some bundles ≥ N finalize-fail (`rollup_status=7`) even though routing points back at the old wrapper.
+- **Cause 3**: Those bundles were proven locally by the NEW stack and the remote had not proved them yet when the rollback applied the quarantine table — the rollback resets such rows to unproven, but a relayer finalize already in flight can still carry the new proof. Wait for the remote proof to land in `remote_bundle_proof` (one poll cycle after mainnet proves it), then reset the failed row: `UPDATE bundle SET rollup_status=1, finalize_tx_hash=NULL WHERE rollup_status=7 AND end_batch_index >= <N>;` — the next poll cycle applies the quarantined proof and the relayer retries.
+- **Note**: the proof-import UPDATE is race-free with the Phase-B coordinator by construction: the importer only writes `< boundary` rows with `proof IS NULL`, the coordinator only dispatches unproven `>= boundary` bundles. If you ever hand-edit `.work/canary.env` mid-run, keep that partition intact.
+
+### Trap 40: Canary Mode — Boundary N vs. Proven Backlog, and coordinator_api genesis [follow mode / canary]
+
+- **Symptom 1**: After `30-canary-upgrade.sh`, an OLD-proof backlog bundle (end_batch < N) finalize-fails `VerificationFailed (0x439cc0cd)` even though it verified fine before the upgrade.
+- **Cause 1**: N was computed as `lastFinalized+1` while unfinalized bundles WITH imported proofs still sat above it — they then route to the NEW wrapper, which can never verify an old-guest proof. N must be `> MAX(end_batch_index)` over all unfinalized bundles holding a quarantined remote proof. `30-canary-upgrade.sh` step b enforces this (P term) since 2026-08-25; if you hand-pick `--start-batch`, keep the same invariant.
+- **Symptom 2**: After `30-canary-upgrade.sh` (or `10-follow-up.sh` on a fresh machine), the provers burn all their coordinator login retries and die; `coordinator-api.pid` points at a corpse.
+- **Cause 2**: `coordinator_api` reads `conf/genesis.json` relative to its CWD (`$COORD_DIR`) and CRITs `failed to read genesis` seconds after the startup pid check passes. Fix: `cp tests/prover-e2e/mainnet-galileoV2/genesis.json coordinator/build/bin/conf/genesis.json`, then restart the api and the provers (`lib/04-prover-up.sh`). 30-canary-upgrade.sh now sanity-checks this file up front. (Same failure as COMMON Trap 48, archived.)
+- **Symptom 3**: Poll cycles take 10-15 min each, so imported proofs (and new bundles) arrive in the shadow DB in big delayed chunks.
+- **Cause 3**: The per-cycle `l2_block` range copy runs a server-side cursor against the remote DB; on a cold/slow remote disk (`DataFileRead` waits in `pg_stat_activity`) each FETCH takes minutes, and `import_remote_proofs()` runs AFTER it in the same cycle. It is back-pressure only, not data loss — but expect proof-import latency ≈ one full cycle. If you need a proof applied NOW (e.g. to stage a boundary), run `import_remote_proofs()` manually as in Trap 39 Cause 1c.
+
+### Trap 42: Docker Prover Mode — `..` in Mount Paths, and CPU-SNARK Images [follow mode / docker]
+
+> Path issue fixed 2026-08-31 (work-dir canonicalization); the image-build rule below still bites — kept Active for that.
+
+- **Symptom 1** (historical, fixed): `04-prover-up.sh --docker` reports "prover container shadow-prover-N failed to start"; `docker logs` shows `Error: No such file or directory (os error 2)` at `prover.rs` `File::open`.
+- **Cause 1**: the per-GPU `work_dir` was built as `${SCRIPT_DIR}/../.work/prover-N`. dockerd path-cleans bind-mount targets, but the prover opens its config by the **literal** path — inside the container the `lib/..` component cannot resolve. Bare metal never noticed.
+- **Symptom 2**: bundle tasks take ~30+ min under docker while chunk/batch fly.
+- **Cause 2**: the image was built from a `make prover` binary (`--features cuda`) — bundle halo2 SNARK then runs on CPU. Build with `make prover_halo2gpu` and rebuild the image; GPU SNARK phase is seconds (`Create EVM proof` ~6 s, peak ~8.8 GiB on a 4090). Same rule applies to bare metal.
+- **Symptom 3**: after a prover restart, the new container logs `already assigned a task` forever.
+- **Cause 3**: the coordinator still holds the previous process's assignment row. `DELETE FROM prover_task WHERE proving_status IN (1,3);` (or wait for the sweeper, ~10 min).
+- **Env note**: scripts default `MAINNET_DSN` to `localhost:15432` (RDS-tunnel convention). On hosts where the DB lives at a direct address, export `MAINNET_DSN` explicitly — every follow-mode script honors the env var.
+
+### Infra Cost
+
+### Trap 41: Remote Sync Queries Missing `deleted_at IS NULL` — Seq Scans = RDS Money [follow mode / infra cost]
+
+- **Symptom**: AWS RDS bill spikes while a follow/snapshot stack is running; remote-side `pg_stat_activity` shows sync queries in `DataFileRead` for minutes per cycle (see also Trap 40 Cause 3, whose real root cause is this one).
+- **Cause**: ALL mainnet indexes on `l2_block`/`chunk` (and most on `l1_message`) are **partial** (`WHERE deleted_at IS NULL`). A query without that predicate cannot use them: `SELECT MAX(index) FROM chunk` scanned an entire 6.6M-row index every 60 s poll cycle, and the per-cycle `l2_block` range copy (`count(*)` + `SELECT ... WHERE number BETWEEN ...`) ran **two parallel seq scans of the 62 GB heap** whenever new chunks arrived — TB-scale reads per day on RDS.
+- **Fix**: since 2026-08-27 `sync-mainnet-db.py` appends `deleted_at IS NULL` (constant `NOT_DELETED`) to every src-side query (`get_watermarks`, `copy_range`, baseline `copy_table_pipe` clauses, proof import). Verified by EXPLAIN: watermark MAX = 1-page index-only backward scan; range copies = plain index scans. If you add a new src-side query to that script, keep the invariant. Ad-hoc query rules live in [`../docs/rds-query-rules.md`](../docs/rds-query-rules.md).
+- **Related discipline**: stop the stack when a test ends (`make follow-stop`) — an idle follow stack polls the remote DB every 60 s forever; that alone was most of the observed cost.

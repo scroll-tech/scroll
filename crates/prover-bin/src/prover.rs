@@ -1,4 +1,4 @@
-use crate::zk_circuits_handler::{universal::UniversalHandler, CircuitsHandler};
+use crate::zk_circuits_handler::universal::UniversalHandler;
 use async_trait::async_trait;
 use eyre::Result;
 use scroll_proving_sdk::{
@@ -12,7 +12,7 @@ use scroll_proving_sdk::{
         ProvingService,
     },
 };
-use scroll_zkvm_types::ProvingTask;
+use scroll_zkvm_types::{proof::StarkProof, ProvingTask};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -93,7 +93,10 @@ impl AssetsLocationData {
         url_base: &url::Url,
         base_path: impl AsRef<Path>,
     ) -> Result<PathBuf> {
-        let download_files = ["app.vmexe", "openvm.toml"];
+        // agg_vk.bin is the pre-built aggregation verifying key (zkvm-prover
+        // v0.9.0+); without it the prover derives the VK from the SDK, which is
+        // slow and allocates GPU memory that is never reclaimed.
+        let download_files = ["app.vmexe", "openvm.toml", "agg_vk.bin"];
 
         // Step 1: Create a local path for storage
         let storage_path = base_path.as_ref().join(vk);
@@ -191,6 +194,10 @@ pub struct CircuitConfig {
     /// cached vk value to save some initial cost, for debugging only
     #[serde(default)]
     pub vks: HashMap<ProofType, String>,
+    /// Child circuit VKs used to enable OpenVM deferral for aggregation tasks.
+    /// Required for batch (child=chunk) and bundle (child=batch) proving in v0.9.0+.
+    #[serde(default)]
+    pub child_circuit_vks: HashMap<ProofType, String>,
 }
 
 pub struct LocalProver {
@@ -198,7 +205,7 @@ pub struct LocalProver {
     next_task_id: u64,
     current_task: Option<JoinHandle<Result<String>>>,
 
-    handlers: HashMap<String, Arc<dyn CircuitsHandler>>,
+    handlers: HashMap<String, Arc<Mutex<UniversalHandler>>>,
 }
 
 #[async_trait]
@@ -323,41 +330,118 @@ impl LocalProver {
         if prover_task.use_openvm_13 {
             eyre::bail!("prover do not support snark params base on openvm 13");
         }
-        let prover_task: ProvingTask = prover_task.into();
+        let mut prover_task: ProvingTask = prover_task.into();
         let vk = hex::encode(&prover_task.vk);
-        let handler = if let Some(handler) = self.handlers.get(&vk) {
-            handler.clone()
-        } else {
-            let base_config = self
-                .config
-                .circuits
-                .get(&req.hard_fork_name)
-                .ok_or_else(|| {
-                    eyre::eyre!(
-                        "coordinator sent unexpected forkname {}",
-                        req.hard_fork_name
-                    )
-                })?;
-            let url_base = if let Some(url) = base_config.location_data.asset_detours.get(&vk) {
-                url.clone()
-            } else {
-                base_config
-                    .location_data
-                    .gen_asset_url(&vk, req.proof_type)?
-            };
-            let asset_path = base_config
-                .location_data
-                .get_asset(&vk, &url_base, &base_config.workspace_path)
-                .await?;
-            let circuits_handler = Arc::new(Mutex::new(UniversalHandler::new(&asset_path)?));
-            self.handlers.insert(vk, circuits_handler.clone());
-            circuits_handler
+
+        let parent_handler = self
+            .get_or_load_handler(&req.hard_fork_name, req.proof_type, &vk)
+            .await?;
+
+        // OpenVM v2+ aggregation circuits (batch/bundle) need deferral enabled
+        // using their immediate child circuit's prover, plus input commits/defersal
+        // inputs derived from the child proofs.
+        let deferral = match req.proof_type {
+            ProofType::Batch | ProofType::Bundle => {
+                let child_type = match req.proof_type {
+                    ProofType::Batch => ProofType::Chunk,
+                    ProofType::Bundle => ProofType::Batch,
+                    _ => unreachable!(),
+                };
+                let child_vk = self
+                    .config
+                    .circuits
+                    .get(&req.hard_fork_name)
+                    .and_then(|c| c.child_circuit_vks.get(&child_type))
+                    .ok_or_else(|| {
+                        eyre::eyre!(
+                            "missing child circuit vk for {:?} in fork {}",
+                            child_type,
+                            req.hard_fork_name
+                        )
+                    })?
+                    .clone();
+                let child_handler = self
+                    .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
+                    .await?;
+
+                // A bundle's child (batch) must itself have deferral-over-chunk
+                // initialized: the bundle verify circuit needs the batch prover's
+                // def_hook_commit, which only exists after the batch prover's own
+                // enable_deferral ran (OpenVM v2+). Without it the bundle prover
+                // panics with "def_hook_commit must be defined to verify child
+                // proof with deferrals".
+                if req.proof_type == ProofType::Bundle {
+                    let grandchild_vk = self
+                        .config
+                        .circuits
+                        .get(&req.hard_fork_name)
+                        .and_then(|c| c.child_circuit_vks.get(&ProofType::Chunk))
+                        .ok_or_else(|| {
+                            eyre::eyre!(
+                                "missing chunk circuit vk for fork {}",
+                                req.hard_fork_name
+                            )
+                        })?
+                        .clone();
+                    let grandchild_handler = self
+                        .get_or_load_handler(&req.hard_fork_name, ProofType::Chunk, &grandchild_vk)
+                        .await?;
+                    let mut child_guard = child_handler.lock().await;
+                    let mut grandchild_guard = grandchild_handler.lock().await;
+                    child_guard.enable_deferral(&*grandchild_guard)?;
+                    // The grandchild (chunk) SDK was only needed to initialize the
+                    // batch prover's deferral hook; release its GPU proving keys
+                    // before the bundle STARK/SNARK phase (see UniversalHandler::reset).
+                    grandchild_guard.reset();
+                }
+
+                let mut parent_guard = parent_handler.lock().await;
+                let mut child_guard = child_handler.lock().await;
+                parent_guard.enable_deferral(&*child_guard)?;
+
+                let child_agg_vk = child_guard
+                    .agg_vk()
+                    .map_err(|e| eyre::eyre!("failed to get child agg vk: {e}"))?;
+                // The child SDK is no longer needed once deferral is configured on
+                // the parent and the (file-based) child agg vk is extracted; release
+                // its GPU proving keys before proving (see UniversalHandler::reset).
+                child_guard.reset();
+                let cached_commit = parent_guard
+                    .deferral_cached_commit()
+                    .map_err(|e| eyre::eyre!("failed to get parent deferral cached commit: {e}"))?;
+
+                let child_proofs: Vec<&StarkProof> = prover_task.aggregated_proofs.iter().collect();
+                let (input_commits, def_inputs, def_states) =
+                    crate::deferral::compute_deferral_data(
+                        &child_agg_vk,
+                        cached_commit,
+                        &child_proofs,
+                    )?;
+                prover_task.input_commits = input_commits;
+
+                // locks are released here
+                Some((def_inputs, def_states))
+            }
+            _ => None,
         };
 
         let handle = Handle::current();
         let is_evm = req.proof_type == ProofType::Bundle;
         let task_handle = tokio::task::spawn_blocking(move || {
-            handle.block_on(handler.get_proof_data(&prover_task, is_evm))
+            handle.block_on(async {
+                let mut guard = parent_handler.lock().await;
+                match deferral {
+                    Some((def_inputs, def_states)) => {
+                        guard.get_proof_data_with_deferral(
+                            &prover_task,
+                            is_evm,
+                            &def_inputs,
+                            &def_states,
+                        )
+                    }
+                    None => guard.get_proof_data(&prover_task, is_evm),
+                }
+            })
         });
         self.current_task = Some(task_handle);
 
@@ -371,5 +455,35 @@ impl LocalProver {
             input: Some(req.input),
             ..Default::default()
         })
+    }
+
+    /// Load a handler for the given fork/proof-type/vk, reusing a cached one if available.
+    async fn get_or_load_handler(
+        &mut self,
+        fork_name: &str,
+        proof_type: ProofType,
+        vk: &str,
+    ) -> Result<Arc<Mutex<UniversalHandler>>> {
+        if let Some(handler) = self.handlers.get(vk) {
+            return Ok(handler.clone());
+        }
+
+        let base_config = self
+            .config
+            .circuits
+            .get(fork_name)
+            .ok_or_else(|| eyre::eyre!("coordinator sent unexpected forkname {}", fork_name))?;
+        let url_base = if let Some(url) = base_config.location_data.asset_detours.get(vk) {
+            url.clone()
+        } else {
+            base_config.location_data.gen_asset_url(vk, proof_type)?
+        };
+        let asset_path = base_config
+            .location_data
+            .get_asset(vk, &url_base, &base_config.workspace_path)
+            .await?;
+        let handler = Arc::new(Mutex::new(UniversalHandler::new(&asset_path)?));
+        self.handlers.insert(vk.to_string(), handler.clone());
+        Ok(handler)
     }
 }

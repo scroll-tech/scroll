@@ -1,4 +1,5 @@
 mod dumper;
+mod deferral;
 mod prover;
 mod types;
 mod zk_circuits_handler;
