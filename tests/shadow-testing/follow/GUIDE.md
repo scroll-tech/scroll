@@ -49,12 +49,12 @@ For a fixed historical bundle range (incident reproduction, single-bundle debugg
 
 All general prerequisites above apply, plus:
 
-- **Mainnet RDS read-replica access** — the `~/.pgpass` file on this machine contains valid credentials for the mainnet RDS read-only replica. Verify:
+- **Mainnet RDS read-replica access** — how this machine reaches the RDS depends on the environment: either an SSH port-forward (`localhost:15432`) or a **direct LAN route** (this box: `192.168.1.108:15432`; see `local-secrets.md` — there is NO local tunnel here). The effective DSN is exported as `MAINNET_DSN` in `~/.bashrc` and consumed by every script (`10-follow-up.sh`'s built-in default assumes a tunnel). Verify:
   ```bash
-  psql -h localhost -p 15432 -U mainnet_infra_team_read_only -d mainnet_rollup -c "SELECT COUNT(*) FROM batch;"
+  psql "$MAINNET_DSN" -c "SELECT COUNT(*) FROM batch;"
   # → 517,830+ batches
   ```
-- **RDS tunnel watchdog** — the IDC port-forward to RDS (`localhost:15432`) must stay up for the entire run; a dead tunnel silently starves poll-sync. Run it under `autossh` (e.g. `autossh -M 0 -N -L 15432:...`) so it self-heals.
+- **RDS route watchdog (tunnel setups only)** — if you reach RDS through an IDC port-forward, it must stay up for the entire run; a dead tunnel silently starves poll-sync. Run it under `autossh` (e.g. `autossh -M 0 -N -L 15432:...`) so it self-heals. On direct-LAN boxes there is nothing to keep alive.
 - Enough shadow-DB disk headroom for continuous row growth.
 
 For automated one-off baseline copies, `scroll-devnets/charts/shadow-fork/rollup-relayer/scripts/copy-db.sh` streams data from mainnet RDS to the local shadow DB via `postgres-tunnel` (`COPY ... TO STDOUT | COPY ... FROM STDIN`).
@@ -64,7 +64,7 @@ For automated one-off baseline copies, `scroll-devnets/charts/shadow-fork/rollup
 One command brings up the entire follow-mode stack (`scripts/10-follow-up.sh`):
 
 1. **Baseline sync** — `sync-mainnet-db.py` baseline mode copies ONLY the finalization-lag window: batches from the fork's `lastFinalizedBatchIndex - 1` to the mainnet tip, plus their chunks/`l2_block`/`l1_message` and overlapping bundles (typically ~100 batches / a few thousand blocks — NOT deep history). This window is not optional: L1 finalization is sequential (`prevBatchHash` chaining), so the shadow must prove and finalize every committed-but-not-finalized bundle in order before it can follow new ones. Rows at/below the finalized boundary are marked done (`rollup_status=5`, `proving_status=4`) and rows above are aligned to the fork's committed boundary, so a reused DB never carries stale state across forks. `10-follow-up.sh --reset` truncates the task tables first (use it whenever the DB may hold leftovers from older runs/imports — otherwise the coordinator treats ancient pending batches as work). Proof columns are never copied; everything is re-proven locally.
-2. **Anvil fork** — fork ETH **L1** at the current block (never Scroll L2 — Trap 2), with `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts blob sidecars.
+2. **Anvil fork** — fork ETH **L1** at the current block (never Scroll L2 — Trap 2), with `fusaka_timestamp: 2000000000` in the relayer config so Anvil accepts blob sidecars. Anvil listens on **`http://localhost:18545`** (host `0.0.0.0`, `--block-time 12`); its state lives in `.work/anvil-mainnet.state.json` — the relaunch-and-recover handle after a crash (see Failure Recovery).
 3. **Verifier wrapper** — deploy/register the `ZkEvmVerifierPostFeynman` wrapper matching the guest under test (manual procedure: "Real Verifier Deployment" in the [Snapshot Replay Mode Guide](../snapshot/GUIDE.md#real-verifier-deployment)).
 4. **Coordinator** — start `coordinator_api` + `coordinator_cron` against the shadow DB.
 5. **Provers** — start one prover per GPU.
@@ -125,7 +125,7 @@ Sizing conclusion: **1 GPU suffices** (~26% duty cycle), **2 recommended** for b
 
 - **Anvil relaunch from `--state` (try FIRST)** — if Anvil died or stalled mid-run (Trap 44), relaunching it with the **same command line including `--state .work/anvil-mainnet.state.json`** restores the exact fork: MVRV routing (incl. `legacyVerifiers` from a canary/mid-run upgrade), `lastFinalizedBatchIndex`, EOA balances and nonces. This is the only correct recovery mid-upgrade — a fresh `re-fork` would lose the registered wrapper routing and on-chain finalize history. Verify `eth_chainId`, `lastFinalizedBatchIndex`, and `getVerifier` on both sides of any boundary before restarting the relayer, and watch for Trap 45 (a send that timed out during warm-up may have landed on-chain unrecorded).
 - **`make re-fork`** (`scripts/re-fork.sh`) — when the fork state itself is unusable (state file corrupt/missing, or you intentionally want a fresh fork): re-fork Anvil at the latest block, redeploy the verifier wrapper, re-fund EOAs (Trap 10 — `anvil_setBalance` does not survive restarts), re-mirror L1 queue hashes (`sync-queue-hashes.py`, Trap 23), restart the relayer.
-- **RDS tunnel watchdog** — keep the RDS port-forward under `autossh`; poll-sync stalls silently if the tunnel dies.
+- **RDS route** — tunnel setups: keep the port-forward under `autossh` (poll-sync stalls silently if it dies). Direct-LAN boxes: nothing to do.
 - **Verifier-drift alerting** — the hourly monitor snapshot detects verifier `protocolVersion` drift. If it fires, re-check the deployed wrapper and MVRV routing (Snapshot guide, "[Verify MVRV Routing](../snapshot/GUIDE.md#verify-mvrv-routing)") before trusting any finalize result.
 
 ## Mid-Run Upgrade Test (Continuous Finalization Across a zk Upgrade)
@@ -313,6 +313,7 @@ make canary-upgrade           # upgrade again afterwards — 30 is re-runnable
 - **Proof import never clobbers local state**: the apply rule only touches `proof IS NULL AND rollup_status <> 5` rows, and after t1 the boundary partitions the work — the new coordinator only sees unproven ≥ N bundles, the importer only applies < N.
 - The quarantine table `remote_bundle_proof` is shadow-private (created by the sync script, not goose) and survives `--reset` truncations; `make follow-stop` does not remove it either. Drop it manually if you switch the shadow DB to a different purpose.
 - New trap entry: TROUBLESHOOTING.md Trap 39 (proof-import mode pitfalls).
+- **Pipeline latency vs "stuck"**: after a new bundle appears it sits at `rollup_status=1, proving_status=1` for **~1–1.5 h on a single GPU** — chunk proofs first (first task after an assets swap adds 10–15 min witness fetch), then batch proofs, then the bundle STARK; the bundle row only flips late (`p2` when bundle-proving starts, `p4` + proof when it lands). That is normal progress, not a stall — watch the coordinator log (`start chunk generation session`) / `docker logs shadow-prover-<gpu>` for signs of actual life before intervening.
 - **Docker provers**: `04-prover-up.sh --docker` (driven via `30-canary-upgrade.sh --docker-provers` / `make canary-upgrade DOCKER_PROVERS=1`) runs each prover as a `shadow-prover-<gpu>` container of `PROVER_IMAGE` with same-path work-dir mounts, host networking, `--user $(id -u)` and the SRS mounted at `$HOME/.openvm/params` inside the container (HOME is overridden so the path matches). The container's host PID is written to the usual pidfile, so `11-follow-stop.sh` / `31-canary-rollback.sh` work unchanged (plus a `docker rm -f shadow-prover-*` sweep as backstop). Prover logs: `docker logs shadow-prover-<gpu>` (the per-GPU `prover.log` file stays empty in this mode). Build the image from the checkout under test with `build/dockerfiles/prover.Dockerfile` — the same "production-style packaging" the devops `prover-image-build.yml` workflow produces in CI.
 
 ## Run Completion & Acceptance Criteria

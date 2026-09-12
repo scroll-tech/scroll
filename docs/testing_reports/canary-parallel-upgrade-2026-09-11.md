@@ -58,3 +58,28 @@ Pre-flight verified the production stack had NOT changed since 8-31 (on-chain `l
 | Soak: second new-stack bundle through the new wrapper | ✅ (18968, digest-verified) |
 | `finalized_lag` back to 0 and quarantine rollback-safe | ✅ (0 unfinalized; 2 proofs ≥ N quarantined) |
 | Crash-recovery under fire (unplanned) | ✅ 2× anvil incidents + 2× unrecorded-tx repairs, no test invalidation |
+
+---
+
+## Re-validation run (post-doc-restructure, 2026-09-11 12:49–16:50 UTC)
+
+Full teardown → setup → canary sequence re-run after the trap-corpus restructure, strictly following the new docs — the "does the documentation actually walk?" acceptance.
+
+| Phase | Time (UTC) | Result |
+|---|---|---|
+| Teardown | 12:49 | stack + `.work` + `remote_bundle_proof` (18 851 rows) + containers |
+| Phase A | 12:56–13:10 | 4 bundles (18966–18969) finalized on imported proofs, zero local proving |
+| t1 | 13:35 | caught 18970 unproven → **N=519743**; wrapper `0x3a251c0c…5577` via genuine `updateVerifier` |
+| Rollback drill | 13:44 | old wrapper restored at N (tx `0x1d38…8c68`); 18970 finalized from quarantined remote proof via OLD wrapper |
+| Re-upgrade | 13:48 | N′=519744, wrapper `0xA7898f4B…c3a` (deterministic, same address as the morning run) |
+| t2 | 16:45 | 18971 locally proven → finalized via NEW wrapper; `lastFinalizedBatchIndex`=519746, lag=1 |
+
+Zero stack failures, zero unplanned interventions; anvil stable throughout (Trap 44 did not recur). One transient `ErrorIncorrectBatchHash` (Trap 4 selector) during Phase A relayer warm-up, self-healed on the next tx.
+
+Findings:
+
+1. **Fixed — `monitor-catchup.py` wrote metrics to a foreign hardcoded path** (`/home/scroll/zzhang/…` for both `LOG_FILE` and `WORK_DIR`), so `make follow-status` always printed "(no metrics yet)" and the verifier-drift check read a stale `verifier.env`. Now derived from `__file__` (env-overridable via `SHADOW_WORK_DIR`/`SHADOW_METRICS_LOG`); verified end-to-end.
+2. GUIDE prereq said "RDS tunnel + autossh" but this box reaches RDS **directly over LAN** (`192.168.1.108:15432`, `local-secrets.md`) — prereq text now covers both routes.
+3. Anvil's listen port (`:18545`) and the single-GPU bundle-pipeline latency (~1–1.5 h at rs1/p1 before the bundle row flips) were undocumented; both added to follow/GUIDE.md.
+
+Benign observations: `assets_v2` absent is fine for canary (`30-` warns + skips the VK diff); dropping `remote_bundle_proof` is unnecessary for freshness — poll-sync re-upserts the full remote-prove history (~18 k rows) within minutes.
