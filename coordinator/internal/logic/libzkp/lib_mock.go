@@ -24,10 +24,6 @@ import (
 // 	return true
 // }
 
-func UniversalTaskCompatibilityFix(taskJSON string) (string, error) {
-	panic("should not run here")
-}
-
 // GenerateWrappedProof returns a fixed dummy proof string in the mock.
 func GenerateWrappedProof(proofJSON, metadata string, vkData []byte) string {
 

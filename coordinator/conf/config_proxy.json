@@ -10,7 +10,7 @@
       "login_expire_duration_sec": 3600
     },      
     "verifier": {
-      "min_prover_version": "v4.4.45",
+      "min_prover_version": "v4.8.0",
       "verifiers": []
     },
     "db": {

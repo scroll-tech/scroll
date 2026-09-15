@@ -64,6 +64,9 @@ for ((i=0; i<$VERIFIER_COUNT; i++)); do
   wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/verifier.bin -O ${ASSET_DIR}/verifier.bin
   wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/root_verifier_vk -O ${ASSET_DIR}/root_verifier_vk
   wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/openVmVk.json -O ${ASSET_DIR}/openVmVk.json
+  # agg_vk.bin: the batch circuit's aggregation VK, mandatory for batch proof
+  # verification (the coordinator refuses to start without it).
+  wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/agg_vk.bin -O ${ASSET_DIR}/agg_vk.bin
   
   echo "Completed downloading assets for $FORK_NAME"
   echo "---"
