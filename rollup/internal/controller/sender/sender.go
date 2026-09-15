@@ -104,7 +104,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID, err: %w", err)
 	}
-	transactionSigner, err := NewTransactionSigner(signerConfig, chainID)
+	transactionSigner, err := NewTransactionSigner(ctx, signerConfig, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transaction signer, err: %w", err)
 	}

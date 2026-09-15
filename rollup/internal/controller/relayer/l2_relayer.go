@@ -1308,11 +1308,26 @@ func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
 		}
 		return crypto.PubkeyToAddress(privKey.PublicKey), nil
 	case sender.RemoteSignerType:
-		if config.RemoteSignerConfig.SignerAddress == "" {
-			return common.Address{}, fmt.Errorf("signer address is empty")
+		if config.RemoteSignerConfig == nil {
+			return common.Address{}, fmt.Errorf("remote_signer_config is missing")
 		}
-		return common.HexToAddress(config.RemoteSignerConfig.SignerAddress), nil
+		return parseSignerAddress(config.RemoteSignerConfig.SignerAddress)
+	case sender.AWSKMSSignerType:
+		if config.AWSKMSSignerConfig == nil {
+			return common.Address{}, fmt.Errorf("aws_kms_signer_config is missing")
+		}
+		return parseSignerAddress(config.AWSKMSSignerConfig.SignerAddress)
 	default:
 		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
+}
+
+// parseSignerAddress parses a signer address configured for a signer that holds
+// its key outside the process. An empty string is not a valid hex address, so
+// this covers both a missing and a malformed value.
+func parseSignerAddress(addr string) (common.Address, error) {
+	if !common.IsHexAddress(addr) {
+		return common.Address{}, fmt.Errorf("signer address %q is not a valid hex address", addr)
+	}
+	return common.HexToAddress(addr), nil
 }
