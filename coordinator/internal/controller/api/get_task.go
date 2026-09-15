@@ -23,7 +23,8 @@ import (
 
 // GetTaskController the get prover task api controller
 type GetTaskController struct {
-	proverTasks map[message.ProofType]provertask.ProverTask
+	proverTasks       map[message.ProofType]provertask.ProverTask
+	proverTaskManager *provertask.ProverTaskManager
 
 	getTaskAccessCounter *prometheus.CounterVec
 
@@ -32,12 +33,15 @@ type GetTaskController struct {
 
 // NewGetTaskController create a get prover task controller
 func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, verifier *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	proverTaskManager := provertask.NewProverTaskManager(db)
+
 	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, verifier.ChunkVk, reg)
 	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, verifier.BatchVk, reg)
 	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, verifier.BundleVk, reg)
 
 	ptc := &GetTaskController{
-		proverTasks: make(map[message.ProofType]provertask.ProverTask),
+		proverTasks:       make(map[message.ProofType]provertask.ProverTask),
+		proverTaskManager: proverTaskManager,
 		getTaskAccessCounter: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_get_task_access_count",
 			Help: "Multi dimensions get task counter.",
@@ -99,7 +103,19 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		}
 	}
 
-	proofType := ptc.proofType(&getTaskParameter)
+	assigned, err := ptc.proverTaskManager.CheckParameter(ctx)
+	if err != nil {
+		nerr := fmt.Errorf("check prover task parameter failed, error:%w", err)
+		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, nerr)
+		return
+	}
+
+	var proofType message.ProofType
+	if assigned != nil {
+		proofType = message.ProofType(assigned.TaskType)
+	} else {
+		proofType = ptc.proofType(&getTaskParameter)
+	}
 	proverTask, isExist := ptc.proverTasks[proofType]
 	if !isExist {
 		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
