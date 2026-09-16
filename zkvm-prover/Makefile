@@ -1,4 +1,4 @@
-.PHONY: prover prover_cpu lint tests_binary test_e2e_run test_run
+.PHONY: prover prover_halo2gpu prover_cpu lint tests_binary test_e2e_run test_run
 
 RUST_LOG ?= off,scroll_zkvm_integration=debug,scroll_zkvm_verifier=debug,scroll_zkvm_prover=debug,p3_fri=warn,p3_dft=warn,openvm_circuit=warn
 RUST_MIN_STACK ?= 16777216

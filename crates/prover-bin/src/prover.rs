@@ -360,6 +360,17 @@ impl LocalProver {
                         )
                     })?
                     .clone();
+                // Handlers are cached by vk: if a misconfigured child_circuit_vks
+                // maps the child to the same vk, get_or_load_handler returns the
+                // same handler and the second .lock().await below deadlocks
+                // silently. Fail fast instead.
+                if child_vk == vk {
+                    eyre::bail!(
+                        "child_circuit_vks misconfigured for fork {}: child vk of {:?} equals its own vk",
+                        req.hard_fork_name,
+                        req.proof_type
+                    );
+                }
                 let child_handler = self
                     .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
                     .await?;
@@ -380,6 +391,13 @@ impl LocalProver {
                             eyre::eyre!("missing chunk circuit vk for fork {}", req.hard_fork_name)
                         })?
                         .clone();
+                    // Same double-lock guard as above, for the batch-over-chunk pair.
+                    if grandchild_vk == child_vk {
+                        eyre::bail!(
+                            "child_circuit_vks misconfigured for fork {}: chunk vk equals batch vk",
+                            req.hard_fork_name
+                        );
+                    }
                     let grandchild_handler = self
                         .get_or_load_handler(&req.hard_fork_name, ProofType::Chunk, &grandchild_vk)
                         .await?;
