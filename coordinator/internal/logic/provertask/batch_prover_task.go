@@ -199,7 +199,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, batchTask, hardForkName)
 	if err != nil {
-		bp.recoverAttempts(ctx, taskCtx, batchTask)
+		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -208,26 +208,17 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
-			bp.recoverAttempts(ctx, taskCtx, batchTask)
+			bp.recoverActiveAttempts(ctx, batchTask)
 			log.Error("Generate universal prover task failure", "task_id", batchTask.Hash, "type", "batch", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		proverTask.Metadata = metadata
-
-		if isCompatibilityFixingVersion(taskCtx.ProverVersion) {
-			log.Info("Apply compatibility fixing for prover", "version", taskCtx.ProverVersion)
-			if err := fixCompatibility(taskMsg); err != nil {
-				bp.recoverAttempts(ctx, taskCtx, batchTask)
-				log.Error("apply compatibility failure", "task_id", batchTask.Hash, "err", err)
-				return nil, ErrCoordinatorInternalFailure
-			}
-		}
 	}
 
 	// Store session info.
 	if taskCtx.hasAssignedTask == nil {
 		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			bp.recoverAttempts(ctx, taskCtx, batchTask)
+			bp.recoverActiveAttempts(ctx, batchTask)
 			log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -289,17 +280,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	return taskMsg, nil
 }
 
-// recoverAttempts rolls back the attempt charged by UpdateBatchAttempts when the coordinator
-// fails to dispatch a freshly assigned task (hasAssignedTask == nil): both counters are refunded
-// and proving_status is reset to unassigned. For a re-poll of an already assigned task nothing
-// was charged in this call, so only active_attempts is decremented as before.
-func (bp *BatchProverTask) recoverAttempts(ctx *gin.Context, taskCtx *proverTaskContext, batchTask *orm.Batch) {
-	if taskCtx.hasAssignedTask == nil {
-		if err := bp.batchOrm.RefundAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
-			log.Error("failed to refund batch attempts", "hash", batchTask.Hash, "error", err)
-		}
-		return
-	}
+func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
 	if err := bp.batchOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}

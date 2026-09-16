@@ -156,17 +156,11 @@ type BlockContextV2 struct {
 	NumL1Msgs uint16      `json:"num_l1_msgs"`
 }
 
-// Metric data carried with OpenVMProof
+// Metric data carried with OpenVMStarkProof
 type OpenVMProofStat struct {
 	TotalCycle         uint64 `json:"total_cycles"`
 	ExecutionTimeMills uint64 `json:"execution_time_mills"`
 	ProvingTimeMills   uint64 `json:"proving_time_mills"`
-}
-
-// Proof for flatten VM proof
-type OpenVMProof struct {
-	Proof        []byte `json:"proofs"`
-	PublicValues []byte `json:"public_values"`
 }
 
 // Proof for flatten VM stark proof (v0.9.0+).

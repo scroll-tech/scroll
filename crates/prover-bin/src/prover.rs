@@ -360,6 +360,17 @@ impl LocalProver {
                         )
                     })?
                     .clone();
+                // Handlers are cached by vk: if a misconfigured child_circuit_vks
+                // maps the child to the same vk, get_or_load_handler returns the
+                // same handler and the second .lock().await below deadlocks
+                // silently. Fail fast instead.
+                if child_vk == vk {
+                    eyre::bail!(
+                        "child_circuit_vks misconfigured for fork {}: child vk of {:?} equals its own vk",
+                        req.hard_fork_name,
+                        req.proof_type
+                    );
+                }
                 let child_handler = self
                     .get_or_load_handler(&req.hard_fork_name, child_type, &child_vk)
                     .await?;
@@ -377,18 +388,22 @@ impl LocalProver {
                         .get(&req.hard_fork_name)
                         .and_then(|c| c.child_circuit_vks.get(&ProofType::Chunk))
                         .ok_or_else(|| {
-                            eyre::eyre!(
-                                "missing chunk circuit vk for fork {}",
-                                req.hard_fork_name
-                            )
+                            eyre::eyre!("missing chunk circuit vk for fork {}", req.hard_fork_name)
                         })?
                         .clone();
+                    // Same double-lock guard as above, for the batch-over-chunk pair.
+                    if grandchild_vk == child_vk {
+                        eyre::bail!(
+                            "child_circuit_vks misconfigured for fork {}: chunk vk equals batch vk",
+                            req.hard_fork_name
+                        );
+                    }
                     let grandchild_handler = self
                         .get_or_load_handler(&req.hard_fork_name, ProofType::Chunk, &grandchild_vk)
                         .await?;
                     let mut child_guard = child_handler.lock().await;
                     let mut grandchild_guard = grandchild_handler.lock().await;
-                    child_guard.enable_deferral(&*grandchild_guard)?;
+                    child_guard.enable_deferral(&grandchild_guard)?;
                     // The grandchild (chunk) SDK was only needed to initialize the
                     // batch prover's deferral hook; release its GPU proving keys
                     // before the bundle STARK/SNARK phase (see UniversalHandler::reset).
@@ -397,7 +412,7 @@ impl LocalProver {
 
                 let mut parent_guard = parent_handler.lock().await;
                 let mut child_guard = child_handler.lock().await;
-                parent_guard.enable_deferral(&*child_guard)?;
+                parent_guard.enable_deferral(&child_guard)?;
 
                 let child_agg_vk = child_guard
                     .agg_vk()
@@ -431,14 +446,12 @@ impl LocalProver {
             handle.block_on(async {
                 let mut guard = parent_handler.lock().await;
                 match deferral {
-                    Some((def_inputs, def_states)) => {
-                        guard.get_proof_data_with_deferral(
-                            &prover_task,
-                            is_evm,
-                            &def_inputs,
-                            &def_states,
-                        )
-                    }
+                    Some((def_inputs, def_states)) => guard.get_proof_data_with_deferral(
+                        &prover_task,
+                        is_evm,
+                        &def_inputs,
+                        &def_states,
+                    ),
                     None => guard.get_proof_data(&prover_task, is_evm),
                 }
             })

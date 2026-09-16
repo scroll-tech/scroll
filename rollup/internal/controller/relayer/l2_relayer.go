@@ -194,6 +194,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
 	}
 	layer2Relayer.metrics = initL2RelayerMetrics(reg)
+	layer2Relayer.initializeMetrics(ctx)
 
 	switch serviceType {
 	case ServiceTypeL2RollupRelayer:
@@ -203,6 +204,28 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	return layer2Relayer, nil
+}
+
+// initializeMetrics seeds the commit block height gauge from DB so that a restart
+// does not leave it at 0, which would otherwise make the commit-lag alert fire
+// until the next batch is committed.
+func (r *Layer2Relayer) initializeMetrics(ctx context.Context) {
+	latestBatch, err := r.batchOrm.GetLatestCommittedBatch(ctx)
+	if err != nil {
+		log.Warn("failed to initialize commit block height metric", "err", err)
+		return
+	}
+	if latestBatch == nil {
+		return
+	}
+	endChunk, err := r.chunkOrm.GetChunkByIndex(ctx, latestBatch.EndChunkIndex)
+	if err != nil {
+		log.Warn("failed to initialize commit block height metric", "err", err)
+		return
+	}
+	if endChunk != nil {
+		r.metrics.rollupL2RelayerCommitBlockHeight.Set(float64(endChunk.EndBlockNumber))
+	}
 }
 
 func (r *Layer2Relayer) initializeGenesis() error {
@@ -1301,11 +1324,26 @@ func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
 		}
 		return crypto.PubkeyToAddress(privKey.PublicKey), nil
 	case sender.RemoteSignerType:
-		if config.RemoteSignerConfig.SignerAddress == "" {
-			return common.Address{}, fmt.Errorf("signer address is empty")
+		if config.RemoteSignerConfig == nil {
+			return common.Address{}, fmt.Errorf("remote_signer_config is missing")
 		}
-		return common.HexToAddress(config.RemoteSignerConfig.SignerAddress), nil
+		return parseSignerAddress(config.RemoteSignerConfig.SignerAddress)
+	case sender.AWSKMSSignerType:
+		if config.AWSKMSSignerConfig == nil {
+			return common.Address{}, fmt.Errorf("aws_kms_signer_config is missing")
+		}
+		return parseSignerAddress(config.AWSKMSSignerConfig.SignerAddress)
 	default:
 		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
+}
+
+// parseSignerAddress parses a signer address configured for a signer that holds
+// its key outside the process. An empty string is not a valid hex address, so
+// this covers both a missing and a malformed value.
+func parseSignerAddress(addr string) (common.Address, error) {
+	if !common.IsHexAddress(addr) {
+		return common.Address{}, fmt.Errorf("signer address %q is not a valid hex address", addr)
+	}
+	return common.HexToAddress(addr), nil
 }

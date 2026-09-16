@@ -53,12 +53,6 @@ pub fn checkout_chunk_task(
     )?)
 }
 
-/// Convert the universal task json into compatible form for old prover
-pub fn univ_task_compatibility_fix(task_json: &str) -> eyre::Result<String> {
-    // v0.9.0+ provers consume the new ProvingTask format directly; no translation needed.
-    Ok(task_json.to_string())
-}
-
 /// Generate required staff for proving tasks
 /// return (pi_hash, metadata, task)
 pub fn gen_universal_task(

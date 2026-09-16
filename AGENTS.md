@@ -82,6 +82,7 @@ All local-development secrets are in [`local-secrets.md`](local-secrets.md) (git
 |----------|--------|
 | [`docs/prover-coordinator-overview.md`](docs/prover-coordinator-overview.md) | Architecture, data flow, common operations |
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Five-level upgrade verification ladder |
+| [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
 | [`tests/shadow-testing/README.md`](tests/shadow-testing/README.md) | Mode chooser + documentation conventions |
 | [`tests/shadow-testing/docs/TROUBLESHOOTING.md`](tests/shadow-testing/docs/TROUBLESHOOTING.md) | **Trap index** (all 56 traps → per-file locations) |
 | [`tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md`](tests/shadow-testing/docs/COMMON-TROUBLESHOOTING.md) | Mode-independent traps, pre-flight ritual, checklists, symptom table |
@@ -90,4 +91,4 @@ All local-development secrets are in [`local-secrets.md`](local-secrets.md) (git
 | [`tests/shadow-testing/docs/rds-query-rules.md`](tests/shadow-testing/docs/rds-query-rules.md) | Production RDS query discipline |
 | [`docs/testing/single-chunk-reproving.md`](docs/testing/single-chunk-reproving.md) | Re-proving one mainnet chunk |
 | [`docs/openvm-v2-deployment-notes.md`](docs/openvm-v2-deployment-notes.md) | **v0.9.0 production deployment runbook**: repo/PR map, S3 layout facts, prover/coordinator config changes, image-build caveats, sequencing, rollback |
-| `docs/testing_reports/*.md` | Dated test reports: [canary 2026-09-11](docs/testing_reports/canary-parallel-upgrade-2026-09-11.md) · [canary docker 2026-08-31](docs/testing_reports/canary-parallel-upgrade-docker-2026-08-31.md) · [canary 2026-08-25](docs/testing_reports/canary-parallel-upgrade-2026-08-25.md) · [snapshot early experiments](docs/testing_reports/snapshot-early-dryrun-and-relayer-tests.md) · [OpenVM 1.6.0 / guest v0.8.0](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) |
+| `docs/testing_reports/*.md` | Dated test reports: [canary 2026-09-11](docs/testing_reports/canary-parallel-upgrade-2026-09-11.md) · [canary docker 2026-08-31](docs/testing_reports/canary-parallel-upgrade-docker-2026-08-31.md) · [canary 2026-08-25](docs/testing_reports/canary-parallel-upgrade-2026-08-25.md) · [snapshot early experiments](docs/testing_reports/snapshot-early-dryrun-and-relayer-tests.md) · [OpenVM 1.6.0 / guest v0.8.0](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) · [OpenVM v2.0 / guest v0.9.0](docs/testing_reports/openvm-v2.0.0-guest-v0.9.0-Sep15.md) |

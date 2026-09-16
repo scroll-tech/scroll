@@ -127,7 +127,23 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, minC
 		}),
 	}
 
+	p.initializeMetrics(ctx)
+
 	return p
+}
+
+// initializeMetrics seeds the propose block height gauge from DB so that a restart
+// does not leave it at 0, which would otherwise make the propose-lag alert fire
+// until the next chunk is proposed.
+func (p *ChunkProposer) initializeMetrics(ctx context.Context) {
+	latestChunk, err := p.chunkOrm.GetLatestChunk(ctx)
+	if err != nil {
+		log.Warn("failed to initialize chunk propose block height metric", "err", err)
+		return
+	}
+	if latestChunk != nil {
+		p.chunkProposeBlockHeight.Set(float64(latestChunk.EndBlockNumber))
+	}
 }
 
 // SetReplayDB sets the replay database for the ChunkProposer.

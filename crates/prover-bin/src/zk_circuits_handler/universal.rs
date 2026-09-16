@@ -54,7 +54,13 @@ impl UniversalHandler {
     /// the (GPU) aggregation prover just to obtain the VK uploads ~5.7 GiB of
     /// proving keys into the VPMM pool, which is never reclaimed and starves
     /// the halo2-gpu SNARK phase of VRAM (quotient.cu cudaErrorInvalidConfiguration).
-    pub fn agg_vk(&self) -> Result<openvm_stark_sdk::openvm_stark_backend::keygen::types::MultiStarkVerifyingKey<openvm_sdk::SC>> {
+    pub fn agg_vk(
+        &self,
+    ) -> Result<
+        openvm_stark_sdk::openvm_stark_backend::keygen::types::MultiStarkVerifyingKey<
+            openvm_sdk::SC,
+        >,
+    > {
         self.prover
             .load_agg_vk()
             .map(|mvk| mvk.as_ref().clone())
@@ -63,7 +69,10 @@ impl UniversalHandler {
 
     /// Return the cached commit of the verify-stark deferral circuit (def_idx 0).
     pub fn deferral_cached_commit(&self) -> Result<openvm_continuations::CommitBytes> {
-        let sdk = self.prover.sdk().map_err(|e| eyre::eyre!("failed to get sdk: {e}"))?;
+        let sdk = self
+            .prover
+            .sdk()
+            .map_err(|e| eyre::eyre!("failed to get sdk: {e}"))?;
         let mut commits = sdk
             .deferral_circuit_cached_commits(0)
             .map_err(|e| eyre::eyre!("failed to get deferral cached commits: {e}"))?;
@@ -104,9 +113,9 @@ impl UniversalHandler {
                 self.prover.gen_proof_snark(stdin, def_inputs)?,
             ))
         } else {
-            scroll_zkvm_types::proof::ProofEnum::from(self.prover.gen_proof_stark(
-                stdin, def_inputs,
-            )?)
+            scroll_zkvm_types::proof::ProofEnum::from(
+                self.prover.gen_proof_stark(stdin, def_inputs)?,
+            )
         };
 
         Ok(serde_json::to_string(&proof)?)

@@ -20,17 +20,18 @@
     "db_path": ".work/db"
   },
   "circuits": {
-    "feynman": {
-      "workspace_path": ".work/feynman",
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/feynman/"
-    },    
-    "galileo": {
-      "workspace_path": ".work/galileo",
-      "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/galileo/"
-    },
     "galileoV2": {
       "base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/",
-      "workspace_path": ".work/galileo"
-    }    
+      "workspace_path": ".work/galileo",
+      "asset_detours": {
+        "7ba1b31f9918312d86c76430debc5d30ad4a8b4bab6a07303d395a201ed3fa16a9b11e219784b7256deaed341de25f5c426ed42b61cd9e67e9f8fd5bfb59c348": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/chunk/",
+        "0fb5116fbad79663b3c9f70116e68c018d9783371b37433b4ad58e25ada55b0c67e32d18efbc7201a133d66d1b397455fec48d2e40a2763597eee921af3f8513": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/batch/",
+        "8164bf0dd080655ccd95fb5e53e18f1aa05f3d3bf4760137d022f31880004251c16f6976a6272c33c021115742b0c658dc35f8174c35493d40f0d977266ffc38": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/v0.9.0/bundle/"
+      },
+      "child_circuit_vks": {
+        "1": "7ba1b31f9918312d86c76430debc5d30ad4a8b4bab6a07303d395a201ed3fa16a9b11e219784b7256deaed341de25f5c426ed42b61cd9e67e9f8fd5bfb59c348",
+        "2": "0fb5116fbad79663b3c9f70116e68c018d9783371b37433b4ad58e25ada55b0c67e32d18efbc7201a133d66d1b397455fec48d2e40a2763597eee921af3f8513"
+      }
+    }
   }
 }

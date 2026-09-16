@@ -43,7 +43,7 @@ type L2WatcherClient struct {
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
 func NewL2WatcherClient(ctx context.Context, client *rpc.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, validiumMode bool, reg prometheus.Registerer) *L2WatcherClient {
-	return &L2WatcherClient{
+	w := &L2WatcherClient{
 		ctx:    ctx,
 		Client: ethclient.NewClient(client),
 		rpcCli: client,
@@ -61,6 +61,15 @@ func NewL2WatcherClient(ctx context.Context, client *rpc.Client, confirmations r
 
 		chainCfg: chainCfg,
 	}
+
+	// Seed the gauge from the latest stored height instead of starting from 0.
+	if latestHeight, err := w.l2BlockOrm.GetL2BlocksLatestHeight(ctx); err != nil {
+		log.Warn("failed to initialize l2 watcher fetched height metric", "err", err)
+	} else {
+		w.metrics.fetchRunningMissingBlocksHeight.Set(float64(latestHeight))
+	}
+
+	return w
 }
 
 const blocksFetchLimit = uint64(10)

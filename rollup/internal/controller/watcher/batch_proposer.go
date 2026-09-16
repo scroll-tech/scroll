@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,7 +120,31 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minC
 		}),
 	}
 
+	p.initializeMetrics(ctx)
+
 	return p
+}
+
+// initializeMetrics seeds the propose block height gauge from DB so that a restart
+// does not leave it at 0, which would otherwise make the propose-lag alert fire
+// until the next batch is proposed.
+func (p *BatchProposer) initializeMetrics(ctx context.Context) {
+	latestBatch, err := p.batchOrm.GetLatestBatch(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return // no batches proposed yet, nothing to seed
+		}
+		log.Warn("failed to initialize batch propose block height metric", "err", err)
+		return
+	}
+	endChunk, err := p.chunkOrm.GetChunkByIndex(ctx, latestBatch.EndChunkIndex)
+	if err != nil {
+		log.Warn("failed to initialize batch propose block height metric", "err", err)
+		return
+	}
+	if endChunk != nil {
+		p.batchProposeBlockHeight.Set(float64(endChunk.EndBlockNumber))
+	}
 }
 
 // SetReplayDB sets the replay database for the BatchProposer.
