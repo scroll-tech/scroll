@@ -50,7 +50,7 @@ follow-canary:
 
 canary-upgrade:
 	$(if $(PROVER_IMAGE),PROVER_IMAGE=$(PROVER_IMAGE) ,)$(SCRIPT_DIR)/scripts/30-canary-upgrade.sh --next-config $(NEXT_CONFIG) \
-		$(if $(DOCKER_PROVERS),--docker-provers,)
+		$(if $(DOCKER_PROVERS),--docker-provers ,)$(if $(REUSE_WRAPPER),--reuse-wrapper,)
 
 canary-rollback:
 	$(SCRIPT_DIR)/scripts/31-canary-rollback.sh

@@ -30,9 +30,13 @@
 #
 # Usage: ./30-canary-upgrade.sh --next-config configs/mainnet-next.json
 #                               [--config configs/mainnet.json] [--start-batch N]
-#                               [--docker-provers] [--dry-run]
+#                               [--docker-provers] [--reuse-wrapper] [--dry-run]
 #         --docker-provers: run provers as containers (PROVER_IMAGE, default
 #                           scrolltech/prover:e2e-test) instead of bare metal
+#         --reuse-wrapper:  do NOT deploy a fresh plonk/wrapper — register the
+#                           already-deployed wrapper at .contracts.deployed_verifier
+#                           in the next config (its on-chain digest1 is checked
+#                           against the S3 bundle digest)
 
 set -euo pipefail
 
@@ -53,6 +57,7 @@ FORK_NAME="${FORK_NAME:-galileoV2}"
 START_BATCH_OVERRIDE=""
 DRY_RUN=false
 DOCKER_PROVERS=false
+REUSE_WRAPPER=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -60,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --next-config) NEXT_CONFIG_FILE="$2"; shift 2 ;;
         --start-batch) START_BATCH_OVERRIDE="$2"; shift 2 ;;
         --docker-provers) DOCKER_PROVERS=true; shift ;;
+        --reuse-wrapper) REUSE_WRAPPER=true; shift ;;
         --dry-run)     DRY_RUN=true; shift ;;
         -h|--help)     sed -n '2,33p' "$0"; exit 0 ;;
         *) log_error "Unknown option: $1"; exit 1 ;;
@@ -294,12 +300,24 @@ if ! $DRY_RUN; then
 fi
 
 # ─── e. Deploy + register the NEW wrapper (genuine updateVerifier path) ──────
+# --reuse-wrapper: skip the plonk/wrapper deployment entirely and register the
+# ALREADY-DEPLOYED wrapper named by .contracts.deployed_verifier in the next
+# config (e.g. the production-prepared contract on mainnet, present on the fork
+# by construction). Its on-chain verifierDigest1 is checked against the S3
+# bundle digest below so a wrong address fails here, not at t2.
 log_info "=== e. Deploy + register new verifier ==="
+EXTRA_DEPLOY_FLAGS=()
+if $REUSE_WRAPPER; then
+    REUSED=$(jq -r '.contracts.deployed_verifier // empty' "$NEXT_CONFIG_FILE")
+    [[ -n "$REUSED" && "$REUSED" != "null" ]] || { log_error "--reuse-wrapper needs .contracts.deployed_verifier in $NEXT_CONFIG_FILE"; exit 1; }
+    EXTRA_DEPLOY_FLAGS=(--skip-plonk --skip-wrapper)
+    log_info "  reusing deployed wrapper from next config: $REUSED"
+fi
 run_step "${LIB_DIR}/03-deploy-verifier.sh" \
     --config "$NEXT_CONFIG_FILE" \
     --assets-dir "$NEW_ASSETS" \
     --start-batch "$N" \
-    --genuine-register
+    --genuine-register "${EXTRA_DEPLOY_FLAGS[@]}"
 
 # ─── f. Verify MVRV routing across the boundary ──────────────────────────────
 log_info "=== f. Verify MVRV routing ==="
@@ -324,6 +342,15 @@ else
     if [[ -n "$OLD_D1" && -n "$NEW_D1" && "${OLD_D1,,}" == "${NEW_D1,,}" ]]; then
         log_error "new wrapper has the SAME verifierDigest1 as the production wrapper — not a real upgrade"
         exit 1
+    fi
+    # Reuse mode: the wrapper was deployed outside this harness (e.g. the
+    # production-prepared contract), so independently bind it to the release
+    # under test — its on-chain digest1 must equal the S3 bundle digest.
+    if $REUSE_WRAPPER; then
+        S3_D1="0x$(curl -fsSL "${NEW_S3}bundle/digest_1.hex" | tr -d '[:space:]')"
+        log_info "  s3 digest1    = $S3_D1"
+        [[ "${NEW_D1,,}" == "${S3_D1,,}" ]] || { log_error "reused wrapper digest1 != S3 bundle digest_1 — wrong contract?"; exit 1; }
+        log_ok "  reused wrapper binds the release under test (digest1 == S3)"
     fi
 fi
 

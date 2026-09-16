@@ -291,6 +291,14 @@ docker build -f build/dockerfiles/prover.Dockerfile \
     -t scrolltech/prover:$(target/release/prover --version | awk '{print $NF}') .
 make canary-upgrade DOCKER_PROVERS=1 PROVER_IMAGE=scrolltech/prover:<tag>
 
+# t1 REUSING an already-deployed wrapper (e.g. the production-prepared
+# contract on mainnet — present on the fork by construction) instead of
+# deploying a fresh one: set .contracts.deployed_verifier in the next config
+# and pass REUSE_WRAPPER=1. The genuine updateVerifier() call still runs;
+# the wrapper's on-chain verifierDigest1 is checked against the S3 bundle
+# digest so a wrong address fails at t1, not at t2.
+make canary-upgrade DOCKER_PROVERS=1 REUSE_WRAPPER=1 PROVER_IMAGE=scrolltech/cuda-prover:<tag>
+
 # Parallel period — old (< N) and new (>= N) bundles interleave on-chain.
 # Rollback drill (recommended BEFORE the first >= N bundle finalizes):
 make canary-rollback          # = 31-canary-rollback.sh
