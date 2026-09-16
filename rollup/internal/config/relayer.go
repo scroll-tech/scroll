@@ -123,9 +123,10 @@ type GasOracleConfig struct {
 
 // SignerConfig - config of signer, contains type and config corresponding to type
 type SignerConfig struct {
-	SignerType             string                  `json:"signer_type"` // type of signer can be PrivateKey or RemoteSigner
+	SignerType             string                  `json:"signer_type"` // type of signer can be PrivateKey, RemoteSigner or AWSKMS
 	PrivateKeySignerConfig *PrivateKeySignerConfig `json:"private_key_signer_config"`
 	RemoteSignerConfig     *RemoteSignerConfig     `json:"remote_signer_config"`
+	AWSKMSSignerConfig     *AWSKMSSignerConfig     `json:"aws_kms_signer_config"`
 }
 
 // PrivateKeySignerConfig - config of private signer, contains private key
@@ -137,4 +138,19 @@ type PrivateKeySignerConfig struct {
 type RemoteSignerConfig struct {
 	RemoteSignerUrl string `json:"remote_signer_url"` // remote signer url (web3signer) in case of RemoteSigner signerType
 	SignerAddress   string `json:"signer_address"`    // address of signer
+}
+
+// AWSKMSSignerConfig - config of an AWS KMS backed signer. The private key never
+// leaves KMS; the service only requests signatures over transaction hashes.
+type AWSKMSSignerConfig struct {
+	// KeyID is the KMS key id, alias or ARN of an asymmetric ECC_SECG_P256K1 / SIGN_VERIFY key.
+	KeyID string `json:"key_id"`
+	// Region is the AWS region of the key. Optional; falls back to the ambient AWS config
+	// (AWS_REGION, shared config, instance/IRSA role) when empty, and startup fails if
+	// no region resolves from either.
+	Region string `json:"region"`
+	// SignerAddress is the expected Ethereum address of the key. Required: it is validated
+	// against the address derived from the KMS public key at startup so a misconfigured
+	// key id fails fast instead of signing from an unexpected account.
+	SignerAddress string `json:"signer_address"`
 }
