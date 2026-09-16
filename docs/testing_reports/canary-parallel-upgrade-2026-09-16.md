@@ -48,6 +48,25 @@ Note: t2 came ~12 min after t1 because the boundary landed exactly on the fronti
 
 As in the previous two runs, no < N bundle remained unfinalized at t1 (boundary aligned with the mainnet frontier), so the interleaved-old-after-upgrade case had no specimen; it remains covered by the 2026-08-25 run.
 
+## Proving-time comparison (old production guest vs new v0.9.0)
+
+Old = production stack (guest `79c1f8c`, OpenVM 1.x) — `proof_time_sec` from the
+mainnet rollup DB, last 500 chunks / 500 batches / 100 bundles (coordinator
+wall time per task, includes dispatch overhead; p50 given to damp outliers).
+New = this run's docker prover on a single RTX 4090 — 9 chunks / 2 batches /
+2 bundles (small sample, but very tight variance: 80–81 s / 21 s / 121–122 s).
+Production bundles averaged **1.2 batches/bundle** over the sample window, so
+the bundle row is a like-for-like comparison (our bundles had 1 batch).
+
+| Level | Old avg (p50) | New avg | Speedup (avg) |
+|---|---|---|---|
+| Chunk | 567.6 s (490 s) | 80.1 s | **7.1×** (6.1× @ p50) |
+| Batch | 121.6 s (101 s) | 21.0 s | **5.8×** (4.8× @ p50) |
+| Bundle | 423.5 s (400 s) | 121.5 s | **3.5×** (3.3× @ p50) |
+
+Caveats: old-stack max chunk time was 5789 s (retries/queueing noise) — the
+p50 column is the fairer baseline; the new sample is small and from one GPU.
+
 ## Findings / fixes this run
 
 1. **Makefile flag concatenation bug** (fixed in `24d8ab7b`): `make canary-upgrade DOCKER_PROVERS=1 REUSE_WRAPPER=1` emitted `--docker-provers--reuse-wrapper`. Fixed by adding the trailing space inside the first `$(if …)`.
