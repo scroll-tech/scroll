@@ -7,6 +7,8 @@ edition.workspace = true
 [dependencies]
 scroll-zkvm-types = { workspace = true, features = ["scroll"] }
 scroll-zkvm-verifier.workspace = true
+openvm-sdk = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.0" }
+openvm-stark-sdk = { git = "https://github.com/openvm-org/stark-backend.git", tag = "v2.0.0" }
 
 alloy-primitives.workspace = true #depress the effect of "native-keccak"
 sbv-primitives = {workspace = true, features = ["scroll-compress-info", "scroll"]}

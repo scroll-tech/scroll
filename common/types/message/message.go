@@ -156,18 +156,21 @@ type BlockContextV2 struct {
 	NumL1Msgs uint16      `json:"num_l1_msgs"`
 }
 
-// Metric data carried with OpenVMProof
+// Metric data carried with OpenVMStarkProof
 type OpenVMProofStat struct {
 	TotalCycle         uint64 `json:"total_cycles"`
 	ExecutionTimeMills uint64 `json:"execution_time_mills"`
 	ProvingTimeMills   uint64 `json:"proving_time_mills"`
 }
 
-// Proof for flatten VM proof
-type OpenVMProof struct {
-	Proof        []byte           `json:"proofs"`
-	PublicValues []byte           `json:"public_values"`
-	Stat         *OpenVMProofStat `json:"stat,omitempty"`
+// Proof for flatten VM stark proof (v0.9.0+).
+// Mirrors scroll_zkvm_types::proof::StarkProof used by the OpenVM v2 prover.
+type OpenVMStarkProof struct {
+	Proof                []byte           `json:"proof"`
+	UserPvsProof         []byte           `json:"user_pvs_proof"`
+	Baseline             []byte           `json:"baseline,omitempty"`
+	DeferralMerkleProofs []byte           `json:"deferral_merkle_proofs,omitempty"`
+	Stat                 *OpenVMProofStat `json:"stat,omitempty"`
 }
 
 // Proof for flatten EVM proof
@@ -183,13 +186,13 @@ type OpenVMChunkProof struct {
 		TotalGasUsed uint64     `json:"chunk_total_gas"`
 	} `json:"metadata"`
 
-	VmProof    *OpenVMProof `json:"proof"`
-	Vk         []byte       `json:"vk,omitempty"`
-	GitVersion string       `json:"git_version,omitempty"`
+	StarkProof *OpenVMStarkProof `json:"proof"`
+	Vk         []byte            `json:"vk,omitempty"`
+	GitVersion string            `json:"git_version,omitempty"`
 }
 
 func (p *OpenVMChunkProof) Proof() []byte {
-	proofJson, err := json.Marshal(p.VmProof)
+	proofJson, err := json.Marshal(p.StarkProof)
 	if err != nil {
 		panic(fmt.Sprint("marshaling error", err))
 	}
@@ -217,13 +220,13 @@ type OpenVMBatchProof struct {
 		BatchHash common.Hash      `json:"batch_hash"`
 	} `json:"metadata"`
 
-	VmProof    *OpenVMProof `json:"proof"`
-	Vk         []byte       `json:"vk,omitempty"`
-	GitVersion string       `json:"git_version,omitempty"`
+	StarkProof *OpenVMStarkProof `json:"proof"`
+	Vk         []byte            `json:"vk,omitempty"`
+	GitVersion string            `json:"git_version,omitempty"`
 }
 
 func (p *OpenVMBatchProof) Proof() []byte {
-	proofJson, err := json.Marshal(p.VmProof)
+	proofJson, err := json.Marshal(p.StarkProof)
 	if err != nil {
 		panic(fmt.Sprint("marshaling error", err))
 	}
@@ -240,17 +243,17 @@ func (ap *OpenVMBatchProof) SanityCheck() error {
 		return errors.New("batch info not ready")
 	}
 
-	if ap.VmProof == nil {
+	if ap.StarkProof == nil {
 		return errors.New("proof not ready")
 	} else {
 		if len(ap.Vk) == 0 {
 			return errors.New("vk not ready")
 		}
-		pf := ap.VmProof
-		if pf.Proof == nil {
+		pf := ap.StarkProof
+		if len(pf.Proof) == 0 {
 			return errors.New("proof data not ready")
 		}
-		if len(pf.PublicValues) == 0 {
+		if len(pf.UserPvsProof) == 0 {
 			return errors.New("proof public value not ready")
 		}
 	}
