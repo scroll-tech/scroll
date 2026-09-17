@@ -211,13 +211,25 @@ func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 func (o *Batch) CheckIfBundleBatchProofsAreReady(ctx context.Context, bundleHash string) (bool, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ?", bundleHash)
+
+	var totalCount int64
+	if err := db.Count(&totalCount).Error; err != nil {
+		return false, fmt.Errorf("Batch.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
+	}
+	if totalCount == 0 {
+		return false, nil
+	}
+
+	db = o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
 	db = db.Where("bundle_hash = ? AND proving_status != ?", bundleHash, types.ProvingTaskVerified)
 
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
-		return false, fmt.Errorf("Chunk.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
+	var unreadyCount int64
+	if err := db.Count(&unreadyCount).Error; err != nil {
+		return false, fmt.Errorf("Batch.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
 	}
-	return count == 0, nil
+	return unreadyCount == 0, nil
 }
 
 // GetBatchByHash retrieves the given batch.
@@ -456,6 +468,35 @@ func (o *Batch) DecreaseActiveAttemptsByHash(ctx context.Context, batchHash stri
 	}
 	if result.RowsAffected == 0 {
 		log.Warn("No rows were affected in DecreaseActiveAttemptsByHash", "batch hash", batchHash)
+	}
+	return nil
+}
+
+// RefundAttemptsByHash refunds a full assignment attempt of a batch given its hash:
+// it decrements both total_attempts and active_attempts and resets proving_status to unassigned.
+// It is used to roll back UpdateBatchAttempts when the coordinator fails to dispatch the task
+// (e.g. task formatting or prover task insertion failure), so the attempt is not burned permanently.
+func (o *Batch) RefundAttemptsByHash(ctx context.Context, batchHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", batchHash)
+	db = db.Where("total_attempts > ?", 0)
+	db = db.Where("active_attempts > ?", 0)
+	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
+	result := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts - 1"),
+		"active_attempts": gorm.Expr("active_attempts - 1"),
+		"proving_status":  int(types.ProvingTaskUnassigned),
+	})
+	if result.Error != nil {
+		return fmt.Errorf("Batch.RefundAttemptsByHash error: %w, batch hash: %v", result.Error, batchHash)
+	}
+	if result.RowsAffected == 0 {
+		log.Warn("No rows were affected in RefundAttemptsByHash", "batch hash", batchHash)
 	}
 	return nil
 }

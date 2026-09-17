@@ -1,0 +1,213 @@
+version: "3.8"
+
+services:
+  # ─── PostgreSQL (Shadow DB) ────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: shadow-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: shadow_pass
+      POSTGRES_DB: shadow_rollup
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shadow-net
+
+  # ─── Coordinator API ───────────────────────────────────────────────────────
+  coordinator:
+    image: scrolltech/coordinator-api:e2e-test
+    container_name: shadow-coordinator
+    profiles: ["coordinator"]
+    command:
+      - "--config"
+      - "/app/conf/config.json"
+      - "--http"
+      - "--http.addr"
+      - "0.0.0.0"
+      - "--http.port"
+      - "8390"
+    ports:
+      - "8390:8390"
+    volumes:
+      - ./follow/configs/coordinator.json:/app/conf/config.json:ro
+      - ../../coordinator/build/bin/assets_v2:/app/assets:ro
+      - ../../tests/prover-e2e/mainnet-galileoV2/genesis.json:/app/conf/genesis.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Relayer ───────────────────────────────────────────────────────────────
+  relayer:
+    image: ubuntu:22.04
+    container_name: shadow-relayer
+    profiles: ["relayer"]
+    entrypoint: ["/app/rollup_relayer"]
+    command:
+      - "--config"
+      - "/app/config.json"
+      - "--genesis"
+      - "/app/conf/genesis.json"
+      - "--min-codec-version"
+      - "7"
+      - "--verbosity"
+      - "3"
+    volumes:
+      - ./.work/relayer-${CONFIG:-mainnet}.json:/app/config.json:ro
+      - ../../tests/prover-e2e/mainnet-galileoV2/genesis.json:/app/conf/genesis.json:ro
+      - ../../rollup/build/bin/rollup_relayer:/app/rollup_relayer:ro
+    depends_on:
+      - postgres
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Anvil (optional — usually started by script for fork flexibility) ─────
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: shadow-anvil
+    profiles: ["anvil"]
+    entrypoint: ["anvil"]
+    command:
+      - "--fork-url"
+      - "${FORK_URL:-https://eth-mainnet.g.alchemy.com/v2/demo}"
+      - "--fork-block-number"
+      - "${FORK_BLOCK:-25202217}"
+      - "--block-time"
+      - "12"
+      - "--port"
+      - "8545"
+      - "--state"
+      - "/data/anvil.state.json"
+    ports:
+      - "18545:8545"
+    volumes:
+      - ./states:/data
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Prover GPU-0 ──────────────────────────────────────────────────────────
+  prover-gpu-0:
+    image: scrolltech/prover:${PROVER_VERSION:-e2e-test}
+    container_name: shadow-prover-gpu-0
+    profiles: ["prover"]
+    ports:
+      - "10080:10080"
+    environment:
+      - RUST_MIN_STACK=16777216
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./.work/prover-0.json:/prover/conf/config.json:ro
+      - ./.work/prover-0:/prover/.work
+      - ~/.openvm/params:/root/.openvm/params:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    depends_on:
+      - coordinator
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Prover GPU-1 ──────────────────────────────────────────────────────────
+  prover-gpu-1:
+    image: scrolltech/prover:${PROVER_VERSION:-e2e-test}
+    container_name: shadow-prover-gpu-1
+    profiles: ["prover"]
+    ports:
+      - "10081:10080"
+    environment:
+      - RUST_MIN_STACK=16777216
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./.work/prover-1.json:/prover/conf/config.json:ro
+      - ./.work/prover-1:/prover/.work
+      - ~/.openvm/params:/root/.openvm/params:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+    depends_on:
+      - coordinator
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Prover GPU-2 ──────────────────────────────────────────────────────────
+  prover-gpu-2:
+    image: scrolltech/prover:${PROVER_VERSION:-e2e-test}
+    container_name: shadow-prover-gpu-2
+    profiles: ["prover"]
+    ports:
+      - "10082:10080"
+    environment:
+      - RUST_MIN_STACK=16777216
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./.work/prover-2.json:/prover/conf/config.json:ro
+      - ./.work/prover-2:/prover/.work
+      - ~/.openvm/params:/root/.openvm/params:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['2']
+              capabilities: [gpu]
+    depends_on:
+      - coordinator
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+  # ─── Prover GPU-3 ──────────────────────────────────────────────────────────
+  prover-gpu-3:
+    image: scrolltech/prover:${PROVER_VERSION:-e2e-test}
+    container_name: shadow-prover-gpu-3
+    profiles: ["prover"]
+    ports:
+      - "10083:10080"
+    environment:
+      - RUST_MIN_STACK=16777216
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./.work/prover-3.json:/prover/conf/config.json:ro
+      - ./.work/prover-3:/prover/.work
+      - ~/.openvm/params:/root/.openvm/params:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['3']
+              capabilities: [gpu]
+    depends_on:
+      - coordinator
+    networks:
+      - shadow-net
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  shadow-net:
+    driver: bridge

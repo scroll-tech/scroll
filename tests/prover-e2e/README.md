@@ -109,9 +109,12 @@ docker rm -f local_postgres       # kill stale container
 make setup_db                     # recreate
 ```
 
+> After changing `docker-compose.yml`, old containers can persist with stale port mappings — always `docker rm -f` before `docker compose up`. The E2E container is named `local_postgres`.
+
 ### Prover 403 downloading app.vmexe from S3
 - Verify `base_url` in prover `config.json` doesn't contain an extra `releases/` segment.
 - Test with: `curl -sI "<base_url>chunk/<vk>/app.vmexe"`
+- S3 prefixes/digest encodings differ per release (v0.8.0 has no `/releases/`; v0.9.0+ requires `agg_vk.bin` per circuit) — see [`../shadow-testing/docs/CURRENT-STACK.md`](../shadow-testing/docs/CURRENT-STACK.md) and shadow-testing follow-mode Trap 33.
 
 ### mismatched post-state root (during coordinator task generation)
 Blocks are from before the configured fork. Use a higher block range (≥ 33,750,000 for galileoV2).
