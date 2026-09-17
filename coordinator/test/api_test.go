@@ -619,7 +619,6 @@ func testProofGeneratedFailed(t *testing.T) {
 		chunkProofStatus             types.ProvingStatus
 		batchProofStatus             types.ProvingStatus
 		chunkProverTaskProvingStatus types.ProverProveStatus
-		batchProverTaskProvingStatus types.ProverProveStatus
 		chunkActiveAttempts          int16
 		chunkMaxAttempts             int16
 		batchActiveAttempts          int16
@@ -633,25 +632,24 @@ func testProofGeneratedFailed(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), dbBatch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
-				return
-			}
 
 			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, int(chunkMaxAttempts))
-			assert.Equal(t, 0, int(chunkActiveAttempts))
 
 			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), dbBatch.Hash)
 			assert.NoError(t, err)
-			assert.Equal(t, 1, int(batchMaxAttempts))
-			assert.Equal(t, 0, int(batchActiveAttempts))
 
 			chunkProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), message.ProofTypeChunk, dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), message.ProofTypeBatch, dbBatch.Hash)
-			assert.NoError(t, err)
-			if chunkProverTaskProvingStatus == types.ProverProofInvalid && batchProverTaskProvingStatus == types.ProverProofInvalid {
+
+			// The chunk task was dispatched successfully and then its proof failed: the prover task
+			// is marked invalid and the active attempt released, but the total attempt is kept (the
+			// prover_task row lets the cron timeout checker recover it). The batch task failed to
+			// dispatch, so its attempt is fully refunded: back to unassigned with 0/0 attempts.
+			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskUnassigned &&
+				chunkMaxAttempts == 1 && chunkActiveAttempts == 0 &&
+				batchMaxAttempts == 0 && batchActiveAttempts == 0 &&
+				chunkProverTaskProvingStatus == types.ProverProofInvalid {
 				return
 			}
 		case <-tickStop:

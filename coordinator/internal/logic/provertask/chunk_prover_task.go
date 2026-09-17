@@ -194,7 +194,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	taskMsg, err := cp.formatProverTask(ctx.Copy(), proverTask, chunkTask, hardForkName)
 	if err != nil {
-		cp.recoverActiveAttempts(ctx, chunkTask)
+		cp.recoverAttempts(ctx, taskCtx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -203,7 +203,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		var metadata []byte
 		taskMsg, metadata, err = cp.applyUniversal(taskMsg)
 		if err != nil {
-			cp.recoverActiveAttempts(ctx, chunkTask)
+			cp.recoverAttempts(ctx, taskCtx, chunkTask)
 			log.Error("Generate universal prover task failure", "task_id", chunkTask.Hash, "type", "chunk", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -212,7 +212,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if taskCtx.hasAssignedTask == nil {
 		if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			cp.recoverActiveAttempts(ctx, chunkTask)
+			cp.recoverAttempts(ctx, taskCtx, chunkTask)
 			log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -269,7 +269,17 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	return proverTaskSchema, nil
 }
 
-func (cp *ChunkProverTask) recoverActiveAttempts(ctx *gin.Context, chunkTask *orm.Chunk) {
+// recoverAttempts rolls back the attempt charged by UpdateChunkAttempts when the coordinator
+// fails to dispatch a freshly assigned task (hasAssignedTask == nil): both counters are refunded
+// and proving_status is reset to unassigned. For a re-poll of an already assigned task nothing
+// was charged in this call, so only active_attempts is decremented as before.
+func (cp *ChunkProverTask) recoverAttempts(ctx *gin.Context, taskCtx *proverTaskContext, chunkTask *orm.Chunk) {
+	if taskCtx.hasAssignedTask == nil {
+		if err := cp.chunkOrm.RefundAttemptsByHash(ctx, chunkTask.Hash); err != nil {
+			log.Error("failed to refund chunk attempts", "hash", chunkTask.Hash, "error", err)
+		}
+		return
+	}
 	if err := cp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, chunkTask.Hash); err != nil {
 		log.Error("failed to recover chunk active attempts", "hash", chunkTask.Hash, "error", err)
 	}

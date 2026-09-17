@@ -196,7 +196,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), proverTask, hardForkName)
 	if err != nil {
-		bp.recoverActiveAttempts(ctx, bundleTask)
+		bp.recoverAttempts(ctx, taskCtx, bundleTask)
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -204,7 +204,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		var metadata []byte
 		taskMsg, metadata, err = bp.applyUniversal(taskMsg)
 		if err != nil {
-			bp.recoverActiveAttempts(ctx, bundleTask)
+			bp.recoverAttempts(ctx, taskCtx, bundleTask)
 			log.Error("Generate universal prover task failure", "task_id", bundleTask.Hash, "type", "bundle", "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -215,7 +215,8 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		if isCompatibilityFixingVersion(taskCtx.ProverVersion) {
 			log.Info("Apply compatibility fixing for prover", "version", taskCtx.ProverVersion)
 			if err := fixCompatibility(taskMsg); err != nil {
-				log.Error("apply compatibility failure", "err", err)
+				bp.recoverAttempts(ctx, taskCtx, bundleTask)
+				log.Error("apply compatibility failure", "task_id", bundleTask.Hash, "err", err)
 				return nil, ErrCoordinatorInternalFailure
 			}
 		}
@@ -224,7 +225,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	// Store session info.
 	if taskCtx.hasAssignedTask == nil {
 		if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), proverTask); err != nil {
-			bp.recoverActiveAttempts(ctx, bundleTask)
+			bp.recoverAttempts(ctx, taskCtx, bundleTask)
 			log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 			return nil, ErrCoordinatorInternalFailure
 		}
@@ -313,7 +314,17 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	return taskMsg, nil
 }
 
-func (bp *BundleProverTask) recoverActiveAttempts(ctx *gin.Context, bundleTask *orm.Bundle) {
+// recoverAttempts rolls back the attempt charged by UpdateBundleAttempts when the coordinator
+// fails to dispatch a freshly assigned task (hasAssignedTask == nil): both counters are refunded
+// and proving_status is reset to unassigned. For a re-poll of an already assigned task nothing
+// was charged in this call, so only active_attempts is decremented as before.
+func (bp *BundleProverTask) recoverAttempts(ctx *gin.Context, taskCtx *proverTaskContext, bundleTask *orm.Bundle) {
+	if taskCtx.hasAssignedTask == nil {
+		if err := bp.bundleOrm.RefundAttemptsByHash(ctx.Copy(), bundleTask.Hash); err != nil {
+			log.Error("failed to refund bundle attempts", "hash", bundleTask.Hash, "error", err)
+		}
+		return
+	}
 	if err := bp.bundleOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), bundleTask.Hash); err != nil {
 		log.Error("failed to recover bundle active attempts", "hash", bundleTask.Hash, "error", err)
 	}
