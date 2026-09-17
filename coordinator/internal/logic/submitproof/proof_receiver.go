@@ -231,6 +231,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
+		if chunkProof.StarkProof == nil {
+			return errors.New("invalid chunk proof: missing stark proof")
+		}
 		success, verifyErr = m.verifier.VerifyChunkProof(chunkProof, hardForkName)
 		if stat := chunkProof.StarkProof.Stat; stat != nil {
 			if g, _ := m.proverSpeed.GetMetricWithLabelValues("chunk", "exec"); g != nil && stat.ExecutionTimeMills > 0 {
@@ -250,6 +253,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		batchProof := &message.OpenVMBatchProof{}
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
+		}
+		if batchProof.StarkProof == nil {
+			return errors.New("invalid batch proof: missing stark proof")
 		}
 		success, verifyErr = m.verifier.VerifyBatchProof(batchProof, hardForkName)
 		if stat := batchProof.StarkProof.Stat; stat != nil {
