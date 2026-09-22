@@ -131,6 +131,7 @@ impl BatchProvingTask {
                 .collect(),
             serialized_witness: vec![serialized_witness],
             vk: Vec::new(),
+            input_commits: Vec::new(),
         };
 
         Ok((proving_task, metadata, batch_pi_hash))

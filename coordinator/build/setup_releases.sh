@@ -60,10 +60,22 @@ for ((i=0; i<$VERIFIER_COUNT; i++)); do
   mkdir -p "$ASSET_DIR"
 
   # assets for verifier-only mode
+  # v0.9.0+ publishes verifier assets under releases/<ver>/verifier/, while
+  # older releases used <ver>/verifier/ (no "releases/" segment). Probe once
+  # and use whichever layout exists for this version.
   echo "Downloading assets for $FORK_NAME to $ASSET_DIR..."
-  wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/verifier.bin -O ${ASSET_DIR}/verifier.bin
-  wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/root_verifier_vk -O ${ASSET_DIR}/root_verifier_vk
-  wget https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/$SCROLL_ZKVM_VERSION/verifier/openVmVk.json -O ${ASSET_DIR}/openVmVk.json
+  S3_BASE="https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm"
+  if wget -q --spider "$S3_BASE/releases/$SCROLL_ZKVM_VERSION/verifier/verifier.bin"; then
+    VERIFIER_URL_BASE="$S3_BASE/releases/$SCROLL_ZKVM_VERSION/verifier"
+  else
+    VERIFIER_URL_BASE="$S3_BASE/$SCROLL_ZKVM_VERSION/verifier"
+  fi
+  wget ${VERIFIER_URL_BASE}/verifier.bin -O ${ASSET_DIR}/verifier.bin
+  wget ${VERIFIER_URL_BASE}/root_verifier_vk -O ${ASSET_DIR}/root_verifier_vk
+  wget ${VERIFIER_URL_BASE}/openVmVk.json -O ${ASSET_DIR}/openVmVk.json
+  # agg_vk.bin: the batch circuit's aggregation VK, mandatory for batch proof
+  # verification (the coordinator refuses to start without it).
+  wget ${VERIFIER_URL_BASE}/agg_vk.bin -O ${ASSET_DIR}/agg_vk.bin
   
   echo "Completed downloading assets for $FORK_NAME"
   echo "---"

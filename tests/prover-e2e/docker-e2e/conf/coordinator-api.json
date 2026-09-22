@@ -7,7 +7,7 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 3600,
     "verifier": {
-      "min_prover_version": "v4.4.45",
+      "min_prover_version": "v4.8.0",
       "verifiers": [
         {
           "assets_path": "assets_v2",

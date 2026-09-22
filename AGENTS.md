@@ -117,3 +117,4 @@ make coordinator_setup
 | [`docs/testing/openvm-upgrade-testing-guide.md`](docs/testing/openvm-upgrade-testing-guide.md) | Step-by-step testing checklist after OpenVM / zkvm-prover upgrades |
 | [`docs/testing/docker-compose-e2e-guide.md`](docs/testing/docker-compose-e2e-guide.md) | Production-like E2E testing with Docker Compose + Coordinator Proxy |
 | [`docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md`](docs/testing_reports/openvm-v1.6.0-guest-v0.8.0-May19.md) | Test report for PR #1783 (OpenVM 1.6.0, guest v0.8.0) |
+| [`docs/testing_reports/openvm-v2.0.0-guest-v0.9.0-Sep15.md`](docs/testing_reports/openvm-v2.0.0-guest-v0.9.0-Sep15.md) | Test report for PR #1816 (OpenVM v2.0, guest v0.9.0) |
