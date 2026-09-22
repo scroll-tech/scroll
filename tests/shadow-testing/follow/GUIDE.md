@@ -324,6 +324,38 @@ make canary-upgrade           # upgrade again afterwards — 30 is re-runnable
 - **Pipeline latency vs "stuck"**: after a new bundle appears it sits at `rollup_status=1, proving_status=1` for **~1–1.5 h on a single GPU** — chunk proofs first (first task after an assets swap adds 10–15 min witness fetch), then batch proofs, then the bundle STARK; the bundle row only flips late (`p2` when bundle-proving starts, `p4` + proof when it lands). That is normal progress, not a stall — watch the coordinator log (`start chunk generation session`) / `docker logs shadow-prover-<gpu>` for signs of actual life before intervening.
 - **Docker provers**: `04-prover-up.sh --docker` (driven via `30-canary-upgrade.sh --docker-provers` / `make canary-upgrade DOCKER_PROVERS=1`) runs each prover as a `shadow-prover-<gpu>` container of `PROVER_IMAGE` with same-path work-dir mounts, host networking, `--user $(id -u)` and the SRS mounted at `$HOME/.openvm/params` inside the container (HOME is overridden so the path matches). The container's host PID is written to the usual pidfile, so `11-follow-stop.sh` / `31-canary-rollback.sh` work unchanged (plus a `docker rm -f shadow-prover-*` sweep as backstop). Prover logs: `docker logs shadow-prover-<gpu>` (the per-GPU `prover.log` file stays empty in this mode). Build the image from the checkout under test with `build/dockerfiles/prover.Dockerfile` — the same "production-style packaging" the devops `prover-image-build.yml` workflow produces in CI.
 
+## Prove-Only Backstop Mode (no anvil, no relayer)
+
+`scripts/40-prove-only-up.sh` brings up a **proving-only** stack: sync loop + sweeper + coordinator_api/cron + docker prover. No anvil fork, no relayer, no verifier registration — the local coordinator assigns proving tasks for synced mainnet rows and stores verified proofs in the shadow DB. Use it to backstop/rehearse proving against the live mainnet frontier (e.g. while production proving is degraded), or as a source of locally-generated proofs.
+
+```bash
+scripts/40-prove-only-up.sh --sync-only   # phase 1: sync + sweeper only
+# wait for catch-up: local chunk/batch/bundle max(index) == remote tips
+# then mark remote-finalized history as proved (see SQL below) — otherwise the
+# coordinator re-proves every unproved row it finds, i.e. ALL of the catch-up era
+scripts/40-prove-only-up.sh               # phase 2: coordinator + docker prover
+```
+
+The mark-finalized SQL (TIP = remote `MAX(index) WHERE rollup_status=5` per table, taken AFTER catch-up):
+
+```sql
+UPDATE bundle SET rollup_status=5, proving_status=4 WHERE index <= <BUNDLE_TIP> AND rollup_status <> 5;
+UPDATE bundle SET proving_status=4 WHERE rollup_status=5 AND proving_status <> 4;  -- sync copies rollup_status but NOT proving_status
+UPDATE batch  SET rollup_status=5, proving_status=4 WHERE index <= <BATCH_TIP> AND rollup_status <> 5;
+UPDATE batch  SET proving_status=4 WHERE index <= <BATCH_TIP> AND proving_status <> 4;
+UPDATE chunk  SET proving_status=4 WHERE proving_status <> 4
+  AND batch_hash IN (SELECT hash FROM batch WHERE index <= <BATCH_TIP>);
+DELETE FROM prover_task WHERE proving_status IN (1,3);
+```
+
+Semantics/traps:
+
+- **Sync never clobbers local proofs**: chunk/batch/bundle are `ON CONFLICT DO NOTHING` and proof/proving_status columns are excluded from the copy. But bundle `rollup_status` IS copied from remote — so catch-up bundles arrive `rollup_status=5, proving_status=1` and MUST be marked proved by hand (second UPDATE above), or the coordinator generates bundle tasks for finalized history.
+- "Unfinalized" must be judged against **remote** — without a relayer, local rollup_status never advances on its own.
+- Only the live frontier gets proven: first run validated 2026-09-22 — frontier batch 519960 (4 chunks, ~80 s each) + batch 519961 + bundle 19135 (122 s) proven by the docker prover and verified by the local coordinator; proofs landed in the shadow DB. End-to-end lag from remote row appearance to local bundle proof ≈ 2 min once chunks/batches are in.
+- Stop with `scripts/11-follow-stop.sh` (stops sync/coordinator/prover, keeps postgres).
+- The production prover deployment on this host (`/home/scroll/openvm-prover-docker-0/`, container `openvm-prover-0`, GPU 0, coordinator.scroll.io) is independent of this stack; sharing the machine is fine as long as each prover keeps its own GPU.
+
 ## Run Completion & Acceptance Criteria
 
 A follow run ends after `FOLLOW_RUN_HOURS` (default 48) or on failure. The run **passes** when:
