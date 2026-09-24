@@ -1,0 +1,45 @@
+{
+    "name": "mainnet-shadow-fork-next",
+    "fork": {
+        "url": "https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY",
+        "block_number": 25202217,
+        "anvil_rpc": "http://localhost:18545"
+    },
+    "contracts": {
+        "scroll_chain": "0xa13BAF47339d63B743e7Da8741db5456DAc1E556",
+        "l1_message_queue_v2": "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
+        "rollup_verifier": "0x4CEA3E866e7c57fD75CB0CA3E9F5f1151D4Ead3F",
+        "deployed_verifier": "",
+        "owner": "0x798576400F7D662961BA15C6b3F3d813447a26a6"
+    },
+    "accounts": {
+        "prover_eoa": "0x410E7FD80a3Fc1E62A4D3450d11b71b812006eB9",
+        "commit_eoa": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    "reset": {
+        "last_finalized_batch_index": 517765,
+        "next_unfinalized_queue_index": 0,
+        "codec_version": 10,
+        "last_committed_batch_index": 517819
+    },
+    "db": {
+        "dsn": "postgresql://postgres:YOUR_SHADOW_DB_PASSWORD@localhost:5433/shadow_rollup"
+    },
+    "genesis": "tests/prover-e2e/mainnet-galileoV2/genesis.json",
+    "assets": {
+        "assets_v2": "coordinator/build/bin/assets_v2_next"
+    },
+    "prover": {
+        "name_prefix": "galileo6-shadowfork-prover",
+        "circuit_version": "v0.14.0",
+        "s3_base_url": "https://circuit-release.s3.us-west-2.amazonaws.com/scroll-zkvm/releases/vX.Y.Z/"
+    },
+    "relayer": {
+        "validium_mode": false,
+        "min_codec_version": 7,
+        "chain_monitor_enabled": false
+    },
+    "e2e": {
+        "l2_rpc": "https://l2geth-rpc-proxy.mainnet.aws.scroll.io"
+    }
+}

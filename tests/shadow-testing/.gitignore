@@ -1,0 +1,23 @@
+# Work directory (logs, pid files, generated configs)
+.work/
+
+# Anvil state files (large, environment-specific)
+states/*.json
+
+# Generated configs (from templates)
+.work/*.json
+
+# Prover work directories
+.work/prover-*/
+
+# Relayer logs
+.work/relayer-*.log
+
+# Coordinator logs
+.work/coordinator-*.log
+
+# Actual config files with secrets (use .template files instead)
+configs/*.json
+follow/configs/*.json
+snapshot/configs/*.json
+__pycache__/

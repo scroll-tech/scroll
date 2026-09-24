@@ -3,7 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
-	"math/rand"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,7 +79,9 @@ func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 	return nil
 }
 
-// GetTasks get assigned chunk/batch task
+// GetTasks get assigned chunk/batch/bundle task, trying proof types in priority
+// order: Bundle > Batch > Chunk. This lets the pipeline finalize the earliest
+// ready bundle before proving unrelated chunks/batches further ahead.
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
@@ -99,35 +101,36 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		}
 	}
 
-	proofType := ptc.proofType(&getTaskParameter)
-	proverTask, isExist := ptc.proverTasks[proofType]
-	if !isExist {
-		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
-		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
-		return
-	}
+	proofTypes := ptc.prioritizedProofTypes(&getTaskParameter)
 
 	if err := ptc.incGetTaskAccessCounter(ctx); err != nil {
 		log.Warn("get_task access counter inc failed", "error", err.Error())
 	}
 
-	result, err := proverTask.Assign(ctx, &getTaskParameter)
-	if err != nil {
-		nerr := fmt.Errorf("return prover task err:%w", err)
-		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, nerr)
-		return
+	for _, proofType := range proofTypes {
+		proverTask, isExist := ptc.proverTasks[proofType]
+		if !isExist {
+			continue
+		}
+
+		result, err := proverTask.Assign(ctx, &getTaskParameter)
+		if err != nil {
+			nerr := fmt.Errorf("return prover task err:%w", err)
+			types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, nerr)
+			return
+		}
+
+		if result != nil {
+			types.RenderSuccess(ctx, result)
+			return
+		}
 	}
 
-	if result == nil {
-		nerr := errors.New("get empty prover task")
-		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
-		return
-	}
-
-	types.RenderSuccess(ctx, result)
+	nerr := errors.New("get empty prover task")
+	types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
 }
 
-func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
+func (ptc *GetTaskController) prioritizedProofTypes(para *coordinatorType.GetTaskParameter) []message.ProofType {
 	var proofTypes []message.ProofType
 	for _, proofType := range para.TaskTypes {
 		proofTypes = append(proofTypes, message.ProofType(proofType))
@@ -141,8 +144,9 @@ func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) 
 		}
 	}
 
-	rand.Shuffle(len(proofTypes), func(i, j int) {
-		proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
+	// Bundle (3) > Batch (2) > Chunk (1)
+	sort.Slice(proofTypes, func(i, j int) bool {
+		return proofTypes[i] > proofTypes[j]
 	})
-	return proofTypes[0]
+	return proofTypes
 }

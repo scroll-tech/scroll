@@ -243,3 +243,32 @@ func (o *Bundle) DecreaseActiveAttemptsByHash(ctx context.Context, bundleHash st
 	}
 	return nil
 }
+
+// RefundAttemptsByHash refunds a full assignment attempt of a bundle given its hash:
+// it decrements both total_attempts and active_attempts and resets proving_status to unassigned.
+// It is used to roll back UpdateBundleAttempts when the coordinator fails to dispatch the task
+// (e.g. task formatting or prover task insertion failure), so the attempt is not burned permanently.
+func (o *Bundle) RefundAttemptsByHash(ctx context.Context, bundleHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Bundle{})
+	db = db.Where("hash = ?", bundleHash)
+	db = db.Where("total_attempts > ?", 0)
+	db = db.Where("active_attempts > ?", 0)
+	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
+	result := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts - 1"),
+		"active_attempts": gorm.Expr("active_attempts - 1"),
+		"proving_status":  int(types.ProvingTaskUnassigned),
+	})
+	if result.Error != nil {
+		return fmt.Errorf("Bundle.RefundAttemptsByHash error: %w, bundle hash: %v", result.Error, bundleHash)
+	}
+	if result.RowsAffected == 0 {
+		log.Warn("No rows were affected in RefundAttemptsByHash", "bundle hash", bundleHash)
+	}
+	return nil
+}

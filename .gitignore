@@ -33,3 +33,5 @@ target
 zkvm-prover/*.json
 .work/
 rollup/tests.test
+local-secrets.md
+tmp/

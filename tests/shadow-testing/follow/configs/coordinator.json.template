@@ -1,0 +1,40 @@
+{
+    "prover_manager": {
+        "provers_per_session": 1,
+        "session_attempts": 5,
+        "external_prover_threshold": 32,
+        "bundle_collection_time_sec": 7200,
+        "batch_collection_time_sec": 180,
+        "chunk_collection_time_sec": 3600,
+        "verifier": {
+            "min_prover_version": "v4.4.45",
+            "verifiers": [
+                {
+                    "assets_path": "assets",
+                    "fork_name": "galileoV2"
+                }
+            ]
+        }
+    },
+    "db": {
+        "driver_name": "postgres",
+        "dsn": "postgres://postgres:YOUR_SHADOW_DB_PASSWORD@shadow-postgres:5432/shadow_rollup?sslmode=disable",
+        "maxOpenNum": 200,
+        "maxIdleNum": 20
+    },
+    "l2": {
+        "validium_mode": false,
+        "chain_id": 534352,
+        "l2geth": {
+            "endpoint": "https://l2geth-rpc-proxy.mainnet.aws.scroll.io"
+        }
+    },
+    "auth": {
+        "secret": "YOUR_COORDINATOR_AUTH_SECRET",
+        "challenge_expire_duration_sec": 3600,
+        "login_expire_duration_sec": 3600
+    },
+    "sequencer": {
+        "decryption_key": "<not needed for non-validium>"
+    }
+}

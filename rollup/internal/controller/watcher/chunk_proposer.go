@@ -157,6 +157,9 @@ func (p *ChunkProposer) SetReplayDB(replayDB *gorm.DB) {
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
 	p.chunkProposerCircleTotal.Inc()
+	if p.cfg.Disable {
+		return
+	}
 	if err := p.ProposeChunk(); err != nil {
 		p.proposeChunkFailureTotal.Inc()
 		log.Error("propose new chunk failed", "err", err)
