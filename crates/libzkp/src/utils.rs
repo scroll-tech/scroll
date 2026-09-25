@@ -15,14 +15,9 @@ const GIT_VERSION: &str = git_version!(args = ["--abbrev=7", "--always"]);
 
 /// Shortened git commit ref from [`scroll_zkvm_prover`].
 pub(crate) fn short_git_version() -> String {
-    let commit_version = GIT_VERSION.split('-').next_back().unwrap();
-
-    // Check if use commit object as fallback.
-    if commit_version.len() < 8 {
-        commit_version.to_string()
-    } else {
-        commit_version[1..8].to_string()
-    }
+    let last = GIT_VERSION.split('-').next_back().unwrap();
+    let hash = last.strip_prefix('g').unwrap_or(last);
+    hash.chars().take(7).collect()
 }
 
 /// Wrapper to read JSON that might be deeply nested.
