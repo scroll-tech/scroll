@@ -199,6 +199,7 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 	hashesMap := make(map[string]struct{}, len(txHashes))
 	results := make([]*types.TxHistoryInfo, 0, len(txHashes))
 	uncachedHashes := make([]string, 0, len(txHashes))
+	rowSources := make(map[string]string) // row ID -> queried hash whose cache entry holds the row
 
 	for _, hash := range txHashes {
 		if _, exists := hashesMap[hash]; exists {
@@ -229,43 +230,64 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 			continue
 		}
 
-		var txInfo types.TxHistoryInfo
-		if unmarshalErr := json.Unmarshal(cachedData, &txInfo); unmarshalErr != nil {
+		var txInfos []*types.TxHistoryInfo
+		if unmarshalErr := json.Unmarshal(cachedData, &txInfos); unmarshalErr != nil {
 			log.Error("failed to unmarshal cached data", "error", unmarshalErr)
 			uncachedHashes = append(uncachedHashes, hash)
 			continue
 		}
-		results = append(results, &txInfo)
+		conflict := false
+		for _, txInfo := range txInfos {
+			rowID := txInfo.MessageHash
+			if rowID == "" {
+				rowID = txInfo.Hash // batch deposits have no message hash
+			}
+			if source, seen := rowSources[rowID]; seen && source != hash {
+				conflict = true
+			}
+			rowSources[rowID] = hash
+		}
+		if conflict {
+			// Another cache entry holds the same row, maybe in another state. Query the DB to return it once.
+			uncachedHashes = append(uncachedHashes, hash)
+			continue
+		}
+		results = append(results, txInfos...)
 	}
 
+	// On any cache miss, query all hashes, so cached and fresh rows never mix.
 	if len(uncachedHashes) > 0 {
 		var txHistories []*types.TxHistoryInfo
+		results = results[:0]
 
-		crossMessages, err := h.crossMessageOrm.GetMessagesByTxHashes(ctx, uncachedHashes)
+		crossMessages, err := h.crossMessageOrm.GetMessagesByTxHashes(ctx, txHashes)
 		if err != nil {
-			log.Error("failed to get cross messages by tx hashes", "hashes", uncachedHashes)
+			log.Error("failed to get cross messages by tx hashes", "hashes", txHashes)
 			return nil, err
 		}
 		for _, message := range crossMessages {
 			txHistories = append(txHistories, getTxHistoryInfoFromCrossMessage(message))
 		}
 
-		batchDepositMessages, err := h.bridgeBatchDepositOrm.GetMessagesByTxHashes(ctx, uncachedHashes)
+		batchDepositMessages, err := h.bridgeBatchDepositOrm.GetMessagesByTxHashes(ctx, txHashes)
 		if err != nil {
-			log.Error("failed to get batch deposit messages by tx hashes", "hashes", uncachedHashes)
+			log.Error("failed to get batch deposit messages by tx hashes", "hashes", txHashes)
 			return nil, err
 		}
 		for _, message := range batchDepositMessages {
 			txHistories = append(txHistories, getTxHistoryInfoFromBridgeBatchDepositMessage(message))
 		}
 
-		resultMap := make(map[string]*types.TxHistoryInfo)
+		// A row matches a queried hash on either chain, so index it by both.
+		resultMap := make(map[string][]*types.TxHistoryInfo)
 		for _, result := range txHistories {
 			results = append(results, result)
-			resultMap[result.Hash] = result
+			resultMap[result.Hash] = append(resultMap[result.Hash], result)
+			counterpartHash := result.CounterpartChainTx.Hash
+			resultMap[counterpartHash] = append(resultMap[counterpartHash], result)
 		}
 
-		for _, hash := range uncachedHashes {
+		for hash := range hashesMap {
 			cacheKey := cacheKeyPrefixQueryTxsByHashes + hash
 			result, found := resultMap[hash]
 			if !found {
