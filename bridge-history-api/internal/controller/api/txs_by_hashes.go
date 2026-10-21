@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
@@ -8,6 +10,9 @@ import (
 	"scroll-tech/bridge-history-api/internal/logic"
 	"scroll-tech/bridge-history-api/internal/types"
 )
+
+// maxRequestBodyBytes fits 100 tx hashes with ample headroom.
+const maxRequestBodyBytes = 64 * 1024
 
 // TxsByHashesController the controller of PostQueryTxsByHashes
 type TxsByHashesController struct {
@@ -23,6 +28,13 @@ func NewTxsByHashesController(db *gorm.DB, redisClient *redis.Client) *TxsByHash
 
 // PostQueryTxsByHashes query the txs by hashes
 func (c *TxsByHashesController) PostQueryTxsByHashes(ctx *gin.Context) {
+	// Limit request body size
+	if ctx.Request.ContentLength > maxRequestBodyBytes {
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, &http.MaxBytesError{Limit: maxRequestBodyBytes})
+		return
+	}
+	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxRequestBodyBytes)
+
 	var req types.QueryByHashRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
