@@ -25,14 +25,14 @@ const (
 
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
-	Address  string `form:"address" binding:"required"`
+	Address  string `form:"address" binding:"required,eth_addr"`
 	Page     uint64 `form:"page" binding:"required,min=1"`
 	PageSize uint64 `form:"page_size" binding:"required,min=1,max=100"`
 }
 
 // QueryByHashRequest the request parameter of hash api
 type QueryByHashRequest struct {
-	Txs []string `json:"txs" binding:"required,min=1,max=100"`
+	Txs []string `json:"txs" binding:"required,min=1,max=100,dive,len=66,startswith=0x,hexadecimal"`
 }
 
 // ResultData contains return txs and total
