@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-rust-builder:go-1.22-rust-nightly-2023-12-03 as base
+FROM scrolltech/go-rust-builder:go-1.26.10-rust-nightly-2025-11-20-ubuntu-24.04 as base
 
 WORKDIR /src
 COPY go.work* ./

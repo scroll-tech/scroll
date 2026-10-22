@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-rust-builder:go-1.22-rust-nightly-2023-12-03 as base
+FROM scrolltech/go-rust-builder:go-1.26.10-rust-nightly-2025-11-20-ubuntu-24.04 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -19,12 +19,13 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/proposer_tool/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/proposer_tool
 
 # Pull proposer_tool into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt update && apt install vim netcat-openbsd net-tools curl ca-certificates -y
 
 ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/proposer_tool /bin/
+RUN /bin/proposer_tool --version > /dev/null
 WORKDIR /app
 ENTRYPOINT ["proposer_tool"]
