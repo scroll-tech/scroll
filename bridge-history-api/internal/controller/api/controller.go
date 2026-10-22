@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -21,6 +22,9 @@ var (
 	L2WithdrawalsByAddressCtl *L2WithdrawalsByAddressController
 
 	initControllerOnce sync.Once
+
+	// errInternal hides internal error details from clients. The logic layer logs the full error.
+	errInternal = errors.New("internal error")
 )
 
 // InitController inits Controller with database

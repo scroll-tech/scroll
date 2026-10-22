@@ -66,8 +66,12 @@ func (c *BridgeBatchDepositEvent) GetMessagesByTxHashes(ctx context.Context, txH
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Where("l1_tx_hash in (?) or l2_tx_hash in (?)", txHashes, txHashes)
+	db = db.Limit(maxMessagesByTxHashes + 1)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to GetMessagesByTxHashes by tx hashes, tx hashes: %v, error: %w", txHashes, err)
+	}
+	if len(messages) > maxMessagesByTxHashes {
+		return nil, fmt.Errorf("too many batch deposit messages for tx hashes, limit: %d", maxMessagesByTxHashes)
 	}
 	return messages, nil
 }

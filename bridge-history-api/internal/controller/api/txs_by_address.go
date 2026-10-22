@@ -24,14 +24,14 @@ func NewTxsByAddressController(db *gorm.DB, redisClient *redis.Client) *TxsByAdd
 // GetTxsByAddress defines the http get method behavior
 func (c *TxsByAddressController) GetTxsByAddress(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindQuery(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
 	pagedTxs, total, err := c.historyLogic.GetTxsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
-		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		types.RenderFailure(ctx, types.ErrGetTxsError, errInternal)
 		return
 	}
 

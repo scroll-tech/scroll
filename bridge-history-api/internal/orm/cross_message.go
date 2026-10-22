@@ -136,14 +136,22 @@ func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBl
 	return messages, nil
 }
 
+// maxMessagesByTxHashes bounds the rows one tx hashes query loads. Exceeding it is an error,
+// so a truncated result is never returned or cached.
+const maxMessagesByTxHashes = 500
+
 // GetMessagesByTxHashes retrieves all cross messages from the database that match the provided transaction hashes.
 func (c *CrossMessage) GetMessagesByTxHashes(ctx context.Context, txHashes []string) ([]*CrossMessage, error) {
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("l1_tx_hash in (?) or l2_tx_hash in (?)", txHashes, txHashes)
+	db = db.Limit(maxMessagesByTxHashes + 1)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 messages by tx hashes, tx hashes: %v, error: %w", txHashes, err)
+	}
+	if len(messages) > maxMessagesByTxHashes {
+		return nil, fmt.Errorf("too many messages for tx hashes, limit: %d", maxMessagesByTxHashes)
 	}
 	return messages, nil
 }

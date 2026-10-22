@@ -44,7 +44,7 @@ func (c *TxsByHashesController) PostQueryTxsByHashes(ctx *gin.Context) {
 
 	results, err := c.historyLogic.GetTxsByHashes(ctx, req.Txs)
 	if err != nil {
-		types.RenderFailure(ctx, types.ErrGetTxsByHashError, err)
+		types.RenderFailure(ctx, types.ErrGetTxsByHashError, errInternal)
 		return
 	}
 
