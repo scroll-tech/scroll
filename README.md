@@ -7,7 +7,7 @@
 [![integration](https://github.com/scroll-tech/scroll/actions/workflows/integration.yml/badge.svg)](https://github.com/scroll-tech/scroll/actions/workflows/integration.yml)
 [![codecov](https://codecov.io/gh/scroll-tech/scroll/branch/develop/graph/badge.svg?token=VJVHNQWGGW)](https://codecov.io/gh/scroll-tech/scroll)
 
-<a href="https://scroll.io">Scroll</a> is a zkRollup Layer 2 dedicated to enhance Ethereum scalability through a bytecode-equivalent [zkEVM](https://github.com/scroll-tech/zkevm-circuits) circuit. This monorepo encompasses essential infrastructure components of the Scroll protocol. It contains the L1 and L2 contracts, the rollup node, the prover client, and the prover coordinator.
+<a href="https://scroll.io">Scroll</a> is a zkRollup Layer 2 dedicated to enhance Ethereum scalability through a bytecode-equivalent [zkEVM](./zkvm-prover) circuit. This monorepo encompasses essential infrastructure components of the Scroll protocol. It contains the L1 and L2 contracts, the rollup node, the prover client, and the prover coordinator.
 
 ## Directory Structure
 
@@ -16,7 +16,7 @@
 ├── <a href="./common/">common</a>: Common libraries and types
 ├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
-├── <a href="./prover">prover</a>: Prover client that runs proof generation for zkEVM circuit and aggregation circuit
+├── <a href="./zkvm-prover">zkvm-prover</a>: Prover client that runs proof generation for zkEVM/OpenVM circuits (chunk, batch, bundle)
 ├── <a href="./rollup">rollup</a>: Rollup-related services
 ├── <a href="https://github.com/scroll-tech/scroll-contracts.git">scroll-contracts</a>: solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts.
 └── <a href="./tests">tests</a>: Integration tests
@@ -27,7 +27,7 @@
 We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
-+ Go 1.21
++ Go 1.22
 + Rust (for version, see [rust-toolchain](./rust-toolchain))
 + Hardhat / Foundry
 + Docker
