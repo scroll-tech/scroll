@@ -2,7 +2,6 @@ package fetcher
 
 import (
 	"context"
-	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge-history-api/internal/config"
@@ -23,6 +23,7 @@ type L2MessageFetcher struct {
 	cfg                 *config.FetcherConfig
 	db                  *gorm.DB
 	client              *ethclient.Client
+	rpcClient           *rpc.Client
 	l2SyncHeight        uint64
 	l2LastSyncBlockHash common.Hash
 
@@ -35,14 +36,15 @@ type L2MessageFetcher struct {
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
+func NewL2MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, rpcClient *rpc.Client) *L2MessageFetcher {
 	c := &L2MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
 		db:               db,
 		client:           client,
+		rpcClient:        rpcClient,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, false),
-		l2FetcherLogic:   logic.NewL2FetcherLogic(cfg, db, client),
+		l2FetcherLogic:   logic.NewL2FetcherLogic(cfg, db, client, rpcClient),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -82,13 +84,13 @@ func (c *L2MessageFetcher) Start() {
 		l2SyncHeight -= logic.L2ReorgSafeDepth
 	}
 
-	header, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(l2SyncHeight))
+	block, err := utils.GetBlockByNumber(c.ctx, c.rpcClient, l2SyncHeight)
 	if err != nil {
-		log.Crit("failed to get L2 header by number", "block number", l2SyncHeight, "err", err)
+		log.Crit("failed to get L2 block by number", "block number", l2SyncHeight, "err", err)
 		return
 	}
 
-	c.updateL2SyncHeight(l2SyncHeight, header.Hash())
+	c.updateL2SyncHeight(l2SyncHeight, block.Hash)
 
 	log.Info("Start L2 message fetcher", "l2 sent message synced height", l2SentMessageSyncedHeight,
 		"bridge batch deposit synced height", l2BridgeBatchDepositSyncedHeight, "sync start height", l2SyncHeight+1)

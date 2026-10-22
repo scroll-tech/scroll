@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
@@ -22,8 +20,7 @@ import (
 // L1WatcherClient will listen for smart contract events from Eth L1.
 type L1WatcherClient struct {
 	ctx        context.Context
-	rpcClient  *rpc.Client       // Raw RPC client
-	client     *ethclient.Client // Go SDK RPC client
+	rpcClient  *rpc.Client
 	l1BlockOrm *orm.L1Block
 
 	// The height of the block that the watcher has retrieved header rlp
@@ -47,7 +44,6 @@ func NewL1WatcherClient(ctx context.Context, rpcClient *rpc.Client, startHeight 
 	w := &L1WatcherClient{
 		ctx:        ctx,
 		rpcClient:  rpcClient,
-		client:     ethclient.NewClient(rpcClient),
 		l1BlockOrm: l1BlockOrm,
 
 		processedBlockHeight: savedL1BlockHeight,
@@ -70,8 +66,15 @@ func (w *L1WatcherClient) ProcessedBlockHeight() uint64 {
 func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	w.metrics.l1WatcherFetchBlockHeaderTotal.Inc()
 
-	var block *gethTypes.Header
-	block, err := w.client.HeaderByNumber(w.ctx, big.NewInt(int64(blockHeight)))
+	// Use the RPC-reported hash, not types.Header.Hash(). The SDK header follows Scroll L2 rules:
+	// it lacks newer L1 fields (e.g. EIP-7685 requestsHash) and encodes Scroll-only fields after baseFee.
+	// For post-Shanghai L1 blocks the computed hash is therefore wrong.
+	var block *struct {
+		Hash          common.Hash     `json:"hash"`
+		BaseFee       *hexutil.Big    `json:"baseFeePerGas"`
+		ExcessBlobGas *hexutil.Uint64 `json:"excessBlobGas"`
+	}
+	err := w.rpcClient.CallContext(w.ctx, &block, "eth_getBlockByNumber", hexutil.EncodeUint64(blockHeight), false)
 	if err != nil {
 		log.Warn("Failed to get block", "height", blockHeight, "err", err)
 		return err
@@ -82,9 +85,14 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 		return errors.New("received nil block")
 	}
 
+	if block.Hash == (common.Hash{}) {
+		log.Warn("Received block without hash", "height", blockHeight)
+		return errors.New("received block without hash")
+	}
+
 	var baseFee uint64
 	if block.BaseFee != nil {
-		baseFee = block.BaseFee.Uint64()
+		baseFee = block.BaseFee.ToInt().Uint64()
 	}
 
 	var blobBaseFee uint64
@@ -104,7 +112,7 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 
 	l1Block := orm.L1Block{
 		Number:          blockHeight,
-		Hash:            block.Hash().String(),
+		Hash:            block.Hash.String(),
 		BaseFee:         baseFee,
 		BlobBaseFee:     blobBaseFee,
 		GasOracleStatus: int16(types.GasOraclePending),

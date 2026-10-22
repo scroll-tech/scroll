@@ -3,7 +3,6 @@ package fetcher
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -12,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge-history-api/internal/config"
@@ -21,9 +21,10 @@ import (
 
 // L1MessageFetcher fetches cross message events from L1 and saves them to database.
 type L1MessageFetcher struct {
-	ctx    context.Context
-	cfg    *config.FetcherConfig
-	client *ethclient.Client
+	ctx       context.Context
+	cfg       *config.FetcherConfig
+	client    *ethclient.Client
+	rpcClient *rpc.Client
 
 	l1SyncHeight        uint64
 	l1LastSyncBlockHash common.Hash
@@ -37,7 +38,7 @@ type L1MessageFetcher struct {
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) (*L1MessageFetcher, error) {
+func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, rpcClient *rpc.Client) (*L1MessageFetcher, error) {
 	blobClient := blob_client.NewBlobClients()
 	if cfg.AwsS3Endpoint != "" {
 		blobClient.AddBlobClient(blob_client.NewAwsS3Client(cfg.AwsS3Endpoint))
@@ -64,8 +65,9 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gor
 		ctx:              ctx,
 		cfg:              cfg,
 		client:           client,
+		rpcClient:        rpcClient,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, true),
-		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client, blobClient),
+		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client, rpcClient, blobClient),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -112,13 +114,13 @@ func (c *L1MessageFetcher) Start() {
 		l1SyncHeight -= logic.L1ReorgSafeDepth
 	}
 
-	header, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(l1SyncHeight))
+	block, err := utils.GetBlockByNumber(c.ctx, c.rpcClient, l1SyncHeight)
 	if err != nil {
-		log.Crit("failed to get L1 header by number", "block number", l1SyncHeight, "err", err)
+		log.Crit("failed to get L1 block by number", "block number", l1SyncHeight, "err", err)
 		return
 	}
 
-	c.updateL1SyncHeight(l1SyncHeight, header.Hash())
+	c.updateL1SyncHeight(l1SyncHeight, block.Hash)
 
 	log.Info("Start L1 message fetcher",
 		"message synced height", messageSyncedHeight,

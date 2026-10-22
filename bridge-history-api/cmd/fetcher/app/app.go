@@ -8,6 +8,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
@@ -43,15 +44,17 @@ func action(ctx *cli.Context) error {
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
 
-	l1Client, err := ethclient.Dial(cfg.L1.Endpoint)
+	l1RPCClient, err := rpc.Dial(cfg.L1.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect to L1 geth", "endpoint", cfg.L1.Endpoint, "err", err)
 	}
+	l1Client := ethclient.NewClient(l1RPCClient)
 
-	l2Client, err := ethclient.Dial(cfg.L2.Endpoint)
+	l2RPCClient, err := rpc.Dial(cfg.L2.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect to L2 geth", "endpoint", cfg.L2.Endpoint, "err", err)
 	}
+	l2Client := ethclient.NewClient(l2RPCClient)
 
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
@@ -68,13 +71,13 @@ func action(ctx *cli.Context) error {
 
 	observability.Server(ctx, db)
 
-	l1MessageFetcher, err := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
+	l1MessageFetcher, err := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client, l1RPCClient)
 	if err != nil {
 		log.Crit("failed to create L1MessageFetcher", "err", err)
 	}
 	go l1MessageFetcher.Start()
 
-	l2MessageFetcher := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)
+	l2MessageFetcher := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client, l2RPCClient)
 	go l2MessageFetcher.Start()
 
 	// Catch CTRL-C to ensure a graceful shutdown.

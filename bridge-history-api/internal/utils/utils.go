@@ -8,12 +8,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"golang.org/x/sync/errgroup"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -180,22 +183,71 @@ func GetParentBatchHashFromCalldata(txData []byte) (common.Hash, error) {
 	return common.Hash{}, fmt.Errorf("method %s does not support parent batch header", method.Name)
 }
 
+// Block contains the block fields that the fetchers use.
+// Hash comes from the RPC node, not from types.Header.Hash(). The SDK hashes its own Header struct,
+// which follows Scroll L2 rules: it lacks newer L1 fields (e.g. EIP-7685 requestsHash) and encodes
+// Scroll-only fields after baseFee. For post-Shanghai L1 blocks the computed hash is therefore wrong.
+type Block struct {
+	Number       uint64
+	Hash         common.Hash
+	ParentHash   common.Hash
+	Time         uint64
+	Transactions types.Transactions
+}
+
+type rpcBlock struct {
+	Number       *hexutil.Uint64      `json:"number"`
+	Hash         *common.Hash         `json:"hash"`
+	ParentHash   *common.Hash         `json:"parentHash"`
+	Time         *hexutil.Uint64      `json:"timestamp"`
+	TxHash       *common.Hash         `json:"transactionsRoot"`
+	Transactions []*types.Transaction `json:"transactions"`
+}
+
+// GetBlockByNumber gets a block with its transactions and its RPC-reported hash.
+func GetBlockByNumber(ctx context.Context, cli *rpc.Client, number uint64) (*Block, error) {
+	var block *rpcBlock
+	if err := cli.CallContext(ctx, &block, "eth_getBlockByNumber", hexutil.EncodeUint64(number), true); err != nil {
+		return nil, err
+	}
+	if block == nil {
+		return nil, ethereum.NotFound
+	}
+	if block.Number == nil || block.Hash == nil || block.ParentHash == nil || block.Time == nil || block.TxHash == nil {
+		return nil, fmt.Errorf("block %d response is missing required fields", number)
+	}
+	if *block.Hash == (common.Hash{}) {
+		return nil, fmt.Errorf("block %d has a zero hash", number)
+	}
+	// Same sanity checks as ethclient: a missing transaction list would silently drop reverted txs.
+	if (*block.TxHash == types.EmptyRootHash) != (len(block.Transactions) == 0) {
+		return nil, fmt.Errorf("block %d transaction list does not match transactions root", number)
+	}
+	return &Block{
+		Number:       uint64(*block.Number),
+		Hash:         *block.Hash,
+		ParentHash:   *block.ParentHash,
+		Time:         uint64(*block.Time),
+		Transactions: block.Transactions,
+	}, nil
+}
+
 // GetBlocksInRange gets a batch of blocks for a block range [start, end] inclusive.
-func GetBlocksInRange(ctx context.Context, cli *ethclient.Client, start, end uint64) ([]*types.Block, error) {
+func GetBlocksInRange(ctx context.Context, cli *rpc.Client, start, end uint64) ([]*Block, error) {
 	var (
 		eg          errgroup.Group
-		blocks      = make([]*types.Block, end-start+1)
+		blocks      = make([]*Block, end-start+1)
 		concurrency = 32
 		sem         = make(chan struct{}, concurrency)
 	)
 
 	for i := start; i <= end; i++ {
 		sem <- struct{}{} // Acquire a slot in the semaphore
-		blockNum := int64(i)
+		blockNum := i
 		index := i - start
 		eg.Go(func() error {
 			defer func() { <-sem }() // Release the slot when done
-			block, err := cli.BlockByNumber(ctx, big.NewInt(blockNum))
+			block, err := GetBlockByNumber(ctx, cli, blockNum)
 			if err != nil {
 				log.Error("Failed to fetch block number", "number", blockNum, "error", err)
 				return err
