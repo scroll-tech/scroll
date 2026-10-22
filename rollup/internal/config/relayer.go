@@ -66,6 +66,10 @@ type ChainMonitor struct {
 // What we need to pay attention to is that
 type RelayerConfig struct {
 	// ValidiumMode indicates if the relayer is in validium mode.
+	// A validium chain is an existing rollup chain whose rollup contract has been migrated to
+	// ScrollChainValidiumV2 at some batch height. Enable this flag only after the on-chain
+	// migration: all batches proposed from then on are committed and finalized via the validium
+	// contract methods, while pre-migration batches (including genesis) keep the rollup encoding.
 	ValidiumMode bool `json:"validium_mode"`
 	// RollupContractAddress store the rollup contract address.
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
