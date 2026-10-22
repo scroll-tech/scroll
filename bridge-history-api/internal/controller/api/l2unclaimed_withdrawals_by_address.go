@@ -24,14 +24,14 @@ func NewL2UnclaimedWithdrawalsByAddressController(db *gorm.DB, redisClient *redi
 // GetL2UnclaimedWithdrawalsByAddress defines the http get method behavior
 func (c *L2UnclaimedWithdrawalsByAddressController) GetL2UnclaimedWithdrawalsByAddress(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindQuery(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
 	pagedTxs, total, err := c.historyLogic.GetL2UnclaimedWithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
-		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, errInternal)
 		return
 	}
 

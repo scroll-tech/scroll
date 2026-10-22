@@ -32,6 +32,7 @@ const (
 	cacheKeyPrefixTxsByAddr                    = cacheKeyPrefixBridgeHistory + "txsByAddr:"
 	cacheKeyPrefixQueryTxsByHashes             = cacheKeyPrefixBridgeHistory + "queryTxsByHashes:"
 	cacheKeyExpiredTime                        = 1 * time.Minute
+	sharedQueryTimeout                         = 10 * time.Second
 )
 
 // HistoryLogic services.
@@ -76,6 +77,9 @@ func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, a
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		// Callers share this query, so one disconnecting caller must not cancel it for the others.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sharedQueryTimeout)
+		defer cancel()
 		var txHistoryInfos []*types.TxHistoryInfo
 		crossMessages, getErr := h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
 		if getErr != nil {
@@ -119,6 +123,9 @@ func (h *HistoryLogic) GetL2WithdrawalsByAddress(ctx context.Context, address st
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		// Callers share this query, so one disconnecting caller must not cancel it for the others.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sharedQueryTimeout)
+		defer cancel()
 		var txHistoryInfos []*types.TxHistoryInfo
 		crossMessages, getErr := h.crossMessageOrm.GetL2WithdrawalsByAddress(ctx, address)
 		if getErr != nil {
@@ -162,6 +169,9 @@ func (h *HistoryLogic) GetTxsByAddress(ctx context.Context, address string, page
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		// Callers share this query, so one disconnecting caller must not cancel it for the others.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sharedQueryTimeout)
+		defer cancel()
 		var txHistoryInfos []*types.TxHistoryInfo
 		crossMessages, getErr := h.crossMessageOrm.GetTxsByAddress(ctx, address)
 		if getErr != nil {
@@ -262,7 +272,7 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 
 		crossMessages, err := h.crossMessageOrm.GetMessagesByTxHashes(ctx, txHashes)
 		if err != nil {
-			log.Error("failed to get cross messages by tx hashes", "hashes", txHashes)
+			log.Error("failed to get cross messages by tx hashes", "hashes", txHashes, "error", err)
 			return nil, err
 		}
 		for _, message := range crossMessages {
@@ -271,7 +281,7 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 
 		batchDepositMessages, err := h.bridgeBatchDepositOrm.GetMessagesByTxHashes(ctx, txHashes)
 		if err != nil {
-			log.Error("failed to get batch deposit messages by tx hashes", "hashes", txHashes)
+			log.Error("failed to get batch deposit messages by tx hashes", "hashes", txHashes, "error", err)
 			return nil, err
 		}
 		for _, message := range batchDepositMessages {

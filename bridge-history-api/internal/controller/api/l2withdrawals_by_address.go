@@ -24,14 +24,14 @@ func NewL2WithdrawalsByAddressController(db *gorm.DB, redisClient *redis.Client)
 // GetL2WithdrawalsByAddress defines the http get method behavior
 func (c *L2WithdrawalsByAddressController) GetL2WithdrawalsByAddress(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindQuery(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
 	pagedTxs, total, err := c.historyLogic.GetL2WithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
-		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, errInternal)
 		return
 	}
 

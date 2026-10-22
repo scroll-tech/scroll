@@ -75,6 +75,8 @@ func action(ctx *cli.Context) error {
 	api.InitController(db, redisClient)
 
 	router := gin.Default()
+	// Let *gin.Context carry request cancellation, so DB and Redis calls stop when the client goes away.
+	router.ContextWithFallback = true
 	registry := prometheus.DefaultRegisterer
 	route.Route(router, cfg, registry)
 
