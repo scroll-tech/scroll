@@ -473,7 +473,7 @@ func (h *HistoryLogic) processAndCacheTxHistoryInfo(ctx context.Context, cacheKe
 
 	if !isHit {
 		log.Error("cache miss after write, expect hit", "cached key", cacheKey, "page", page, "page size", pageSize, "error", err)
-		return nil, 0, err
+		return nil, 0, errors.New("cache miss after write")
 	}
 
 	return pagedTxs, total, nil

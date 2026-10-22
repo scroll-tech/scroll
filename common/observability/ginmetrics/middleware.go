@@ -2,6 +2,7 @@ package ginmetrics
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -131,7 +132,7 @@ func (m *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 	}
 
 	// set uri request total
-	_ = m.GetMetric(metricURIRequestTotal).Inc([]string{ctx.FullPath(), r.Method, errCode})
+	_ = m.GetMetric(metricURIRequestTotal).Inc([]string{ctx.FullPath(), metricMethod(r.Method), errCode})
 
 	// set request body size
 	// since r.ContentLength can be negative (in some occasions) guard the operation
@@ -142,7 +143,7 @@ func (m *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 	// set slow request
 	latency := time.Since(start)
 	if int32(latency.Seconds()) > m.slowTime {
-		_ = m.GetMetric(metricSlowRequest).Inc([]string{ctx.FullPath(), r.Method, strconv.Itoa(w.Status())})
+		_ = m.GetMetric(metricSlowRequest).Inc([]string{ctx.FullPath(), metricMethod(r.Method), strconv.Itoa(w.Status())})
 	}
 
 	// set request duration
@@ -151,5 +152,16 @@ func (m *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 	// set response size
 	if w.Size() > 0 {
 		_ = m.GetMetric(metricResponseBody).Add(nil, float64(w.Size()))
+	}
+}
+
+// metricMethod bounds the method label, since clients can send any method token.
+func metricMethod(method string) string {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch,
+		http.MethodDelete, http.MethodConnect, http.MethodOptions, http.MethodTrace:
+		return method
+	default:
+		return "OTHER"
 	}
 }

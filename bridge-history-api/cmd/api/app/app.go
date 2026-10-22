@@ -3,6 +3,7 @@ package app
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -79,7 +80,13 @@ func action(ctx *cli.Context) error {
 
 	go func() {
 		port := ctx.Int(utils.ServicePortFlag.Name)
-		if runServerErr := router.Run(fmt.Sprintf(":%d", port)); runServerErr != nil {
+		server := &http.Server{
+			Addr:              fmt.Sprintf(":%d", port),
+			Handler:           router,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+		}
+		if runServerErr := server.ListenAndServe(); runServerErr != nil {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()
