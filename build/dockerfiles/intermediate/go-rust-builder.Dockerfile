@@ -1,8 +1,10 @@
-ARG GO_VERSION=1.22.12
+ARG GO_VERSION=1.26.10
 ARG RUST_VERSION=nightly-2023-12-03
 ARG CARGO_CHEF_TAG=0.1.41
+ARG UBUNTU_VERSION=24.04
 
-FROM ubuntu:20.04
+FROM ubuntu:${UBUNTU_VERSION}
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 

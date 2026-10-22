@@ -80,6 +80,7 @@ func testGreeter(t *testing.T) {
 	tx, err := token.SetValue(auth, val)
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
 
 	res, err := token.Retrieve(nil)
 	assert.NoError(t, err)

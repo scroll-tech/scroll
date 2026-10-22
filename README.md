@@ -27,7 +27,7 @@
 We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
-+ Go 1.21
++ Go 1.26
 + Rust (for version, see [rust-toolchain](./rust-toolchain))
 + Hardhat / Foundry
 + Docker

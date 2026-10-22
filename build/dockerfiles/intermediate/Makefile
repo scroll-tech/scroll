@@ -1,11 +1,14 @@
 ifeq ($(GO_VERSION),)
-  GO_VERSION=1.21
+  GO_VERSION=1.26.10
 endif
 ifeq ($(RUST_VERSION),)
   RUST_VERSION=nightly-2023-12-03
 endif
 ifeq ($(PYTHON_VERSION),)
   PYTHON_VERSION=3.10
+endif
+ifeq ($(UBUNTU_VERSION),)
+  UBUNTU_VERSION=24.04
 endif
 ifeq ($(CUDA_VERSION),)
   CUDA_VERSION=11.7.1
@@ -17,7 +20,7 @@ cuda-go-rust-builder:
 	docker build -t scrolltech/cuda-go-rust-builder:cuda-$(CUDA_VERSION)-go-$(GO_VERSION)-rust-$(RUST_VERSION) -f cuda-go-rust-builder.Dockerfile ./ --build-arg CUDA_VERSION=$(CUDA_VERSION) --build-arg GO_VERSION=$(GO_VERSION) --build-arg RUST_VERSION=$(RUST_VERSION)
 
 go-rust-builder:
-	docker build -t scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION) -f go-rust-builder.Dockerfile ./ --build-arg GO_VERSION=$(GO_VERSION) --build-arg RUST_VERSION=$(RUST_VERSION)
+	docker build -t scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)-ubuntu-$(UBUNTU_VERSION) -f go-rust-builder.Dockerfile ./ --build-arg GO_VERSION=$(GO_VERSION) --build-arg RUST_VERSION=$(RUST_VERSION) --build-arg UBUNTU_VERSION=$(UBUNTU_VERSION)
 
 go-alpine-builder:
 	docker build -t scrolltech/go-alpine-builder:$(GO_VERSION) -f go-alpine-builder.Dockerfile ./ --build-arg GO_VERSION=$(GO_VERSION)
@@ -41,6 +44,6 @@ publish:
 	docker push scrolltech/rust-builder:$(RUST_VERSION)
 	docker push scrolltech/rust-alpine-builder:$(RUST_VERSION)
 	docker push scrolltech/go-rust-alpine-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
-	docker push scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
+	docker push scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)-ubuntu-$(UBUNTU_VERSION)
 	docker push scrolltech/cuda-go-rust-builder:cuda-$(CUDA_VERSION)-go-$(GO_VERSION)-rust-$(RUST_VERSION)
 	docker push scrolltech/py-runner:$(PYTHON_VERSION)

@@ -244,6 +244,9 @@ func (r *MinimalRecovery) restoreMinimalPreviousState() (*orm.Chunk, *orm.Batch,
 		// Continue until we find the commit event for the batch.
 		return true
 	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to fetch rollup events: %w", err)
+	}
 	if batchCommitEvent == nil {
 		return nil, nil, nil, fmt.Errorf("commit event not found for batch %d", latestFinalizedBatchIndex)
 	}

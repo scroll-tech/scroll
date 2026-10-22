@@ -84,7 +84,7 @@ func (c *BridgeBatchDepositEvent) GetMessageL1SyncedHeightInDB(ctx context.Conte
 	db = db.Order("l1_block_number desc")
 
 	err := db.First(&message).Error
-	if err != nil && errors.Is(gorm.ErrRecordNotFound, err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, nil
 	}
 
@@ -103,7 +103,7 @@ func (c *BridgeBatchDepositEvent) GetMessageL2SyncedHeightInDB(ctx context.Conte
 	db = db.Order("l2_block_number desc")
 
 	err := db.First(&message).Error
-	if err != nil && errors.Is(gorm.ErrRecordNotFound, err) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, nil
 	}
 

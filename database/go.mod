@@ -1,14 +1,14 @@
 module scroll-tech/database
 
-go 1.22
+go 1.26.0
 
-toolchain go1.22.2
+toolchain go1.26.10
 
 require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose/v3 v3.16.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20251128092113-8629f088d78f
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20261022073043-e8c9fb7297ca
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.25.7
 )
@@ -34,11 +34,9 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

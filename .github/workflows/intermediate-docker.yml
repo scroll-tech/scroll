@@ -16,7 +16,8 @@ on:
           - "1.22.12"
           - "1.23"
           - "1.23.7"
-        default: "1.21"
+          - "1.26.10"
+        default: "1.26.10"
       RUST_VERSION:
         description: "Rust toolchain version"
         required: true
@@ -24,7 +25,8 @@ on:
         options:
           - 1.86.0
           - nightly-2025-08-18
-        default: "nightly-2025-08-18"
+          - nightly-2025-11-20
+        default: "nightly-2025-11-20"
       PYTHON_VERSION:
         description: "Python version"
         required: false
@@ -44,11 +46,20 @@ on:
       CARGO_CHEF_TAG:
         description: "Cargo chef version"
         required: true
-        default: "0.1.41"
+        default: "0.1.78"
         type: choice
         options:
           - 0.1.41
           - 0.1.71
+          - 0.1.78
+      UBUNTU_VERSION:
+        description: "Ubuntu version (go-rust-builder only)"
+        required: true
+        type: choice
+        options:
+          - "20.04"
+          - "24.04"
+        default: "24.04"
       BASE_IMAGE:
         description: "which intermediate image you want to update"
         required: true
@@ -88,7 +99,7 @@ jobs:
           if [ ${{github.event.inputs.BASE_IMAGE}} == "cuda-go-rust-builder" ]; then
             echo "TAG=cuda-${{ github.event.inputs.CUDA_VERSION }}-go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
           elif [ ${{github.event.inputs.BASE_IMAGE}} == "go-rust-builder" ]; then
-            echo "TAG=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+            echo "TAG=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}-ubuntu-${{ github.event.inputs.UBUNTU_VERSION }}" >> $GITHUB_ENV
           elif [ ${{github.event.inputs.BASE_IMAGE}} == "go-alpine-builder" ]; then
             echo "TAG=${{ github.event.inputs.GO_VERSION }}" >> $GITHUB_ENV
           elif [ ${{github.event.inputs.BASE_IMAGE}} == "rust-builder" ]; then
@@ -117,3 +128,4 @@ jobs:
             RUST_VERSION=${{ github.event.inputs.RUST_VERSION }}
             PYTHON_VERSION=${{ github.event.inputs.PYTHON_VERSION }}
             CARGO_CHEF_TAG=${{ github.event.inputs.CARGO_CHEF_TAG }}
+            UBUNTU_VERSION=${{ github.event.inputs.UBUNTU_VERSION }}

@@ -141,7 +141,7 @@ func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) 
 		}
 	}
 
-	rand.Shuffle(len(proofTypes), func(i, j int) {
+	rand.Shuffle(len(proofTypes), func(i, j int) { //nolint:gosec // load spreading, not security-sensitive
 		proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
 	})
 	return proofTypes[0]

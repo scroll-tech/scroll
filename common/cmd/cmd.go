@@ -46,7 +46,7 @@ func NewCmd(name string, params ...string) *Cmd {
 		name:       name,
 		args:       params,
 		ErrChan:    make(chan error, 10),
-		cmd:        exec.Command(name, params...),
+		cmd:        exec.Command(name, params...), //nolint:gosec // test harness runs caller-chosen binaries
 		app: &exec.Cmd{
 			Path: reexec.Self(),
 			Args: append([]string{name}, params...),

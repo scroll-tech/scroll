@@ -32,7 +32,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.21.x
+        go-version: 1.26.10
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Lint
@@ -46,7 +46,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.21.x
+        go-version: 1.26.10
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Test
@@ -65,7 +65,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.21.x
+        go-version: 1.26.10
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Install goimports

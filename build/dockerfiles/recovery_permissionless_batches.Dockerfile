@@ -19,12 +19,13 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/permissionless_batches/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt update && apt install vim netcat-openbsd net-tools curl ca-certificates -y
 
 ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/rollup_relayer /bin/
+RUN /bin/rollup_relayer --version > /dev/null
 WORKDIR /app
 ENTRYPOINT ["rollup_relayer"]

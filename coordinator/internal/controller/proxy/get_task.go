@@ -212,7 +212,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	}
 
 	// Shuffle the keys using a local RNG (avoid deprecated rand.Seed)
-	rand.Shuffle(len(keys), func(i, j int) {
+	rand.Shuffle(len(keys), func(i, j int) { //nolint:gosec // load spreading, not security-sensitive
 		keys[i], keys[j] = keys[j], keys[i]
 	})
 

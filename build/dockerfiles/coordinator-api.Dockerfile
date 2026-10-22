@@ -39,6 +39,7 @@ RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_a
 RUN mv coordinator/internal/logic/libzkp/lib /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
+# Stays on 20.04: libzkp.so links libssl.so.1.1 from the 20.04 builder image. Upgrade both together.
 FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
