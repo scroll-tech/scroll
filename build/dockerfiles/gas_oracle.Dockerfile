@@ -19,12 +19,13 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/gas_oracle/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/gas_oracle
 
 # Pull gas_oracle into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt update && apt install vim netcat-openbsd net-tools curl ca-certificates -y
 
 ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/gas_oracle /bin/
+RUN /bin/gas_oracle --version > /dev/null
 WORKDIR /app
 ENTRYPOINT ["gas_oracle"]

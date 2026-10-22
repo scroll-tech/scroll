@@ -18,9 +18,10 @@ RUN --mount=target=. \
     cd /src/coordinator/cmd/cron/ && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" go build -v -p 4 -o /bin/coordinator_cron
 
 # Pull coordinator into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 RUN apt update && apt install vim netcat-openbsd net-tools curl -y
 COPY --from=builder /bin/coordinator_cron /bin/
+RUN /bin/coordinator_cron --version > /dev/null
 WORKDIR /app
 ENTRYPOINT ["coordinator_cron"]

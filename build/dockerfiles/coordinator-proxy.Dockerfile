@@ -17,7 +17,7 @@ COPY . .
 RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_proxy && mv ./build/bin/coordinator_proxy /bin/coordinator_proxy
 
 # Pull coordinator proxy into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 RUN apt update && apt install vim netcat-openbsd net-tools curl jq -y
 COPY --from=builder /bin/coordinator_proxy /bin/

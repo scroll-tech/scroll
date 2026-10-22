@@ -19,12 +19,13 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/blob_uploader/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/blob_uploader
 
 # Pull blob_uploader into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 RUN apt update && apt install vim netcat-openbsd net-tools curl ca-certificates -y
 
 ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/blob_uploader /bin/
+RUN /bin/blob_uploader --version > /dev/null
 WORKDIR /app
 ENTRYPOINT ["blob_uploader"]

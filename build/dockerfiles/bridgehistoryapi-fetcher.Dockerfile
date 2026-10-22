@@ -14,11 +14,12 @@ RUN --mount=target=. \
     cd /src/bridge-history-api/cmd/fetcher && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" go build -v -p 4 -o /bin/bridgehistoryapi-fetcher
 
 # Pull bridgehistoryapi-fetcher into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 RUN apt update && apt install ca-certificates vim netcat-openbsd net-tools curl -y
 RUN update-ca-certificates
 COPY --from=builder /bin/bridgehistoryapi-fetcher /bin/
+RUN /bin/bridgehistoryapi-fetcher --help > /dev/null
 WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-fetcher"]

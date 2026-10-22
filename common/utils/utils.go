@@ -86,7 +86,7 @@ func ReadGenesis(genesisPath string) (*core.Genesis, error) {
 // OverrideConfigWithEnv recursively overrides config values with environment variables
 func OverrideConfigWithEnv(cfg interface{}, prefix string) error {
 	v := reflect.ValueOf(cfg)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
+	if v.Kind() != reflect.Pointer || v.IsNil() {
 		return nil
 	}
 	v = v.Elem()
@@ -108,7 +108,7 @@ func OverrideConfigWithEnv(cfg interface{}, prefix string) error {
 		envKey := prefix + "_" + strings.ToUpper(tag)
 
 		switch fieldValue.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !fieldValue.IsNil() {
 				err := OverrideConfigWithEnv(fieldValue.Interface(), envKey)
 				if err != nil {
