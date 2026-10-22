@@ -137,7 +137,7 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 	// For validium mode, use the last block hash as commitment to the off-chain data
 	// TODO: This is a temporary solution, we might use a larger commitment in the future
 	lastBlock := b.Blocks[len(b.Blocks)-1]
-	commitment := lastBlock.Header.Hash()
+	commitment := lastBlock.Header.Hash() //nolint:forbidigo // L2 block
 	stateRoot := b.StateRoot()
 
 	// Batch header field sizes

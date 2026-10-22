@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -37,6 +38,7 @@ type L2FilterResult struct {
 type L2FetcherLogic struct {
 	cfg             *config.FetcherConfig
 	client          *ethclient.Client
+	rpcClient       *rpc.Client
 	addressList     []common.Address
 	gatewayList     []common.Address
 	parser          *L2EventParser
@@ -48,7 +50,7 @@ type L2FetcherLogic struct {
 }
 
 // NewL2FetcherLogic create L2 fetcher logic
-func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L2FetcherLogic {
+func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, rpcClient *rpc.Client) *L2FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -111,6 +113,7 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		batchEventOrm:   orm.NewBatchEvent(db),
 		cfg:             cfg,
 		client:          client,
+		rpcClient:       rpcClient,
 		addressList:     addressList,
 		gatewayList:     gatewayList,
 		parser:          NewL2EventParser(cfg, client),
@@ -125,43 +128,43 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	return f
 }
 
-func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.Block, error) {
-	blocks, err := utils.GetBlocksInRange(ctx, f.client, from, to)
+func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*utils.Block, error) {
+	blocks, err := utils.GetBlocksInRange(ctx, f.rpcClient, from, to)
 	if err != nil {
 		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
 	}
 
 	for _, block := range blocks {
-		if block.ParentHash() != lastBlockHash {
-			log.Warn("L2 reorg detected", "reorg height", block.NumberU64()-1, "expected hash", block.ParentHash().String(), "local hash", lastBlockHash.String())
+		if block.ParentHash != lastBlockHash {
+			log.Warn("L2 reorg detected", "reorg height", block.Number-1, "expected hash", block.ParentHash.String(), "local hash", lastBlockHash.String())
 			var resyncHeight uint64
-			if block.NumberU64() > L2ReorgSafeDepth+1 {
-				resyncHeight = block.NumberU64() - L2ReorgSafeDepth - 1
+			if block.Number > L2ReorgSafeDepth+1 {
+				resyncHeight = block.Number - L2ReorgSafeDepth - 1
 			}
-			header, err := f.client.HeaderByNumber(ctx, new(big.Int).SetUint64(resyncHeight))
+			resyncBlock, err := utils.GetBlockByNumber(ctx, f.rpcClient, resyncHeight)
 			if err != nil {
-				log.Error("failed to get L2 header by number", "block number", resyncHeight, "err", err)
+				log.Error("failed to get L2 block by number", "block number", resyncHeight, "err", err)
 				return false, 0, common.Hash{}, nil, err
 			}
-			return true, resyncHeight, header.Hash(), nil, nil
+			return true, resyncHeight, resyncBlock.Hash, nil, nil
 		}
-		lastBlockHash = block.Hash()
+		lastBlockHash = block.Hash
 	}
 
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*utils.Block) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l2RevertedUserTxs []*orm.CrossMessage
 	var l2RevertedRelayedMessageTxs []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
 
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
-		blockTimestampsMap[block.NumberU64()] = block.Time()
+		blockTimestampsMap[block.Number] = block.Time
 
-		for _, tx := range block.Transactions() {
+		for _, tx := range block.Transactions {
 			if tx.IsL1MessageTx() {
 				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 				if receiptErr != nil {
@@ -208,7 +211,7 @@ func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 					Sender:         sender.String(),
 					Receiver:       (*tx.To()).String(),
 					L2BlockNumber:  receipt.BlockNumber.Uint64(),
-					BlockTimestamp: block.Time(),
+					BlockTimestamp: block.Time,
 					TxStatus:       int(btypes.TxStatusTypeSentTxReverted),
 				})
 			}

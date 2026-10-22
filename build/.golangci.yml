@@ -110,6 +110,16 @@ linters-settings:
           - $all
         deny:
           - pkg: "github.com/davecgh/go-spew/spew"
+  forbidigo:
+    # The SDK hashes headers with Scroll L2 rules, so it computes wrong hashes for L1 blocks.
+    # For L1 blocks, read "hash" from the eth_getBlockByNumber response instead.
+    # For L2 blocks, the SDK hash is correct: add `//nolint:forbidigo // L2 block`,
+    # or list an L2-only file under issues.exclude-rules.
+    forbid:
+      - p: ^types\.(Header|Block)\.Hash$
+        pkg: ^github\.com/scroll-tech/go-ethereum/core/types$
+        msg: wrong for L1 blocks; use the RPC-reported hash (see build/.golangci.yml)
+    analyze-types: true
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
@@ -183,6 +193,7 @@ linters:
     - goprintffuncname
     - golint
     - depguard
+    - forbidigo
     - gocyclo
     - unparam
     - exportloopref
@@ -222,6 +233,14 @@ issues:
         - errcheck
         - gosec
         - golint
+
+    # These files only hash L2 blocks, where the SDK hash is correct (see forbidigo above).
+    - path: (^|/)(orm/(chunk|l2_block)|l2_(watcher|relayer))\.go$
+      linters:
+        - forbidigo
+    - path: ^tests/
+      linters:
+        - forbidigo
 
     # Exclude some staticcheck messages
     - linters:

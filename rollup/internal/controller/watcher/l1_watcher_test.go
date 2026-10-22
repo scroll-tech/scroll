@@ -2,14 +2,13 @@ package watcher
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"math/big"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -43,9 +42,9 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	})
 
 	convey.Convey("test get header from client error", t, func() {
-		var c *ethclient.Client
-		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-			return nil, ethereum.NotFound
+		var c *rpc.Client
+		patchGuard := gomonkey.ApplyMethodFunc(c, "CallContext", func(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+			return ethereum.NotFound
 		})
 		defer patchGuard.Reset()
 
@@ -56,15 +55,10 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 
 	var l1BlockOrm *orm.L1Block
 	convey.Convey("insert l1 block error", t, func() {
-		var c *ethclient.Client
-		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-			if height == nil {
-				height = big.NewInt(100)
-			}
-			t.Log(height)
-			return &types.Header{
-				BaseFee: big.NewInt(100),
-			}, nil
+		var c *rpc.Client
+		patchGuard := gomonkey.ApplyMethodFunc(c, "CallContext", func(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+			t.Log(method, args)
+			return json.Unmarshal([]byte(`{"hash":"0x0000000000000000000000000000000000000000000000000000000000000001","baseFeePerGas":"0x64"}`), result)
 		})
 		defer patchGuard.Reset()
 
@@ -78,15 +72,10 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	})
 
 	convey.Convey("fetch block header success", t, func() {
-		var c *ethclient.Client
-		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-			if height == nil {
-				height = big.NewInt(100)
-			}
-			t.Log(height)
-			return &types.Header{
-				BaseFee: big.NewInt(100),
-			}, nil
+		var c *rpc.Client
+		patchGuard := gomonkey.ApplyMethodFunc(c, "CallContext", func(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+			t.Log(method, args)
+			return json.Unmarshal([]byte(`{"hash":"0x0000000000000000000000000000000000000000000000000000000000000001","baseFeePerGas":"0x64"}`), result)
 		})
 		defer patchGuard.Reset()
 

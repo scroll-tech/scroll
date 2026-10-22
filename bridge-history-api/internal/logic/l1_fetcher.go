@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rollup/da_syncer/blob_client"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -39,6 +40,7 @@ type L1FilterResult struct {
 type L1FetcherLogic struct {
 	cfg             *config.FetcherConfig
 	client          *ethclient.Client
+	rpcClient       *rpc.Client
 	addressList     []common.Address
 	gatewayList     []common.Address
 	parser          *L1EventParser
@@ -50,7 +52,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, blobClient blob_client.BlobClient) *L1FetcherLogic {
+func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client, rpcClient *rpc.Client, blobClient blob_client.BlobClient) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
@@ -132,6 +134,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		batchEventOrm:   orm.NewBatchEvent(db),
 		cfg:             cfg,
 		client:          client,
+		rpcClient:       rpcClient,
 		addressList:     addressList,
 		gatewayList:     gatewayList,
 		parser:          NewL1EventParser(cfg, client, blobClient),
@@ -146,38 +149,38 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	return f
 }
 
-func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.Block, error) {
-	blocks, err := utils.GetBlocksInRange(ctx, f.client, from, to)
+func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*utils.Block, error) {
+	blocks, err := utils.GetBlocksInRange(ctx, f.rpcClient, from, to)
 	if err != nil {
 		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
 	}
 
 	for _, block := range blocks {
-		if block.ParentHash() != lastBlockHash {
-			log.Warn("L1 reorg detected", "reorg height", block.NumberU64()-1, "expected hash", block.ParentHash().String(), "local hash", lastBlockHash.String())
+		if block.ParentHash != lastBlockHash {
+			log.Warn("L1 reorg detected", "reorg height", block.Number-1, "expected hash", block.ParentHash.String(), "local hash", lastBlockHash.String())
 			var resyncHeight uint64
-			if block.NumberU64() > L1ReorgSafeDepth+1 {
-				resyncHeight = block.NumberU64() - L1ReorgSafeDepth - 1
+			if block.Number > L1ReorgSafeDepth+1 {
+				resyncHeight = block.Number - L1ReorgSafeDepth - 1
 			}
-			header, err := f.client.HeaderByNumber(ctx, new(big.Int).SetUint64(resyncHeight))
+			resyncBlock, err := utils.GetBlockByNumber(ctx, f.rpcClient, resyncHeight)
 			if err != nil {
-				log.Error("failed to get L1 header by number", "block number", resyncHeight, "err", err)
+				log.Error("failed to get L1 block by number", "block number", resyncHeight, "err", err)
 				return false, 0, common.Hash{}, nil, err
 			}
-			return true, resyncHeight, header.Hash(), nil, nil
+			return true, resyncHeight, resyncBlock.Hash, nil, nil
 		}
-		lastBlockHash = block.Hash()
+		lastBlockHash = block.Hash
 	}
 
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) ([]*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*utils.Block) ([]*orm.CrossMessage, error) {
 	var l1RevertedTxs []*orm.CrossMessage
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
-		for _, tx := range block.Transactions() {
+		for _, tx := range block.Transactions {
 			// Gateways: L1 deposit.
 			// Messenger: L1 deposit retry (replayMessage), L1 deposit refund (dropMessage), L2 withdrawal's claim (relayMessageWithProof).
 			if !isTransactionToGateway(tx, f.gatewayList) {
@@ -209,7 +212,7 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 				Sender:         sender.String(),
 				Receiver:       (*tx.To()).String(),
 				L1BlockNumber:  receipt.BlockNumber.Uint64(),
-				BlockTimestamp: block.Time(),
+				BlockTimestamp: block.Time,
 				TxStatus:       int(btypes.TxStatusTypeSentTxReverted),
 			})
 		}
@@ -275,7 +278,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 	// Map block number to block timestamp to avoid fetching block header multiple times to get block timestamp.
 	blockTimestampsMap := make(map[uint64]uint64)
 	for _, block := range blocks {
-		blockTimestampsMap[block.NumberU64()] = block.Time()
+		blockTimestampsMap[block.Number] = block.Time
 	}
 
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)

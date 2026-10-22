@@ -1,11 +1,20 @@
 package utils
 
 import (
+	"context"
+	"encoding/json"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeccak2(t *testing.T) {
@@ -123,5 +132,85 @@ func TestGetSkippedQueueIndices(t *testing.T) {
 	for _, test := range tests {
 		got := GetSkippedQueueIndices(test.startIndex, test.bitmap)
 		assert.Equal(t, test.expected, got)
+	}
+}
+
+func TestGetBlockByNumber(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	tx, err := types.SignTx(types.NewTransaction(0, common.Address{1}, big.NewInt(1), 21000, big.NewInt(1), nil), types.NewEIP155Signer(big.NewInt(1)), key)
+	require.NoError(t, err)
+
+	newBlock := func() map[string]interface{} {
+		return map[string]interface{}{
+			"number":           "0xa",
+			"hash":             common.Hash{2},
+			"parentHash":       common.Hash{3},
+			"timestamp":        "0x64",
+			"transactionsRoot": common.Hash{4},
+			"transactions":     []*types.Transaction{tx},
+		}
+	}
+
+	tests := []struct {
+		name    string
+		mutate  func(block map[string]interface{})
+		null    bool
+		wantErr string
+	}{
+		{name: "valid block", mutate: func(map[string]interface{}) {}},
+		{name: "empty block", mutate: func(b map[string]interface{}) {
+			b["transactionsRoot"] = types.EmptyRootHash
+			b["transactions"] = []*types.Transaction{}
+		}},
+		{name: "null block", null: true, wantErr: ethereum.NotFound.Error()},
+		{name: "missing hash", mutate: func(b map[string]interface{}) { delete(b, "hash") }, wantErr: "missing required fields"},
+		{name: "zero hash", mutate: func(b map[string]interface{}) { b["hash"] = common.Hash{} }, wantErr: "zero hash"},
+		{name: "zero parent hash", mutate: func(b map[string]interface{}) { b["parentHash"] = common.Hash{} }},
+		{name: "missing parent hash", mutate: func(b map[string]interface{}) { delete(b, "parentHash") }, wantErr: "missing required fields"},
+		{name: "missing number", mutate: func(b map[string]interface{}) { delete(b, "number") }, wantErr: "missing required fields"},
+		{name: "missing timestamp", mutate: func(b map[string]interface{}) { delete(b, "timestamp") }, wantErr: "missing required fields"},
+		{name: "missing transactions root", mutate: func(b map[string]interface{}) { delete(b, "transactionsRoot") }, wantErr: "missing required fields"},
+		{name: "missing transactions", mutate: func(b map[string]interface{}) { delete(b, "transactions") }, wantErr: "does not match transactions root"},
+		{name: "null transactions", mutate: func(b map[string]interface{}) { b["transactions"] = nil }, wantErr: "does not match transactions root"},
+		{name: "empty transactions", mutate: func(b map[string]interface{}) { b["transactions"] = []*types.Transaction{} }, wantErr: "does not match transactions root"},
+		{name: "unexpected transactions", mutate: func(b map[string]interface{}) { b["transactionsRoot"] = types.EmptyRootHash }, wantErr: "does not match transactions root"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var result interface{}
+			served := newBlock()
+			if !tt.null {
+				tt.mutate(served)
+				result = served
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var req struct {
+					ID json.RawMessage `json:"id"`
+				}
+				if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
+					http.Error(w, decodeErr.Error(), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{"jsonrpc": "2.0", "id": req.ID, "result": result})
+			}))
+			defer server.Close()
+			client, err := rpc.Dial(server.URL)
+			require.NoError(t, err)
+			defer client.Close()
+
+			block, err := GetBlockByNumber(context.Background(), client, 10)
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, uint64(10), block.Number)
+			assert.Equal(t, common.Hash{2}, block.Hash)
+			assert.Equal(t, served["parentHash"], block.ParentHash)
+			assert.Equal(t, uint64(100), block.Time)
+		})
 	}
 }
