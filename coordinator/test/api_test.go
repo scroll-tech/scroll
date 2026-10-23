@@ -338,7 +338,7 @@ func testGetTaskBlocked(t *testing.T) {
 	err := proverBlockListOrm.InsertProverPublicKey(context.Background(), chunkProver.proverName, chunkProver.publicKey())
 	assert.NoError(t, err)
 
-	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", chunkProver.publicKey(), chunkProver.proverName, chunkProver.proverVersion)
+	expectedErr := fmt.Errorf("check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", chunkProver.publicKey(), chunkProver.proverName, chunkProver.proverVersion)
 	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
@@ -359,7 +359,7 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))
 
-	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", batchProver.publicKey(), batchProver.proverName, batchProver.proverVersion)
+	expectedErr = fmt.Errorf("check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", batchProver.publicKey(), batchProver.proverName, batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, errors.New(errMsg))

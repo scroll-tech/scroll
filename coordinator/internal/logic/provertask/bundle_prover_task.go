@@ -36,16 +36,15 @@ type BundleProverTask struct {
 func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BundleProverTask {
 	bp := &BundleProverTask{
 		BaseProverTask: BaseProverTask{
-			db:                 db,
-			chainCfg:           chainCfg,
-			cfg:                cfg,
-			expectedVk:         expectedVk,
-			blockOrm:           orm.NewL2Block(db),
-			chunkOrm:           orm.NewChunk(db),
-			batchOrm:           orm.NewBatch(db),
-			bundleOrm:          orm.NewBundle(db),
-			proverTaskOrm:      orm.NewProverTask(db),
-			proverBlockListOrm: orm.NewProverBlockList(db),
+			db:            db,
+			chainCfg:      chainCfg,
+			cfg:           cfg,
+			expectedVk:    expectedVk,
+			blockOrm:      orm.NewL2Block(db),
+			chunkOrm:      orm.NewChunk(db),
+			batchOrm:      orm.NewBatch(db),
+			bundleOrm:     orm.NewBundle(db),
+			proverTaskOrm: orm.NewProverTask(db),
 		},
 		bundleTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_bundle_get_task_total",
@@ -58,9 +57,9 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 
 // Assign load and assign batch tasks
 func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	taskCtx, err := bp.checkParameter(ctx)
-	if err != nil || taskCtx == nil {
-		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
+	taskCtx := bp.checkParameter(ctx)
+	if taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter missed")
 	}
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
