@@ -165,14 +165,14 @@ func encodeBatchHeaderValidium(b *encoding.Batch, codecVersion encoding.CodecVer
 		commitmentOffset   = withdrawRootOffset + withdrawRootSize
 	)
 
+	// Note: the genesis batch never uses the validium encoding. A validium chain is an existing
+	// rollup chain migrated to validium (ScrollChainValidiumV2) at some batch height, so the
+	// genesis batch (and all pre-migration batches) keep their rollup encoding.
 	var version uint8
 	if codecVersion == encoding.CodecV8 || codecVersion == encoding.CodecV9 || codecVersion == encoding.CodecV10 {
 		// Validium version line starts with v1,
 		// but rollup-relayer behavior follows v10.
 		version = 1
-	} else if codecVersion == encoding.CodecV0 {
-		// Special case for genesis batch
-		version = 0
 	} else {
 		return nil, common.Hash{}, fmt.Errorf("unexpected codec version %d for batch %v in validium mode", codecVersion, b.Index)
 	}

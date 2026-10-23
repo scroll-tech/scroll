@@ -268,8 +268,11 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			Blocks:                     chunk.Blocks,
 		}
 
+		// The genesis batch always uses the rollup encoding, even in validium mode: a validium
+		// chain is an existing rollup chain migrated to validium (ScrollChainValidiumV2) at some
+		// batch height, so the genesis batch hash on L1 is the rollup genesis batch hash.
 		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{ValidiumMode: r.cfg.ValidiumMode}, dbTX)
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -284,6 +287,14 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 		if err = r.batchOrm.UpdateRollupStatus(r.ctx, dbBatch.Hash, types.RollupFinalized, dbTX); err != nil {
 			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+		}
+
+		// In validium mode the contract (ScrollChainValidiumV2) replaces ScrollChain behind its
+		// proxy only after the chain has run as a rollup, so the genesis batch has already been
+		// imported on L1 before the migration; importGenesisBatch reverts in the validium contract.
+		if r.cfg.ValidiumMode {
+			log.Info("validium mode: skip importing genesis batch on L1, the validium chain inherits the rollup's genesis")
+			return nil
 		}
 
 		// commit genesis batch on L1
@@ -301,37 +312,23 @@ func (r *Layer2Relayer) initializeGenesis() error {
 }
 
 func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot common.Hash) error {
-	var calldata []byte
-	var packErr error
-
-	if r.cfg.ValidiumMode {
-		// validium mode: only pass batchHeader
-		calldata, packErr = r.validiumABI.Pack("importGenesisBatch", batchHeader)
-		if packErr != nil {
-			return fmt.Errorf("failed to pack validium importGenesisBatch with batch header: %v. error: %v", common.Bytes2Hex(batchHeader), packErr)
-		}
-		log.Info("Validium importGenesis", "calldata", common.Bytes2Hex(calldata))
-	} else {
-		// rollup mode: pass batchHeader and stateRoot
-
-		// Check state root is not zero
-		if stateRoot == (common.Hash{}) {
-			return fmt.Errorf("state root is zero")
-		}
-
-		calldata, packErr = r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
-		if packErr != nil {
-			return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
-		}
-		log.Info("Rollup importGenesis", "calldata", common.Bytes2Hex(calldata), "stateRoot", stateRoot)
+	// Check state root is not zero
+	if stateRoot == (common.Hash{}) {
+		return fmt.Errorf("state root is zero")
 	}
+
+	calldata, packErr := r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+	if packErr != nil {
+		return fmt.Errorf("failed to pack rollup importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, packErr)
+	}
+	log.Info("Rollup importGenesis", "calldata", common.Bytes2Hex(calldata), "stateRoot", stateRoot)
 
 	// submit genesis batch to L1 rollup contract
 	txHash, _, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
-	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash, "validium", r.cfg.ValidiumMode)
+	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
 
 	// wait for confirmation
 	// we assume that no other transactions are sent before initializeGenesis completes
@@ -356,7 +353,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			if !confirmation.IsSuccessful {
 				return errors.New("import genesis batch tx failed")
 			}
-			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String(), "validium", r.cfg.ValidiumMode)
+			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String())
 			return nil
 		}
 	}
