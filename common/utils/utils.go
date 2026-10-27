@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/modern-go/reflect2"
 	"github.com/scroll-tech/go-ethereum/core"
 	"github.com/scroll-tech/go-ethereum/log"
 )
@@ -56,11 +55,6 @@ func Loop(ctx context.Context, period time.Duration, f func()) {
 			f()
 		}
 	}
-}
-
-// IsNil Check if the interface is empty.
-func IsNil(i interface{}) bool {
-	return i == nil || reflect2.IsNil(i)
 }
 
 // RandomURL return a random port endpoint.

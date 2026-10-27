@@ -69,7 +69,7 @@ func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
 
 // Free stop and release coordinator-test.
 func (c *CoordinatorApp) Free() {
-	if !utils.IsNil(c.Cmd) {
+	if c.Cmd != nil {
 		c.Cmd.WaitExit()
 	}
 	_ = os.Remove(c.coordinatorFile)
