@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
@@ -21,7 +22,7 @@ import (
 func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 	db := setupDB(t)
 	l2cfg := cfg.L2Config
-	watcher := NewL2WatcherClient(context.Background(), l2Rpc, l2cfg.Confirmations, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, nil, db, false, nil)
+	watcher := NewL2WatcherClient(context.Background(), l2Rpc, l2cfg.Confirmations, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, &params.ChainConfig{}, db, false, nil)
 	return watcher, db
 }
 
@@ -45,7 +46,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 
 func prepareWatcherClient(l2Cli *rpc.Client, db *gorm.DB) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, common.Address{}, common.Hash{}, nil, db, false, nil)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, common.Address{}, common.Hash{}, &params.ChainConfig{}, db, false, nil)
 }
 
 // New test for raw RPC GetBlockByHash from an endpoint URL in env.
