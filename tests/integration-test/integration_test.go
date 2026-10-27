@@ -20,7 +20,8 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	capp "scroll-tech/coordinator/cmd/api/app"
+	capp "scroll-tech/coordinator/cmd"
+	_ "scroll-tech/coordinator/cmd/api/app"
 
 	bcmd "scroll-tech/rollup/cmd"
 )
