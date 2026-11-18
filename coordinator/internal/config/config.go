@@ -16,6 +16,8 @@ type ProverManager struct {
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.
 	SessionAttempts uint8 `json:"session_attempts"`
+	// SkipFailedProvers enables filtering based on recent failures of the same task.
+	SkipFailedProvers bool `json:"skip_failed_provers"`
 	// Threshold for activating the external prover based on unassigned task count.
 	ExternalProverThreshold int64 `json:"external_prover_threshold"`
 	// Zk verifier config.

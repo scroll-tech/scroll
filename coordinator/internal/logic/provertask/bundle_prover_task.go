@@ -14,12 +14,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // BundleProverTask is prover task implement for bundle proof
@@ -140,6 +142,22 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
 		if taskCtx.hasAssignedTask == nil {
+			if bp.cfg.ProverManager.SkipFailedProvers {
+				// Don't dispatch the same failing job to the same prover
+				proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
+				if getFailedTaskError != nil {
+					log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getFailedTaskError)
+					return nil, ErrCoordinatorInternalFailure
+				}
+				for i := 0; i < len(proverTasks); i++ {
+					if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+						taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+						log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBundleTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
+						return nil, nil
+					}
+				}
+			}
+
 			rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)
 			if updateAttemptsErr != nil {
 				log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
