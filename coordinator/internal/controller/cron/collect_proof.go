@@ -315,7 +315,7 @@ func (c *Collector) checkBatchAllChunkReady() {
 					}
 
 					if updateErr := c.batchOrm.UpdateChunkProofsStatusByBatchHash(c.ctx, batch.Hash, types.ChunkProofsStatusReady); updateErr != nil {
-						log.Warn("checkBatchAllChunkReady UpdateChunkProofsStatusByBatchHash failure", "error", checkErr, "hash", batch.Hash)
+						log.Warn("checkBatchAllChunkReady UpdateChunkProofsStatusByBatchHash failure", "error", updateErr, "hash", batch.Hash)
 					}
 				}
 
@@ -372,7 +372,7 @@ func (c *Collector) checkBundleAllBatchReady() {
 					}
 
 					if updateErr := c.bundleOrm.UpdateBatchProofsStatusByBundleHash(c.ctx, bundle.Hash, types.BatchProofsStatusReady); updateErr != nil {
-						log.Warn("checkBundleAllBatchReady UpdateBatchProofsStatusByBundleHash failure", "error", checkErr, "hash", bundle.Hash)
+						log.Warn("checkBundleAllBatchReady UpdateBatchProofsStatusByBundleHash failure", "error", updateErr, "hash", bundle.Hash)
 					}
 				}
 
