@@ -144,17 +144,19 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		// we are simply pick the chunk which has been assigned, so don't bother to update attempts or check failed before
 		if taskCtx.hasAssignedTask == nil {
-			// Don't dispatch the same failing job to the same prover
-			proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
-			if getFailedTaskError != nil {
-				log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
-				return nil, ErrCoordinatorInternalFailure
-			}
-			for i := 0; i < len(proverTasks); i++ {
-				if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
-					taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
-					log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
-					return nil, nil
+			if bp.cfg.ProverManager.SkipFailedProvers {
+				// Don't dispatch the same failing job to the same prover
+				proverTasks, getFailedTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+				if getFailedTaskError != nil {
+					log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getFailedTaskError)
+					return nil, ErrCoordinatorInternalFailure
+				}
+				for i := 0; i < len(proverTasks); i++ {
+					if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+						taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+						log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight, "task ID", tmpBatchTask.Hash, "prover name", taskCtx.ProverName, "prover public key", taskCtx.PublicKey)
+						return nil, nil
+					}
 				}
 			}
 
