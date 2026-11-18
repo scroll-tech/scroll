@@ -450,17 +450,24 @@ func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte,
 }
 
 // initializeNonce initializes the nonce by taking the maximum of database nonce and pending nonce.
+// When ChainNonceOnly is enabled, the database is ignored and the chain pending nonce is used
+// directly (useful for shadow-fork testing with stale pending_transaction rows).
 func (s *Sender) initializeNonce() (uint64, error) {
-	// Get maximum nonce from database
-	dbNonce, err := s.pendingTransactionOrm.GetMaxNonceBySenderAddress(s.ctx, s.transactionSigner.GetAddr().Hex())
-	if err != nil {
-		return 0, fmt.Errorf("failed to get max nonce from database for address %s, err: %w", s.transactionSigner.GetAddr().Hex(), err)
-	}
-
 	// Get pending nonce from the client
 	pendingNonce, err := s.client.PendingNonceAt(s.ctx, s.transactionSigner.GetAddr())
 	if err != nil {
 		return 0, fmt.Errorf("failed to get pending nonce for address %s, err: %w", s.transactionSigner.GetAddr().Hex(), err)
+	}
+
+	if s.config.ChainNonceOnly {
+		log.Info("nonce initialization (chain_nonce_only mode, ignoring database pending transactions)", "address", s.transactionSigner.GetAddr().Hex(), "pendingNonce", pendingNonce, "finalNonce", pendingNonce)
+		return pendingNonce, nil
+	}
+
+	// Get maximum nonce from database
+	dbNonce, err := s.pendingTransactionOrm.GetMaxNonceBySenderAddress(s.ctx, s.transactionSigner.GetAddr().Hex())
+	if err != nil {
+		return 0, fmt.Errorf("failed to get max nonce from database for address %s, err: %w", s.transactionSigner.GetAddr().Hex(), err)
 	}
 
 	// Take the maximum of pending nonce and (db nonce + 1)

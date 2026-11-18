@@ -101,10 +101,19 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *types
 	return feeData, nil
 }
 
+const (
+	// estimateGasCap is an explicit non-zero gas limit for the eth_estimateGas CallMsg.
+	// Some nodes (e.g. Anvil) reject estimation requests that carry fee caps but leave
+	// Gas at the go-ethereum default of 0. go-ethereum's EstimateGas only uses this as
+	// the upper bound of its binary search, so a generous cap does not affect the result.
+	estimateGasCap = 30_000_000
+)
+
 func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *types.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
 	msg := ethereum.CallMsg{
 		From:      s.transactionSigner.GetAddr(),
 		To:        to,
+		Gas:       estimateGasCap,
 		GasPrice:  gasPrice,
 		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,

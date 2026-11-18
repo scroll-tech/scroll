@@ -37,6 +37,11 @@ type SenderConfig struct {
 	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
 	// The timestamp of the Ethereum Fusaka upgrade in seconds since epoch.
 	FusakaTimestamp uint64 `json:"fusaka_timestamp"`
+	// ChainNonceOnly initializes the sender nonce from the chain pending nonce only,
+	// ignoring stale pending_transaction rows in the database.
+	// Useful for shadow-fork testing against a DB imported from production.
+	// Defaults to false (nonce = max(db nonce + 1, chain pending nonce)).
+	ChainNonceOnly bool `json:"chain_nonce_only"`
 }
 
 type BatchSubmission struct {

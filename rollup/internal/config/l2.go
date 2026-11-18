@@ -16,6 +16,10 @@ type L2Config struct {
 	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
 	// The WithdrawTrieRootSlot in L2MessageQueue contract.
 	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
+	// DisableL2Watcher disables the L2 watcher loop that fetches missing blocks.
+	// Useful for shadow-fork testing where the l2_block table is imported/empty and a
+	// genesis crawl is undesirable. Defaults to false (watcher enabled).
+	DisableL2Watcher bool `json:"disable_l2_watcher"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The chunk_proposer config
@@ -34,6 +38,7 @@ type ChunkProposerConfig struct {
 	MaxL2GasPerChunk              uint64 `json:"max_l2_gas_per_chunk"`
 	ChunkTimeoutSec               uint64 `json:"chunk_timeout_sec"`
 	MaxUncompressedBatchBytesSize uint64 `json:"max_uncompressed_batch_bytes_size"`
+	Disable                       bool   `json:"disable"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
@@ -42,12 +47,15 @@ type BatchProposerConfig struct {
 	BatchTimeoutSec               uint64 `json:"batch_timeout_sec"`
 	MaxChunksPerBatch             int    `json:"max_chunks_per_batch"`
 	MaxUncompressedBatchBytesSize uint64 `json:"max_uncompressed_batch_bytes_size"`
+	Disable                       bool   `json:"disable"`
 }
 
 // BundleProposerConfig loads bundle_proposer configuration items.
 type BundleProposerConfig struct {
-	MaxBatchNumPerBundle uint64 `json:"max_batch_num_per_bundle"`
-	BundleTimeoutSec     uint64 `json:"bundle_timeout_sec"`
+	MaxBatchNumPerBundle     uint64 `json:"max_batch_num_per_bundle"`
+	BundleTimeoutSec         uint64 `json:"bundle_timeout_sec"`
+	BundleProposeCooldownSec uint64 `json:"bundle_propose_cooldown_sec"`
+	Disable                  bool   `json:"disable"`
 }
 
 // BlobUploaderConfig loads blob_uploader configuration items.
