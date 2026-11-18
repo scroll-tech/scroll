@@ -39,15 +39,14 @@ type BatchProverTask struct {
 func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, expectedVk map[string][]byte, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
-			db:                 db,
-			cfg:                cfg,
-			chainCfg:           chainCfg,
-			expectedVk:         expectedVk,
-			blockOrm:           orm.NewL2Block(db),
-			chunkOrm:           orm.NewChunk(db),
-			batchOrm:           orm.NewBatch(db),
-			proverTaskOrm:      orm.NewProverTask(db),
-			proverBlockListOrm: orm.NewProverBlockList(db),
+			db:            db,
+			cfg:           cfg,
+			chainCfg:      chainCfg,
+			expectedVk:    expectedVk,
+			blockOrm:      orm.NewL2Block(db),
+			chunkOrm:      orm.NewChunk(db),
+			batchOrm:      orm.NewBatch(db),
+			proverTaskOrm: orm.NewProverTask(db),
 		},
 		batchTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_batch_get_task_total",
@@ -60,9 +59,9 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 
 // Assign load and assign batch tasks
 func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	taskCtx, err := bp.checkParameter(ctx)
-	if err != nil || taskCtx == nil {
-		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
+	taskCtx := bp.checkParameter(ctx)
+	if taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter missed")
 	}
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
